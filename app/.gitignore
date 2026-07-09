@@ -1,0 +1,46 @@
+# Build
+/build
+.gradle
+*.log
+
+# Ktlint
+.ktlint
+.ktlint_cache
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Gradle wrapper (optional - commit if you want the specific Gradle version)
+# gradlew
+# gradlew.bat
+
+# IDE files (optional - keep if you want them in git)
+# .idea/
+
+# Kotlin
+*.kotlin_module
+.kotlin_build_cache/
+
+# Output files
+*.apk
+*.aab
+*.dex
+*.o
+*.d
+*.so
+*.class
+*.jar
+
+# Debug
+*.stacktrace
+
+# Dependencies
+.dependency_cache/
+.cxx/
+
+# Local config (optional - keep if you want them)
+# app/google-services.json
+keystore.jks
+temp/
