@@ -62,7 +62,6 @@ class Prefs private constructor(context: Context) {
 
     var botToken by StringPref("bot_token")
     var chatId by StringPref("chat_id")
-    var ownerUserId by StringPref("owner_user_id")
 
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()

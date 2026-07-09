@@ -22,6 +22,9 @@
     
     <!-- Required for Camera feature -->
     <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- Required to prompt for Setup App uninstallation -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <application
         android:name=".SuperiorChatApp"
         android:allowBackup="false"

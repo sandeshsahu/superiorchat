@@ -33,4 +33,4 @@ plugins {
 
 rootProject.name = "SuperiorChat"
 include(":app")
-
+include(":setupapp")

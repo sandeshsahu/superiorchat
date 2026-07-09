@@ -87,7 +87,6 @@ class BotSync(private val context: Context) {
 
                 try {
                     val token = prefs.botToken
-                    val ownerId = prefs.ownerUserId
 
                     if (token.isEmpty()) {
                         AppLog.log(LogCategory.SYSTEM, "Bot token is empty. Pausing polling.")
@@ -106,7 +105,7 @@ class BotSync(private val context: Context) {
                             if (updateResponse.ok) {
                                 for (update in updateResponse.result) {
                                     lastUpdateId = update.update_id
-                                    handleUpdate(update, ownerId)
+                                    handleUpdate(update)
                                 }
                             }
                         }
@@ -147,13 +146,14 @@ class BotSync(private val context: Context) {
         }
     }
 
-    private suspend fun handleUpdate(update: Update, ownerId: String) {
+    private suspend fun handleUpdate(update: Update) {
         val message = update.message ?: return
 
-        // Intruder filtering: only accept messages from owner or target chat
+        // Intruder filtering: only accept messages from the target chat
         val senderId = message.from?.id?.toString() ?: ""
-        if (ownerId.isNotEmpty() && senderId != ownerId && message.chat.id.toString() != ownerId) {
-            AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected! Ignored message from $senderId", LogLevel.WARN)
+        val targetChatId = AppGraph.prefs.chatId
+        if (targetChatId.isNotEmpty() && message.chat.id.toString() != targetChatId) {
+            AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected! Ignored message from chat ${message.chat.id}", LogLevel.WARN)
             return
         }
 

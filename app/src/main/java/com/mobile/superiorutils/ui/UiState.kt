@@ -96,7 +96,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // -- Credential State --
     var botToken by mutableStateOf(prefs.botToken)
     var chatId by mutableStateOf(prefs.chatId)
-    var ownerUserId by mutableStateOf(prefs.ownerUserId)
 
     val hasCredentials: Boolean
         get() = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$")) && 
@@ -144,15 +143,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveCredentials() {
         val token = botToken.trim()
         val chat = chatId.trim()
-        val owner = ownerUserId.trim()
         
         prefs.botToken = token
         prefs.chatId = chat
-        prefs.ownerUserId = owner
         
         botToken = token
         chatId = chat
-        ownerUserId = owner
 
         if (prefs.isConfigured) {
             ServiceCore.ensureRunning(getApplication<Application>())
@@ -223,14 +219,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val tempMessageId = -System.currentTimeMillis() // Avoid conflict with positive Telegram message IDs
-        val ownerId = prefs.ownerUserId
         val isOnline = NetState.isOnline.value
         val initialStatus = if (isOnline) MessageStatus.SENDING else MessageStatus.QUEUED
 
         val newMsg = MessageNode(
             messageId = tempMessageId,
             conversationId = chatId,
-            senderId = ownerId.ifEmpty { "ME" },
+            senderId = "ME",
             text = text,
             timestamp = System.currentTimeMillis(),
             isFromMe = true,
@@ -253,7 +248,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sendMedia(context: Context, uri: Uri, mediaType: String) {
         val chatId = prefs.chatId
-        val ownerId = prefs.ownerUserId
         
         if (chatId.isBlank()) return
 
@@ -285,7 +279,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val newMsg = MessageNode(
                     messageId = tempMessageId,
                     conversationId = chatId,
-                    senderId = ownerId.ifEmpty { "ME" },
+                    senderId = "ME",
                     text = "",
                     timestamp = System.currentTimeMillis(),
                     isFromMe = true,

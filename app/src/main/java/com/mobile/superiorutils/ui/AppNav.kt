@@ -251,10 +251,8 @@ fun AppScreen(
                             isInternetConnected = permissionStatus.isInternetConnected,
                             botToken = viewModel.botToken,
                             chatId = viewModel.chatId,
-                            ownerUserId = viewModel.ownerUserId,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
-                            onOwnerIdChange = { viewModel.ownerUserId = it },
                             onSave = {
                                 viewModel.saveCredentials()
                                 Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()

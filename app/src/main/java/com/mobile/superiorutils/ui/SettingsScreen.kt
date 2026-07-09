@@ -53,10 +53,8 @@ fun SettingsScreen(
     isInternetConnected: Boolean,
     botToken: String,
     chatId: String,
-    ownerUserId: String,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
-    onOwnerIdChange: (String) -> Unit,
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
@@ -64,8 +62,6 @@ fun SettingsScreen(
     var showCredentialsDialog by remember { mutableStateOf(false) }
     var tempBotToken by remember { mutableStateOf(botToken) }
     var tempChatId by remember { mutableStateOf(chatId) }
-    var tempOwnerId by remember { mutableStateOf(ownerUserId) }
-
     if (showCredentialsDialog) {
         AlertDialog(
             onDismissRequest = { showCredentialsDialog = false },
@@ -75,8 +71,6 @@ fun SettingsScreen(
                     CredentialField("Bot Token", tempBotToken, { tempBotToken = it }, true, placeholder = "Enter Telegram Bot Token")
                     Spacer(modifier = Modifier.height(10.dp))
                     CredentialField("Target Chat ID", tempChatId, { tempChatId = it }, true, SecretIconType.EYE, "Enter Target Chat ID")
-                    Spacer(modifier = Modifier.height(10.dp))
-                    CredentialField("Owner User ID", tempOwnerId, { tempOwnerId = it }, true, SecretIconType.EYE, "Enter Owner User ID")
                 }
             },
             containerColor = SurfaceLevel1,
@@ -86,7 +80,6 @@ fun SettingsScreen(
                     onClick = {
                         onBotTokenChange(tempBotToken.trim())
                         onChatIdChange(tempChatId.trim())
-                        onOwnerIdChange(tempOwnerId.trim())
                         showCredentialsDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Primary)
