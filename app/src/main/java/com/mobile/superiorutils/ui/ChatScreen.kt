@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
@@ -63,6 +64,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +74,14 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
     val messages by viewModel.messages.collectAsState()
     val context = LocalContext.current
+    val listState = rememberLazyListState()
+    var activeFullScreenImagePath by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -123,33 +133,35 @@ fun ChatScreen(
         showAttachmentMenu = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Background)
-    ) {
-        // Chat Area
-        LazyColumn(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            reverseLayout = true
+                .fillMaxSize()
+                .background(Background)
         ) {
-            if (messages.isEmpty()) {
-                item {
-                    Text("No messages yet. Send a message to start!", color = Color(0xFFC7C4D7), modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                }
-            } else {
-                items(
-                    items = messages.reversed(),
-                    key = { it.messageId }
-                ) { msg ->
-                    ChatBubble(msg, viewModel)
+            // Chat Area
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                reverseLayout = true
+            ) {
+                if (messages.isEmpty()) {
+                    item {
+                        Text("No messages yet. Send a message to start!", color = Color(0xFFC7C4D7), modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                } else {
+                    items(
+                        items = messages.reversed(),
+                        key = { it.messageId }
+                    ) { msg ->
+                        ChatBubble(msg, viewModel, onImageClick = { activeFullScreenImagePath = it })
+                    }
                 }
             }
-        }
 
         // Input Area - Glass panel
         Box(
@@ -344,8 +356,57 @@ fun ChatScreen(
                 }
             }
         }
+        }
     }
-}
+
+        // Full Screen Image Overlay
+        val showImage = activeFullScreenImagePath != null
+        val currentPath = remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(activeFullScreenImagePath) {
+            if (activeFullScreenImagePath != null) {
+                currentPath.value = activeFullScreenImagePath
+            }
+        }
+
+        androidx.compose.animation.AnimatedVisibility(
+            visible = showImage,
+            enter = androidx.compose.animation.fadeIn(animationSpec = tween(300)) + androidx.compose.animation.scaleIn(initialScale = 0.8f, animationSpec = tween(300)),
+            exit = androidx.compose.animation.fadeOut(animationSpec = tween(300)) + androidx.compose.animation.scaleOut(targetScale = 0.8f, animationSpec = tween(300))
+        ) {
+            currentPath.value?.let { path ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.95f))
+                        .clickable { activeFullScreenImagePath = null },
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = File(path),
+                        contentDescription = "Full Screen Photo",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    
+                    IconButton(
+                        onClick = { activeFullScreenImagePath = null },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(24.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close full screen image",
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 

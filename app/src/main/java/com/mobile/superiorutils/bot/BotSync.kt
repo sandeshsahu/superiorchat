@@ -29,7 +29,11 @@ class BotSync(private val context: Context) {
 
     private var pollingJob: Job? = null
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
-    private var lastUpdateId = 0L
+    private var lastUpdateId: Long
+        get() = prefs.lastUpdateId
+        set(value) {
+            prefs.lastUpdateId = value
+        }
     private var networkCollectorJob: Job? = null
     private val networkWakeChannel = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
     @Volatile private var isNetworkAvailable = false
@@ -39,6 +43,7 @@ class BotSync(private val context: Context) {
 
         registerNetworkCallback()
         launchPollingLoop()
+        flushQueuedMessages()
     }
 
     fun stopPolling() {
@@ -104,8 +109,12 @@ class BotSync(private val context: Context) {
                             val updateResponse = TelegramApi.json.decodeFromString<UpdateResponse>(body)
                             if (updateResponse.ok) {
                                 for (update in updateResponse.result) {
-                                    lastUpdateId = update.update_id
-                                    handleUpdate(update)
+                                    try {
+                                        lastUpdateId = update.update_id
+                                        handleUpdate(update)
+                                    } catch (e: Exception) {
+                                        AppLog.log(LogCategory.SYSTEM, "Failed to handle update ${update.update_id}: ${e.message}", LogLevel.ERROR)
+                                    }
                                 }
                             }
                         }
@@ -190,15 +199,12 @@ class BotSync(private val context: Context) {
             isFromMe = false,
             mediaType = mediaType,
             mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
-            status = if (fileId != null) MessageStatus.SENDING else MessageStatus.SENT
+            status = MessageStatus.SENT
         )
 
         repository.insertMessage(messageEntity)
 
-        if (fileId != null && mediaType != null) {
-            MediaSync.enqueueDownload(context, message.message_id, fileId, mediaType)
-            AppLog.log(LogCategory.BOT_ACTIVITY, "Enqueued media download for fileId: $fileId")
-        }
+        // Auto-download disabled. User must manually download media from UI.
 
         val conversationEntity = ChatNode(
             chatId = chatId,
@@ -217,6 +223,7 @@ class BotSync(private val context: Context) {
 
     private fun flushQueuedMessages() {
         coroutineScope.launch(Dispatchers.IO) {
+            if (!isNetworkAvailable) return@launch
             val token = prefs.botToken
             if (token.isEmpty()) return@launch
             try {

@@ -48,20 +48,29 @@ class Prefs private constructor(context: Context) {
         )
     }
 
-    private inner class StringPref(val key: String, val defaultValue: String = "") {
-        private var cachedValue: String? = null
-        operator fun getValue(thisRef: Any?, property: Any?): String {
-            return cachedValue ?: sharedPreferences.getString(key, defaultValue).orEmpty().also { cachedValue = it }
+    var botToken: String
+        get() = sharedPreferences.getString("bot_token", "").orEmpty()
+        set(value) {
+            val current = sharedPreferences.getString("bot_token", "")
+            if (current != value) {
+                sharedPreferences.edit()
+                    .putString("bot_token", value)
+                    .putLong("last_update_id", 0L)
+                    .apply()
+            }
         }
-        operator fun setValue(thisRef: Any?, property: Any?, value: String) {
-            cachedValue = value
-            sharedPreferences.edit().putString(key, value).apply()
+
+    var chatId: String
+        get() = sharedPreferences.getString("chat_id", "").orEmpty()
+        set(value) {
+            sharedPreferences.edit().putString("chat_id", value).apply()
         }
-    }
 
-
-    var botToken by StringPref("bot_token")
-    var chatId by StringPref("chat_id")
+    var lastUpdateId: Long
+        get() = sharedPreferences.getLong("last_update_id", 0L)
+        set(value) {
+            sharedPreferences.edit().putLong("last_update_id", value).apply()
+        }
 
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()

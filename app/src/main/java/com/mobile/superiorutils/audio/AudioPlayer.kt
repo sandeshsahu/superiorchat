@@ -20,6 +20,9 @@ object AudioPlayer {
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
 
+    private val _isCompleted = MutableStateFlow(false)
+    val isCompleted: StateFlow<Boolean> = _isCompleted
+
     private val _progress = MutableStateFlow(0f) // 0.0 to 1.0
     val progress: StateFlow<Float> = _progress
 
@@ -52,14 +55,25 @@ object AudioPlayer {
         try {
             mediaPlayer = MediaPlayer().apply {
                 setDataSource(context, Uri.fromFile(file))
-                prepare()
-                setOnCompletionListener {
+                setOnErrorListener { _, _, _ ->
                     stop()
+                    true
                 }
+                setOnCompletionListener {
+                    _isPlaying.value = false
+                    _isCompleted.value = true
+                    progressJob?.cancel()
+                    _currentPositionMs.value = 0
+                    _progress.value = 0f
+                    // It is valid to call seekTo from PlaybackCompleted state
+                    mediaPlayer?.seekTo(0)
+                }
+                prepare()
                 start()
             }
             _currentPlayingPath.value = path
             _isPlaying.value = true
+            _isCompleted.value = false
             _durationMs.value = mediaPlayer?.duration ?: 0
             startProgressUpdate()
         } catch (e: Exception) {
@@ -71,6 +85,7 @@ object AudioPlayer {
     private fun resume() {
         mediaPlayer?.start()
         _isPlaying.value = true
+        _isCompleted.value = false
         startProgressUpdate()
     }
 
@@ -94,6 +109,7 @@ object AudioPlayer {
         mediaPlayer?.release()
         mediaPlayer = null
         _isPlaying.value = false
+        _isCompleted.value = false
         _currentPlayingPath.value = null
         _progress.value = 0f
         _currentPositionMs.value = 0

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Schedule
@@ -49,7 +50,8 @@ import java.util.Locale
 @Composable
 fun ChatBubble(
     message: MessageNode,
-    viewModel: ChatViewModel
+    viewModel: ChatViewModel,
+    onImageClick: (String) -> Unit
 ) {
     val context = LocalContext.current
     val alignment = if (message.isFromMe) Alignment.CenterEnd else Alignment.CenterStart
@@ -100,77 +102,45 @@ fun ChatBubble(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 300.dp)
-                        .clip(RoundedCornerShape(12.dp)),
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onImageClick(message.mediaLocalPath) },
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "photo" && message.status == MessageStatus.FAILED) {
+            } else if (message.mediaType == "photo") {
+                val isDownloading = message.status == MessageStatus.SENDING
+                val isFailed = message.status == MessageStatus.FAILED
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(150.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.2f))
-                        .clickable { viewModel.retryDownload(message) },
+                        .background(Color.Gray.copy(alpha = 0.3f))
+                        .clickable(enabled = !isDownloading) { if (!isDownloading) viewModel.retryDownload(message) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry Download", tint = Color.White)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Download failed. Tap to retry.", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                    if (isDownloading) {
+                        CircularProgressIndicator(color = Color.White)
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(imageVector = if (isFailed) Icons.Default.Refresh else Icons.Default.ArrowDownward, contentDescription = "Download Photo", tint = Color.White, modifier = Modifier.size(36.dp))
+                            if (isFailed) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Download failed", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                            }
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "photo") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Color.White)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "voice" && message.mediaLocalPath != null) {
+            } else if (message.mediaType == "voice" || message.mediaType == "audio") {
                 AudioMessage(
                     mediaLocalPath = message.mediaLocalPath,
-                    isFromMe = message.isFromMe
+                    mediaUrl = message.mediaUrl,
+                    mediaType = message.mediaType,
+                    status = message.status,
+                    isFromMe = message.isFromMe,
+                    onDownloadClick = { viewModel.retryDownload(message) }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "voice" && message.status == MessageStatus.FAILED) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.2f))
-                        .clickable { viewModel.retryDownload(message) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry Download", tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Download failed. Tap to retry.", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "voice") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Downloading voice note...", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
-                    }
-                }
                 Spacer(modifier = Modifier.height(8.dp))
             } else if (message.mediaType == "video" && message.mediaLocalPath != null) {
                 Box(
@@ -224,36 +194,55 @@ fun ChatBubble(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "video" && message.status == MessageStatus.FAILED) {
+            } else if (message.mediaType == "video") {
+                val isDownloading = message.status == MessageStatus.SENDING
+                val isFailed = message.status == MessageStatus.FAILED
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.Gray.copy(alpha = 0.2f))
-                        .clickable { viewModel.retryDownload(message) },
+                        .clickable(enabled = !isDownloading) { if (!isDownloading) viewModel.retryDownload(message) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry Download", tint = Color.White)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Video download failed. Tap to retry.", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
+                    if (isDownloading) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Downloading...", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.6f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isFailed) Icons.Default.Refresh else Icons.Default.ArrowDownward,
+                                    contentDescription = "Download Video",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            if (isFailed) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("Failed. Tap to retry", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                            }
+                        }
                     }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "video") {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Downloading video...", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text("VIDEO", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -309,36 +298,44 @@ fun ChatBubble(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-            } else if (message.mediaType == "document" && message.status == MessageStatus.FAILED) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.2f))
-                        .clickable { viewModel.retryDownload(message) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry Download", tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Document failed. Tap to retry.", color = Color.White.copy(alpha = 0.7f), fontSize = 12.sp)
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
             } else if (message.mediaType == "document") {
-                Box(
+                val isDownloading = message.status == MessageStatus.SENDING
+                val isFailed = message.status == MessageStatus.FAILED
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Gray.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
+                        .background(if (message.isFromMe) Color.White.copy(alpha = 0.1f) else SurfaceLevel2)
+                        .clickable(enabled = !isDownloading) { if (!isDownloading) viewModel.retryDownload(message) }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Downloading document...", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                    if (isDownloading) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = textColor, strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            imageVector = if (isFailed) Icons.Default.Refresh else Icons.Default.ArrowDownward,
+                            contentDescription = "Download Document",
+                            tint = textColor,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Document",
+                            color = textColor,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            fontSize = 13.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (isDownloading) "Downloading..." else if (isFailed) "Failed" else "Tap to download",
+                            color = textColor.copy(alpha = 0.6f),
+                            fontSize = 11.sp
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

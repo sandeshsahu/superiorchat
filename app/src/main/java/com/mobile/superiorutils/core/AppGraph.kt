@@ -25,13 +25,7 @@ object AppGraph {
         
         prefs = Prefs.getInstance(appContext)
         
-        database = Room.databaseBuilder(
-            appContext,
-            LocalDb::class.java,
-            "superior_chat_database"
-        )
-        .fallbackToDestructiveMigration()
-        .build()
+        database = LocalDb.getDatabase(appContext)
 
         chatRepository = DataSync(
             database.conversationDao(),

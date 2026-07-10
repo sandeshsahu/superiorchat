@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -203,7 +204,43 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         messageCollectionJob?.cancel()
         messageCollectionJob = viewModelScope.launch(Dispatchers.IO) {
-            repository.getMessagesForConversation(chatId).collectLatest { msgs ->
+            // One-time startup sync scan for interrupted/queued messages
+            try {
+                val firstList = repository.getMessagesForConversation(chatId).first()
+                firstList.forEach { msg ->
+                    // Resume downloads in SENDING status
+                    if (!msg.isFromMe && msg.status == MessageStatus.SENDING && msg.mediaUrl != null && msg.mediaLocalPath == null) {
+                        MediaSync.startDownloadImmediate(getApplication(), msg.messageId, msg.mediaUrl, msg.mediaType ?: "")
+                    }
+                    // Resume uploads in SENDING or QUEUED (when online) status
+                    if (msg.isFromMe && msg.mediaLocalPath != null) {
+                        if (msg.status == MessageStatus.SENDING || (msg.status == MessageStatus.QUEUED && NetState.isOnline.value)) {
+                            if (msg.status == MessageStatus.QUEUED) {
+                                repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
+                            }
+                            MediaSync.startUploadImmediate(getApplication(), msg.messageId, msg.mediaLocalPath, msg.mediaType ?: "")
+                        }
+                    }
+                    // Resume text messages in QUEUED status (when online)
+                    if (msg.isFromMe && msg.mediaType == null && msg.status == MessageStatus.QUEUED && NetState.isOnline.value) {
+                        launch(Dispatchers.IO) {
+                            repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
+                            val token = prefs.botToken
+                            val sentId = TelegramApi.sendMessage(token, msg.conversationId, msg.text ?: "")
+                            if (sentId != null) {
+                                repository.updateMessageStatus(msg.messageId, MessageStatus.SENT)
+                            } else {
+                                repository.updateMessageStatus(msg.messageId, MessageStatus.FAILED)
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.SYSTEM, "Error running startup message sync: ${e.message}", LogLevel.ERROR)
+            }
+
+            // Collect live database updates to push directly to UI StateFlow
+            repository.getMessagesForConversation(chatId).collect { msgs ->
                 _messages.value = msgs
             }
         }

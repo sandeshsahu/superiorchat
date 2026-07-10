@@ -30,6 +30,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
+                .enableMultiInstanceInvalidation()
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
