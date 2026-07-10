@@ -1,61 +1,142 @@
-# Superior Chat Architecture
 
-Superior Chat is a lightweight, stealth-focused Android application designed to facilitate secure communication over the Telegram Bot API while remaining completely hidden from the standard Android App Drawer.
+# Architecture & Component Design
 
-## High-Level Architecture Overview
+This document outlines the architectural topology, module segregation, directory structure, and data routing mechanics of **Superior Chat**. The application relies entirely on an asymmetric client-to-bot-to-client relay loop using the Telegram Bot API as a serverless transport layer, backed by local persistent storage and a high-security initialization workflow.
 
-The application is structured into the following core layers:
+---
 
-### 1. Stealth & Entry Point (Camouflage Layer)
-- **App Drawer Hiding**: The application intentionally disables its main launcher activity (`MainActivityLauncher`) when activated, causing the icon to vanish from the user's home screen and app drawer.
-- **Dialer Code Receiver**: To access the application, a `BroadcastReceiver` (`DialerCodeReceiver`) listens for a specific secret dialer code (`*#*#9131#*#*`). Upon entering this code in the phone's dialer, the receiver intercepts the broadcast and launches the `MainActivity`.
+## 1. System Topology & Asymmetric Design
 
-### 2. UI Layer (Jetpack Compose)
-Built entirely using modern declarative UI (Jetpack Compose) and Material Design 3.
-- **`AppScreen` & Navigation**: Manages the main navigation drawer and hosts three primary destinations:
-  - **`ChatScreen`**: The primary user interface for reading and sending messages.
-  - **`SettingsScreen`**: Configuration for Telegram credentials (Bot Token, Chat ID, Owner ID).
-  - **`PermissionsScreen`**: A streamlined page to ensure the app has the necessary OS permissions (Notifications, Battery Optimization).
-- **`MainViewModel`**: Acts as the state holder. It manages UI state, retrieves settings via `PrefsManager`, and handles the logic for starting/stopping the background service.
+Superior Chat eliminates central database costs and hosting footprints by delegating transport orchestration to Telegram. The system is entirely distributed across two disparate interfaces:
 
-### 3. Background Service Layer
-- **`ChatService`**: A sticky Android Foreground Service designed to run continuously in the background. It uses Kotlin Coroutines to maintain a long-polling loop against the Telegram API.
-- **Network Resilience**: The service monitors Android's `ConnectivityManager`. When the network drops, polling pauses; when the network returns, polling automatically resumes.
+* **Production Client (`:app`):** Runs the core package `com.mobile.superiorutils`. It operates as a fully local, database-driven Android client utilizing Android Architecture Components (MVVM, Jetpack Compose, StateFlow, and Room). It ingests incoming traffic via long polling and pushes outgoing data directly via HTTPS POST.
+* **Target/Owner Client:** Utilizes the native, official Telegram desktop or mobile app to read incoming messages relayed by the bot and send commands/responses back to the bot queue.
 
-### 4. Network & API Layer
-- **`TelegramApi`**: A centralized singleton utilizing `OkHttp` to communicate with Telegram's servers. It handles endpoints such as `getUpdates`, `getMe`, and `sendMessage`.
-- **Serialization**: JSON parsing is handled by `kotlinx.serialization`, strictly mapping Telegram's JSON responses to typed Kotlin data classes (`UpdateResponse`, `GetMeResponse`, etc.).
+```text
++----------------------------+               +----------------------------+
+|  Client A (Custom App)     |               |  Client B (Telegram App)   |
+|  Package: superiorutils    |               |  Standard Native Chat UI   |
++-------------+--------------+               +-------------+--------------+
+              |                                            ^
+  Outbound:   | sendMessage                                | Inbound:
+  HTTPS POST  |                                            | Telegram Native
+              v                                            | Message Delivery
++-------------+--------------------------------------------+--------------+
+|                          Telegram Bot API Cloud                         |
+|                 Acts purely as a serverless network pipe                |
++-------------+--------------------------------------------+--------------+
+              |                                            ^
+  Inbound:    | getUpdates                                 | Outbound:
+  Long Poll   |                                            | Message / Command
+              v                                            |
++-------------+--------------+                             |
+|  Bot Sync Buffer (Queue)   |-----------------------------+
++----------------------------+
 
-### 5. Message Routing & Communication
-- **`MessageRouter`**: When `ChatService` receives a valid update from Telegram, it passes the payload to the `MessageRouter`.
-- **Security Check**: The router strictly validates that the incoming message originates from the authorized `chat_id` or `owner_id` configured in the settings. Unauthorized messages are silently dropped.
-- **UI & System Updates**: 
-  - Valid messages trigger a local `Intent` broadcast (`com.mobile.superiorutils.INCOMING_MESSAGE`). If the UI is open, it intercepts this broadcast and displays the message in the `ChatScreen`.
-  - The router also interacts with the `NotificationManager` to fire a high-priority system notification, ensuring the user is alerted to new messages even if the app is closed.
 
-## Component Interaction Flow
+```
+## 2. Directory and File Structure
 
-```mermaid
-graph TD
-    A[Dialer Code: *#*#9131#*#*] -->|Triggers| B(DialerCodeReceiver)
-    B -->|Launches| C[MainActivity]
-    C --> D[AppScreen / Jetpack Compose UI]
-    D <-->|State / Actions| E[MainViewModel]
-    E -->|Start Service| F[ChatService]
-    
-    F -->|Long Polling| G[TelegramApi]
-    G <-->|HTTP Requests| H((Telegram Servers))
-    
-    F -->|Incoming Update| I[MessageRouter]
-    I -->|Authorized?| J{Security Check}
-    
-    J -->|Yes| K[Broadcast Intent]
-    J -->|Yes| L[System Notification]
-    J -->|No| M[Drop Update]
-    
-    K -->|Received By UI| D
+We maintain a compact, highly cohesive directory layout. Do **not** flood the repository with single-purpose classes or redundant utility files. 
+
+The main application resides under the package `com.mobile.superiorutils` in the `app` module:
+
 ```
 
-## Security & Persistence
-- **No Root Required**: The application operates entirely within standard Android user space constraints without requiring Magisk or root-level capabilities.
-- **Battery Optimization Exemption**: To ensure `ChatService` is not killed by Android's Doze mode during deep sleep, the app explicitly guides the user to grant the `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` permission.
+app/src/main/java/com/mobile/superiorutils/
+
+├── SuperiorChatApp.kt         # Application class (initializes AppGraph)
+├── MainActivity.kt            # Entry activity (handles setup intent handshakes and main UI rendering)
+│
+├── audio/                     # Audio recording & playback
+│   ├── AudioPlayer.kt         # Plays voice notes
+│   └── AudioRecorder.kt       # Records M4A voice notes using MediaRecorder
+│
+├── bot/                       # Telegram Bot API client and sync processing
+│   ├── TelegramApi.kt         # OkHttp-based Telegram API wrapper (sendMessage, sendPhoto, etc.)
+│   ├── ApiData.kt             # Serialization data classes (Update, Message, User, Chat, File)
+│   ├── BotSync.kt             # Long-polling loop that fetches updates and saves to DB
+│   └── Notifier.kt            # Handles local secret notifications for new messages
+│
+├── core/                      # Application graph and local database definitions
+│   ├── AppGraph.kt            # Central Service Locator (Prefs, Room DB, Repository)
+│   ├── LocalDb.kt             # Room Database configuration
+│   ├── Converters.kt          # TypeConverters (MessageStatus to Code)
+│   ├── NetState.kt            # Flow-based internet connectivity observer
+│   └── ServiceCore.kt         # Helper to manage lifecycle of foreground service
+│
+├── data/                      # SharedPreferences and Database schemas
+│   ├── Prefs.kt               # EncryptedSharedPreferences (bot token, chat ID, last poll offset)
+│   ├── dao/
+│   │   ├── MessageDao.kt      # CRUD queries for messages
+│   │   └── ThreadDao.kt       # CRUD queries for threads/conversations
+│   ├── entity/
+│   │   ├── ChatNode.kt        # Chat/conversation database node
+│   │   ├── MessageNode.kt     # Message database node (handles text, media metadata, local path)
+│   │   └── MessageStatus.kt   # Status Enum (SENDING, SENT, FAILED, READ, QUEUED)
+│   └── repository/
+│       └── DataSync.kt        # Room database repository layer
+│
+├── media/                     # Media transport logic
+│   ├── LocalDirs.kt           # Directory manager for downloaded/sent files (photos, voice, video)
+│   ├── MediaSync.kt           # Concurrency-safe foreground queue & WorkManager enqueuer
+│   └── MediaWorker.kt         # WorkManager CoroutineWorker for background uploads/downloads
+│
+├── service/                   # Background polling services
+│   └── BotService.kt          # Foreground Service that wraps BotSync polling loop
+│
+├── theme/                     # Compose Color, Theme, Typography definitions
+│   ├── Color.kt
+│   ├── Theme.kt
+│   └── Type.kt
+│
+├── ui/                        # Jetpack Compose UI screens and ViewModels
+│   ├── AppNav.kt              # App routing and Navigation Drawer implementation
+│   ├── ChatScreen.kt          # Chat bubble feed, voice recording UI, photo attach menu
+│   ├── LogsScreen.kt          # Camouflaged diagnostics logs viewer
+│   ├── SettingsScreen.kt      # Bot credentials manager & hide application toggles
+│   ├── PermissionsScreen.kt   # Dynamic checker for POST_NOTIFICATIONS & ignore battery optimization
+│   ├── UiState.kt             # MainViewModel and ChatViewModel
+│   └── components/
+│       ├── ChatBubble.kt      # Renders individual bubbles (image previews, voice controls)
+│       ├── AudioMessage.kt    # Waveform seek bar & playback handler for voice notes
+│       └── AttachmentOption.kt# Inline menu option for attachments
+│
+└── utils/                     # CAMOUFLAGE & stealth utility receivers
+    ├── AppLog.kt              # Thread-safe local diagnostic logger (caps at 100 entries)
+    ├── BootReceiver.kt        # Starts foreground polling service on device startup
+    ├── CodeReceiver.kt        # Dialer receiver that intercepts *#*#9131#*#* to open main UI
+    └── CryptoUtils.kt         # Encrypts bot token/chat ID for IPC between setup & main app
+```
+## 3. Module Segregation & Bootstrapping Security
+
+To ensure absolute stealth, the application is split into two isolated modules within the Gradle ecosystem to separate configuration artifacts from the runtime state:
+
+### A. The Setup Module (`:setupapp`)
+A temporary, single-use configuration wizard module (`com.mobile.superiorsetup`) engineered to handle bootstrapping parameters securely:
+* **Storage Security:** Implements `androidx.security:security-crypto` (`EncryptedSharedPreferences`) to protect transient configuration parameters on the physical disk during entry.
+* **Silent Extraction:** Verification mechanics request `REQUEST_INSTALL_PACKAGES` permissions to dynamically extract and install the production payload (`com.mobile.superiorutils`) directly from its internal asset stream.
+* **Inter-Process Communication (IPC) Shielding:** Passes sensitive bot tokens and target Chat IDs to the main app via an explicit Intent payload encrypted via a custom `CryptoUtils.kt` utilizing AES/GCM/NoPadding with a hardware-backed 256-bit symmetric key.
+* **Self-Destruct Sequence:** Immediately upon verification and intent handover, the setup app signals the production app to call an intent backed by `REQUEST_DELETE_PACKAGES` to force-uninstall the setup application package from the OS, leaving zero metadata footprints in user space.
+
+### B. The Production Module (`:app`)
+The core persistent runtime module (`com.mobile.superiorutils`). It lacks an accessible main launcher icon activity filter, starting exclusively via an encrypted system-level broadcast handshake or a device-specific hardware intent handler.
+
+---
+
+## 4. Key Architectural Subsystems
+
+### A. Network Integration & Asynchronous Long-Polling
+* **The Inbound Loop:** `BotService.kt` launches a persistent Android Foreground Service bound to a CPU wake lock. Inside, `BotSync.kt` initiates a non-blocking asynchronous loop that executes HTTP GET updates via `TelegramApi.kt` using network long-polling via `getUpdates`.
+* **Strict Intruder Filtering:** The JSON collection received via `getUpdates` is parsed directly within the coroutine scope. Every incoming packet undergoes a mandatory structural constraint check:
+    `If Update.message.chat.id != Stored_Target_Chat_ID -> Drop Packet Immediately`
+    Dropped packets are recycled out of memory without touching the local Room repository or logging instances, ensuring total isolation from malicious or external actors.
+* **Flood Control & Delays:** Outbound messaging queues apply a structural debounce layer limiting throughput to a maximum threshold of 3 requests per second, bypassing Telegram API flood triggers transparently.
+
+### B. Stealth Execution & Launcher Interception
+* **Zero-Icon Manifest Integration:** The main application's manifest explicitly drops standard `android.intent.category.LAUNCHER` declaration attributes from its primary entry vectors. 
+* **Dialer Interception:** `CodeReceiver.kt` registers a high-priority system `BroadcastReceiver` configured to intercept native Android telecommunication intents. When a broadcast containing the explicit dialing parameters `*#*#9131#*#*` is caught, the receiver stops the default dialer propagation, bypasses regular launch constraints, and programmatically forces an isolated launch instance of `MainActivity.kt`.
+
+### C. Persistent Storage Architecture
+* **Database Synchronization:** The local data tier uses a lightweight Room implementation managed via `LocalDb.kt`. Messages are written locally to `MessageNode` schemas immediately. A customized type-converter manages state variations cleanly across the transport life-cycle (`SENDING`, `SENT`, `FAILED`, `QUEUED`).
+* **Asynchronous Processing:** Network disconnection triggers automated local queueing. Outbound data payloads stack gracefully into local storage structures. `NetState.kt` observes active connectivity shifts via network callbacks; upon recovery, it fires a high-priority background worker via `MediaWorker.kt` to securely drain the pending offline queues out of the local cache.
