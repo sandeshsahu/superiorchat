@@ -163,6 +163,33 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = AppGraph.prefs
     private val repository = AppGraph.chatRepository
 
+    val isOnline = NetState.isOnline
+    val isTelegramApiReachable = AppLog.isTelegramApiReachable
+    
+    var isRetryingConnection by mutableStateOf(false)
+        private set
+
+    fun retryConnection(context: Context) {
+        if (isRetryingConnection) return
+        isRetryingConnection = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val token = prefs.botToken
+                if (token.isNotBlank()) {
+                    val reachable = TelegramApi.isApiReachable(context, token)
+                    AppLog.setTelegramApiReachable(reachable)
+                } else {
+                    AppLog.setTelegramApiReachable(false)
+                }
+            } catch (e: Exception) {
+                AppLog.setTelegramApiReachable(false)
+            } finally {
+                delay(800)
+                isRetryingConnection = false
+            }
+        }
+    }
+
     var isRecordingAudio by mutableStateOf(false)
         private set
     var recordingDurationSec by mutableStateOf(0)

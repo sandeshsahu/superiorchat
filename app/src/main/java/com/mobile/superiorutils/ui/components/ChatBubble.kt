@@ -51,7 +51,7 @@ import java.util.Locale
 fun ChatBubble(
     message: MessageNode,
     viewModel: ChatViewModel,
-    onImageClick: (String) -> Unit
+    onMediaClick: (String, String) -> Unit
 ) {
     val context = LocalContext.current
     val alignment = if (message.isFromMe) Alignment.CenterEnd else Alignment.CenterStart
@@ -102,8 +102,7 @@ fun ChatBubble(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 300.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { onImageClick(message.mediaLocalPath) },
+                        .clickable { onMediaClick(message.mediaLocalPath, "photo") },
                     contentScale = ContentScale.Crop
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -150,21 +149,7 @@ fun ChatBubble(
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.Black.copy(alpha = 0.5f))
                         .clickable {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    val file = File(message.mediaLocalPath)
-                                    val uri = androidx.core.content.FileProvider.getUriForFile(
-                                        context,
-                                        "${context.packageName}.provider",
-                                        file
-                                    )
-                                    setDataAndType(uri, "video/*")
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                AppLog.log(LogCategory.SYSTEM, "Failed to play video: ${e.message}", LogLevel.ERROR)
-                            }
+                            onMediaClick(message.mediaLocalPath, "video")
                         },
                     contentAlignment = Alignment.Center
                 ) {
