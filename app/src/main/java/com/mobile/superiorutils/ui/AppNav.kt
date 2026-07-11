@@ -1,12 +1,16 @@
 package com.mobile.superiorutils.ui
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -83,6 +87,18 @@ fun AppScreen(
 
     val permissionStatus by viewModel.permissionStatus.collectAsState()
 
+    val multiPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        viewModel.refreshPermissions()
+    }
+
+    val singlePermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ ->
+        viewModel.refreshPermissions()
+    }
+
     DisposableEffect(currentScreen, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -107,6 +123,45 @@ fun AppScreen(
 
     val permissionStates = listOf(
         PermissionState("Post Notifications", permissionStatus.hasPostNotifs) { requestPostNotifications() },
+        PermissionState("Camera", permissionStatus.hasCamera) {
+            singlePermissionLauncher.launch(Manifest.permission.CAMERA)
+        },
+        PermissionState("Microphone", permissionStatus.hasMicrophone) {
+            singlePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        },
+        PermissionState(
+            name = "Media & Storage",
+            isGranted = permissionStatus.mediaAccessLevel == MediaAccessLevel.FULL,
+            displayStatus = when (permissionStatus.mediaAccessLevel) {
+                MediaAccessLevel.FULL -> "Granted"
+                MediaAccessLevel.PARTIAL -> "Partial Access"
+                MediaAccessLevel.NONE -> "Required"
+            }
+        ) {
+            when {
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
+                    multiPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.READ_MEDIA_IMAGES,
+                            Manifest.permission.READ_MEDIA_VIDEO,
+                            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+                        )
+                    )
+                }
+                Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU -> {
+                    multiPermissionLauncher.launch(
+                        arrayOf(
+                            Manifest.permission.READ_MEDIA_IMAGES,
+                            Manifest.permission.READ_MEDIA_VIDEO,
+                            Manifest.permission.READ_MEDIA_AUDIO
+                        )
+                    )
+                }
+                else -> {
+                    singlePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
+            }
+        },
         PermissionState("Ignore Battery Optimizations", permissionStatus.hasIgnoreBattery) {
             context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
         }
@@ -137,16 +192,16 @@ fun AppScreen(
                             .padding(horizontal = 20.dp)
                             .padding(bottom = 24.dp)
                     ) {
-                        Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE2E2E2))
+                        Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Author Sandesh", fontSize = 14.sp, color = Color(0xFFC7C4D7))
+                        Text("Author Sandesh", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
                     // Navigation Items (excluding Settings — accessed via gear icon)
                     NavScreen.entries.filter { it != NavScreen.Settings }.forEach { screen ->
                         val isSelected = currentScreen == screen
                         val bgColor = if (isSelected) Primary.copy(alpha = 0.3f) else Color.Transparent
-                        val contentColor = if (isSelected) Color.White else Color(0xFFC7C4D7)
+                        val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -186,23 +241,23 @@ fun AppScreen(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
-                        Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE2E2E2))
+                        Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     },
                     navigationIcon = {
                         if (currentScreen == NavScreen.Settings) {
                             IconButton(onClick = { currentScreen = NavScreen.Chat }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFFE2E2E2))
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         } else {
                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = Color(0xFFE2E2E2))
+                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     },
                     actions = {
                         if (currentScreen == NavScreen.Chat || currentScreen == NavScreen.Logs) {
                             IconButton(onClick = { currentScreen = NavScreen.Settings }) {
-                                Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = Color(0xFFE2E2E2))
+                                Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     },
@@ -251,8 +306,10 @@ fun AppScreen(
                             isInternetConnected = permissionStatus.isInternetConnected,
                             botToken = viewModel.botToken,
                             chatId = viewModel.chatId,
+                            isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
+                            onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                             onSave = {
                                 viewModel.saveCredentials()
                                 Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
@@ -276,8 +333,8 @@ private fun ExternalLinkItem(title: String, icon: ImageVector) {
             .clickable { }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Icon(icon, contentDescription = title, tint = Color(0xFFC7C4D7), modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
-        Text(title, fontSize = 16.sp, color = Color(0xFFC7C4D7))
+        Text(title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

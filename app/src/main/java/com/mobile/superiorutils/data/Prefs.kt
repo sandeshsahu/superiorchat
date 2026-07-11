@@ -72,6 +72,12 @@ class Prefs private constructor(context: Context) {
             sharedPreferences.edit().putLong("last_update_id", value).apply()
         }
 
+    var isAutoDownloadMediaEnabled: Boolean
+        get() = sharedPreferences.getBoolean("auto_download_media", false)
+        set(value) {
+            sharedPreferences.edit().putBoolean("auto_download_media", value).apply()
+        }
+
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()
 }

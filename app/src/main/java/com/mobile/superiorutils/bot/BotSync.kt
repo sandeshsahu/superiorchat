@@ -90,16 +90,17 @@ class BotSync(private val context: Context) {
                     continue
                 }
 
+                var hasUpdates = false
                 try {
                     val token = prefs.botToken
 
                     if (token.isEmpty()) {
                         AppLog.log(LogCategory.SYSTEM, "Bot token is empty. Pausing polling.")
-                        delay(5000)
+                        delay(30000)
                         continue
                     }
 
-                    val response = TelegramApi.getUpdatesRaw(token, lastUpdateId + 1, 60)
+                    val response = TelegramApi.getUpdatesRaw(token, lastUpdateId + 1, 80)
                     if (response.isSuccessful) {
                         consecutiveFailures = 0
                         AppLog.setTelegramApiReachable(true)
@@ -108,6 +109,7 @@ class BotSync(private val context: Context) {
                         if (!body.isNullOrEmpty()) {
                             val updateResponse = TelegramApi.json.decodeFromString<UpdateResponse>(body)
                             if (updateResponse.ok) {
+                                hasUpdates = updateResponse.result.isNotEmpty()
                                 for (update in updateResponse.result) {
                                     try {
                                         lastUpdateId = update.update_id
@@ -144,12 +146,14 @@ class BotSync(private val context: Context) {
                 val backoffMs = if (consecutiveFailures > 0) {
                     minOf(333L * (1L shl minOf(consecutiveFailures, 10)), 300000L)
                 } else {
-                    333L
+                    if (hasUpdates) 0L else 1500L
                 }
                 
-                // Wait for backoff, or wake up instantly if network becomes available
-                kotlinx.coroutines.withTimeoutOrNull(backoffMs) {
-                    networkWakeChannel.receive()
+                if (backoffMs > 0L) {
+                    // Wait for backoff, or wake up instantly if network becomes available
+                    kotlinx.coroutines.withTimeoutOrNull(backoffMs) {
+                        networkWakeChannel.receive()
+                    }
                 }
             }
         }
@@ -190,6 +194,9 @@ class BotSync(private val context: Context) {
             fileId = message.voice.jsonObject["file_id"]?.jsonPrimitive?.content
         }
 
+        val isAutoDownload = AppGraph.prefs.isAutoDownloadMediaEnabled && fileId != null && mediaType != null
+        val finalStatus = if (isAutoDownload) MessageStatus.SENDING else MessageStatus.SENT
+
         val messageEntity = MessageNode(
             messageId = message.message_id,
             conversationId = chatId,
@@ -199,12 +206,14 @@ class BotSync(private val context: Context) {
             isFromMe = false,
             mediaType = mediaType,
             mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
-            status = MessageStatus.SENT
+            status = finalStatus
         )
 
         repository.insertMessage(messageEntity)
 
-        // Auto-download disabled. User must manually download media from UI.
+        if (isAutoDownload) {
+            MediaSync.enqueueDownload(context, messageEntity.messageId, fileId!!, mediaType!!)
+        }
 
         val conversationEntity = ChatNode(
             chatId = chatId,

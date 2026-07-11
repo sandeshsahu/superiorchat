@@ -48,10 +48,7 @@ app/src/main/java/com/mobile/superiorutils/
 ├── SuperiorChatApp.kt         # Application class (initializes AppGraph)
 ├── MainActivity.kt            # Entry activity (handles setup intent handshakes and main UI rendering)
 │
-├── audio/                     # Audio recording & playback
-│   ├── AudioPlayer.kt         # Plays voice notes
-│   └── AudioRecorder.kt       # Records M4A voice notes using MediaRecorder
-│
+
 ├── bot/                       # Telegram Bot API client and sync processing
 │   ├── TelegramApi.kt         # OkHttp-based Telegram API wrapper (sendMessage, sendPhoto, etc.)
 │   ├── ApiData.kt             # Serialization data classes (Update, Message, User, Chat, File)
@@ -78,6 +75,8 @@ app/src/main/java/com/mobile/superiorutils/
 │       └── DataSync.kt        # Room database repository layer
 │
 ├── media/                     # Media transport logic
+│   ├── AudioPlayer.kt         # Plays voice notes
+│   ├── AudioRecorder.kt       # Records M4A voice notes using MediaRecorder
 │   ├── LocalDirs.kt           # Directory manager for downloaded/sent files (photos, voice, video)
 │   ├── MediaSync.kt           # Concurrency-safe foreground queue & WorkManager enqueuer
 │   └── MediaWorker.kt         # WorkManager CoroutineWorker for background uploads/downloads
@@ -92,15 +91,22 @@ app/src/main/java/com/mobile/superiorutils/
 │
 ├── ui/                        # Jetpack Compose UI screens and ViewModels
 │   ├── AppNav.kt              # App routing and Navigation Drawer implementation
-│   ├── ChatScreen.kt          # Chat bubble feed, voice recording UI, photo attach menu
+│   ├── ChatScreen.kt          # Chat window, message feed, and picker overlays
+│   ├── ChatViewModel.kt       # Scoped ViewModel for chat state, media loading, and input handling
 │   ├── LogsScreen.kt          # Camouflaged diagnostics logs viewer
-│   ├── SettingsScreen.kt      # Bot credentials manager & hide application toggles
+│   ├── MainViewModel.kt       # Scoped ViewModel for global app state (e.g., online status)
 │   ├── PermissionsScreen.kt   # Dynamic checker for POST_NOTIFICATIONS & ignore battery optimization
-│   ├── UiState.kt             # MainViewModel and ChatViewModel
+│   ├── SettingsScreen.kt      # Bot credentials manager & hide application toggles
 │   └── components/
-│       ├── ChatBubble.kt      # Renders individual bubbles (image previews, voice controls)
-│       ├── AudioMessage.kt    # Waveform seek bar & playback handler for voice notes
-│       └── AttachmentOption.kt# Inline menu option for attachments
+│       ├── AttachMenu.kt      # Telegram-style attachment bottom sheet layout
+│       ├── AudioBubble.kt     # Waveform seek bar & playback handler for voice notes
+│       ├── ChatInputBox.kt    # Bottom text input bar with recording animations and attachment logic
+│       ├── FileExplorer.kt    # Custom hierarchical file explorer for document picking
+│       ├── GalleryGrid.kt     # Custom in-app media gallery grid and selection tracker
+│       ├── MediaPicker.kt     # Bottom sheet layout orchestration for files/gallery
+│       ├── MediaViewer.kt     # Full-screen image viewer and native video player overlay
+│       ├── MessageBubble.kt   # Renders individual chat bubbles (image, video, file, text)
+│       └── UIModifiers.kt     # Reusable composed modifiers (e.g., custom glowing shadow effects)
 │
 └── utils/                     # CAMOUFLAGE & stealth utility receivers
     ├── AppLog.kt              # Thread-safe local diagnostic logger (caps at 100 entries)
@@ -127,7 +133,8 @@ The core persistent runtime module (`com.mobile.superiorutils`). It lacks an acc
 ## 4. Key Architectural Subsystems
 
 ### A. Network Integration & Asynchronous Long-Polling
-* **The Inbound Loop:** `BotService.kt` launches a persistent Android Foreground Service bound to a CPU wake lock. Inside, `BotSync.kt` initiates a non-blocking asynchronous loop that executes HTTP GET updates via `TelegramApi.kt` using network long-polling via `getUpdates`.
+* **The Inbound Loop:** `BotService.kt` launches a persistent Android Foreground Service bound to a CPU wake lock. To comply with strict Android 14 background restrictions and prevent OS-level crash loops, the service utilizes the `remoteMessaging` foreground service type exemption. Inside, `BotSync.kt` initiates a non-blocking asynchronous loop that executes HTTP GET updates via `TelegramApi.kt` using network long-polling via `getUpdates`.
+* **Battery & Sync Optimization:** To strictly minimize battery drain without relying on an external backend, long-polling timeouts are heavily optimized (80-second TCP read timeouts) to drastically slash CPU and radio connection handshakes. Smart "CPU breathing" delays (1500ms on empty responses) allow the device OS to dynamically downclock without sacrificing real-time instantaneous message delivery speed on valid payloads.
 * **Strict Intruder Filtering:** The JSON collection received via `getUpdates` is parsed directly within the coroutine scope. Every incoming packet undergoes a mandatory structural constraint check:
     `If Update.message.chat.id != Stored_Target_Chat_ID -> Drop Packet Immediately`
     Dropped packets are recycled out of memory without touching the local Room repository or logging instances, ensuring total isolation from malicious or external actors.

@@ -1,5 +1,6 @@
 package com.mobile.superiorutils.ui
 
+import com.mobile.superiorutils.ui.components.GlassCard
 import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.widget.Toast
@@ -25,24 +26,16 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.draw.scale
 import com.mobile.superiorutils.theme.*
 
-
-// ══════════════════════════════════════════════════════════
-//  Reusable Glass Card
-// ══════════════════════════════════════════════════════════
-
-@Composable
-fun GlassCard(content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(SurfaceLevel1, RoundedCornerShape(24.dp))
-            .border(1.dp, DividerColor, RoundedCornerShape(24.dp))
-            .padding(20.dp),
-        content = content
-    )
-}
 
 // ══════════════════════════════════════════════════════════
 //  Settings Screen
@@ -53,8 +46,10 @@ fun SettingsScreen(
     isInternetConnected: Boolean,
     botToken: String,
     chatId: String,
+    isAutoDownloadMediaEnabled: Boolean,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
+    onAutoDownloadMediaChange: (Boolean) -> Unit,
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
@@ -103,28 +98,28 @@ fun SettingsScreen(
         // System Checks Card
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Build, contentDescription = "Build", tint = Color(0xFFC7C4D7), modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Build, contentDescription = "Build", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
-                Text("System Checks", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE2E2E2))
+                Text("System Checks", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).background(Color(0xFF22C55E), CircleShape))
+                    Box(modifier = Modifier.size(8.dp).background(Success, CircleShape))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Token Access", fontSize = 14.sp, color = Color(0xFFE2E2E2))
+                    Text("Token Access", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
-                Text("Online", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF22C55E))
+                Text("Online", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Success)
             }
             HorizontalDivider(color = Color.White.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 8.dp))
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).background(if (isInternetConnected) Color(0xFF22C55E) else Color(0xFFEF4444), CircleShape))
+                    Box(modifier = Modifier.size(8.dp).background(if (isInternetConnected) Success else MaterialTheme.colorScheme.error, CircleShape))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Internet Connectivity", fontSize = 14.sp, color = Color(0xFFE2E2E2))
+                    Text("Internet Connectivity", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
-                Text(if (isInternetConnected) "Online" else "Offline", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isInternetConnected) Color(0xFF22C55E) else Color(0xFFEF4444))
+                Text(if (isInternetConnected) "Online" else "Offline", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (isInternetConnected) Success else MaterialTheme.colorScheme.error)
             }
         }
 
@@ -132,11 +127,11 @@ fun SettingsScreen(
         GlassCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = "Lock", tint = Color(0xFFC7C4D7), modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Lock, contentDescription = "Lock", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Bot Credentials", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE2E2E2))
+                    Text("Bot Credentials", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
-                Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFFC7C4D7), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
             }
             Spacer(modifier = Modifier.height(20.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -150,7 +145,7 @@ fun SettingsScreen(
                         .clickable { showCredentialsDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(replaceText, color = Color(0xFFC7C4D7), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(replaceText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(
                     modifier = Modifier
@@ -160,24 +155,81 @@ fun SettingsScreen(
                         .clickable { onSave() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Update Credentials", color = Color(0xFF1000A9), fontSize = 14.sp, fontWeight = FontWeight.Normal)
+                    Text("Update Credentials", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Normal)
                 }
             }
         }
 
+        // Media Preferences Card
+        GlassCard {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Download, contentDescription = "Media", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Media Preferences", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(SurfaceLevel2, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Auto-Download Media", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                val scale by animateFloatAsState(
+                    targetValue = if (isAutoDownloadMediaEnabled) 1.05f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+
+                Switch(
+                    modifier = Modifier.scale(scale),
+                    checked = isAutoDownloadMediaEnabled,
+                    onCheckedChange = { onAutoDownloadMediaChange(it) },
+                    thumbContent = if (isAutoDownloadMediaEnabled) {
+                        {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                tint = Color.White
+                            )
+                        }
+                    } else {
+                        {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                tint = Color.Black
+                            )
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Primary,
+                        checkedTrackColor = Primary.copy(alpha = 0.5f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = Color.Black.copy(alpha = 0.5f)
+                    )
+                )
+            }
+        }
 
         // About Card
         GlassCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFFC7C4D7), modifier = Modifier.size(24.dp))
+                Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(12.dp))
-                Text("About", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFE2E2E2))
+                Text("About", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF1B1B1B).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
                     .padding(16.dp)
             ) {
                 InfoRow("App Name", "Superior Chat")
@@ -201,8 +253,8 @@ private fun InfoRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top
     ) {
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC7C4D7))
-        Text(value, fontSize = 14.sp, color = Color(0xFFE2E2E2), textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth(0.6f))
+        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(value, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth(0.6f))
     }
 }
 

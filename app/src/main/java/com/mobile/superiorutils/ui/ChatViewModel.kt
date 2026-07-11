@@ -29,6 +29,9 @@ import com.mobile.superiorutils.utils.AppLog
 import com.mobile.superiorutils.utils.LogLevel
 import java.io.File
 import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,124 +41,23 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-data class PermissionStatus(
-    val hasPostNotifs: Boolean = false,
-    val hasIgnoreBattery: Boolean = false,
-    val isInternetConnected: Boolean = false
-) {
-    val allPermissionsGranted: Boolean
-        get() = hasPostNotifs && hasIgnoreBattery
-}
+data class LocalMediaItem(
+    val id: Long,
+    val uri: Uri,
+    val isVideo: Boolean,
+    val duration: String? = null,
+    val dateAdded: Long,
+    val bucketName: String = "All"
+)
 
-/**
- * ViewModel for SuperiorChat. Owns credential state and basic permissions.
- */
-class MainViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val prefs = AppGraph.prefs
-
-    val isNetworkAvailable: StateFlow<Boolean> = NetState.isOnline
-
-    private var prefListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
-
-    init {
-        prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-            // Update preferences if needed
-        }
-        prefs.sharedPreferences.registerOnSharedPreferenceChangeListener(prefListener)
-
-        viewModelScope.launch {
-            NetState.isOnline.collectLatest { isOnline ->
-                checkTelegramConnection()
-            }
-        }
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        prefListener?.let {
-            prefs.sharedPreferences.unregisterOnSharedPreferenceChangeListener(it)
-        }
-    }
-
-    fun checkTelegramConnection() {
-        if (!isNetworkAvailable.value) {
-            AppLog.setTelegramApiReachable(false)
-            return
-        }
-        val token = prefs.botToken
-        if (token.isBlank()) {
-            AppLog.setTelegramApiReachable(false)
-            return
-        }
-        viewModelScope.launch(Dispatchers.IO) {
-            val reachable = TelegramApi.isApiReachable(getApplication<Application>(), token)
-            AppLog.setTelegramApiReachable(reachable)
-        }
-    }
-
-    // -- Credential State --
-    var botToken by mutableStateOf(prefs.botToken)
-    var chatId by mutableStateOf(prefs.chatId)
-
-    val hasCredentials: Boolean
-        get() = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$")) && 
-                chatId.trim().matches(Regex("^-?[0-9]+$"))
-
-    // -- Permissions State --
-    private val _permissionStatus = MutableStateFlow(PermissionStatus())
-    val permissionStatus: StateFlow<PermissionStatus> = _permissionStatus.asStateFlow()
-
-    // -- Service/System Status (observed from AppLog) --
-    val isServiceRunning = AppLog.isServiceRunning
-    val isTelegramApiReachable = AppLog.isTelegramApiReachable
-
-    // -------------------------------------------------------------------------
-    //  PERMISSIONS
-    // -------------------------------------------------------------------------
-
-    fun refreshPermissions() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val context = getApplication<Application>()
-            
-            val hasPostNotifs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
-
-            val hasIgnoreBattery = (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
-
-            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            val isInternetConnected = cm.activeNetwork != null
-
-            _permissionStatus.value = PermissionStatus(
-                hasPostNotifs = hasPostNotifs,
-                hasIgnoreBattery = hasIgnoreBattery,
-                isInternetConnected = isInternetConnected
-            )
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    //  ACTIONS
-    // -------------------------------------------------------------------------
-
-    fun saveCredentials() {
-        val token = botToken.trim()
-        val chat = chatId.trim()
-        
-        prefs.botToken = token
-        prefs.chatId = chat
-        
-        botToken = token
-        chatId = chat
-
-        if (prefs.isConfigured) {
-            ServiceCore.ensureRunning(getApplication<Application>())
-        }
-    }
-}
+data class LocalFileItem(
+    val name: String,
+    val path: String,
+    val size: String,
+    val mimeType: String?,
+    val isDirectory: Boolean = false,
+    val dateModified: String
+)
 
 
 class ChatViewModel(application: Application) : AndroidViewModel(application) {
@@ -194,11 +96,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var recordingDurationSec by mutableStateOf(0)
         private set
-    private var audioRecorder: com.mobile.superiorutils.audio.AudioRecorder? = null
+    private var audioRecorder: com.mobile.superiorutils.media.AudioRecorder? = null
     private var recordingTimerJob: kotlinx.coroutines.Job? = null
     var currentCameraUri: Uri? = null
 
     var recentImages by mutableStateOf<List<Uri>>(emptyList())
+        private set
+    var allLocalMedia by mutableStateOf<List<LocalMediaItem>>(emptyList())
+        private set
+    var recentFiles by mutableStateOf<List<LocalFileItem>>(emptyList())
+        private set
+    var currentExplorerDirectory by mutableStateOf<File?>(null)
+        private set
+    var explorerFilesList by mutableStateOf<List<LocalFileItem>>(emptyList())
         private set
 
     private val _messages = MutableStateFlow<List<MessageNode>>(emptyList())
@@ -328,7 +238,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     "audio" -> LocalDirs.getAudioDir(context, isSent = true)
                     else -> LocalDirs.getDocumentDir(context, isSent = true)
                 }
-                val ext = context.contentResolver.getType(uri)?.substringAfterLast("/") ?: "jpg"
+                val ext = if (uri.scheme == "file") {
+                    uri.path?.substringAfterLast(".") ?: "jpg"
+                } else {
+                    context.contentResolver.getType(uri)?.substringAfterLast("/") ?: "jpg"
+                }
                 val tempMessageId = -System.currentTimeMillis()
                 val localFile = File(mediaDir, "upload_${-tempMessageId}.$ext")
                 
@@ -395,7 +309,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun startRecordingAudio(context: Context) {
         if (audioRecorder == null) {
-            audioRecorder = com.mobile.superiorutils.audio.AudioRecorder(context)
+            audioRecorder = com.mobile.superiorutils.media.AudioRecorder(context)
         }
         val file = audioRecorder?.startRecording()
         if (file != null) {
@@ -467,4 +381,208 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    fun loadAllLocalMedia(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val mediaList = mutableListOf<LocalMediaItem>()
+            val contentResolver = context.contentResolver
+
+            val sortOrder = "date_added DESC"
+            // 1. Query Images
+            val imageProjection = arrayOf(
+                android.provider.MediaStore.Images.Media._ID,
+                android.provider.MediaStore.Images.Media.DATE_ADDED,
+                android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME
+            )
+            val imageUri = android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            try {
+                contentResolver.query(imageUri, imageProjection, null, null, sortOrder)?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID)
+                    val dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DATE_ADDED)
+                    val bucketCol = cursor.getColumnIndex(android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
+                    while (cursor.moveToNext() && mediaList.size < 150) {
+                        val id = cursor.getLong(idCol)
+                        val date = cursor.getLong(dateCol)
+                        val bucket = if (bucketCol != -1) cursor.getString(bucketCol) ?: "All" else "All"
+                        val uri = android.content.ContentUris.withAppendedId(imageUri, id)
+                        mediaList.add(LocalMediaItem(id, uri, false, null, date, bucket))
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.ERROR, "Error querying local images: ${e.message}")
+            }
+
+            // 2. Query Videos
+            val videoProjection = arrayOf(
+                android.provider.MediaStore.Video.Media._ID,
+                android.provider.MediaStore.Video.Media.DURATION,
+                android.provider.MediaStore.Video.Media.DATE_ADDED,
+                android.provider.MediaStore.Video.Media.BUCKET_DISPLAY_NAME
+            )
+            val videoUri = android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+            try {
+                contentResolver.query(videoUri, videoProjection, null, null, sortOrder)?.use { cursor ->
+                    val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
+                    val durCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DURATION)
+                    val dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DATE_ADDED)
+                    val bucketCol = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+                    while (cursor.moveToNext() && mediaList.size < 150) {
+                        val id = cursor.getLong(idCol)
+                        val durationMs = cursor.getLong(durCol)
+                        val date = cursor.getLong(dateCol)
+                        val bucket = if (bucketCol != -1) cursor.getString(bucketCol) ?: "All" else "All"
+                        val uri = android.content.ContentUris.withAppendedId(videoUri, id)
+                        val sec = (durationMs / 1000) % 60
+                        val min = (durationMs / 1000) / 60
+                        val durationStr = String.format(Locale.getDefault(), "%d:%02d", min, sec)
+                        mediaList.add(LocalMediaItem(id, uri, true, durationStr, date, bucket))
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.ERROR, "Error querying local videos: ${e.message}")
+            }
+
+            mediaList.sortByDescending { it.dateAdded }
+            allLocalMedia = mediaList
+        }
+    }
+
+    private fun isUselessFile(name: String, path: String): Boolean {
+        if (name.startsWith(".")) return true
+        val ext = name.substringAfterLast(".").lowercase()
+        val excludedExtensions = setOf("db", "db-shm", "db-wal", "nomedia", "tmp", "temp", "log", "json", "ini", "properties")
+        if (ext in excludedExtensions) return true
+        val lowercasePath = path.lowercase()
+        if (lowercasePath.contains("com.mobile.superiorutils") || 
+            lowercasePath.contains("/android/data/") || 
+            lowercasePath.contains("/android/obb/") ||
+            lowercasePath.contains("/.thumbnails/") ||
+            lowercasePath.contains("/cache/")
+        ) return true
+        return false
+    }
+
+    fun loadRecentFiles(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val fileList = mutableListOf<LocalFileItem>()
+            val projection = arrayOf(
+                android.provider.MediaStore.Files.FileColumns.DISPLAY_NAME,
+                android.provider.MediaStore.Files.FileColumns.DATA,
+                android.provider.MediaStore.Files.FileColumns.SIZE,
+                android.provider.MediaStore.Files.FileColumns.MIME_TYPE,
+                android.provider.MediaStore.Files.FileColumns.DATE_MODIFIED
+            )
+            val selection = "${android.provider.MediaStore.Files.FileColumns.MEDIA_TYPE} = ${android.provider.MediaStore.Files.FileColumns.MEDIA_TYPE_NONE}"
+            val sortOrder = "${android.provider.MediaStore.Files.FileColumns.DATE_MODIFIED} DESC"
+            
+            try {
+                context.contentResolver.query(
+                    android.provider.MediaStore.Files.getContentUri("external"),
+                    projection,
+                    selection,
+                    null,
+                    sortOrder
+                )?.use { cursor ->
+                    val nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.DISPLAY_NAME)
+                    val dataCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.DATA)
+                    val sizeCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.SIZE)
+                    val mimeCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.MIME_TYPE)
+                    val dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Files.FileColumns.DATE_MODIFIED)
+                    
+                    val sdf = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+                    while (cursor.moveToNext() && fileList.size < 30) {
+                        val name = cursor.getString(nameCol) ?: "Unknown"
+                        val path = cursor.getString(dataCol) ?: ""
+                        if (isUselessFile(name, path)) continue
+                        
+                        val sizeBytes = cursor.getLong(sizeCol)
+                        val mime = cursor.getString(mimeCol)
+                        val dateSec = cursor.getLong(dateCol)
+                        
+                        val sizeStr = when {
+                            sizeBytes > 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", sizeBytes / (1024f * 1024f))
+                            sizeBytes > 1024 -> "${sizeBytes / 1024} KB"
+                            else -> "$sizeBytes B"
+                        }
+                        val dateStr = sdf.format(Date(dateSec * 1000))
+                        
+                        fileList.add(LocalFileItem(name, path, sizeStr, mime, false, dateStr))
+                    }
+                }
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.ERROR, "Error querying files: ${e.message}")
+            }
+            
+            if (fileList.isEmpty()) {
+                val downloadDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                if (downloadDir.exists() && downloadDir.isDirectory) {
+                    val files = downloadDir.listFiles()
+                    val sdf = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+                    files?.forEach { file ->
+                        if (file.isFile) {
+                            if (isUselessFile(file.name, file.absolutePath)) return@forEach
+                            val sizeBytes = file.length()
+                            val sizeStr = when {
+                                sizeBytes > 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", sizeBytes / (1024f * 1024f))
+                                sizeBytes > 1024 -> "${sizeBytes / 1024} KB"
+                                else -> "$sizeBytes B"
+                            }
+                            val dateStr = sdf.format(Date(file.lastModified()))
+                            val mime = context.contentResolver.getType(Uri.fromFile(file))
+                            fileList.add(LocalFileItem(file.name, file.absolutePath, sizeStr, mime, false, dateStr))
+                        }
+                    }
+                    fileList.sortByDescending { File(it.path).lastModified() }
+                }
+            }
+            recentFiles = fileList.take(20)
+        }
+    }
+
+    fun openDirectory(context: Context, directory: File) {
+        currentExplorerDirectory = directory
+        viewModelScope.launch(Dispatchers.IO) {
+            val list = mutableListOf<LocalFileItem>()
+            var files = directory.listFiles()
+            
+            // Scoped storage fallback: if listFiles() is null and this is the root directory
+            if (files == null && directory.absolutePath == android.os.Environment.getExternalStorageDirectory().absolutePath) {
+                val publicDirs = arrayOf(
+                    android.os.Environment.DIRECTORY_DOWNLOADS,
+                    android.os.Environment.DIRECTORY_DOCUMENTS,
+                    android.os.Environment.DIRECTORY_DCIM,
+                    android.os.Environment.DIRECTORY_PICTURES,
+                    android.os.Environment.DIRECTORY_MUSIC,
+                    android.os.Environment.DIRECTORY_MOVIES
+                )
+                val fallbackList = mutableListOf<File>()
+                publicDirs.forEach { dirName ->
+                    val dir = android.os.Environment.getExternalStoragePublicDirectory(dirName)
+                    if (dir.exists()) {
+                        fallbackList.add(dir)
+                    }
+                }
+                files = fallbackList.toTypedArray()
+            }
+            
+            val sdf = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+            files?.forEach { file ->
+                if (isUselessFile(file.name, file.absolutePath)) return@forEach
+                val sizeBytes = file.length()
+                val sizeStr = when {
+                    file.isDirectory -> ""
+                    sizeBytes > 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", sizeBytes / (1024f * 1024f))
+                    sizeBytes > 1024 -> "${sizeBytes / 1024} KB"
+                    else -> "$sizeBytes B"
+                }
+                val dateStr = sdf.format(Date(file.lastModified()))
+                val mime = if (file.isFile) context.contentResolver.getType(Uri.fromFile(file)) else null
+                list.add(LocalFileItem(file.name, file.absolutePath, sizeStr, mime, file.isDirectory, dateStr))
+            }
+            list.sortWith(compareBy<LocalFileItem> { !it.isDirectory }.thenBy { it.name.lowercase() })
+            explorerFilesList = list
+        }
+    }
 }
+
+

@@ -48,7 +48,7 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
             Text(
                 "All permissions must be granted for full functionality.",
                 fontSize = 12.sp,
-                color = Color(0xFF908FA0),
+                color = MaterialTheme.colorScheme.outline,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
@@ -66,19 +66,19 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Box(modifier = Modifier.size(8.dp).background(if (perm.isGranted) PrimaryLight else Color(0xFFC7C4D7), CircleShape))
+                        Box(modifier = Modifier.size(8.dp).background(if (perm.isGranted) PrimaryLight else MaterialTheme.colorScheme.onSurfaceVariant, CircleShape))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 perm.name,
                                 fontSize = 16.sp,
-                                color = Color(0xFFE2E2E2)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 perm.displayStatus ?: if (perm.isGranted) "Granted" else "Required",
                                 fontSize = 11.sp,
-                                color = if (perm.isGranted) PrimaryLight else Color(0xFFC7C4D7)
+                                color = if (perm.isGranted) PrimaryLight else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }

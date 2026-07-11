@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.core.view.WindowCompat
 import com.mobile.superiorutils.theme.Background
 import com.mobile.superiorutils.theme.SuperiorChatTheme
 import com.mobile.superiorutils.ui.AppScreen
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         
         // 1. Silent Handshake from Burner Setup App
@@ -59,6 +61,26 @@ class MainActivity : ComponentActivity() {
                 AppLog.log(LogCategory.SYSTEM, "Setup completed via intent. Prompting uninstall of setup app via UI.")
                 
                 showSetupUninstallDialog = true
+            }
+        }
+
+        // Request POST_NOTIFICATIONS by default on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        // Request Disable Battery Optimization by default
+        val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+            try {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.SYSTEM, "Failed to launch battery optimization intent: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
             }
         }
 

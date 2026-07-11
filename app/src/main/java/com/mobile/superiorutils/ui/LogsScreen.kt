@@ -81,9 +81,9 @@ fun LogsScreen() {
                     .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("Live Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFFE2E2E2))
+                Text("Live Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.Info, contentDescription = "Info", tint = Color(0xFFC7C4D7), modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
             }
             Box(
                 modifier = Modifier
@@ -115,7 +115,7 @@ fun LogsScreen() {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = index == selectedIndex
                 val bgColor = if (isSelected) PrimaryLight else SurfaceLevel2
-                val textColor = if (isSelected) Color(0xFF1000A9) else Color(0xFFC7C4D7)
+                val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
                 val animatedBgColor by animateColorAsState(targetValue = bgColor, label = "bg_color")
                 val animatedTextColor by animateColorAsState(targetValue = textColor, label = "text_color")
@@ -160,11 +160,11 @@ fun LogsScreen() {
                 // Empty State
                 Box(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(48.dp), tint = Color(0xFFC7C4D7).copy(alpha = 0.5f))
+                        Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("No logs yet", color = Color(0xFFE2E2E2), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text("No logs yet", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("System activity will appear here.", color = Color(0xFF908FA0), fontSize = 12.sp, textAlign = TextAlign.Center)
+                        Text("System activity will appear here.", color = MaterialTheme.colorScheme.outline, fontSize = 12.sp, textAlign = TextAlign.Center)
                     }
                 }
             } else {
@@ -194,10 +194,10 @@ private fun LogEntryRow(entry: LogEntry) {
     val timeStr = sdf.format(Date(entry.timestamp))
 
     val levelColor = when (entry.level) {
-        LogLevel.ERROR -> Color(0xFFEF4444)
-        LogLevel.WARN -> Color(0xFFFF9F0A)
+        LogLevel.ERROR -> MaterialTheme.colorScheme.error
+        LogLevel.WARN -> WarningAmber
         LogLevel.DEBUG -> Color(0xFF60A5FA)
-        LogLevel.INFO -> Color(0xFF22C55E)
+        LogLevel.INFO -> Success
     }
 
     Row(
@@ -218,14 +218,14 @@ private fun LogEntryRow(entry: LogEntry) {
             Text(
                 entry.message,
                 fontSize = 12.sp,
-                color = Color(0xFFE2E2E2),
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 3
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 timeStr,
                 fontSize = 10.sp,
-                color = Color(0xFF908FA0)
+                color = MaterialTheme.colorScheme.outline
             )
         }
     }

@@ -13,6 +13,7 @@ import com.mobile.superiorutils.core.ServiceCore
 import com.mobile.superiorutils.core.AppGraph
 import com.mobile.superiorutils.utils.LogCategory
 import com.mobile.superiorutils.utils.AppLog
+import com.mobile.superiorutils.utils.LogLevel
 
 class BotService : Service() {
 
@@ -68,6 +69,15 @@ class BotService : Service() {
             .setOngoing(true)
             .build()
 
-        startForeground(NOTIFICATION_ID, notification)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "BotService: startForeground failed: ${e.message}", LogLevel.ERROR)
+            stopSelf()
+        }
     }
 }

@@ -1,4 +1,4 @@
-package com.mobile.superiorutils.audio
+package com.mobile.superiorutils.media
 
 import android.content.Context
 import android.media.MediaPlayer

@@ -28,7 +28,7 @@ import coil.compose.AsyncImage
 import java.io.File
 
 @Composable
-fun MediaOverlay(
+fun MediaViewer(
     mediaPath: String?,
     mediaType: String?, // "photo", "video", etc.
     onDismiss: () -> Unit
@@ -81,7 +81,11 @@ fun MediaOverlay(
                     }
                 } else {
                     AsyncImage(
-                        model = File(path),
+                        model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
+                            .data(File(path))
+                            .size(1920)
+                            .bitmapConfig(android.graphics.Bitmap.Config.HARDWARE)
+                            .build(),
                         contentDescription = "Full Screen Photo",
                         modifier = Modifier
                             .fillMaxSize()

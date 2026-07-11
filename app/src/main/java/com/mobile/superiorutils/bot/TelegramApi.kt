@@ -47,7 +47,7 @@ private data class SendMessageRequest(
 object TelegramApi {
 
     val client: OkHttpClient = OkHttpClient.Builder()
-        .readTimeout(65, TimeUnit.SECONDS)
+        .readTimeout(85, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 

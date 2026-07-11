@@ -1,4 +1,4 @@
-package com.mobile.superiorutils.audio
+package com.mobile.superiorutils.media
 
 import android.content.Context
 import android.media.MediaRecorder
@@ -28,8 +28,6 @@ class AudioRecorder(private val context: Context) {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioSamplingRate(44100)
-                setAudioEncodingBitRate(96000)
                 setOutputFile(file.absolutePath)
                 prepare()
                 start()
