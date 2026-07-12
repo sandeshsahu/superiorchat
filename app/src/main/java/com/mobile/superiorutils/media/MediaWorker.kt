@@ -38,6 +38,17 @@ class MediaWorker(
         val chatId = prefs.chatId
         if (token.isEmpty() || chatId.isEmpty()) return@withContext Result.failure()
 
+        // Check if the transfer has already completed, failed, or been cancelled by the user.
+        val db = LocalDb.getDatabase(context)
+        val msg = db.messageDao().getMessageById(messageId)
+        if (msg == null) {
+            return@withContext Result.failure()
+        }
+        if (msg.status == MessageStatus.SENT || msg.status == MessageStatus.FAILED) {
+            AppLog.log(LogCategory.SYSTEM, "MediaWorker: msgId=$messageId already has status ${msg.status}, skipping.")
+            return@withContext Result.success()
+        }
+
         try {
             val success = if (transferType == "DOWNLOAD" && fileId != null && mediaType != null) {
                 MediaSync.performDownload(context, token, fileId, mediaType, messageId)
@@ -47,10 +58,10 @@ class MediaWorker(
                 false
             }
 
-            if (success) Result.success() else Result.retry()
+            if (success) Result.success() else Result.failure()
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "MediaWorker Error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
-            Result.retry()
+            Result.failure()
         }
     }
 

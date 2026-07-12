@@ -78,8 +78,8 @@ fun MediaPicker(
     initialTab: PickerTab,
     onDismiss: () -> Unit,
     viewModel: ChatViewModel,
-    onMediaSelected: (List<Uri>) -> Unit,
-    onFilesSelected: (List<File>) -> Unit,
+    onMediaSelected: (List<Uri>) -> Boolean,
+    onFilesSelected: (List<File>) -> Boolean,
     onCameraClick: () -> Unit,
     onSystemPickerClick: () -> Unit
 ) {

@@ -18,11 +18,16 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.File
 import java.util.concurrent.TimeUnit
+import okio.BufferedSink
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @Serializable
 private data class LinkPreviewOptions(
@@ -35,7 +40,8 @@ private data class SendMessageRequest(
     val text: String,
     @SerialName("parse_mode") val parseMode: String? = null,
     @SerialName("reply_markup") val replyMarkup: JsonElement? = null,
-    @SerialName("link_preview_options") val linkPreviewOptions: LinkPreviewOptions? = null
+    @SerialName("link_preview_options") val linkPreviewOptions: LinkPreviewOptions? = null,
+    @SerialName("reply_to_message_id") val replyToMessageId: Long? = null
 )
 
 /**
@@ -113,7 +119,8 @@ object TelegramApi {
         chatId: String,
         text: String,
         parseMode: String? = "Markdown",
-        replyMarkup: String? = null
+        replyMarkup: String? = null,
+        replyToMessageId: Long? = null
     ): Long? {
         val delayMs = SendRateLimiter.acquire()
         if (delayMs > 0L) {
@@ -125,7 +132,7 @@ object TelegramApi {
         }
         return try {
             val markupJson = replyMarkup?.let { json.parseToJsonElement(it) }
-            val req = SendMessageRequest(chatId, text, parseMode, markupJson, LinkPreviewOptions(isDisabled = true))
+            val req = SendMessageRequest(chatId, text, parseMode, markupJson, LinkPreviewOptions(isDisabled = true), replyToMessageId)
             val jsonBody = json.encodeToString(req)
             val body = jsonBody.toRequestBody("application/json".toMediaType())
 
@@ -164,12 +171,23 @@ object TelegramApi {
 
 
     /** Send a photo file. Returns true on success. */
-    fun sendPhoto(token: String, chatId: String, file: File, caption: String? = null): Boolean {
+    suspend fun sendPhoto(
+        token: String,
+        chatId: String,
+        file: File,
+        caption: String? = null,
+        onProgress: ((Long, Long) -> Unit)? = null
+    ): Boolean {
         return try {
+            val photoBody = if (onProgress != null) {
+                ProgressRequestBody(file, "image/jpeg".toMediaType(), onProgress)
+            } else {
+                file.asRequestBody("image/jpeg".toMediaType())
+            }
             val builder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("chat_id", chatId)
-                .addFormDataPart("photo", file.name, file.asRequestBody("image/jpeg".toMediaType()))
+                .addFormDataPart("photo", file.name, photoBody)
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
                 builder.addFormDataPart("parse_mode", "Markdown")
@@ -180,7 +198,7 @@ object TelegramApi {
                 .post(builder.build())
                 .build()
 
-            val response = client.newCall(request).execute()
+            val response = client.executeCancellable(request)
             val success = response.isSuccessful
             if (!success) {
                 AppLog.log(LogCategory.NETWORK, "sendPhoto failed: ${response.code}", com.mobile.superiorutils.utils.LogLevel.ERROR)
@@ -196,12 +214,23 @@ object TelegramApi {
     }
 
     /** Send a voice audio file. Returns true on success. */
-    fun sendVoice(token: String, chatId: String, file: File, caption: String? = null): Boolean {
+    suspend fun sendVoice(
+        token: String,
+        chatId: String,
+        file: File,
+        caption: String? = null,
+        onProgress: ((Long, Long) -> Unit)? = null
+    ): Boolean {
         return try {
+            val voiceBody = if (onProgress != null) {
+                ProgressRequestBody(file, "audio/mp4".toMediaType(), onProgress)
+            } else {
+                file.asRequestBody("audio/mp4".toMediaType())
+            }
             val builder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("chat_id", chatId)
-                .addFormDataPart("voice", file.name, file.asRequestBody("audio/mp4".toMediaType()))
+                .addFormDataPart("voice", file.name, voiceBody)
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
                 builder.addFormDataPart("parse_mode", "Markdown")
@@ -212,7 +241,7 @@ object TelegramApi {
                 .post(builder.build())
                 .build()
 
-            val response = client.newCall(request).execute()
+            val response = client.executeCancellable(request)
             val success = response.isSuccessful
             if (!success) {
                 val errorBody = response.body?.string()
@@ -229,20 +258,29 @@ object TelegramApi {
     }
 
     /** Send a document file. Returns true on success. */
-    fun sendDocument(
+    suspend fun sendDocument(
         token: String,
         chatId: String,
         file: File,
         caption: String,
-        parseMode: String = "Markdown"
+        parseMode: String = "Markdown",
+        displayName: String? = null,
+        onProgress: ((Long, Long) -> Unit)? = null
     ): Boolean {
         return try {
+            // Use displayName if provided, otherwise fall back to file.name
+            val uploadName = displayName ?: file.name
+            val docBody = if (onProgress != null) {
+                ProgressRequestBody(file, "application/octet-stream".toMediaType(), onProgress)
+            } else {
+                file.asRequestBody("application/octet-stream".toMediaType())
+            }
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("chat_id", chatId)
                 .addFormDataPart("caption", caption)
                 .addFormDataPart("parse_mode", parseMode)
-                .addFormDataPart("document", file.name, file.asRequestBody("application/octet-stream".toMediaType()))
+                .addFormDataPart("document", uploadName, docBody)
                 .build()
 
             val request = Request.Builder()
@@ -250,7 +288,7 @@ object TelegramApi {
                 .post(requestBody)
                 .build()
 
-            val response = client.newCall(request).execute()
+            val response = client.executeCancellable(request)
             val success = response.isSuccessful
             if (!success) {
                 val errorBody = response.body?.string()
@@ -303,4 +341,41 @@ object SendRateLimiter {
         lastRefillTime = now + delayMs
         return delayMs
     }
+}
+
+class ProgressRequestBody(
+    private val file: File,
+    private val contentType: okhttp3.MediaType?,
+    private val onProgress: (bytesWritten: Long, contentLength: Long) -> Unit
+) : okhttp3.RequestBody() {
+    override fun contentType() = contentType
+    override fun contentLength() = file.length()
+    override fun writeTo(sink: okio.BufferedSink) {
+        val fileLength = file.length()
+        val buffer = ByteArray(8192)
+        var uploaded = 0L
+        file.inputStream().use { input ->
+            var read: Int
+            while (input.read(buffer).also { read = it } != -1) {
+                sink.write(buffer, 0, read)
+                uploaded += read
+                onProgress(uploaded, fileLength)
+            }
+        }
+    }
+}
+
+suspend fun okhttp3.OkHttpClient.executeCancellable(request: okhttp3.Request): okhttp3.Response = suspendCancellableCoroutine { continuation ->
+    val call = newCall(request)
+    continuation.invokeOnCancellation {
+        call.cancel()
+    }
+    call.enqueue(object : okhttp3.Callback {
+        override fun onFailure(call: okhttp3.Call, e: java.io.IOException) {
+            continuation.resumeWithException(e)
+        }
+        override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+            continuation.resume(response)
+        }
+    })
 }

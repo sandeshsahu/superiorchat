@@ -110,6 +110,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var explorerFilesList by mutableStateOf<List<LocalFileItem>>(emptyList())
         private set
+        
+    var errorPopupMessage by mutableStateOf<String?>(null)
 
     private val _messages = MutableStateFlow<List<MessageNode>>(emptyList())
     val messages: StateFlow<List<MessageNode>> = _messages.asStateFlow()
@@ -220,13 +222,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendMedia(context: Context, uri: Uri, mediaType: String) {
+    fun sendMedia(context: Context, uri: Uri, mediaType: String): Boolean {
         val chatId = prefs.chatId
         
-        if (chatId.isBlank()) return
+        if (chatId.isBlank()) return false
 
         val isOnline = NetState.isOnline.value
         val initialStatus = if (isOnline) MessageStatus.SENDING else MessageStatus.QUEUED
+
+        val fileSize = com.mobile.superiorutils.utils.FileUtils.getFileSize(context, uri)
+        if (fileSize > 50 * 1024 * 1024) {
+            val formattedSize = com.mobile.superiorutils.utils.FileUtils.formatFileSize(fileSize)
+            val fileName = com.mobile.superiorutils.utils.FileUtils.getFileName(context, uri)
+            errorPopupMessage = "The selected file '$fileName' ($formattedSize) exceeds the 50MB limit.\n\nFiles larger than 50MB are not supported."
+            return false
+        }
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -238,22 +248,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     "audio" -> LocalDirs.getAudioDir(context, isSent = true)
                     else -> LocalDirs.getDocumentDir(context, isSent = true)
                 }
-                val ext = if (uri.scheme == "file") {
-                    uri.path?.substringAfterLast(".") ?: "jpg"
-                } else {
-                    context.contentResolver.getType(uri)?.substringAfterLast("/") ?: "jpg"
-                }
                 val tempMessageId = -System.currentTimeMillis()
-                val localFile = File(mediaDir, "upload_${-tempMessageId}.$ext")
+                val originalName = com.mobile.superiorutils.utils.FileUtils.getFileName(context, uri)
+                // Use original file name to preserve it on Telegram, prefix with timestamp to avoid collisions
+                val safeFileName = "${-tempMessageId}_$originalName"
+                val localFile = File(mediaDir, safeFileName)
                 
-                context.contentResolver.openInputStream(uri)?.use { input ->
-                    FileOutputStream(localFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-
-                if (!localFile.exists()) return@launch
-
+                // Immediately insert into DB with QUEUED status to show the UI chat bubble instantly
                 val newMsg = MessageNode(
                     messageId = tempMessageId,
                     conversationId = chatId,
@@ -263,11 +264,26 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     isFromMe = true,
                     mediaType = mediaType,
                     mediaLocalPath = localFile.absolutePath,
-                    status = initialStatus
+                    status = MessageStatus.QUEUED,
+                    mediaFileName = originalName,
+                    mediaFileSize = fileSize
                 )
                 repository.insertMessage(newMsg)
+                
+                // Perform the heavy file copy synchronously in background
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(localFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                if (!localFile.exists()) {
+                    repository.updateMessageStatus(tempMessageId, MessageStatus.FAILED)
+                    return@launch
+                }
 
                 if (isOnline) {
+                    repository.updateMessageStatus(tempMessageId, MessageStatus.SENDING)
                     MediaSync.enqueueUpload(context, tempMessageId, localFile.absolutePath, mediaType)
                 }
 
@@ -275,6 +291,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 AppLog.log(LogCategory.ERROR, "Failed to send media: ${e.message}")
             }
         }
+        return true
     }
 
     fun retryMessage(message: MessageNode) {
@@ -304,6 +321,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             repository.updateMessageStatus(message.messageId, MessageStatus.SENDING)
             MediaSync.enqueueDownload(getApplication(), message.messageId, fileId, mediaType)
         }
+    }
+
+    fun cancelTransfer(message: MessageNode) {
+        MediaSync.cancelTransfer(getApplication(), message.messageId)
     }
 
 
@@ -426,7 +447,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     val durCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DURATION)
                     val dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DATE_ADDED)
                     val bucketCol = cursor.getColumnIndex(android.provider.MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
-                    while (cursor.moveToNext() && mediaList.size < 150) {
+                    var videoCount = 0
+                    while (cursor.moveToNext() && videoCount < 150) {
                         val id = cursor.getLong(idCol)
                         val durationMs = cursor.getLong(durCol)
                         val date = cursor.getLong(dateCol)
@@ -436,6 +458,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         val min = (durationMs / 1000) / 60
                         val durationStr = String.format(Locale.getDefault(), "%d:%02d", min, sec)
                         mediaList.add(LocalMediaItem(id, uri, true, durationStr, date, bucket))
+                        videoCount++
                     }
                 }
             } catch (e: Exception) {
@@ -454,8 +477,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (ext in excludedExtensions) return true
         val lowercasePath = path.lowercase()
         if (lowercasePath.contains("com.mobile.superiorutils") || 
-            lowercasePath.contains("/android/data/") || 
-            lowercasePath.contains("/android/obb/") ||
+            lowercasePath.contains("/android/") || 
+            lowercasePath.contains("/android") || 
             lowercasePath.contains("/.thumbnails/") ||
             lowercasePath.contains("/cache/")
         ) return true
@@ -535,7 +558,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     fileList.sortByDescending { File(it.path).lastModified() }
                 }
             }
-            recentFiles = fileList.take(20)
+            recentFiles = fileList.take(5)
         }
     }
 

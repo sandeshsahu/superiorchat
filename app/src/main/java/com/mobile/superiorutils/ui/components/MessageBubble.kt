@@ -13,8 +13,14 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +52,9 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.mobile.superiorutils.media.MediaSync
 
 @Composable
 fun MessageBubble(
@@ -53,6 +62,7 @@ fun MessageBubble(
     viewModel: ChatViewModel,
     onMediaClick: (String, String) -> Unit
 ) {
+    val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
     val alignment = if (message.isFromMe) Alignment.CenterEnd else Alignment.CenterStart
     val bgColor = if (message.isFromMe) PrimaryLight else SurfaceLevel1
@@ -89,20 +99,69 @@ fun MessageBubble(
             ) {
                 Column {
                     if (message.mediaType == "photo" && message.mediaLocalPath != null) {
-                        AsyncImage(
-                            model = coil.request.ImageRequest.Builder(LocalContext.current)
-                                .data(File(message.mediaLocalPath))
-                                .size(600)
-                                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                                .build(),
-                            contentDescription = "Photo",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 300.dp)
-                                .clickable { onMediaClick(message.mediaLocalPath, "photo") },
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
+                            val isUploading = message.isFromMe && (message.status == MessageStatus.SENDING || message.status == MessageStatus.QUEUED)
+                            val isFailedUpload = message.isFromMe && message.status == MessageStatus.FAILED
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 300.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                AsyncImage(
+                                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                        .data(File(message.mediaLocalPath))
+                                        .size(600)
+                                        .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                                        .build(),
+                                    contentDescription = "Photo",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 300.dp)
+                                        .clickable(enabled = !isUploading) { 
+                                            if (isFailedUpload) {
+                                                viewModel.retryMessage(message)
+                                            } else {
+                                                onMediaClick(message.mediaLocalPath, "photo") 
+                                            }
+                                        },
+                                    contentScale = ContentScale.Crop
+                                )
+                                if (isUploading || isFailedUpload) {
+                                    Box(
+                                        modifier = Modifier
+                                            .matchParentSize()
+                                            .background(Color.Black.copy(alpha = 0.45f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isFailedUpload) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry Upload", tint = Color.White, modifier = Modifier.size(36.dp))
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text("Upload failed. Tap to retry", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                                            }
+                                        } else {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                CircularProgressIndicator(
+                                                    progress = { if (progress > 0f) progress else 0f },
+                                                    modifier = Modifier.size(40.dp),
+                                                    color = Color.White,
+                                                    strokeWidth = 3.dp
+                                                )
+                                                Icon(
+                                                    imageVector = Icons.Default.Close,
+                                                    contentDescription = "Cancel Upload",
+                                                    tint = Color.White,
+                                                    modifier = Modifier
+                                                        .size(18.dp)
+                                                        .clickable { viewModel.cancelTransfer(message) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                     } else if (message.mediaType == "photo") {
                         val isDownloading = message.status == MessageStatus.SENDING
                         val isFailed = message.status == MessageStatus.FAILED
@@ -116,7 +175,22 @@ fun MessageBubble(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isDownloading) {
-                                CircularProgressIndicator(color = Color.White)
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        progress = { if (progress > 0f) progress else 0f },
+                                        modifier = Modifier.size(40.dp),
+                                        color = Color.White,
+                                        strokeWidth = 3.dp
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel Download",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { viewModel.cancelTransfer(message) }
+                                    )
+                                }
                             } else {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Icon(imageVector = if (isFailed) Icons.Default.Refresh else Icons.Default.ArrowDownward, contentDescription = "Download Photo", tint = Color.White, modifier = Modifier.size(36.dp))
@@ -141,30 +215,74 @@ fun MessageBubble(
                             Spacer(modifier = Modifier.height(8.dp))
                         }
                     } else if (message.mediaType == "video" && message.mediaLocalPath != null) {
+                        val isUploading = message.isFromMe && (message.status == MessageStatus.SENDING || message.status == MessageStatus.QUEUED)
+                        val isFailedUpload = message.isFromMe && message.status == MessageStatus.FAILED
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(180.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color.Black.copy(alpha = 0.5f))
-                                .clickable {
-                                    onMediaClick(message.mediaLocalPath, "video")
+                                .clickable(enabled = !isUploading) {
+                                    if (isFailedUpload) {
+                                        viewModel.retryMessage(message)
+                                    } else {
+                                        onMediaClick(message.mediaLocalPath, "video")
+                                    }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.6f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play Video",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
-                                )
+                            if (!isUploading && !isFailedUpload) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.6f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Play Video",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            } else if (isFailedUpload) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(50.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.6f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = "Retry Video Upload",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text("Failed. Tap to retry", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                                }
+                            } else {
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        progress = { if (progress > 0f) progress else 0f },
+                                        modifier = Modifier.size(40.dp),
+                                        color = Color.White,
+                                        strokeWidth = 3.dp
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel Upload",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { viewModel.cancelTransfer(message) }
+                                    )
+                                }
                             }
                             Box(
                                 modifier = Modifier
@@ -174,7 +292,7 @@ fun MessageBubble(
                                     .background(Color.Black.copy(alpha = 0.6f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Text("VIDEO", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                Text(if (isUploading) "UPLOADING" else "VIDEO", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -191,10 +309,21 @@ fun MessageBubble(
                             contentAlignment = Alignment.Center
                         ) {
                             if (isDownloading) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text("Downloading...", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        progress = { if (progress > 0f) progress else 0f },
+                                        modifier = Modifier.size(40.dp),
+                                        color = Color.White,
+                                        strokeWidth = 3.dp
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel Download",
+                                        tint = Color.White,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { viewModel.cancelTransfer(message) }
+                                    )
                                 }
                             } else {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -232,41 +361,81 @@ fun MessageBubble(
                         Spacer(modifier = Modifier.height(8.dp))
                     } else if (message.mediaType == "document" && message.mediaLocalPath != null) {
                         val file = File(message.mediaLocalPath)
-                        val kbSize = file.length() / 1024
+                        val isUploading = message.isFromMe && (message.status == MessageStatus.SENDING || message.status == MessageStatus.QUEUED)
+                        val isFailedUpload = message.isFromMe && message.status == MessageStatus.FAILED
+                        // Use stored original name, or strip timestamp prefix from local file name
+                        val displayName = message.mediaFileName ?: if (file.name.matches(Regex("^-?\\d+_.+"))) {
+                            file.name.substringAfter("_")
+                        } else {
+                            file.name
+                        }
+                        val totalSize = message.mediaFileSize ?: file.length()
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(if (message.isFromMe) Color.White.copy(alpha = 0.1f) else SurfaceLevel2)
-                                .clickable {
-                                    try {
-                                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            val uri = androidx.core.content.FileProvider.getUriForFile(
-                                                context,
-                                                "${context.packageName}.provider",
-                                                file
-                                            )
-                                            setDataAndType(uri, "*/*")
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                .clickable(enabled = !isUploading) {
+                                    if (isFailedUpload) {
+                                        viewModel.retryMessage(message)
+                                    } else {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                                val uri = androidx.core.content.FileProvider.getUriForFile(
+                                                    context,
+                                                    "${context.packageName}.provider",
+                                                    file
+                                                )
+                                                setDataAndType(uri, "*/*")
+                                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            AppLog.log(LogCategory.SYSTEM, "Failed to open document: ${e.message}", LogLevel.ERROR)
                                         }
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        AppLog.log(LogCategory.SYSTEM, "Failed to open document: ${e.message}", LogLevel.ERROR)
                                     }
                                 }
                                 .padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.AttachFile,
-                                contentDescription = "Document File",
-                                tint = textColor,
-                                modifier = Modifier.size(28.dp)
-                            )
+                            if (isUploading) {
+                                // Cancel button overlaid on progress circle
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        progress = { if (progress > 0f) progress else 0f },
+                                        modifier = Modifier.size(40.dp),
+                                        color = textColor,
+                                        trackColor = textColor.copy(alpha = 0.15f),
+                                        strokeWidth = 3.dp
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel Upload",
+                                        tint = textColor,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { viewModel.cancelTransfer(message) }
+                                    )
+                                }
+                            } else if (isFailedUpload) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Retry Document Upload",
+                                    tint = textColor,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.AttachFile,
+                                    contentDescription = "Document File",
+                                    tint = textColor,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = file.name,
+                                    text = displayName,
                                     color = textColor,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -275,7 +444,14 @@ fun MessageBubble(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "$kbSize KB",
+                                    text = if (isUploading) {
+                                        val uploaded = (progress * totalSize).toLong()
+                                        "${com.mobile.superiorutils.utils.FileUtils.formatFileSize(uploaded)} / ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
+                                    } else if (isFailedUpload) {
+                                        "Upload failed. Tap to retry."
+                                    } else {
+                                        com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)
+                                    },
                                     color = textColor.copy(alpha = 0.6f),
                                     fontSize = 11.sp
                                 )
@@ -285,6 +461,8 @@ fun MessageBubble(
                     } else if (message.mediaType == "document") {
                         val isDownloading = message.status == MessageStatus.SENDING
                         val isFailed = message.status == MessageStatus.FAILED
+                        val displayName = message.mediaFileName ?: "Document"
+                        val totalSize = message.mediaFileSize ?: 0L
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -295,7 +473,24 @@ fun MessageBubble(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             if (isDownloading) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = textColor, strokeWidth = 2.dp)
+                                // Telegram-style: progress circle with X cancel button
+                                Box(contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        progress = { if (progress > 0f) progress else 0f },
+                                        modifier = Modifier.size(40.dp),
+                                        color = PrimaryLight,
+                                        trackColor = Color.White.copy(alpha = 0.15f),
+                                        strokeWidth = 3.dp
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Cancel Download",
+                                        tint = textColor,
+                                        modifier = Modifier
+                                            .size(18.dp)
+                                            .clickable { viewModel.cancelTransfer(message) }
+                                    )
+                                }
                             } else {
                                 Icon(
                                     imageVector = if (isFailed) Icons.Default.Refresh else Icons.Default.ArrowDownward,
@@ -307,7 +502,7 @@ fun MessageBubble(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Document",
+                                    text = displayName,
                                     color = textColor,
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -316,7 +511,16 @@ fun MessageBubble(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = if (isDownloading) "Downloading..." else if (isFailed) "Failed" else "Tap to download",
+                                    text = if (isDownloading && totalSize > 0L) {
+                                        val downloaded = (progress * totalSize).toLong()
+                                        "${com.mobile.superiorutils.utils.FileUtils.formatFileSize(downloaded)} / ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
+                                    } else if (isFailed) {
+                                        "Failed"
+                                    } else if (totalSize > 0L) {
+                                        com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)
+                                    } else {
+                                        "Tap to download"
+                                    },
                                     color = textColor.copy(alpha = 0.6f),
                                     fontSize = 11.sp
                                 )
@@ -343,11 +547,15 @@ fun MessageBubble(
                         MessageStatus.SENT -> Icon(imageVector = Icons.Default.Done, contentDescription = "Sent", tint = PrimaryLight, modifier = Modifier.size(16.dp))
                         MessageStatus.QUEUED -> Icon(imageVector = Icons.Outlined.Schedule, contentDescription = "Queued", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(12.dp))
                         MessageStatus.FAILED -> {
-                            IconButton(
-                                onClick = { viewModel.retryMessage(message) },
-                                modifier = Modifier.size(16.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                            if (message.mediaType == null) {
+                                IconButton(
+                                    onClick = { viewModel.retryMessage(message) },
+                                    modifier = Modifier.size(16.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                                }
+                            } else {
+                                Icon(imageVector = Icons.Default.Close, contentDescription = "Failed", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(12.dp))
                             }
                         }
                         else -> {}

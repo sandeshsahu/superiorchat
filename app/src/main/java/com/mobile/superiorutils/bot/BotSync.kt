@@ -176,22 +176,62 @@ class BotSync(private val context: Context) {
         // All incoming messages from polling are from Client B (isFromMe = false)
         var mediaType: String? = null
         var fileId: String? = null
+        var fileSize: Long? = null
+        var fileName: String? = null
 
         if (!message.photo.isNullOrEmpty()) {
             mediaType = "photo"
-            fileId = message.photo.last().jsonObject["file_id"]?.jsonPrimitive?.content
+            val photoObj = message.photo.last().jsonObject
+            fileId = photoObj["file_id"]?.jsonPrimitive?.content
+            fileSize = photoObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
         } else if (message.document != null) {
             mediaType = "document"
-            fileId = message.document.jsonObject["file_id"]?.jsonPrimitive?.content
+            val docObj = message.document.jsonObject
+            fileId = docObj["file_id"]?.jsonPrimitive?.content
+            fileSize = docObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+            fileName = docObj["file_name"]?.jsonPrimitive?.content
         } else if (message.video != null) {
             mediaType = "video"
-            fileId = message.video.jsonObject["file_id"]?.jsonPrimitive?.content
+            val vidObj = message.video.jsonObject
+            fileId = vidObj["file_id"]?.jsonPrimitive?.content
+            fileSize = vidObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+            fileName = vidObj["file_name"]?.jsonPrimitive?.content
         } else if (message.audio != null) {
             mediaType = "audio"
-            fileId = message.audio.jsonObject["file_id"]?.jsonPrimitive?.content
+            val audioObj = message.audio.jsonObject
+            fileId = audioObj["file_id"]?.jsonPrimitive?.content
+            fileSize = audioObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+            fileName = audioObj["file_name"]?.jsonPrimitive?.content
         } else if (message.voice != null) {
             mediaType = "voice"
             fileId = message.voice.jsonObject["file_id"]?.jsonPrimitive?.content
+            fileSize = message.voice.jsonObject["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+        }
+
+        if (fileSize != null && fileSize > 20 * 1024 * 1024) {
+            val formattedSize = com.mobile.superiorutils.utils.FileUtils.formatFileSize(fileSize)
+            val replyText = """
+                *Failed*
+                
+                Your file is not delivered because the file size $formattedSize is more than 20MB.
+                
+                more than 20MB files are not supported.
+            """.trimIndent()
+            
+            val token = prefs.botToken
+            if (token.isNotEmpty()) {
+                coroutineScope.launch {
+                    TelegramApi.sendMessage(
+                        token = token,
+                        chatId = chatId,
+                        text = replyText,
+                        parseMode = "Markdown",
+                        replyToMessageId = message.message_id
+                    )
+                }
+            }
+            AppLog.log(LogCategory.BOT_ACTIVITY, "Rejected incoming file > 20MB: $formattedSize")
+            return
         }
 
         val isAutoDownload = AppGraph.prefs.isAutoDownloadMediaEnabled && fileId != null && mediaType != null
@@ -206,7 +246,9 @@ class BotSync(private val context: Context) {
             isFromMe = false,
             mediaType = mediaType,
             mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
-            status = finalStatus
+            status = finalStatus,
+            mediaFileName = fileName,
+            mediaFileSize = fileSize
         )
 
         repository.insertMessage(messageEntity)

@@ -7,13 +7,21 @@ import androidx.work.WorkManager
 import androidx.work.Constraints
 import androidx.work.NetworkType
 import com.mobile.superiorutils.bot.TelegramApi
+import com.mobile.superiorutils.bot.executeCancellable
 import com.mobile.superiorutils.core.LocalDb
 import com.mobile.superiorutils.data.entity.MessageStatus
 import com.mobile.superiorutils.utils.LogCategory
 import com.mobile.superiorutils.utils.AppLog
 import com.mobile.superiorutils.utils.LogLevel
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody
+import okio.BufferedSink
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
@@ -23,6 +31,35 @@ object MediaSync {
 
     private val activeTransfers = ConcurrentHashMap<Long, Job>()
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val uploadMutex = Mutex()
+    private val downloadMutex = Mutex()
+
+    // Progress tracking: messageId -> progress (0.0f to 1.0f)
+    private val _transferProgress = ConcurrentHashMap<Long, MutableStateFlow<Float>>()
+    
+    // In-memory set of cancelled message IDs to prevent race conditions and auto-restarts
+    private val cancelledTransfers = ConcurrentHashMap.newKeySet<Long>()
+
+    fun getProgress(messageId: Long): StateFlow<Float> {
+        return _transferProgress.getOrPut(messageId) { MutableStateFlow(0f) }
+    }
+
+    fun cancelTransfer(context: Context, messageId: Long) {
+        AppLog.log(LogCategory.SYSTEM, "cancelTransfer: Cancelling transfer for msgId=$messageId")
+        cancelledTransfers.add(messageId)
+        try {
+            WorkManager.getInstance(context).cancelAllWorkByTag("msg_$messageId")
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "cancelTransfer: WorkManager cancellation failed: ${e.message}")
+        }
+        val job = activeTransfers[messageId]
+        job?.cancel()
+        activeTransfers.remove(messageId)
+        _transferProgress.remove(messageId)
+        scope.launch {
+            markDownloadFailed(context, messageId)
+        }
+    }
 
     fun enqueueDownload(
         context: Context,
@@ -30,6 +67,7 @@ object MediaSync {
         fileId: String,
         mediaType: String
     ): UUID {
+        cancelledTransfers.remove(messageId)
         AppLog.log(LogCategory.SYSTEM, "enqueueDownload: msgId=$messageId, fileId=$fileId, type=$mediaType")
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -45,6 +83,7 @@ object MediaSync {
         val request = OneTimeWorkRequestBuilder<MediaWorker>()
             .setConstraints(constraints)
             .setInputData(inputData)
+            .addTag("msg_$messageId")
             .build()
 
         WorkManager.getInstance(context).enqueue(request)
@@ -61,6 +100,7 @@ object MediaSync {
         localPath: String,
         mediaType: String
     ): UUID {
+        cancelledTransfers.remove(messageId)
         AppLog.log(LogCategory.SYSTEM, "enqueueUpload: msgId=$messageId, path=$localPath, type=$mediaType")
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -76,6 +116,7 @@ object MediaSync {
         val request = OneTimeWorkRequestBuilder<MediaWorker>()
             .setConstraints(constraints)
             .setInputData(inputData)
+            .addTag("msg_$messageId")
             .build()
 
         WorkManager.getInstance(context).enqueue(request)
@@ -87,6 +128,7 @@ object MediaSync {
     }
 
     fun startDownloadImmediate(context: Context, messageId: Long, fileId: String, mediaType: String) {
+        cancelledTransfers.remove(messageId)
         val prefs = com.mobile.superiorutils.core.AppGraph.prefs
         val token = prefs.botToken
         if (token.isEmpty()) {
@@ -108,6 +150,7 @@ object MediaSync {
     }
 
     fun startUploadImmediate(context: Context, messageId: Long, localPath: String, mediaType: String) {
+        cancelledTransfers.remove(messageId)
         val prefs = com.mobile.superiorutils.core.AppGraph.prefs
         val token = prefs.botToken
         val chatId = prefs.chatId
@@ -131,6 +174,10 @@ object MediaSync {
 
     suspend fun performDownload(context: Context, token: String, fileId: String, mediaType: String, messageId: Long): Boolean {
         AppLog.log(LogCategory.SYSTEM, "performDownload: Starting for msgId=$messageId, type=$mediaType")
+        if (cancelledTransfers.contains(messageId)) {
+            AppLog.log(LogCategory.SYSTEM, "performDownload: Aborting due to cancellation for msgId=$messageId")
+            return false
+        }
         
         val db = LocalDb.getDatabase(context)
         val msg = db.messageDao().getMessageById(messageId)
@@ -165,7 +212,7 @@ object MediaSync {
             AppLog.log(LogCategory.NETWORK, "Downloading file from: $downloadUrl")
             val request = Request.Builder().url(downloadUrl).build()
 
-            val response = TelegramApi.client.newCall(request).execute()
+            val response = TelegramApi.client.executeCancellable(request)
             if (!response.isSuccessful) {
                 AppLog.log(LogCategory.NETWORK, "Telegram file download HTTP failure: ${response.code}", LogLevel.ERROR)
                 markDownloadFailed(context, messageId)
@@ -187,14 +234,36 @@ object MediaSync {
             }
 
             val ext = filePath.substringAfterLast('.', "")
-            val localFile = File(mediaDir, "${fileId}.${ext}")
+            val localFileName = if (msg != null && !msg.mediaFileName.isNullOrBlank()) {
+                "${messageId}_${msg.mediaFileName}"
+            } else {
+                "${fileId}.${ext}"
+            }
+            val localFile = File(mediaDir, localFileName)
 
             AppLog.log(LogCategory.SYSTEM, "Writing downloaded stream to local path: ${localFile.absolutePath}")
-            body.byteStream().use { input ->
-                FileOutputStream(localFile).use { output ->
-                    input.copyTo(output)
+            val totalBytes = body.contentLength()
+            val progressFlow = _transferProgress.getOrPut(messageId) { MutableStateFlow(0f) }
+            downloadMutex.withLock {
+                body.byteStream().use { input ->
+                    FileOutputStream(localFile).use { output ->
+                        val buffer = ByteArray(8192)
+                        var bytesRead: Int
+                        var totalRead = 0L
+                        while (input.read(buffer).also { bytesRead = it } != -1) {
+                            if (cancelledTransfers.contains(messageId)) {
+                                throw CancellationException("Download cancelled by user")
+                            }
+                            output.write(buffer, 0, bytesRead)
+                            totalRead += bytesRead
+                            if (totalBytes > 0) {
+                                progressFlow.value = (totalRead.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                            }
+                        }
+                    }
                 }
             }
+            _transferProgress.remove(messageId)
 
             val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
             if (freshMsg != null) {
@@ -208,48 +277,75 @@ object MediaSync {
             markDownloadFailed(context, messageId)
             AppLog.log(LogCategory.SYSTEM, "Exception in performDownload: ${e.message}", LogLevel.ERROR)
             return false
+        } finally {
+            cancelledTransfers.remove(messageId)
         }
     }
 
     suspend fun performUpload(context: Context, token: String, chatId: String, localPath: String, mediaType: String, messageId: Long): Boolean {
         AppLog.log(LogCategory.SYSTEM, "performUpload: Starting for msgId=$messageId, path=$localPath, type=$mediaType")
-        
-        val db = LocalDb.getDatabase(context)
-        val msg = db.messageDao().getMessageById(messageId)
-        if (msg != null && msg.status == MessageStatus.SENT) {
-            AppLog.log(LogCategory.SYSTEM, "performUpload: Already marked as SENT in DB.")
-            return true
-        }
-
-        val currentJob = kotlin.coroutines.coroutineContext[Job]
-        val existingJob = activeTransfers[messageId]
-        if (existingJob != null && existingJob.isActive && existingJob !== currentJob) {
-            AppLog.log(LogCategory.SYSTEM, "performUpload: Waiting for active job to finish for msgId=$messageId")
-            existingJob.join()
-            val updatedMsg = db.messageDao().getMessageById(messageId)
-            return updatedMsg?.status == MessageStatus.SENT
-        }
-
-        val file = File(localPath)
-        if (!file.exists()) {
-            AppLog.log(LogCategory.SYSTEM, "performUpload failed: Local file does not exist at $localPath", LogLevel.ERROR)
+        if (cancelledTransfers.contains(messageId)) {
+            AppLog.log(LogCategory.SYSTEM, "performUpload: Aborting due to cancellation for msgId=$messageId")
             return false
         }
+        
+        try {
+            val db = LocalDb.getDatabase(context)
+            val msg = db.messageDao().getMessageById(messageId)
+            if (msg != null && msg.status == MessageStatus.SENT) {
+                AppLog.log(LogCategory.SYSTEM, "performUpload: Already marked as SENT in DB.")
+                return true
+            }
 
-        AppLog.log(LogCategory.NETWORK, "Uploading $mediaType file of size ${file.length()} bytes to chat $chatId")
-        val success = when (mediaType) {
-            "photo" -> TelegramApi.sendPhoto(token, chatId, file)
-            "voice" -> TelegramApi.sendVoice(token, chatId, file)
-            "document" -> TelegramApi.sendDocument(token, chatId, file, caption = "")
-            else -> false
-        }
+            val currentJob = kotlin.coroutines.coroutineContext[Job]
+            val existingJob = activeTransfers[messageId]
+            if (existingJob != null && existingJob.isActive && existingJob !== currentJob) {
+                AppLog.log(LogCategory.SYSTEM, "performUpload: Waiting for active job to finish for msgId=$messageId")
+                existingJob.join()
+                val updatedMsg = db.messageDao().getMessageById(messageId)
+                return updatedMsg?.status == MessageStatus.SENT
+            }
 
-        val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
-        if (freshMsg != null) {
-            db.messageDao().insertMessage(freshMsg.copy(status = if (success) MessageStatus.SENT else MessageStatus.FAILED))
-            AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to: ${if (success) "SENT" else "FAILED"}")
+            val file = File(localPath)
+            if (!file.exists()) {
+                AppLog.log(LogCategory.SYSTEM, "performUpload failed: Local file does not exist at $localPath", LogLevel.ERROR)
+                return false
+            }
+
+            AppLog.log(LogCategory.NETWORK, "Uploading $mediaType file of size ${file.length()} bytes to chat $chatId")
+            val progressFlow = _transferProgress.getOrPut(messageId) { MutableStateFlow(0f) }
+            val success = uploadMutex.withLock {
+                val progressListener: (Long, Long) -> Unit = { bytesWritten, totalBytes ->
+                    if (totalBytes > 0) {
+                        progressFlow.value = (bytesWritten.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                    }
+                }
+                when (mediaType) {
+                    "photo" -> TelegramApi.sendPhoto(token, chatId, file, onProgress = progressListener)
+                    "voice" -> TelegramApi.sendVoice(token, chatId, file, onProgress = progressListener)
+                    "document" -> {
+                        // Strip the timestamp prefix (e.g. "1234567890_report.pdf" -> "report.pdf")
+                        val originalName = if (file.name.matches(Regex("^-?\\d+_.+"))) {
+                            file.name.substringAfter("_")
+                        } else {
+                            file.name
+                        }
+                        TelegramApi.sendDocument(token, chatId, file, caption = "", displayName = originalName, onProgress = progressListener)
+                    }
+                    else -> false
+                }
+            }
+            _transferProgress.remove(messageId)
+
+            val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
+            if (freshMsg != null) {
+                db.messageDao().insertMessage(freshMsg.copy(status = if (success) MessageStatus.SENT else MessageStatus.FAILED))
+                AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to: ${if (success) "SENT" else "FAILED"}")
+            }
+            return success
+        } finally {
+            cancelledTransfers.remove(messageId)
         }
-        return success
     }
 
     private suspend fun markDownloadFailed(context: Context, messageId: Long) {
@@ -262,6 +358,8 @@ object MediaSync {
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "Failed to mark download as failed in DB: ${e.message}", LogLevel.ERROR)
+        } finally {
+            _transferProgress.remove(messageId)
         }
     }
 }

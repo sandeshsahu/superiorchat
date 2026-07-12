@@ -61,6 +61,7 @@ import com.mobile.superiorutils.ui.components.MessageBubble
 import com.mobile.superiorutils.ui.components.MediaViewer
 import com.mobile.superiorutils.ui.components.MediaPicker
 import com.mobile.superiorutils.ui.components.PickerTab
+import com.mobile.superiorutils.ui.components.ErrorDialog
 import java.io.File
 import java.util.Locale
 
@@ -166,6 +167,7 @@ fun ChatScreen(
         { uri: Uri ->
             showAttachmentMenu = false
             viewModel.sendMedia(context, uri, "photo")
+            Unit
         }
     }
 
@@ -362,6 +364,13 @@ fun ChatScreen(
                 activeFullScreenMediaType = null
             }
         )
+
+        viewModel.errorPopupMessage?.let { errorMessage ->
+            ErrorDialog(
+                message = errorMessage,
+                onDismiss = { viewModel.errorPopupMessage = null }
+            )
+        }
     }
 
     MediaPicker(
@@ -370,14 +379,22 @@ fun ChatScreen(
         onDismiss = { currentPickerMode = PickerMode.NONE },
         viewModel = viewModel,
         onMediaSelected = { uris ->
+            var allSuccess = true
             uris.forEach { uri ->
-                viewModel.sendMedia(context, uri, "photo")
+                val success = viewModel.sendMedia(context, uri, "photo")
+                if (!success) allSuccess = false
             }
+            if (allSuccess) currentPickerMode = PickerMode.NONE
+            allSuccess
         },
         onFilesSelected = { files ->
+            var allSuccess = true
             files.forEach { file ->
-                viewModel.sendMedia(context, Uri.fromFile(file), "document")
+                val success = viewModel.sendMedia(context, Uri.fromFile(file), "document")
+                if (!success) allSuccess = false
             }
+            if (allSuccess) currentPickerMode = PickerMode.NONE
+            allSuccess
         },
         onCameraClick = {
             val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED

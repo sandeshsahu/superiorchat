@@ -74,7 +74,7 @@ import java.io.File
 fun GalleryGrid(
     viewModel: ChatViewModel,
     onDismiss: () -> Unit,
-    onMediaSelected: (List<Uri>) -> Unit,
+    onMediaSelected: (List<Uri>) -> Boolean,
     onCameraClick: () -> Unit,
     onSwitchToFiles: () -> Unit
 ) {
@@ -223,8 +223,10 @@ fun GalleryGrid(
                     text = { Text("Send (${selectedUris.size})", color = Color.Black, fontWeight = FontWeight.Bold) },
                     icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black) },
                     onClick = {
-                        onMediaSelected(selectedUris.toList())
-                        onDismiss()
+                        val success = onMediaSelected(selectedUris.toList())
+                        if (success) {
+                            onDismiss()
+                        }
                     },
                     containerColor = PrimaryLight,
                     elevation = FloatingActionButtonDefaults.elevation(8.dp)

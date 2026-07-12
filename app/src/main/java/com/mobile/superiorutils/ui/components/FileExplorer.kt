@@ -68,13 +68,17 @@ import com.mobile.superiorutils.ui.LocalMediaItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
+import android.os.Build
+import android.os.Environment
+import android.content.Intent
+import android.provider.Settings
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun FileExplorer(
     viewModel: ChatViewModel,
     onDismiss: () -> Unit,
-    onFilesSelected: (List<File>) -> Unit,
+    onFilesSelected: (List<File>) -> Boolean,
     onSystemPickerClick: () -> Unit,
     onSwitchToGallery: () -> Unit
 ) {
@@ -252,8 +256,10 @@ fun FileExplorer(
                     text = { Text("Send (${selectedFiles.size})", color = Color.Black, fontWeight = FontWeight.Bold) },
                     icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black) },
                     onClick = {
-                        onFilesSelected(selectedFiles.toList())
-                        onDismiss()
+                        val success = onFilesSelected(selectedFiles.toList())
+                        if (success) {
+                            onDismiss()
+                        }
                     },
                     containerColor = PrimaryLight,
                     elevation = FloatingActionButtonDefaults.elevation(8.dp)
@@ -347,9 +353,19 @@ fun FileExplorer(
                                         subtitle = "Browse device files",
                                         iconColor = PrimaryLight,
                                         onClick = {
-                                            val dir = android.os.Environment.getExternalStorageDirectory()
-                                            explorerDirectory = dir
-                                            viewModel.openDirectory(context, dir)
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+                                                try {
+                                                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                                                    context.startActivity(intent)
+                                                } catch (e: Exception) {
+                                                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                                                    context.startActivity(intent)
+                                                }
+                                            } else {
+                                                val dir = Environment.getExternalStorageDirectory()
+                                                explorerDirectory = dir
+                                                viewModel.openDirectory(context, dir)
+                                            }
                                         }
                                     )
                                 }
