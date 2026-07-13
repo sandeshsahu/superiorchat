@@ -12,6 +12,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import com.mobile.superiorutils.ui.components.bounceClick
+import com.mobile.superiorutils.ui.components.glow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -57,6 +59,16 @@ fun SettingsScreen(
     var showCredentialsDialog by remember { mutableStateOf(false) }
     var tempBotToken by remember { mutableStateOf(botToken) }
     var tempChatId by remember { mutableStateOf(chatId) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    if (errorMessage != null) {
+        com.mobile.superiorutils.ui.components.ErrorDialog(
+            title = "Invalid Credentials",
+            message = errorMessage!!,
+            onDismiss = { errorMessage = null }
+        )
+    }
+
     if (showCredentialsDialog) {
         AlertDialog(
             onDismissRequest = { showCredentialsDialog = false },
@@ -73,12 +85,25 @@ fun SettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        onBotTokenChange(tempBotToken.trim())
-                        onChatIdChange(tempChatId.trim())
+                        val token = tempBotToken.trim()
+                        val chat = tempChatId.trim()
+                        
+                        if (!com.mobile.superiorutils.utils.ValidationUtils.isValidBotToken(token)) {
+                            errorMessage = "The Bot Token format is invalid. It should look like '1234567890:ABCdef...'"
+                            return@Button
+                        }
+                        
+                        if (!com.mobile.superiorutils.utils.ValidationUtils.isValidChatId(chat)) {
+                            errorMessage = "The Chat ID format is invalid. It must be a numeric ID, optionally starting with a '-' sign."
+                            return@Button
+                        }
+                        
+                        onBotTokenChange(token)
+                        onChatIdChange(chat)
                         showCredentialsDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                ) { Text("Save", color = Color.White) }
+                ) { Text("Save", color = TextPrimary) }
             },
             dismissButton = {
                 TextButton(onClick = { showCredentialsDialog = false }) { Text("Cancel", color = TextSecondary) }
@@ -89,7 +114,7 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Background)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp)
             .padding(top = 24.dp, bottom = 32.dp),
@@ -112,7 +137,7 @@ fun SettingsScreen(
                 }
                 Text("Online", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Success)
             }
-            HorizontalDivider(color = Color.White.copy(alpha = 0.1f), modifier = Modifier.padding(vertical = 8.dp))
+            HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(8.dp).background(if (isInternetConnected) Success else MaterialTheme.colorScheme.error, CircleShape))
@@ -142,7 +167,7 @@ fun SettingsScreen(
                         .fillMaxWidth()
                         .height(48.dp)
                         .background(SurfaceLevel2, RoundedCornerShape(12.dp))
-                        .clickable { showCredentialsDialog = true },
+                        .bounceClick(scaleDown = 0.95f) { showCredentialsDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(replaceText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -151,8 +176,9 @@ fun SettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
+                        .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
                         .background(PrimaryLight, RoundedCornerShape(12.dp))
-                        .clickable { onSave() },
+                        .bounceClick(scaleDown = 0.95f) { onSave() },
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Update Credentials", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Normal)
@@ -195,7 +221,7 @@ fun SettingsScreen(
                                 imageVector = Icons.Filled.Check,
                                 contentDescription = null,
                                 modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = Color.White
+                                tint = TextPrimary
                             )
                         }
                     } else {
@@ -204,7 +230,7 @@ fun SettingsScreen(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = null,
                                 modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = Color.Black
+                                tint = Background
                             )
                         }
                     },
@@ -212,7 +238,7 @@ fun SettingsScreen(
                         checkedThumbColor = Primary,
                         checkedTrackColor = Primary.copy(alpha = 0.5f),
                         uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        uncheckedTrackColor = Color.Black.copy(alpha = 0.5f)
+                        uncheckedTrackColor = Background.copy(alpha = 0.5f)
                     )
                 )
             }
@@ -233,9 +259,9 @@ fun SettingsScreen(
                     .padding(16.dp)
             ) {
                 InfoRow("App Name", "Superior Chat")
-                HorizontalDivider(color = Color.White.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
                 InfoRow("Author", "Sandesh")
-                HorizontalDivider(color = Color.White.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 12.dp))
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
                 InfoRow("Architecture", "Clean Architecture + MVVM")
             }
         }

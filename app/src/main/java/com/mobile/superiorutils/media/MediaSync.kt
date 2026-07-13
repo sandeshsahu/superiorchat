@@ -136,16 +136,8 @@ object MediaSync {
             return
         }
 
-        synchronized(activeTransfers) {
-            if (activeTransfers.containsKey(messageId)) {
-                AppLog.log(LogCategory.SYSTEM, "startDownloadImmediate: Already active transfer for msgId=$messageId, skipping launch.")
-                return
-            }
-            val job = scope.launch {
-                performDownload(context, token, fileId, mediaType, messageId)
-            }
-            activeTransfers[messageId] = job
-            job.invokeOnCompletion { activeTransfers.remove(messageId) }
+        scope.launch {
+            performDownload(context, token, fileId, mediaType, messageId)
         }
     }
 
@@ -159,16 +151,8 @@ object MediaSync {
             return
         }
 
-        synchronized(activeTransfers) {
-            if (activeTransfers.containsKey(messageId)) {
-                AppLog.log(LogCategory.SYSTEM, "startUploadImmediate: Already active transfer for msgId=$messageId, skipping launch.")
-                return
-            }
-            val job = scope.launch {
-                performUpload(context, token, chatId, localPath, mediaType, messageId)
-            }
-            activeTransfers[messageId] = job
-            job.invokeOnCompletion { activeTransfers.remove(messageId) }
+        scope.launch {
+            performUpload(context, token, chatId, localPath, mediaType, messageId)
         }
     }
 
@@ -189,12 +173,31 @@ object MediaSync {
             }
         }
 
-        // Wait if another job is already active for this transfer
+        // Wait if another job is already active for this transfer, otherwise register this one
         val currentJob = kotlin.coroutines.coroutineContext[Job]
-        val existingJob = activeTransfers[messageId]
-        if (existingJob != null && existingJob.isActive && existingJob !== currentJob) {
+        var shouldWait = false
+        var jobToWait: Job? = null
+
+        synchronized(activeTransfers) {
+            val existingJob = activeTransfers[messageId]
+            if (existingJob != null && existingJob.isActive && existingJob !== currentJob) {
+                shouldWait = true
+                jobToWait = existingJob
+            } else if (currentJob != null) {
+                activeTransfers[messageId] = currentJob
+                currentJob.invokeOnCompletion {
+                    synchronized(activeTransfers) {
+                        if (activeTransfers[messageId] === currentJob) {
+                            activeTransfers.remove(messageId)
+                        }
+                    }
+                }
+            }
+        }
+
+        if (shouldWait && jobToWait != null) {
             AppLog.log(LogCategory.SYSTEM, "performDownload: Waiting for active job to finish for msgId=$messageId")
-            existingJob.join()
+            jobToWait.join()
             val updatedMsg = db.messageDao().getMessageById(messageId)
             return updatedMsg?.status == MessageStatus.SENT
         }
@@ -298,10 +301,29 @@ object MediaSync {
             }
 
             val currentJob = kotlin.coroutines.coroutineContext[Job]
-            val existingJob = activeTransfers[messageId]
-            if (existingJob != null && existingJob.isActive && existingJob !== currentJob) {
+            var shouldWait = false
+            var jobToWait: Job? = null
+
+            synchronized(activeTransfers) {
+                val existingJob = activeTransfers[messageId]
+                if (existingJob != null && existingJob.isActive && existingJob !== currentJob) {
+                    shouldWait = true
+                    jobToWait = existingJob
+                } else if (currentJob != null) {
+                    activeTransfers[messageId] = currentJob
+                    currentJob.invokeOnCompletion {
+                        synchronized(activeTransfers) {
+                            if (activeTransfers[messageId] === currentJob) {
+                                activeTransfers.remove(messageId)
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (shouldWait && jobToWait != null) {
                 AppLog.log(LogCategory.SYSTEM, "performUpload: Waiting for active job to finish for msgId=$messageId")
-                existingJob.join()
+                jobToWait.join()
                 val updatedMsg = db.messageDao().getMessageById(messageId)
                 return updatedMsg?.status == MessageStatus.SENT
             }

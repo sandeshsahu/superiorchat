@@ -11,6 +11,9 @@ interface ThreadDao {
     @Query("SELECT * FROM conversations ORDER BY lastMessageTimestamp DESC")
     fun getAllConversations(): Flow<List<com.mobile.superiorutils.data.entity.ChatNode>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertConversation(conversation: com.mobile.superiorutils.data.entity.ChatNode): Long
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertConversation(conversation: com.mobile.superiorutils.data.entity.ChatNode): Long
+
+    @androidx.room.Update
+    suspend fun updateConversation(conversation: com.mobile.superiorutils.data.entity.ChatNode): Int
 }

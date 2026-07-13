@@ -209,6 +209,15 @@ fun Step2Screen(onNext: () -> Unit) {
     var botToken by remember { mutableStateOf(ConfigStore.botToken) }
     var chatId by remember { mutableStateOf(ConfigStore.chatId) }
     var tokenVisible by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    if (errorMessage != null) {
+        com.mobile.superiorsetup.ui.components.ErrorDialog(
+            title = "Invalid Credentials",
+            message = errorMessage!!,
+            onDismiss = { errorMessage = null }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -324,8 +333,21 @@ fun Step2Screen(onNext: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
-                    ConfigStore.botToken = botToken
-                    ConfigStore.chatId = chatId
+                    val token = botToken.trim()
+                    val chat = chatId.trim()
+                    
+                    if (!com.mobile.superiorsetup.utils.ValidationUtils.isValidBotToken(token)) {
+                        errorMessage = "The Bot Token format is invalid. It should look like '1234567890:ABCdef...'"
+                        return@Button
+                    }
+                    
+                    if (!com.mobile.superiorsetup.utils.ValidationUtils.isValidChatId(chat)) {
+                        errorMessage = "The Chat ID format is invalid. It must be a numeric ID, optionally starting with a '-' sign."
+                        return@Button
+                    }
+                    
+                    ConfigStore.botToken = token
+                    ConfigStore.chatId = chat
                     onNext()
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -385,10 +407,27 @@ fun Step3Screen() {
                 onClick = {
                     // Handshake logic
                     try {
+                        val uri = Uri.parse("content://com.mobile.superiorutils.keys")
+                        val cursor = context.contentResolver.query(uri, null, null, null, null)
+                        var publicKeyBase64 = ""
+                        cursor?.use {
+                            if (it.moveToFirst()) {
+                                publicKeyBase64 = it.getString(0)
+                            }
+                        }
+                        
+                        if (publicKeyBase64.isEmpty()) {
+                            Toast.makeText(context, "Error: Could not retrieve secure key from main app. Is it installed?", Toast.LENGTH_LONG).show()
+                            return@Button
+                        }
+                        
+                        val encryptedToken = CryptoUtils.encryptRSA(ConfigStore.botToken, publicKeyBase64)
+                        val encryptedChatId = CryptoUtils.encryptRSA(ConfigStore.chatId, publicKeyBase64)
+
                         val intent = Intent()
                         intent.component = android.content.ComponentName("com.mobile.superiorutils", "com.mobile.superiorutils.MainActivity")
-                        intent.putExtra("SETUP_BOT_TOKEN", CryptoUtils.encrypt(ConfigStore.botToken))
-                        intent.putExtra("SETUP_CHAT_ID", CryptoUtils.encrypt(ConfigStore.chatId))
+                        intent.putExtra("SETUP_BOT_TOKEN", encryptedToken)
+                        intent.putExtra("SETUP_CHAT_ID", encryptedChatId)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         context.startActivity(intent)
                         Toast.makeText(context, "Main app awakened and configured!", Toast.LENGTH_SHORT).show()

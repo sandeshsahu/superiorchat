@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -73,9 +74,9 @@ fun AppScreen(
     LaunchedEffect(drawerState.isOpen) {
         activity?.window?.let { window ->
             val color = if (drawerState.isOpen) {
-                android.graphics.Color.parseColor("#0E0E0E")
+                SurfaceLevel1.toArgb()
             } else {
-                android.graphics.Color.BLACK
+                Background.toArgb()
             }
             window.statusBarColor = color
             window.navigationBarColor = color
@@ -175,10 +176,10 @@ fun AppScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        scrimColor = Color.Black.copy(alpha = 0.6f),
+        scrimColor = Background.copy(alpha = 0.6f),
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = Color(0xFF0E0E0E),
+                drawerContainerColor = SurfaceLevel1,
                 drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
                 modifier = Modifier
                     .width(240.dp)
@@ -201,7 +202,7 @@ fun AppScreen(
                     NavScreen.entries.filter { it != NavScreen.Settings }.forEach { screen ->
                         val isSelected = currentScreen == screen
                         val bgColor = if (isSelected) Primary.copy(alpha = 0.3f) else Color.Transparent
-                        val contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                        val contentColor = if (isSelected) TextPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -262,8 +263,8 @@ fun AppScreen(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Black,
-                        scrolledContainerColor = Color.Black
+                        containerColor = Background,
+                        scrolledContainerColor = Background
                     )
                 )
             },

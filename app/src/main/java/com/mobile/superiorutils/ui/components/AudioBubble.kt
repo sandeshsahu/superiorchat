@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorutils.media.AudioPlayer
 import com.mobile.superiorutils.data.entity.MessageStatus
+import com.mobile.superiorutils.theme.*
 import java.util.Locale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -167,8 +168,8 @@ fun AudioBubble(
         }
     }
 
-    val playedColor = if (isFromMe) Color.White else Color(0xFFC0C1FF)
-    val unplayedColor = if (isFromMe) Color.White.copy(alpha = 0.4f) else Color(0xFFC0C1FF).copy(alpha = 0.3f)
+    val playedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFFC0C1FF)
+    val unplayedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f) else Color(0xFFC0C1FF).copy(alpha = 0.3f)
     val textDurationColor = if (isFromMe) Color.White else MaterialTheme.colorScheme.onSurface
     val textDurationWeight = if (isFromMe) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
 

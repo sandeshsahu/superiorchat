@@ -24,11 +24,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorutils.theme.*
+import com.mobile.superiorutils.ui.components.bounceClick
+import com.mobile.superiorutils.ui.components.glow
 import com.mobile.superiorutils.utils.LogCategory
 import com.mobile.superiorutils.utils.LogEntry
 import com.mobile.superiorutils.utils.LogLevel
@@ -38,7 +41,7 @@ import java.util.Date
 import java.util.Locale
 
 // ══════════════════════════════════════════════════════════
-//  Logs Screen — Hybrid Original UI with New Categories
+//  Logs Screen — Phase 4 Polish (Filtering, Typography, Animations)
 // ══════════════════════════════════════════════════════════
 
 private data class TabConfig(
@@ -47,6 +50,7 @@ private data class TabConfig(
     val category: LogCategory?
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogsScreen() {
     val tabs = listOf(
@@ -57,10 +61,10 @@ fun LogsScreen() {
         TabConfig("Errors", Icons.Outlined.ErrorOutline, LogCategory.ERROR)
     )
     var selectedIndex by remember { mutableIntStateOf(0) }
+    var searchQuery by remember { mutableStateOf("") }
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val coroutineScope = rememberCoroutineScope()
     
-    // Sync pager state with selectedIndex
     LaunchedEffect(pagerState.currentPage) {
         selectedIndex = pagerState.currentPage
     }
@@ -90,7 +94,7 @@ fun LogsScreen() {
                     .size(48.dp)
                     .background(ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                     .border(1.dp, ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                    .clickable {
+                    .bounceClick(scaleDown = 0.95f) {
                         val currentCat = tabs[selectedIndex].category
                         if (currentCat != null) {
                             AppLog.clearLogs(currentCat)
@@ -103,6 +107,28 @@ fun LogsScreen() {
                 Icon(Icons.Default.Delete, contentDescription = "Clear", tint = ErrorRed)
             }
         }
+        
+        // Search Bar (Key-based Filtering)
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            placeholder = { Text("Filter logs...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 12.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = SurfaceLevel2,
+                unfocusedContainerColor = SurfaceLevel1,
+                focusedBorderColor = Primary,
+                unfocusedBorderColor = DividerColor,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary
+            ),
+            singleLine = true
+        )
 
         // Filter Tags
         Row(
@@ -125,7 +151,7 @@ fun LogsScreen() {
                     modifier = Modifier
                         .background(animatedBgColor, RoundedCornerShape(20.dp))
                         .border(1.dp, DividerColor, RoundedCornerShape(20.dp))
-                        .clickable { 
+                        .bounceClick(scaleDown = 0.95f) { 
                             selectedIndex = index
                             coroutineScope.launch { pagerState.animateScrollToPage(index) }
                         }
@@ -150,10 +176,19 @@ fun LogsScreen() {
         ) { page ->
             val pageCategory = tabs[page].category
             val allCategoryLogs = LogCategory.entries.associateWith { AppLog.getLogs(it).collectAsState() }
-            val pageLogs = if (pageCategory != null) {
+            
+            // Source logs for this tab
+            val sourceLogs = if (pageCategory != null) {
                 allCategoryLogs[pageCategory]?.value ?: emptyList()
             } else {
                 AppLog.allLogs.collectAsState().value
+            }
+            
+            // Filter by search query
+            val pageLogs = if (searchQuery.isNotBlank()) {
+                sourceLogs.filter { it.message.contains(searchQuery, ignoreCase = true) }
+            } else {
+                sourceLogs
             }
 
             if (pageLogs.isEmpty()) {
@@ -162,9 +197,19 @@ fun LogsScreen() {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.History, contentDescription = "History", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("No logs yet", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (searchQuery.isNotBlank()) "No matching logs" else "No logs yet", 
+                            color = MaterialTheme.colorScheme.onSurface, 
+                            fontSize = 16.sp, 
+                            fontWeight = FontWeight.SemiBold
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("System activity will appear here.", color = MaterialTheme.colorScheme.outline, fontSize = 12.sp, textAlign = TextAlign.Center)
+                        Text(
+                            if (searchQuery.isNotBlank()) "Try a different search term." else "System activity will appear here.", 
+                            color = TextSecondary, 
+                            fontSize = 12.sp, 
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             } else {
@@ -190,13 +235,13 @@ fun LogsScreen() {
 
 @Composable
 private fun LogEntryRow(entry: LogEntry) {
-    val sdf = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
     val timeStr = sdf.format(Date(entry.timestamp))
 
     val levelColor = when (entry.level) {
         LogLevel.ERROR -> MaterialTheme.colorScheme.error
         LogLevel.WARN -> WarningAmber
-        LogLevel.DEBUG -> Color(0xFF60A5FA)
+        LogLevel.DEBUG -> InfoBlue
         LogLevel.INFO -> Success
     }
 
@@ -211,6 +256,7 @@ private fun LogEntryRow(entry: LogEntry) {
             modifier = Modifier
                 .padding(top = 5.dp)
                 .size(8.dp)
+                .glow(color = levelColor, radius = 12f, dx = 0f, dy = 0f)
                 .background(levelColor, CircleShape)
         )
         Spacer(modifier = Modifier.width(12.dp))
@@ -218,14 +264,16 @@ private fun LogEntryRow(entry: LogEntry) {
             Text(
                 entry.message,
                 fontSize = 12.sp,
+                fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 3
+                lineHeight = 16.sp
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 timeStr,
                 fontSize = 10.sp,
-                color = MaterialTheme.colorScheme.outline
+                fontFamily = FontFamily.Monospace,
+                color = TextSecondary
             )
         }
     }

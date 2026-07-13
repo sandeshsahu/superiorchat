@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -62,6 +63,8 @@ import com.mobile.superiorutils.ui.components.MediaViewer
 import com.mobile.superiorutils.ui.components.MediaPicker
 import com.mobile.superiorutils.ui.components.PickerTab
 import com.mobile.superiorutils.ui.components.ErrorDialog
+import com.mobile.superiorutils.ui.components.bounceClick
+import com.mobile.superiorutils.ui.components.glow
 import java.io.File
 import java.util.Locale
 
@@ -71,6 +74,7 @@ fun ChatScreen(
     viewModel: ChatViewModel = viewModel()
 ) {
     val messages by viewModel.messages.collectAsState()
+    val messageLimit by viewModel.messageLimit.collectAsState()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -84,10 +88,25 @@ fun ChatScreen(
     val isRetrying = viewModel.isRetryingConnection
     val hasConnectionError = !isOnline || !isTelegramApiReachable
 
+    // Auto-scroll: only jump to bottom when a single new message arrives,
+    // NOT when pagination loads a batch of older messages.
+    var previousMessageCount by remember { mutableIntStateOf(messages.size) }
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.scrollToItem(0)
+        val delta = messages.size - previousMessageCount
+        if (messages.isNotEmpty() && delta == 1) {
+            listState.requestScrollToItem(0)
         }
+        previousMessageCount = messages.size
+    }
+
+    // Pagination: load older messages when user scrolls near the top
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastIndex ->
+                if (lastIndex != null && messages.isNotEmpty() && lastIndex >= messages.size - 5) {
+                    viewModel.loadMoreMessages()
+                }
+            }
     }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -224,12 +243,39 @@ fun ChatScreen(
                 ) {
                     if (messages.isEmpty()) {
                         item {
-                            Text(
-                                text = "No messages yet. Send a message to start!",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.fillMaxWidth(),
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(72.dp)
+                                        .glow(color = Primary, radius = 40f, dx = 0f, dy = 0f)
+                                        .background(Primary.copy(alpha = 0.1f), CircleShape)
+                                        .border(1.dp, Primary.copy(alpha = 0.3f), CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = "Secure Chat",
+                                        tint = PrimaryLight,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    text = "No messages yet",
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Send a message to start the conversation.",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     } else {
                         items(
@@ -241,6 +287,23 @@ fun ChatScreen(
                                 viewModel = viewModel,
                                 onMediaClick = onMediaClickRemembered
                             )
+                        }
+                        
+                        if (messages.size >= messageLimit) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -309,34 +372,34 @@ fun ChatScreen(
                                     .clip(RoundedCornerShape(24.dp))
                                     .background(PrimaryLight.copy(alpha = 0.1f))
                                     .border(1.dp, PrimaryLight.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
-                                    .clickable(enabled = !isRetrying) { viewModel.retryConnection(context) }
+                                    .bounceClick(scaleDown = 0.95f) { if (!isRetrying) viewModel.retryConnection(context) }
                                     .padding(horizontal = 16.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
                             ) {
                                 if (isRetrying) {
                                     CircularProgressIndicator(
-                                        color = Color(0xFFFFB4AB),
+                                        color = ErrorRed,
                                         modifier = Modifier.size(20.dp),
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = "Connecting...",
-                                        color = Color(0xFFFFB4AB),
+                                        color = ErrorRed,
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 } else {
                                     Icon(
                                         imageVector = Icons.Default.ErrorOutline,
                                         contentDescription = "Offline",
-                                        tint = Color(0xFFFFB4AB),
+                                        tint = ErrorRed,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
                                     Text(
                                         text = "Connection lost. Tap to retry",
-                                        color = Color(0xFFFFB4AB),
+                                        color = ErrorRed,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Bold
                                     )

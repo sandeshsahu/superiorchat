@@ -48,11 +48,13 @@ class Prefs private constructor(context: Context) {
         )
     }
 
+    private var _botToken: String = sharedPreferences.getString("bot_token", "").orEmpty()
     var botToken: String
-        get() = sharedPreferences.getString("bot_token", "").orEmpty()
+        get() = _botToken
         set(value) {
-            val current = sharedPreferences.getString("bot_token", "")
-            if (current != value) {
+            if (_botToken != value) {
+                _botToken = value
+                _lastUpdateId = 0L // Reset last update ID if bot token changes
                 sharedPreferences.edit()
                     .putString("bot_token", value)
                     .putLong("last_update_id", 0L)
@@ -60,22 +62,34 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _chatId: String = sharedPreferences.getString("chat_id", "").orEmpty()
     var chatId: String
-        get() = sharedPreferences.getString("chat_id", "").orEmpty()
+        get() = _chatId
         set(value) {
-            sharedPreferences.edit().putString("chat_id", value).apply()
+            if (_chatId != value) {
+                _chatId = value
+                sharedPreferences.edit().putString("chat_id", value).apply()
+            }
         }
 
+    private var _lastUpdateId: Long = sharedPreferences.getLong("last_update_id", 0L)
     var lastUpdateId: Long
-        get() = sharedPreferences.getLong("last_update_id", 0L)
+        get() = _lastUpdateId
         set(value) {
-            sharedPreferences.edit().putLong("last_update_id", value).apply()
+            if (_lastUpdateId != value) {
+                _lastUpdateId = value
+                sharedPreferences.edit().putLong("last_update_id", value).apply()
+            }
         }
 
+    private var _isAutoDownloadMediaEnabled: Boolean = sharedPreferences.getBoolean("auto_download_media", false)
     var isAutoDownloadMediaEnabled: Boolean
-        get() = sharedPreferences.getBoolean("auto_download_media", false)
+        get() = _isAutoDownloadMediaEnabled
         set(value) {
-            sharedPreferences.edit().putBoolean("auto_download_media", value).apply()
+            if (_isAutoDownloadMediaEnabled != value) {
+                _isAutoDownloadMediaEnabled = value
+                sharedPreferences.edit().putBoolean("auto_download_media", value).apply()
+            }
         }
 
     val isConfigured: Boolean

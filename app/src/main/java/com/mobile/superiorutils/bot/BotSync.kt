@@ -58,15 +58,27 @@ class BotSync(private val context: Context) {
     private fun registerNetworkCallback() {
         if (networkCollectorJob != null) return
         networkCollectorJob = coroutineScope.launch {
-            NetState.isOnline.collect { isOnline ->
-                isNetworkAvailable = isOnline
-                if (isOnline) {
-                    AppLog.log(LogCategory.SYSTEM, "Network available. Waking up polling loop and flushing queue.")
-                    networkWakeChannel.trySend(Unit)
-                    flushQueuedMessages()
-                } else {
-                    AppLog.log(LogCategory.SYSTEM, "Network lost. Polling will pause after current request times out.")
-                    AppLog.setTelegramApiReachable(false)
+            launch {
+                NetState.isOnline.collect { isOnline ->
+                    isNetworkAvailable = isOnline
+                    if (isOnline) {
+                        AppLog.log(LogCategory.SYSTEM, "Network available. Waking up polling loop and flushing queue.")
+                        networkWakeChannel.trySend(Unit)
+                        flushQueuedMessages()
+                    } else {
+                        AppLog.log(LogCategory.SYSTEM, "Network lost. Polling will pause after current request times out.")
+                        AppLog.setTelegramApiReachable(false)
+                    }
+                }
+            }
+            launch {
+                AppLog.isTelegramApiReachable.collect { isReachable ->
+                    // If the user manually retries from the UI and succeeds, wake up the polling loop!
+                    if (isReachable && isNetworkAvailable) {
+                        AppLog.log(LogCategory.SYSTEM, "API reachable via UI retry. Waking up polling loop.")
+                        networkWakeChannel.trySend(Unit)
+                        flushQueuedMessages()
+                    }
                 }
             }
         }
@@ -100,36 +112,36 @@ class BotSync(private val context: Context) {
                         continue
                     }
 
-                    val response = TelegramApi.getUpdatesRaw(token, lastUpdateId + 1, 80)
-                    if (response.isSuccessful) {
-                        consecutiveFailures = 0
-                        AppLog.setTelegramApiReachable(true)
+                    TelegramApi.getUpdatesRaw(token, lastUpdateId + 1, 80).use { response ->
+                        if (response.isSuccessful) {
+                            consecutiveFailures = 0
+                            AppLog.setTelegramApiReachable(true)
 
-                        val body = response.body?.string()
-                        if (!body.isNullOrEmpty()) {
-                            val updateResponse = TelegramApi.json.decodeFromString<UpdateResponse>(body)
-                            if (updateResponse.ok) {
-                                hasUpdates = updateResponse.result.isNotEmpty()
-                                for (update in updateResponse.result) {
-                                    try {
-                                        lastUpdateId = update.update_id
-                                        handleUpdate(update)
-                                    } catch (e: Exception) {
-                                        AppLog.log(LogCategory.SYSTEM, "Failed to handle update ${update.update_id}: ${e.message}", LogLevel.ERROR)
+                            val body = response.body?.string()
+                            if (!body.isNullOrEmpty()) {
+                                val updateResponse = TelegramApi.json.decodeFromString<UpdateResponse>(body)
+                                if (updateResponse.ok) {
+                                    hasUpdates = updateResponse.result.isNotEmpty()
+                                    for (update in updateResponse.result) {
+                                        try {
+                                            lastUpdateId = update.update_id
+                                            handleUpdate(update)
+                                        } catch (e: Exception) {
+                                            AppLog.log(LogCategory.SYSTEM, "Failed to handle update ${update.update_id}: ${e.message}", LogLevel.ERROR)
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        if (response.code == 409) {
-                            consecutiveFailures += 2 // Give other instances time to die
                         } else {
-                            consecutiveFailures++
+                            if (response.code == 409) {
+                                consecutiveFailures += 2 // Give other instances time to die
+                            } else {
+                                consecutiveFailures++
+                            }
+                            val errorBody = response.body?.string()
+                            AppLog.log(LogCategory.NETWORK, "Polling failed: ${response.code} - $errorBody", LogLevel.ERROR)
                         }
-                        val errorBody = response.body?.string()
-                        AppLog.log(LogCategory.NETWORK, "Polling failed: ${response.code} - $errorBody", LogLevel.ERROR)
                     }
-                    response.close()
                 } catch (e: CancellationException) {
                     break
                 } catch (e: Exception) {
@@ -237,12 +249,23 @@ class BotSync(private val context: Context) {
         val isAutoDownload = AppGraph.prefs.isAutoDownloadMediaEnabled && fileId != null && mediaType != null
         val finalStatus = if (isAutoDownload) MessageStatus.SENDING else MessageStatus.SENT
 
+        val receiveTimestamp = System.currentTimeMillis()
+
+        val conversationEntity = ChatNode(
+            chatId = chatId,
+            title = message.from?.first_name ?: message.chat.first_name ?: "Unknown",
+            lastMessageText = text,
+            lastMessageTimestamp = receiveTimestamp,
+            unreadCount = 1
+        )
+        repository.insertOrUpdateConversation(conversationEntity)
+
         val messageEntity = MessageNode(
             messageId = message.message_id,
             conversationId = chatId,
             senderId = senderId,
             text = text,
-            timestamp = message.date * 1000L,
+            timestamp = receiveTimestamp,
             isFromMe = false,
             mediaType = mediaType,
             mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
@@ -256,15 +279,6 @@ class BotSync(private val context: Context) {
         if (isAutoDownload) {
             MediaSync.enqueueDownload(context, messageEntity.messageId, fileId!!, mediaType!!)
         }
-
-        val conversationEntity = ChatNode(
-            chatId = chatId,
-            title = message.from?.first_name ?: message.chat.first_name ?: "Unknown",
-            lastMessageText = text,
-            lastMessageTimestamp = message.date * 1000L,
-            unreadCount = 1
-        )
-        repository.insertOrUpdateConversation(conversationEntity)
 
         AppLog.log(LogCategory.BOT_ACTIVITY, "Received message: ${text.take(50)}")
 

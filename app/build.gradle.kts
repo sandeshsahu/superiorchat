@@ -121,3 +121,7 @@ dependencies {
   // Coil
   implementation("io.coil-kt:coil-compose:2.6.0")
 }
+
+ksp {
+    arg("room.generateKotlin", "true")
+}

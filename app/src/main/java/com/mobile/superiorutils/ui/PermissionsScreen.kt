@@ -12,7 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import com.mobile.superiorutils.ui.components.bounceClick
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,7 +39,7 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Background)
             .padding(horizontal = 20.dp)
             .padding(top = 24.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -48,7 +48,7 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
             Text(
                 "All permissions must be granted for full functionality.",
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.outline,
+                color = TextSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
             )
@@ -87,7 +87,7 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
                         Box(
                             modifier = Modifier
                                 .background(Primary.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
-                                .clickable { perm.onClick() }
+                                .bounceClick(scaleDown = 0.95f) { perm.onClick() }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
                             Text("Grant", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)

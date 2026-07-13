@@ -1,4 +1,4 @@
-package com.mobile.superiorutils.ui.components
+package com.mobile.superiorsetup.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,8 +15,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.mobile.superiorutils.theme.Background
-import com.mobile.superiorutils.theme.PrimaryLight
+import com.mobile.superiorsetup.theme.Background
+import com.mobile.superiorsetup.theme.PrimaryLight
 
 @Composable
 fun ErrorDialog(

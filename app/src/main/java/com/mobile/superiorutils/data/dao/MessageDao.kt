@@ -10,21 +10,21 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MessageDao {
-    @Query("SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY timestamp ASC")
-    fun getMessagesForConversation(conversationId: String): Flow<List<MessageNode>>
+    @Query("SELECT * FROM (SELECT * FROM messages WHERE conversationId = :conversationId ORDER BY timestamp DESC LIMIT :limit) ORDER BY timestamp ASC")
+    fun getMessagesForConversation(conversationId: String, limit: Int): Flow<List<MessageNode>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertMessage(message: MessageNode): Long
+    suspend fun insertMessage(message: MessageNode): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertMessages(messages: List<MessageNode>): List<Long>
+    suspend fun insertMessages(messages: List<MessageNode>): List<Long>
 
     @Query("UPDATE messages SET status = :status WHERE messageId = :messageId")
-    fun updateMessageStatus(messageId: Long, status: MessageStatus): Int
+    suspend fun updateMessageStatus(messageId: Long, status: MessageStatus): Int
 
     @Query("SELECT * FROM messages WHERE messageId = :messageId LIMIT 1")
-    fun getMessageById(messageId: Long): MessageNode?
+    suspend fun getMessageById(messageId: Long): MessageNode?
 
     @Query("SELECT * FROM messages WHERE status = :status ORDER BY timestamp ASC")
-    fun getMessagesByStatus(status: MessageStatus): List<MessageNode>
+    suspend fun getMessagesByStatus(status: MessageStatus): List<MessageNode>
 }

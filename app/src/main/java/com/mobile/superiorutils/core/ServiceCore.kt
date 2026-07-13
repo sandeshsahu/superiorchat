@@ -21,7 +21,22 @@ object ServiceCore {
             ContextCompat.startForegroundService(context, serviceIntent)
             AppLog.log(LogCategory.SYSTEM, "ServiceCore: Started BotService")
         } catch (e: Exception) {
-            AppLog.log(LogCategory.SYSTEM, "ServiceCore: Failed to start service: ${e.message}", LogLevel.ERROR)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && 
+                e is android.app.ForegroundServiceStartNotAllowedException) {
+                AppLog.log(LogCategory.SYSTEM, "ServiceCore: ForegroundService blocked (Android 12+). Falling back to WorkManager.", LogLevel.WARN)
+                try {
+                    val request = androidx.work.OneTimeWorkRequestBuilder<com.mobile.superiorutils.service.BotWorker>().build()
+                    androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
+                        "BotWorkerFallback",
+                        androidx.work.ExistingWorkPolicy.REPLACE,
+                        request
+                    )
+                } catch (we: Exception) {
+                    AppLog.log(LogCategory.SYSTEM, "ServiceCore: WorkManager fallback failed: ${we.message}", LogLevel.ERROR)
+                }
+            } else {
+                AppLog.log(LogCategory.SYSTEM, "ServiceCore: Failed to start service: ${e.message}", LogLevel.ERROR)
+            }
         }
     }
 }

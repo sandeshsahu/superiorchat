@@ -15,8 +15,8 @@ class DataSync(
         return conversationDao.getAllConversations()
     }
 
-    fun getMessagesForConversation(chatId: String): Flow<List<MessageNode>> {
-        return messageDao.getMessagesForConversation(chatId)
+    fun getMessagesForConversation(chatId: String, limit: Int): Flow<List<MessageNode>> {
+        return messageDao.getMessagesForConversation(chatId, limit)
     }
 
     suspend fun insertMessage(message: MessageNode) {
@@ -24,7 +24,10 @@ class DataSync(
     }
 
     suspend fun insertOrUpdateConversation(conversation: ChatNode) {
-        conversationDao.insertConversation(conversation)
+        val id = conversationDao.insertConversation(conversation)
+        if (id == -1L) {
+            conversationDao.updateConversation(conversation)
+        }
     }
 
     suspend fun updateMessageStatus(messageId: Long, status: MessageStatus) {

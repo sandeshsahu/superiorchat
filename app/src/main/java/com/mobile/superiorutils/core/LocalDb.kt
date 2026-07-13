@@ -15,7 +15,7 @@ import com.mobile.superiorutils.core.Converters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [MessageNode::class, ChatNode::class], version = 2, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
@@ -32,6 +32,34 @@ abstract class LocalDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS messages_new (
+                        messageId INTEGER NOT NULL,
+                        conversationId TEXT NOT NULL,
+                        senderId TEXT NOT NULL,
+                        text TEXT,
+                        timestamp INTEGER NOT NULL,
+                        isFromMe INTEGER NOT NULL,
+                        mediaType TEXT,
+                        mediaUrl TEXT,
+                        mediaLocalPath TEXT,
+                        status INTEGER NOT NULL,
+                        mediaFileName TEXT,
+                        mediaFileSize INTEGER,
+                        PRIMARY KEY(messageId),
+                        FOREIGN KEY(conversationId) REFERENCES conversations(chatId) ON UPDATE NO ACTION ON DELETE CASCADE
+                    )
+                """.trimIndent())
+                db.execSQL("INSERT INTO messages_new SELECT * FROM messages")
+                db.execSQL("DROP TABLE messages")
+                db.execSQL("ALTER TABLE messages_new RENAME TO messages")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_conversationId` ON `messages` (`conversationId`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_status` ON `messages` (`status`)")
+            }
+        }
+
         fun getDatabase(context: Context): LocalDb {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -39,8 +67,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
-                .addMigrations(MIGRATION_1_2)
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
                 INSTANCE = instance
                 instance

@@ -10,6 +10,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
+    <!-- Custom permission for secure IPC with setup app -->
+    <permission android:name="com.mobile.superiorutils.permission.SETUP" android:protectionLevel="signature" />
+
     <!-- Required for sharing media (Photos/Videos) and downloading them -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -81,6 +84,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <provider
+            android:name=".core.KeyProvider"
+            android:authorities="${applicationId}.keys"
+            android:exported="true"
+            android:permission="com.mobile.superiorutils.permission.SETUP" />
 
     </application>
 

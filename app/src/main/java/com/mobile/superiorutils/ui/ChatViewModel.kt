@@ -134,6 +134,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         prefs.sharedPreferences.unregisterOnSharedPreferenceChangeListener(prefListener)
     }
 
+    private val _messageLimit = MutableStateFlow(50)
+    val messageLimit: StateFlow<Int> = _messageLimit.asStateFlow()
+    
+    fun loadMoreMessages() {
+        if (_messages.value.size >= _messageLimit.value) {
+            _messageLimit.value += 50
+        }
+    }
+
     private fun loadMessages() {
         val chatId = prefs.chatId
         if (chatId.isBlank()) {
@@ -143,10 +152,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         messageCollectionJob?.cancel()
         messageCollectionJob = viewModelScope.launch(Dispatchers.IO) {
-            // One-time startup sync scan for interrupted/queued messages
+            // One-time startup sync scan for interrupted/queued messages globally
             try {
-                val firstList = repository.getMessagesForConversation(chatId).first()
-                firstList.forEach { msg ->
+                val queuedMsgs = repository.getQueuedMessages()
+                queuedMsgs.forEach { msg ->
                     // Resume downloads in SENDING status
                     if (!msg.isFromMe && msg.status == MessageStatus.SENDING && msg.mediaUrl != null && msg.mediaLocalPath == null) {
                         MediaSync.startDownloadImmediate(getApplication(), msg.messageId, msg.mediaUrl, msg.mediaType ?: "")
@@ -178,9 +187,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 AppLog.log(LogCategory.SYSTEM, "Error running startup message sync: ${e.message}", LogLevel.ERROR)
             }
 
-            // Collect live database updates to push directly to UI StateFlow
-            repository.getMessagesForConversation(chatId).collect { msgs ->
-                _messages.value = msgs
+            // Collect live database updates to push directly to UI StateFlow with pagination
+            _messageLimit.collectLatest { limit ->
+                repository.getMessagesForConversation(chatId, limit).collect { msgs ->
+                    _messages.value = msgs
+                }
             }
         }
     }
@@ -541,21 +552,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (downloadDir.exists() && downloadDir.isDirectory) {
                     val files = downloadDir.listFiles()
                     val sdf = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-                    files?.forEach { file ->
-                        if (file.isFile) {
-                            if (isUselessFile(file.name, file.absolutePath)) return@forEach
-                            val sizeBytes = file.length()
-                            val sizeStr = when {
-                                sizeBytes > 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", sizeBytes / (1024f * 1024f))
-                                sizeBytes > 1024 -> "${sizeBytes / 1024} KB"
-                                else -> "$sizeBytes B"
-                            }
-                            val dateStr = sdf.format(Date(file.lastModified()))
-                            val mime = context.contentResolver.getType(Uri.fromFile(file))
-                            fileList.add(LocalFileItem(file.name, file.absolutePath, sizeStr, mime, false, dateStr))
+                    
+                    // Filter and sort the raw files FIRST before expensive metadata reads
+                    val validFiles = files?.filter { it.isFile && !isUselessFile(it.name, it.absolutePath) }
+                        ?.sortedByDescending { it.lastModified() }
+                        ?.take(10)
+                        
+                    validFiles?.forEach { file ->
+                        val sizeBytes = file.length()
+                        val sizeStr = when {
+                            sizeBytes > 1024 * 1024 -> String.format(Locale.getDefault(), "%.1f MB", sizeBytes / (1024f * 1024f))
+                            sizeBytes > 1024 -> "${sizeBytes / 1024} KB"
+                            else -> "$sizeBytes B"
                         }
+                        val dateStr = sdf.format(Date(file.lastModified()))
+                        val mime = context.contentResolver.getType(Uri.fromFile(file))
+                        fileList.add(LocalFileItem(file.name, file.absolutePath, sizeStr, mime, false, dateStr))
                     }
-                    fileList.sortByDescending { File(it.path).lastModified() }
                 }
             }
             recentFiles = fileList.take(5)

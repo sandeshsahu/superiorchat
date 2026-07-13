@@ -1,58 +1,92 @@
 package com.mobile.superiorutils.utils
 
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
 import android.util.Base64
+import java.security.KeyPairGenerator
+import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.PublicKey
 import javax.crypto.Cipher
-import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.SecretKeySpec
 
 object CryptoUtils {
-    private const val ALGORITHM = "AES/GCM/NoPadding"
-    private const val TAG_LENGTH_BIT = 128
-    private const val IV_LENGTH_BYTE = 12
-    // A shared 32-byte (256-bit) static key for IPC transport between our own apps.
-    // In a real production app, you might derive this dynamically, but for simple burner IPC, this is sufficient to hide from basic intents.
-    private val IPC_SECRET_KEY = byteArrayOf(
-        0x53, 0x75, 0x70, 0x65, 0x72, 0x69, 0x6F, 0x72, 0x43, 0x68, 0x61, 0x74, 0x53, 0x65, 0x63, 0x72,
-        0x65, 0x74, 0x4B, 0x65, 0x79, 0x32, 0x30, 0x32, 0x34, 0x5F, 0x30, 0x30, 0x37, 0x21, 0x40, 0x23
-    )
+    private const val KEY_ALIAS = "SuperiorChatIPCKey"
+    private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+    private const val TRANSFORMATION = "RSA/ECB/PKCS1Padding"
 
-    fun encrypt(plainText: String): String {
+    init {
+        generateKeyStoreKeyIfNeeded()
+    }
+
+    private fun generateKeyStoreKeyIfNeeded() {
         try {
-            val cipher = Cipher.getInstance(ALGORITHM)
-            val iv = ByteArray(IV_LENGTH_BYTE)
-            java.security.SecureRandom().nextBytes(iv)
-            val parameterSpec = GCMParameterSpec(TAG_LENGTH_BIT, iv)
-            val secretKeySpec = SecretKeySpec(IPC_SECRET_KEY, "AES")
-            cipher.init(Cipher.ENCRYPT_MODE, secretKeySpec, parameterSpec)
-            val cipherText = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
-            
-            // Combine IV and CipherText
-            val combined = ByteArray(iv.size + cipherText.size)
-            System.arraycopy(iv, 0, combined, 0, iv.size)
-            System.arraycopy(cipherText, 0, combined, iv.size, cipherText.size)
-            return Base64.encodeToString(combined, Base64.NO_WRAP)
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            if (!keyStore.containsAlias(KEY_ALIAS)) {
+                val keyPairGenerator = KeyPairGenerator.getInstance(
+                    KeyProperties.KEY_ALGORITHM_RSA, ANDROID_KEYSTORE
+                )
+                val parameterSpec = KeyGenParameterSpec.Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_DECRYPT or KeyProperties.PURPOSE_ENCRYPT
+                )
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                    .setKeySize(2048)
+                    .build()
+                
+                keyPairGenerator.initialize(parameterSpec)
+                keyPairGenerator.generateKeyPair()
+                AppLog.log(LogCategory.SYSTEM, "Generated new RSA Keystore key pair for IPC.")
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
-            return ""
+            AppLog.log(LogCategory.SYSTEM, "Failed to generate Keystore key: ${e.message}", LogLevel.ERROR)
         }
     }
 
-    fun decrypt(encryptedText: String): String {
+    fun getPublicKeyBase64(): String {
         try {
-            val combined = Base64.decode(encryptedText, Base64.NO_WRAP)
-            val iv = ByteArray(IV_LENGTH_BYTE)
-            System.arraycopy(combined, 0, iv, 0, iv.size)
-            val cipherText = ByteArray(combined.size - iv.size)
-            System.arraycopy(combined, iv.size, cipherText, 0, cipherText.size)
-            
-            val cipher = Cipher.getInstance(ALGORITHM)
-            val parameterSpec = GCMParameterSpec(TAG_LENGTH_BIT, iv)
-            val secretKeySpec = SecretKeySpec(IPC_SECRET_KEY, "AES")
-            cipher.init(Cipher.DECRYPT_MODE, secretKeySpec, parameterSpec)
-            val plainText = cipher.doFinal(cipherText)
-            return String(plainText, Charsets.UTF_8)
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            val publicKey = keyStore.getCertificate(KEY_ALIAS)?.publicKey
+            if (publicKey != null) {
+                return Base64.encodeToString(publicKey.encoded, Base64.NO_WRAP)
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            AppLog.log(LogCategory.SYSTEM, "Failed to retrieve public key: ${e.message}", LogLevel.ERROR)
+        }
+        return ""
+    }
+
+    fun decrypt(encryptedBase64: String): String {
+        try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            val privateKey = keyStore.getKey(KEY_ALIAS, null) as? PrivateKey
+                ?: throw IllegalStateException("Private key not found")
+                
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.DECRYPT_MODE, privateKey)
+            
+            val encryptedBytes = Base64.decode(encryptedBase64, Base64.NO_WRAP)
+            val decryptedBytes = cipher.doFinal(encryptedBytes)
+            return String(decryptedBytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to decrypt IPC payload: ${e.message}", LogLevel.ERROR)
+            return ""
+        }
+    }
+    
+    // Fallback for encrypting locally if needed (e.g., testing)
+    fun encrypt(plainText: String): String {
+        try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            val publicKey = keyStore.getCertificate(KEY_ALIAS)?.publicKey
+                ?: throw IllegalStateException("Public key not found")
+                
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey)
+            
+            val encryptedBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+            return Base64.encodeToString(encryptedBytes, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to encrypt payload: ${e.message}", LogLevel.ERROR)
             return ""
         }
     }

@@ -36,9 +36,9 @@ object NetState {
             }
 
             override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-                if (networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
-                    _isOnline.value = true
-                }
+                val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
+                                  networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                _isOnline.value = hasInternet
             }
 
             override fun onLost(network: Network) {

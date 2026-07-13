@@ -13,6 +13,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.mobile.superiorutils.theme.*
@@ -74,3 +84,40 @@ fun Modifier.glow(
         }
     }
 }
+
+/**
+ * Applies a subtle scaling bounce animation when the user taps on the composable.
+ */
+fun Modifier.bounceClick(
+    scaleDown: Float = 0.95f,
+    onClick: () -> Unit = {}
+): Modifier = composed {
+    var isPressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) scaleDown else 1f,
+        label = "bounceClick_scale"
+    )
+
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .pointerInput(isPressed) {
+            awaitPointerEventScope {
+                isPressed = if (isPressed) {
+                    waitForUpOrCancellation()
+                    false
+                } else {
+                    awaitFirstDown(requireUnconsumed = false)
+                    true
+                }
+            }
+        }
+        .clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = { onClick() }
+        )
+}
+

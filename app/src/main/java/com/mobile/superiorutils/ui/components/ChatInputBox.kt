@@ -277,6 +277,7 @@ fun ChatInputBox(
                         } else {
                             awaitPointerEventScope {
                                 var startX = 0f
+                                var startTimeMs = 0L
                                 while (true) {
                                     val event = awaitPointerEvent()
                                     val change = event.changes.firstOrNull()
@@ -284,6 +285,7 @@ fun ChatInputBox(
                                         if (change.pressed && !change.previousPressed) {
                                             // ACTION_DOWN — start recording
                                             startX = change.position.x
+                                            startTimeMs = System.currentTimeMillis()
                                             swipeDragX = 0f
                                             val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
                                             if (hasPermission) {
@@ -295,8 +297,10 @@ fun ChatInputBox(
                                             // DRAG — track horizontal swipe
                                             swipeDragX = change.position.x - startX
                                         } else if (!change.pressed && change.previousPressed) {
-                                            // ACTION_UP — send or cancel based on swipe distance
-                                            val shouldCancel = swipeDragX < -cancelThresholdPx
+                                            // ACTION_UP — send or cancel based on swipe distance and duration
+                                            val durationMs = System.currentTimeMillis() - startTimeMs
+                                            val isMisclick = durationMs < 1000 // Cancel if under 1 second
+                                            val shouldCancel = swipeDragX < -cancelThresholdPx || isMisclick
                                             viewModel.stopRecordingAudio(context, cancel = shouldCancel)
                                             swipeDragX = 0f
                                         }

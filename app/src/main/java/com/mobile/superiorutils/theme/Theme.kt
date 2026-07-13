@@ -34,6 +34,7 @@ val SurfaceContainerHighest = Color(0xFF353535)
 val Success = Color(0xFF22C55E)
 val ErrorRed = Color(0xFFFFB4AB)
 val WarningAmber = Color(0xFFFFB783)
+val InfoBlue = Color(0xFF3B82F6)
 
 // ── Text ────────────────────────────────────────────────
 val TextPrimary = Color(0xFFFFFFFF).copy(alpha = 0.95f)
