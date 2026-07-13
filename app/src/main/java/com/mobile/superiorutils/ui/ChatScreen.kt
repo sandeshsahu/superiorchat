@@ -13,6 +13,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -36,6 +38,8 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import com.mobile.superiorutils.ui.components.ScrollEvent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -67,6 +71,9 @@ import com.mobile.superiorutils.ui.components.bounceClick
 import com.mobile.superiorutils.ui.components.glow
 import java.io.File
 import java.util.Locale
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,15 +95,66 @@ fun ChatScreen(
     val isRetrying = viewModel.isRetryingConnection
     val hasConnectionError = !isOnline || !isTelegramApiReachable
 
-    // Auto-scroll: only jump to bottom when a single new message arrives,
-    // NOT when pagination loads a batch of older messages.
-    var previousMessageCount by remember { mutableIntStateOf(messages.size) }
-    LaunchedEffect(messages.size) {
-        val delta = messages.size - previousMessageCount
-        if (messages.isNotEmpty() && delta == 1) {
-            listState.requestScrollToItem(0)
+    val activeConversationId = remember(messages) { messages.firstOrNull()?.conversationId }
+    val coroutineScope = rememberCoroutineScope()
+    var shouldScrollToBottomOnStart by remember(activeConversationId) { mutableStateOf(true) }
+    var shouldScrollToBottom by remember { mutableStateOf(false) }
+    val isScrolledUp by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 4 }
+    }
+
+    // Initial scroll when conversation changes or first loads
+    if (shouldScrollToBottomOnStart && messages.isNotEmpty()) {
+        SideEffect {
+            coroutineScope.launch {
+                listState.scrollToItem(0)
+                shouldScrollToBottomOnStart = false
+            }
         }
-        previousMessageCount = messages.size
+    }
+
+    // Scroll to bottom after message list recomposes
+    if (shouldScrollToBottom) {
+        SideEffect {
+            coroutineScope.launch {
+                listState.scrollToItem(0)
+                shouldScrollToBottom = false
+            }
+        }
+    }
+
+    // Event-driven Auto-scroll (subsequent events)
+    LaunchedEffect(Unit) {
+        viewModel.scrollEvents.collect { event ->
+            when (event) {
+                is ScrollEvent.NewMessageInserted -> {
+                    val wasAtBottom = listState.firstVisibleItemIndex <= 2
+                    if (event.isFromMe || wasAtBottom) {
+                        shouldScrollToBottom = true
+                        viewModel.hasUnreadMessages = false
+                    } else {
+                        viewModel.hasUnreadMessages = true
+                    }
+                }
+                is ScrollEvent.JumpToBottomRequested -> {
+                    listState.scrollToItem(0)
+                    viewModel.hasUnreadMessages = false
+                }
+                is ScrollEvent.OlderMessagesLoaded -> {
+                    // Do nothing, Compose naturally maintains scroll position for prepended items
+                }
+            }
+        }
+    }
+
+    // Monitor manual scrolls to reset unread indicator
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                if (index <= 1 && viewModel.hasUnreadMessages) {
+                    viewModel.hasUnreadMessages = false
+                }
+            }
     }
 
     // Pagination: load older messages when user scrolls near the top
@@ -179,6 +237,20 @@ fun ChatScreen(
         { path: String, type: String ->
             activeFullScreenMediaPath = path
             activeFullScreenMediaType = type
+        }
+    }
+
+    val onMediaLongPressStartRemembered = remember {
+        { path: String, type: String ->
+            activeFullScreenMediaPath = path
+            activeFullScreenMediaType = type
+        }
+    }
+
+    val onMediaLongPressEndRemembered = remember {
+        {
+            activeFullScreenMediaPath = null
+            activeFullScreenMediaType = null
         }
     }
 
@@ -285,7 +357,9 @@ fun ChatScreen(
                             MessageBubble(
                                 message = msg,
                                 viewModel = viewModel,
-                                onMediaClick = onMediaClickRemembered
+                                onMediaClick = onMediaClickRemembered,
+                                onMediaLongPressStart = onMediaLongPressStartRemembered,
+                                onMediaLongPressEnd = onMediaLongPressEndRemembered
                             )
                         }
                         
@@ -305,6 +379,29 @@ fun ChatScreen(
                                 }
                             }
                         }
+                    }
+                }
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isScrolledUp || viewModel.hasUnreadMessages,
+                    enter = scaleIn(spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow)),
+                    exit = scaleOut(tween(150)),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(bottom = 16.dp, end = 16.dp)
+                ) {
+                    FloatingActionButton(
+                        onClick = { viewModel.requestJumpToBottom() },
+                        containerColor = PrimaryLight,
+                        contentColor = Color.Black,
+                        shape = CircleShape,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Jump to bottom",
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
                 }
 
@@ -441,10 +538,11 @@ fun ChatScreen(
         initialTab = if (currentPickerMode == PickerMode.FILES) PickerTab.FILES else PickerTab.GALLERY,
         onDismiss = { currentPickerMode = PickerMode.NONE },
         viewModel = viewModel,
-        onMediaSelected = { uris ->
+        onMediaSelected = { items ->
             var allSuccess = true
-            uris.forEach { uri ->
-                val success = viewModel.sendMedia(context, uri, "photo")
+            items.forEach { item ->
+                val type = if (item.isVideo) "video" else "photo"
+                val success = viewModel.sendMedia(context, item.uri, type)
                 if (!success) allSuccess = false
             }
             if (allSuccess) currentPickerMode = PickerMode.NONE

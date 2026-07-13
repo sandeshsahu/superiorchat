@@ -28,6 +28,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTapGestures
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -38,6 +44,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.data.entity.MessageStatus
 import com.mobile.superiorutils.theme.DividerColor
@@ -60,7 +68,9 @@ import com.mobile.superiorutils.media.MediaSync
 fun MessageBubble(
     message: MessageNode,
     viewModel: ChatViewModel,
-    onMediaClick: (String, String) -> Unit
+    onMediaClick: (String, String) -> Unit,
+    onMediaLongPressStart: (String, String) -> Unit = { _, _ -> },
+    onMediaLongPressEnd: () -> Unit = {}
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
@@ -116,14 +126,27 @@ fun MessageBubble(
                                         .build(),
                                     contentDescription = "Photo",
                                     modifier = Modifier
-                                        .fillMaxWidth()
                                         .heightIn(max = 300.dp)
-                                        .clickable(enabled = !isUploading) { 
-                                            if (isFailedUpload) {
-                                                viewModel.retryMessage(message)
-                                            } else {
-                                                onMediaClick(message.mediaLocalPath, "photo") 
-                                            }
+                                        .pointerInput(isUploading) {
+                                            if (isUploading) return@pointerInput
+                                            detectTapGestures(
+                                                onPress = {
+                                                    val job = CoroutineScope(Dispatchers.Main).launch {
+                                                        delay(150)
+                                                        onMediaLongPressStart(message.mediaLocalPath ?: "", "photo")
+                                                    }
+                                                    val success = tryAwaitRelease()
+                                                    job.cancel()
+                                                    onMediaLongPressEnd()
+                                                    if (success && !job.isCompleted) {
+                                                        if (isFailedUpload) {
+                                                            viewModel.retryMessage(message)
+                                                        } else {
+                                                            onMediaClick(message.mediaLocalPath ?: "", "photo")
+                                                        }
+                                                    }
+                                                }
+                                            )
                                         },
                                     contentScale = ContentScale.Crop
                                 )
@@ -223,15 +246,42 @@ fun MessageBubble(
                                 .height(180.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(Color.Black.copy(alpha = 0.5f))
-                                .clickable(enabled = !isUploading) {
-                                    if (isFailedUpload) {
-                                        viewModel.retryMessage(message)
-                                    } else {
-                                        onMediaClick(message.mediaLocalPath, "video")
-                                    }
+                                .pointerInput(isUploading) {
+                                    if (isUploading) return@pointerInput
+                                    detectTapGestures(
+                                        onPress = {
+                                            val job = CoroutineScope(Dispatchers.Main).launch {
+                                                delay(150)
+                                                onMediaLongPressStart(message.mediaLocalPath ?: "", "video")
+                                            }
+                                            val success = tryAwaitRelease()
+                                            job.cancel()
+                                            onMediaLongPressEnd()
+                                            if (success && !job.isCompleted) {
+                                                if (isFailedUpload) {
+                                                    viewModel.retryMessage(message)
+                                                } else {
+                                                    onMediaClick(message.mediaLocalPath ?: "", "video")
+                                                }
+                                            }
+                                        }
+                                    )
                                 },
                             contentAlignment = Alignment.Center
                         ) {
+                            AsyncImage(
+                                model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                    .data(File(message.mediaLocalPath))
+                                    .videoFrameMillis(1000)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Video Thumbnail",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Dimming overlay over the thumbnail
+                            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
+
                             if (!isUploading && !isFailedUpload) {
                                 Box(
                                     modifier = Modifier

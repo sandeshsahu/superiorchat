@@ -344,6 +344,7 @@ object MediaSync {
                 }
                 when (mediaType) {
                     "photo" -> TelegramApi.sendPhoto(token, chatId, file, onProgress = progressListener)
+                    "video" -> TelegramApi.sendVideo(token, chatId, file, onProgress = progressListener)
                     "voice" -> TelegramApi.sendVoice(token, chatId, file, onProgress = progressListener)
                     "document" -> {
                         // Strip the timestamp prefix (e.g. "1234567890_report.pdf" -> "report.pdf")

@@ -80,7 +80,7 @@ fun FileExplorer(
     onDismiss: () -> Unit,
     onFilesSelected: (List<File>) -> Boolean,
     onSystemPickerClick: () -> Unit,
-    onSwitchToGallery: () -> Unit
+    onBottomBarVisibilityChanged: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     var explorerDirectory by remember { mutableStateOf<File?>(null) }
@@ -97,6 +97,11 @@ fun FileExplorer(
     }
 
     val isExploring = explorerDirectory != null
+
+    // Notify bottom bar visibility changes
+    LaunchedEffect(isExploring, isSearching) {
+        onBottomBarVisibilityChanged(!isExploring && !isSearching)
+    }
 
     // Inner back handler for folder browsing
     BackHandler(enabled = isExploring || isSearching) {
@@ -185,66 +190,6 @@ fun FileExplorer(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
             )
-        },
-        bottomBar = {
-            // Bottom tabs (only in root view, not in search)
-            if (!isExploring && !isSearching) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(80.dp)
-                        .background(Color.Black)
-                        .border(1.dp, DividerColor.copy(alpha = 0.1f))
-                        .padding(horizontal = 24.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceAround,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Gallery Tab (Inactive)
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { onSwitchToGallery() }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PhotoLibrary,
-                            contentDescription = "Gallery",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Gallery",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
-                        )
-                    }
-
-                    // Files Tab (Active)
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(PrimaryLight.copy(alpha = 0.15f))
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Description,
-                            contentDescription = "Files",
-                            tint = PrimaryLight,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Files",
-                            color = PrimaryLight,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
         },
         floatingActionButton = {
             AnimatedVisibility(

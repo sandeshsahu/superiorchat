@@ -44,7 +44,7 @@ class MediaWorker(
         if (msg == null) {
             return@withContext Result.failure()
         }
-        if (msg.status == MessageStatus.SENT || msg.status == MessageStatus.FAILED) {
+        if (msg.status == MessageStatus.SENT) {
             AppLog.log(LogCategory.SYSTEM, "MediaWorker: msgId=$messageId already has status ${msg.status}, skipping.")
             return@withContext Result.success()
         }

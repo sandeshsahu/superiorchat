@@ -257,6 +257,50 @@ object TelegramApi {
         }
     }
 
+    /** Send a video file. Returns true on success. */
+    suspend fun sendVideo(
+        token: String,
+        chatId: String,
+        file: File,
+        caption: String? = null,
+        onProgress: ((Long, Long) -> Unit)? = null
+    ): Boolean {
+        return try {
+            val videoBody = if (onProgress != null) {
+                ProgressRequestBody(file, "video/mp4".toMediaType(), onProgress)
+            } else {
+                file.asRequestBody("video/mp4".toMediaType())
+            }
+            val builder = MultipartBody.Builder()
+                .setType(MultipartBody.FORM)
+                .addFormDataPart("chat_id", chatId)
+                .addFormDataPart("video", file.name, videoBody)
+            if (caption != null) {
+                builder.addFormDataPart("caption", caption)
+                builder.addFormDataPart("parse_mode", "Markdown")
+            }
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "sendVideo"))
+                .post(builder.build())
+                .build()
+
+            val response = client.executeCancellable(request)
+            val success = response.isSuccessful
+            if (!success) {
+                val errorBody = response.body?.string()
+                AppLog.log(LogCategory.NETWORK, "sendVideo failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            } else {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Video: ${file.name}")
+            }
+            response.close()
+            success
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "sendVideo error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
     /** Send a document file. Returns true on success. */
     suspend fun sendDocument(
         token: String,

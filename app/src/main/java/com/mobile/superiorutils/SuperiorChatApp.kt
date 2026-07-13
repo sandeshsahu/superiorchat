@@ -11,8 +11,19 @@ import com.mobile.superiorutils.utils.LogLevel
 import com.mobile.superiorutils.utils.AppLog
 import java.io.File
 import java.io.FileOutputStream
+import coil.ImageLoaderFactory
+import coil.ImageLoader
+import coil.decode.VideoFrameDecoder
 
-class SuperiorChatApp : Application() {
+class SuperiorChatApp : Application(), ImageLoaderFactory {
+
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .components {
+                add(VideoFrameDecoder.Factory())
+            }
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()

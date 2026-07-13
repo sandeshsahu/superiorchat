@@ -38,6 +38,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import com.mobile.superiorutils.ui.components.ScrollEvent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -116,6 +120,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<List<MessageNode>>(emptyList())
     val messages: StateFlow<List<MessageNode>> = _messages.asStateFlow()
 
+    private val _scrollEvents = MutableSharedFlow<ScrollEvent>(extraBufferCapacity = 16)
+    val scrollEvents: SharedFlow<ScrollEvent> = _scrollEvents.asSharedFlow()
+
+    var hasUnreadMessages by mutableStateOf(false)
+
+    fun requestJumpToBottom() {
+        viewModelScope.launch {
+            _scrollEvents.emit(ScrollEvent.JumpToBottomRequested)
+        }
+    }
+
     private var messageCollectionJob: kotlinx.coroutines.Job? = null
 
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -188,9 +203,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // Collect live database updates to push directly to UI StateFlow with pagination
+            var previousMsgs: List<MessageNode>? = null
             _messageLimit.collectLatest { limit ->
                 repository.getMessagesForConversation(chatId, limit).collect { msgs ->
+                    val oldMsgs = previousMsgs
+                    previousMsgs = msgs
                     _messages.value = msgs
+
+                    if (oldMsgs != null) {
+                        val newestOld = oldMsgs.lastOrNull()
+                        val newestNew = msgs.lastOrNull()
+                        if (newestNew != null && newestNew.messageId != newestOld?.messageId) {
+                            _scrollEvents.emit(ScrollEvent.NewMessageInserted(isFromMe = newestNew.isFromMe))
+                        } else if (msgs.size > oldMsgs.size) {
+                            _scrollEvents.emit(ScrollEvent.OlderMessagesLoaded)
+                        }
+                    } else if (msgs.isNotEmpty()) {
+                        _scrollEvents.emit(ScrollEvent.JumpToBottomRequested)
+                    }
                 }
             }
         }
