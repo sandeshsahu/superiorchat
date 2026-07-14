@@ -27,6 +27,7 @@ data class PermissionState(
     val name: String,
     val isGranted: Boolean,
     val displayStatus: String? = null,
+    val buttonText: String = "Grant",
     val onClick: () -> Unit
 )
 
@@ -90,7 +91,7 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
                                 .bounceClick(scaleDown = 0.95f) { perm.onClick() }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text("Grant", color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(perm.buttonText, color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Box(

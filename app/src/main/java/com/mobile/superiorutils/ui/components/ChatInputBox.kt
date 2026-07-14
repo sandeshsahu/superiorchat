@@ -77,8 +77,8 @@ fun ChatInputBox(
     viewModel: ChatViewModel,
     showAttachmentMenu: Boolean,
     onAttachmentMenuChange: (Boolean) -> Unit,
-    storagePermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
-    audioPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>
+    onRequestStoragePermission: (String) -> Unit,
+    onRequestAudioPermission: (String) -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
     val isRecording = viewModel.isRecordingAudio
@@ -150,12 +150,23 @@ fun ChatInputBox(
                         keyboardController?.hide()
                         focusManager.clearFocus()
                         if (!showAttachmentMenu) {
-                            val perm = if (android.os.Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES else Manifest.permission.READ_EXTERNAL_STORAGE
-                            if (androidx.core.content.ContextCompat.checkSelfPermission(context, perm) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            val hasFullImages = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            } else {
+                                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            }
+                            val hasPartialImages = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            } else false
+                            val isExternalStorageManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                android.os.Environment.isExternalStorageManager()
+                            } else false
+
+                            if (hasFullImages || hasPartialImages || isExternalStorageManager) {
                                 viewModel.loadRecentImages(context)
                                 onAttachmentMenuChange(true)
                             } else {
-                                storagePermissionLauncher.launch(perm)
+                                onRequestStoragePermission(Manifest.permission.READ_EXTERNAL_STORAGE) // The parameter is ignored in ChatScreen now
                             }
                         } else {
                             onAttachmentMenuChange(false)
@@ -291,7 +302,7 @@ fun ChatInputBox(
                                             if (hasPermission) {
                                                 viewModel.startRecordingAudio(context)
                                             } else {
-                                                audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                                onRequestAudioPermission(Manifest.permission.RECORD_AUDIO)
                                             }
                                         } else if (change.pressed) {
                                             // DRAG — track horizontal swipe

@@ -214,7 +214,11 @@ private fun MediaViewerContent(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(if (path.startsWith("content://")) android.net.Uri.parse(path) else File(path))
                         .size(2048)
-                        .bitmapConfig(Bitmap.Config.HARDWARE)
+                        .apply {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                                bitmapConfig(Bitmap.Config.HARDWARE)
+                            }
+                        }
                         .crossfade(true)
                         .build(),
                     contentDescription = "Full Screen Photo",

@@ -131,6 +131,25 @@ fun Step1Screen(onNext: () -> Unit) {
         // Continue to install regardless, might have granted it.
         installApp(context) { intent -> installLauncher.launch(intent) }
     }
+    
+    var showInstallDialog by remember { mutableStateOf(false) }
+
+    if (showInstallDialog) {
+        com.mobile.superiorsetup.ui.components.ActionDialog(
+            title = "Installation Permission Required",
+            message = "To install the main app, you need to allow the Setup App to install unknown apps.",
+            confirmText = "Settings",
+            dismissText = "Not Now",
+            onConfirm = {
+                showInstallDialog = false
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+                permissionLauncher.launch(intent)
+            },
+            onDismiss = { showInstallDialog = false }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -176,11 +195,8 @@ fun Step1Screen(onNext: () -> Unit) {
             } else {
                 Button(
                     onClick = {
-                        if (!context.packageManager.canRequestPackageInstalls()) {
-                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                                data = Uri.parse("package:${context.packageName}")
-                            }
-                            permissionLauncher.launch(intent)
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                            showInstallDialog = true
                         } else {
                             installApp(context) { intent -> installLauncher.launch(intent) }
                         }

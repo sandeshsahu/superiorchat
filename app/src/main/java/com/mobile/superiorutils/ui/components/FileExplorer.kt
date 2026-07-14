@@ -80,7 +80,8 @@ fun FileExplorer(
     onDismiss: () -> Unit,
     onFilesSelected: (List<File>) -> Boolean,
     onSystemPickerClick: () -> Unit,
-    onBottomBarVisibilityChanged: (Boolean) -> Unit
+    onBottomBarVisibilityChanged: (Boolean) -> Unit,
+    onRequestManageStoragePermission: () -> Unit
 ) {
     val context = LocalContext.current
     var explorerDirectory by remember { mutableStateOf<File?>(null) }
@@ -299,13 +300,7 @@ fun FileExplorer(
                                         iconColor = PrimaryLight,
                                         onClick = {
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-                                                try {
-                                                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
-                                                    context.startActivity(intent)
-                                                } catch (e: Exception) {
-                                                    val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-                                                    context.startActivity(intent)
-                                                }
+                                                onRequestManageStoragePermission()
                                             } else {
                                                 val dir = Environment.getExternalStorageDirectory()
                                                 explorerDirectory = dir

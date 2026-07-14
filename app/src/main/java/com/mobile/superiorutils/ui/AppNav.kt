@@ -88,16 +88,45 @@ fun AppScreen(
 
     val permissionStatus by viewModel.permissionStatus.collectAsState()
 
+    var lastRequestedPermission by remember { mutableStateOf<String?>(null) }
+    var lastRequestedMultiPermissions by remember { mutableStateOf<Array<String>?>(null) }
+
+    com.mobile.superiorutils.ui.components.GlobalDialogHandler(
+        dialogState = viewModel.activeGlobalDialog,
+        onDismiss = { viewModel.activeGlobalDialog = null }
+    )
+
     val multiPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
+    ) { results ->
         viewModel.refreshPermissions()
+        val allGranted = results.values.all { it }
+        if (!allGranted) {
+            val act = context as? android.app.Activity
+            val permanentlyDenied = lastRequestedMultiPermissions?.any { perm ->
+                !results.getOrDefault(perm, false) && act != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(act, perm)
+            } == true
+            if (permanentlyDenied) {
+                viewModel.activeGlobalDialog = GlobalDialogState.PermissionPermanentlyDenied(
+                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                )
+            }
+        }
     }
 
     val singlePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { _ ->
+    ) { isGranted ->
         viewModel.refreshPermissions()
+        if (!isGranted) {
+            val act = context as? android.app.Activity
+            val perm = lastRequestedPermission
+            if (perm != null && act != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(act, perm)) {
+                viewModel.activeGlobalDialog = GlobalDialogState.PermissionPermanentlyDenied(
+                    Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                )
+            }
+        }
     }
 
     DisposableEffect(currentScreen, lifecycleOwner) {
@@ -123,11 +152,25 @@ fun AppScreen(
     }
 
     val permissionStates = listOf(
-        PermissionState("Post Notifications", permissionStatus.hasPostNotifs) { requestPostNotifications() },
-        PermissionState("Camera", permissionStatus.hasCamera) {
+        PermissionState(
+            name = "Post Notifications", 
+            isGranted = permissionStatus.hasPostNotifs,
+            buttonText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && activity?.let { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS) } == true) "Retry" else "Grant"
+        ) { requestPostNotifications() },
+        PermissionState(
+            name = "Camera", 
+            isGranted = permissionStatus.hasCamera,
+            buttonText = if (activity?.let { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CAMERA) } == true) "Retry" else "Grant"
+        ) {
+            lastRequestedPermission = Manifest.permission.CAMERA
             singlePermissionLauncher.launch(Manifest.permission.CAMERA)
         },
-        PermissionState("Microphone", permissionStatus.hasMicrophone) {
+        PermissionState(
+            name = "Microphone", 
+            isGranted = permissionStatus.hasMicrophone,
+            buttonText = if (activity?.let { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.RECORD_AUDIO) } == true) "Retry" else "Grant"
+        ) {
+            lastRequestedPermission = Manifest.permission.RECORD_AUDIO
             singlePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         },
         PermissionState(
@@ -137,28 +180,31 @@ fun AppScreen(
                 MediaAccessLevel.FULL -> "Granted"
                 MediaAccessLevel.PARTIAL -> "Partial Access"
                 MediaAccessLevel.NONE -> "Required"
-            }
+            },
+            buttonText = if (activity?.let { 
+                val permsToCheck = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
+                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO)
+                } else {
+                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
+                permsToCheck.any { perm -> androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, perm) }
+            } == true) "Retry" else "Grant"
         ) {
             when {
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                    multiPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.READ_MEDIA_IMAGES,
-                            Manifest.permission.READ_MEDIA_VIDEO,
-                            Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
-                        )
-                    )
+                    val perms = arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                    lastRequestedMultiPermissions = perms
+                    multiPermissionLauncher.launch(perms)
                 }
                 Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU -> {
-                    multiPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.READ_MEDIA_IMAGES,
-                            Manifest.permission.READ_MEDIA_VIDEO,
-                            Manifest.permission.READ_MEDIA_AUDIO
-                        )
-                    )
+                    val perms = arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO)
+                    lastRequestedMultiPermissions = perms
+                    multiPermissionLauncher.launch(perms)
                 }
                 else -> {
+                    lastRequestedPermission = Manifest.permission.READ_EXTERNAL_STORAGE
                     singlePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
             }
@@ -300,7 +346,7 @@ fun AppScreen(
                     label = "screen_transition"
                 ) { screen ->
                     when (screen) {
-                        NavScreen.Chat -> ChatScreen()
+                        NavScreen.Chat -> ChatScreen(onShowGlobalDialog = { viewModel.activeGlobalDialog = it })
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
                         NavScreen.Logs -> LogsScreen()
                         NavScreen.Settings -> SettingsScreen(

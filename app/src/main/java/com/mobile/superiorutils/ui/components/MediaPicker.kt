@@ -58,7 +58,8 @@ fun MediaPicker(
     onMediaSelected: (List<LocalMediaItem>) -> Boolean,
     onFilesSelected: (List<File>) -> Boolean,
     onCameraClick: () -> Unit,
-    onSystemPickerClick: () -> Unit
+    onSystemPickerClick: () -> Unit,
+    onRequestManageStoragePermission: () -> Unit
 ) {
     if (!visible) return
 
@@ -174,7 +175,8 @@ fun MediaPicker(
                                     onDismiss = animatedDismiss,
                                     onFilesSelected = onFilesSelected,
                                     onSystemPickerClick = onSystemPickerClick,
-                                    onBottomBarVisibilityChanged = { isBottomBarVisible = it }
+                                    onBottomBarVisibilityChanged = { isBottomBarVisible = it },
+                                    onRequestManageStoragePermission = onRequestManageStoragePermission
                                 )
                             }
                         }

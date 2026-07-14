@@ -30,6 +30,17 @@ class DataSync(
         }
     }
 
+    suspend fun ensureConversationExists(chatId: String) {
+        val chatNode = ChatNode(
+            chatId = chatId,
+            title = "Chat",
+            lastMessageText = null,
+            lastMessageTimestamp = System.currentTimeMillis(),
+            unreadCount = 0
+        )
+        conversationDao.insertConversation(chatNode)
+    }
+
     suspend fun updateMessageStatus(messageId: Long, status: MessageStatus) {
         messageDao.updateMessageStatus(messageId, status)
      }

@@ -69,6 +69,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = AppGraph.prefs
     private val repository = AppGraph.chatRepository
 
+    private var lastMessageTime = 0L
+
+    private fun getNextMessageTime(): Long {
+        var currentTime = System.currentTimeMillis()
+        if (currentTime <= lastMessageTime) {
+            currentTime = lastMessageTime + 1
+        }
+        lastMessageTime = currentTime
+        return currentTime
+    }
+
     val isOnline = NetState.isOnline
     val isTelegramApiReachable = AppLog.isTelegramApiReachable
     
@@ -235,7 +246,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val tempMessageId = -System.currentTimeMillis() // Avoid conflict with positive Telegram message IDs
+        val messageTime = getNextMessageTime()
+        val tempMessageId = -messageTime // Avoid conflict with positive Telegram message IDs
         val isOnline = NetState.isOnline.value
         val initialStatus = if (isOnline) MessageStatus.SENDING else MessageStatus.QUEUED
 
@@ -244,12 +256,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             conversationId = chatId,
             senderId = "ME",
             text = text,
-            timestamp = System.currentTimeMillis(),
+            timestamp = messageTime,
             isFromMe = true,
             status = initialStatus
         )
 
         viewModelScope.launch(Dispatchers.IO) {
+            repository.ensureConversationExists(chatId)
             repository.insertMessage(newMsg)
 
             if (isOnline) {
@@ -279,6 +292,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             return false
         }
 
+        val messageTime = getNextMessageTime()
+        val tempMessageId = -messageTime
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val mediaDir = when (mediaType) {
@@ -289,7 +305,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     "audio" -> LocalDirs.getAudioDir(context, isSent = true)
                     else -> LocalDirs.getDocumentDir(context, isSent = true)
                 }
-                val tempMessageId = -System.currentTimeMillis()
                 val originalName = com.mobile.superiorutils.utils.FileUtils.getFileName(context, uri)
                 // Use original file name to preserve it on Telegram, prefix with timestamp to avoid collisions
                 val safeFileName = "${-tempMessageId}_$originalName"
@@ -301,7 +316,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     conversationId = chatId,
                     senderId = "ME",
                     text = "",
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = messageTime,
                     isFromMe = true,
                     mediaType = mediaType,
                     mediaLocalPath = localFile.absolutePath,
@@ -309,6 +324,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     mediaFileName = originalName,
                     mediaFileSize = fileSize
                 )
+                repository.ensureConversationExists(chatId)
                 repository.insertMessage(newMsg)
                 
                 // Perform the heavy file copy synchronously in background

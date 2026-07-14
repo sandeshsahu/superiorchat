@@ -55,7 +55,19 @@ data class PermissionStatus(
         get() = hasPostNotifs && hasIgnoreBattery && hasCamera && hasMicrophone && mediaAccessLevel == MediaAccessLevel.FULL
 }
 
+sealed class GlobalDialogState {
+    data class PermissionPermanentlyDenied(val intent: Intent) : GlobalDialogState()
+    data class PartialMediaAccessPermanentlyDenied(val onContinue: () -> Unit, val onGoToSettings: () -> Unit) : GlobalDialogState()
+    data class ManageStorageRequired(val intent: Intent) : GlobalDialogState()
+    data class PartialMediaAccess(val onContinue: () -> Unit, val onUpgrade: () -> Unit) : GlobalDialogState()
+    data class CameraPermissionRationale(val onConfirm: () -> Unit) : GlobalDialogState()
+    data class MicrophonePermissionRationale(val onConfirm: () -> Unit) : GlobalDialogState()
+    data class StoragePermissionRationale(val onConfirm: () -> Unit) : GlobalDialogState()
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
+    var activeGlobalDialog by mutableStateOf<GlobalDialogState?>(null)
+
 
     private val prefs = AppGraph.prefs
 

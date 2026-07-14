@@ -67,6 +67,7 @@ import com.mobile.superiorutils.ui.components.MediaViewer
 import com.mobile.superiorutils.ui.components.MediaPicker
 import com.mobile.superiorutils.ui.components.PickerTab
 import com.mobile.superiorutils.ui.components.ErrorDialog
+import com.mobile.superiorutils.ui.components.ActionDialog
 import com.mobile.superiorutils.ui.components.bounceClick
 import com.mobile.superiorutils.ui.components.glow
 import java.io.File
@@ -78,7 +79,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    viewModel: ChatViewModel = viewModel()
+    viewModel: ChatViewModel = viewModel(),
+    onShowGlobalDialog: (com.mobile.superiorutils.ui.GlobalDialogState) -> Unit = {}
 ) {
     val messages by viewModel.messages.collectAsState()
     val messageLimit by viewModel.messageLimit.collectAsState()
@@ -89,6 +91,15 @@ fun ChatScreen(
     var activeFullScreenMediaPath by remember { mutableStateOf<String?>(null) }
     var activeFullScreenMediaType by remember { mutableStateOf<String?>(null) }
     var currentPickerMode by remember { mutableStateOf(PickerMode.NONE) }
+    var showAttachmentMenu by remember { mutableStateOf(false) }
+
+    @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+    val isKeyboardVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
+    LaunchedEffect(isKeyboardVisible) {
+        if (isKeyboardVisible && showAttachmentMenu) {
+            showAttachmentMenu = false
+        }
+    }
 
     val isOnline by viewModel.isOnline.collectAsState()
     val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
@@ -185,15 +196,7 @@ fun ChatScreen(
         }
     )
 
-    var showAttachmentMenu by remember { mutableStateOf(false) }
     
-    @OptIn(ExperimentalLayoutApi::class)
-    val isKeyboardVisible = WindowInsets.isImeVisible
-    LaunchedEffect(isKeyboardVisible) {
-        if (isKeyboardVisible && showAttachmentMenu) {
-            showAttachmentMenu = false
-        }
-    }
     
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
@@ -213,6 +216,15 @@ fun ChatScreen(
         if (isGranted) {
             val uri = viewModel.createCameraUri(context)
             cameraLauncher.launch(uri)
+        } else {
+            val activity = context as? android.app.Activity
+            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+                onShowGlobalDialog(
+                    com.mobile.superiorutils.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    )
+                )
+            }
         }
     }
 
@@ -221,17 +233,83 @@ fun ChatScreen(
     ) { isGranted ->
         if (isGranted) {
             viewModel.startRecordingAudio(context)
+        } else {
+            val activity = context as? android.app.Activity
+            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)) {
+                onShowGlobalDialog(
+                    com.mobile.superiorutils.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    )
+                )
+            }
         }
     }
 
+    val storageLauncherRef = remember { androidx.compose.runtime.mutableStateOf<androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, Map<String, @JvmSuppressWildcards Boolean>>?>(null) }
+
     val storagePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val imagesGranted = results[Manifest.permission.READ_MEDIA_IMAGES] == true
+        val videoGranted = results[Manifest.permission.READ_MEDIA_VIDEO] == true
+        val storageGranted = results[Manifest.permission.READ_EXTERNAL_STORAGE] == true
+        val partialGranted = results[Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
+
+        if (imagesGranted || storageGranted) {
             viewModel.loadRecentImages(context)
+            showAttachmentMenu = true
+        } else if (partialGranted) {
+            viewModel.loadRecentImages(context)
+            val activity = context as? android.app.Activity
+            val fullPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_IMAGES
+            } else {
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
+                onShowGlobalDialog(
+                    com.mobile.superiorutils.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
+                        onContinue = { /* Do nothing, just continue */ },
+                        onGoToSettings = {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        }
+                    )
+                )
+            } else {
+                onShowGlobalDialog(com.mobile.superiorutils.ui.GlobalDialogState.PartialMediaAccess(
+                    onContinue = { /* Do nothing, just continue */ },
+                    onUpgrade = {
+                        val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                        } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+                        } else {
+                            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                        }
+                        storageLauncherRef.value?.launch(perms)
+                    }
+                ))
+            }
+        } else {
+            val activity = context as? android.app.Activity
+            val permsToCheck = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+            } else {
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            if (activity != null && !permsToCheck.any { perm -> androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, perm) }) {
+                onShowGlobalDialog(
+                    com.mobile.superiorutils.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    )
+                )
+            }
         }
-        showAttachmentMenu = true
     }
+    
+    storageLauncherRef.value = storagePermissionLauncher
 
     val onMediaClickRemembered = remember {
         { path: String, type: String ->
@@ -262,10 +340,58 @@ fun ChatScreen(
         }
     }
 
-    val onGalleryClickRemembered = remember {
+    val onGalleryClickRemembered = remember(context) {
         {
             showAttachmentMenu = false
-            currentPickerMode = PickerMode.GALLERY
+            
+            val isExternalStorageManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                android.os.Environment.isExternalStorageManager()
+            } else false
+            
+            val hasFullAccess = isExternalStorageManager || if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            } else {
+                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+            val hasPartialAccess = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            } else {
+                false
+            }
+            
+            if (hasPartialAccess && !hasFullAccess) {
+                val fullPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    Manifest.permission.READ_MEDIA_IMAGES
+                } else {
+                    Manifest.permission.READ_EXTERNAL_STORAGE
+                }
+                val activity = context as? android.app.Activity
+                
+                if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
+                    onShowGlobalDialog(com.mobile.superiorutils.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
+                        onContinue = { currentPickerMode = PickerMode.GALLERY },
+                        onGoToSettings = {
+                            context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        }
+                    ))
+                } else {
+                    onShowGlobalDialog(com.mobile.superiorutils.ui.GlobalDialogState.PartialMediaAccess(
+                        onContinue = { currentPickerMode = PickerMode.GALLERY },
+                        onUpgrade = {
+                            val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+                            } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
+                            } else {
+                                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                            }
+                            storageLauncherRef.value?.launch(perms)
+                        }
+                    ))
+                }
+            } else {
+                currentPickerMode = PickerMode.GALLERY
+            }
         }
     }
 
@@ -276,7 +402,11 @@ fun ChatScreen(
             if (hasPermission) {
                 cameraLauncher.launch(viewModel.createCameraUri(context))
             } else {
-                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                onShowGlobalDialog(
+                    com.mobile.superiorutils.ui.GlobalDialogState.CameraPermissionRationale(
+                        onConfirm = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
+                    )
+                )
             }
         }
     }
@@ -503,13 +633,33 @@ fun ChatScreen(
                                 }
                             }
                         } else {
-                            ChatInputBox(
-                                viewModel = viewModel,
-                                showAttachmentMenu = showAttachmentMenu,
-                                onAttachmentMenuChange = { showAttachmentMenu = it },
-                                storagePermissionLauncher = storagePermissionLauncher,
-                                audioPermissionLauncher = audioPermissionLauncher
-                            )
+                                ChatInputBox(
+                                    viewModel = viewModel,
+                                    showAttachmentMenu = showAttachmentMenu,
+                                    onAttachmentMenuChange = { showAttachmentMenu = it },
+                                    onRequestStoragePermission = { _ ->
+                                        onShowGlobalDialog(
+                                            com.mobile.superiorutils.ui.GlobalDialogState.StoragePermissionRationale(
+                                                onConfirm = {
+                                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+                                                    } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                                                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO))
+                                                    } else {
+                                                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                                                    }
+                                                }
+                                            )
+                                        )
+                                    },
+                                    onRequestAudioPermission = { perm ->
+                                        onShowGlobalDialog(
+                                            com.mobile.superiorutils.ui.GlobalDialogState.MicrophonePermissionRationale(
+                                                onConfirm = { audioPermissionLauncher.launch(perm) }
+                                            )
+                                        )
+                                    }
+                                )
                         }
                     }
                 }
@@ -562,11 +712,22 @@ fun ChatScreen(
             if (hasPermission) {
                 cameraLauncher.launch(viewModel.createCameraUri(context))
             } else {
-                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                onShowGlobalDialog(
+                    com.mobile.superiorutils.ui.GlobalDialogState.CameraPermissionRationale(
+                        onConfirm = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
+                    )
+                )
             }
         },
         onSystemPickerClick = {
             filePickerLauncher.launch("*/*")
+        },
+        onRequestManageStoragePermission = {
+            onShowGlobalDialog(
+                com.mobile.superiorutils.ui.GlobalDialogState.ManageStorageRequired(
+                    Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}"))
+                )
+            )
         }
     )
 }

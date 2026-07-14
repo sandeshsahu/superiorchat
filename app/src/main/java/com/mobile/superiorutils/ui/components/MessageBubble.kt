@@ -62,6 +62,7 @@ import java.util.Date
 import java.util.Locale
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import com.mobile.superiorutils.media.MediaSync
 
 @Composable
@@ -74,6 +75,24 @@ fun MessageBubble(
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
+    var showApkInstallDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    if (showApkInstallDialog) {
+        ActionDialog(
+            title = "Installation Permission Required",
+            message = "To install this app, you need to allow SuperiorChat to install unknown apps.",
+            confirmText = "Settings",
+            onConfirm = {
+                showApkInstallDialog = false
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                }
+                context.startActivity(intent)
+            },
+            onDismiss = { showApkInstallDialog = false }
+        )
+    }
+
     val alignment = if (message.isFromMe) Alignment.CenterEnd else Alignment.CenterStart
     val bgColor = if (message.isFromMe) PrimaryLight else SurfaceLevel1
     val textColor = if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
@@ -429,6 +448,13 @@ fun MessageBubble(
                                     if (isFailedUpload) {
                                         viewModel.retryMessage(message)
                                     } else {
+                                        if (file.extension.equals("apk", ignoreCase = true) &&
+                                            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                                            !context.packageManager.canRequestPackageInstalls()
+                                        ) {
+                                            showApkInstallDialog = true
+                                            return@clickable
+                                        }
                                         try {
                                             val intent = Intent(Intent.ACTION_VIEW).apply {
                                                 val uri = androidx.core.content.FileProvider.getUriForFile(
@@ -436,7 +462,9 @@ fun MessageBubble(
                                                     "${context.packageName}.provider",
                                                     file
                                                 )
-                                                setDataAndType(uri, "*/*")
+                                                val ext = file.extension.lowercase(Locale.ROOT)
+                                                val mimeType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "*/*"
+                                                setDataAndType(uri, mimeType)
                                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                             }
                                             context.startActivity(intent)
