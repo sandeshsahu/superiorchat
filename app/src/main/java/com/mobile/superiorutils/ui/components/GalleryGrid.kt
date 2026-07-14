@@ -63,7 +63,7 @@ import com.mobile.superiorutils.theme.SurfaceLevel2
 import com.mobile.superiorutils.ui.ChatViewModel
 import kotlinx.coroutines.delay
 
-import com.mobile.superiorutils.ui.LocalMediaItem
+import com.mobile.superiorutils.data.repository.LocalMediaItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

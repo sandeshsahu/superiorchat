@@ -3,7 +3,7 @@ package com.mobile.superiorutils.core
 import android.content.Context
 import androidx.room.Room
 import com.mobile.superiorutils.data.Prefs
-import com.mobile.superiorutils.data.repository.DataSync
+import com.mobile.superiorutils.data.repository.AppRepository
 
 object AppGraph {
     
@@ -15,7 +15,7 @@ object AppGraph {
     lateinit var database: LocalDb
         private set
 
-    lateinit var chatRepository: DataSync
+    lateinit var appRepository: AppRepository
         private set
 
     fun init(context: Context) {
@@ -27,7 +27,7 @@ object AppGraph {
         
         database = LocalDb.getDatabase(appContext)
 
-        chatRepository = DataSync(
+        appRepository = AppRepository(
             database.conversationDao(),
             database.messageDao()
         )

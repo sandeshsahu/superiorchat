@@ -24,7 +24,7 @@ import com.mobile.superiorutils.media.MediaSync
 class BotSync(private val context: Context) {
 
     private val prefs = AppGraph.prefs
-    private val repository = AppGraph.chatRepository
+    private val repository = AppGraph.appRepository
     private val messageRouter = Notifier(context, CoroutineScope(Dispatchers.IO))
 
     private var pollingJob: Job? = null
@@ -296,12 +296,7 @@ class BotSync(private val context: Context) {
                 for (msg in queuedMessages) {
                     if (msg.mediaType == null) {
                         repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
-                        val sentId = TelegramApi.sendMessage(token, msg.conversationId, msg.text ?: "")
-                        if (sentId != null) {
-                            repository.updateMessageStatus(msg.messageId, MessageStatus.SENT)
-                        } else {
-                            repository.updateMessageStatus(msg.messageId, MessageStatus.FAILED)
-                        }
+                        repository.sendTextMessage(token, msg.conversationId, msg.text ?: "", msg.messageId)
                     } else {
                         repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
                         MediaSync.enqueueUpload(context, msg.messageId, msg.mediaLocalPath ?: "", msg.mediaType)

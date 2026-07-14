@@ -202,6 +202,18 @@ fun MessageBubble(
                                         }
                                     }
                                 }
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopStart)
+                                        .padding(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color.Black.copy(alpha = 0.6f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    val totalSize = message.mediaFileSize ?: java.io.File(message.mediaLocalPath).length()
+                                    val sizeText = if (totalSize > 0) " • ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}" else ""
+                                    Text(if (isUploading) "UPLOADING$sizeText" else "IMAGE$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                     } else if (message.mediaType == "photo") {
@@ -242,16 +254,31 @@ fun MessageBubble(
                                     }
                                 }
                             }
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                val totalSize = message.mediaFileSize ?: 0L
+                                val sizeText = if (totalSize > 0) " • ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}" else ""
+                                Text("IMAGE$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     } else if (message.mediaType == "voice" || message.mediaType == "audio") {
+                        val progress by com.mobile.superiorutils.media.MediaSync.getProgress(message.messageId).collectAsState(initial = 0f)
                         AudioBubble(
                             mediaLocalPath = message.mediaLocalPath,
                             mediaUrl = message.mediaUrl,
                             mediaType = message.mediaType,
                             status = message.status,
                             isFromMe = message.isFromMe,
-                            onDownloadClick = { viewModel.retryDownload(message) }
+                            progress = progress,
+                            onDownloadClick = { viewModel.retryDownload(message) },
+                            onCancelClick = { viewModel.cancelTransfer(message) }
                         )
                         if (!message.text.isNullOrEmpty()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -361,7 +388,9 @@ fun MessageBubble(
                                     .background(Color.Black.copy(alpha = 0.6f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Text(if (isUploading) "UPLOADING" else "VIDEO", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                val totalSize = message.mediaFileSize ?: java.io.File(message.mediaLocalPath).length()
+                                val sizeText = if (totalSize > 0) " • ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}" else ""
+                                Text(if (isUploading) "UPLOADING$sizeText" else "VIDEO$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -424,7 +453,9 @@ fun MessageBubble(
                                     .background(Color.Black.copy(alpha = 0.6f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Text("VIDEO", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                val totalSize = message.mediaFileSize ?: 0L
+                                val sizeText = if (totalSize > 0) " • ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}" else ""
+                                Text("VIDEO$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                             }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -504,7 +535,7 @@ fun MessageBubble(
                                 )
                             } else {
                                 Icon(
-                                    imageVector = Icons.Default.AttachFile,
+                                    imageVector = com.mobile.superiorutils.utils.FileUtils.resolveFileIcon(displayName),
                                     contentDescription = "Document File",
                                     tint = textColor,
                                     modifier = Modifier.size(28.dp)
@@ -521,14 +552,18 @@ fun MessageBubble(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
+                                
+                                val ext = displayName.substringAfterLast(".", "").uppercase(Locale.ROOT)
+                                val extPrefix = if (ext.isNotEmpty()) "$ext • " else ""
+                                
                                 Text(
                                     text = if (isUploading) {
                                         val uploaded = (progress * totalSize).toLong()
-                                        "${com.mobile.superiorutils.utils.FileUtils.formatFileSize(uploaded)} / ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
+                                        "${extPrefix}${com.mobile.superiorutils.utils.FileUtils.formatFileSize(uploaded)} / ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
                                     } else if (isFailedUpload) {
-                                        "Upload failed. Tap to retry."
+                                        "${extPrefix}Upload failed. Tap to retry."
                                     } else {
-                                        com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)
+                                        "${extPrefix}${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
                                     },
                                     color = textColor.copy(alpha = 0.6f),
                                     fontSize = 11.sp
@@ -588,16 +623,20 @@ fun MessageBubble(
                                     fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
+                                
+                                val ext = displayName.substringAfterLast(".", "").uppercase(Locale.ROOT)
+                                val extPrefix = if (ext.isNotEmpty()) "$ext • " else ""
+                                
                                 Text(
                                     text = if (isDownloading && totalSize > 0L) {
                                         val downloaded = (progress * totalSize).toLong()
-                                        "${com.mobile.superiorutils.utils.FileUtils.formatFileSize(downloaded)} / ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
+                                        "${extPrefix}${com.mobile.superiorutils.utils.FileUtils.formatFileSize(downloaded)} / ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
                                     } else if (isFailed) {
-                                        "Failed"
+                                        "${extPrefix}Failed"
                                     } else if (totalSize > 0L) {
-                                        com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)
+                                        "${extPrefix}${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}"
                                     } else {
-                                        "Tap to download"
+                                        "${extPrefix}Tap to download"
                                     },
                                     color = textColor.copy(alpha = 0.6f),
                                     fontSize = 11.sp

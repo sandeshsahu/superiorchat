@@ -5,7 +5,20 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.File
 import java.util.Locale
-
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.mobile.superiorutils.theme.PrimaryLight
 object FileUtils {
 
     /**
@@ -81,5 +94,90 @@ object FileUtils {
             }
         }
         return result ?: "Unknown"
+    }
+
+    /**
+     * Returns an appropriate Material Icon based on the file extension.
+     */
+    fun resolveFileIcon(filename: String): ImageVector {
+        val ext = filename.substringAfterLast(".", "").lowercase(Locale.ROOT)
+        return when (ext) {
+            "pdf" -> Icons.Default.PictureAsPdf
+            "apk" -> Icons.Default.Android
+            "zip", "rar", "7z", "tar", "gz" -> Icons.Default.FolderZip
+            "doc", "docx", "txt", "rtf", "log" -> Icons.Default.Description
+            "xls", "xlsx", "csv" -> Icons.Default.TableChart
+            "ppt", "pptx" -> Icons.Default.Slideshow
+            "mp3", "wav", "ogg", "flac" -> Icons.Default.AudioFile
+            "mp4", "mkv", "avi", "mov" -> Icons.Default.VideoFile
+            "jpg", "jpeg", "png", "gif", "webp" -> Icons.Default.Image
+            "kt", "java", "py", "json", "xml", "html", "js", "css" -> Icons.Default.Code
+            else -> Icons.Default.Description
+        }
+    }
+
+    /**
+     * Returns an appropriate Color based on the file extension.
+     */
+    fun resolveFileIconColor(filename: String): Color {
+        val ext = filename.substringAfterLast(".", "").lowercase(Locale.ROOT)
+        return when (ext) {
+            "pdf" -> Color(0xFFFF8B8B) // Light Red
+            "apk" -> Color(0xFF8BFFB5) // Android Green
+            "zip", "rar", "7z", "tar", "gz" -> Color(0xFFFFC08B) // Archive Orange
+            "doc", "docx", "txt", "rtf", "log" -> Color(0xFF8BBAFF) // Light Blue
+            "xls", "xlsx", "csv" -> Color(0xFF8BFF9B) // Light Green
+            "ppt", "pptx" -> Color(0xFFFF9B8B) // Presentation Red/Orange
+            "mp3", "wav", "ogg", "flac" -> Color(0xFFD68BFF) // Audio Purple
+            "mp4", "mkv", "avi", "mov" -> Color(0xFFFF8B8B) // Video Red
+            "jpg", "jpeg", "png", "gif", "webp" -> Color(0xFFFFDB8B) // Image Yellow
+            "kt", "java", "py", "json", "xml", "html", "js", "css" -> Color(0xFF8BFFF0) // Code Teal
+            else -> PrimaryLight
+        }
+    }
+
+    /**
+     * Determines the internal media type string (audio, video, photo, document) from an extension.
+     */
+    fun getMediaType(filename: String): String {
+        val ext = filename.substringAfterLast(".", "").lowercase(Locale.ROOT)
+        return when (ext) {
+            "mp3", "wav", "ogg", "flac" -> "audio"
+            "mp4", "mkv", "avi", "mov" -> "video"
+            "jpg", "jpeg", "png", "gif", "webp" -> "photo"
+            else -> "document"
+        }
+    }
+
+    /**
+     * Copies a Content URI to a local file in the app's media directories.
+     */
+    fun copyUriToLocalFile(context: Context, uri: Uri, mediaType: String, tempMessageId: Long): File? {
+        try {
+            val mediaDir = when (mediaType) {
+                "photo" -> com.mobile.superiorutils.media.LocalDirs.getImageDir(context, isSent = true)
+                "video" -> com.mobile.superiorutils.media.LocalDirs.getVideoDir(context, isSent = true)
+                "document" -> com.mobile.superiorutils.media.LocalDirs.getDocumentDir(context, isSent = true)
+                "voice" -> com.mobile.superiorutils.media.LocalDirs.getVoiceNoteDir(context, isSent = true)
+                "audio" -> com.mobile.superiorutils.media.LocalDirs.getAudioDir(context, isSent = true)
+                else -> com.mobile.superiorutils.media.LocalDirs.getDocumentDir(context, isSent = true)
+            }
+            val originalName = getFileName(context, uri)
+            val safeFileName = "${-tempMessageId}_$originalName"
+            val localFile = File(mediaDir, safeFileName)
+            
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                java.io.FileOutputStream(localFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            if (localFile.exists()) {
+                return localFile
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.ERROR, "FileUtils: Failed to copy URI to local file: ${e.message}")
+        }
+        return null
     }
 }

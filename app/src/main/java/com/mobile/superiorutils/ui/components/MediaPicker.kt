@@ -45,7 +45,7 @@ import com.mobile.superiorutils.ui.ChatViewModel
 import kotlinx.coroutines.launch
 import java.io.File
 
-import com.mobile.superiorutils.ui.LocalMediaItem
+import com.mobile.superiorutils.data.repository.LocalMediaItem
 
 enum class PickerTab { GALLERY, FILES }
 

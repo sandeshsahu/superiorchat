@@ -63,8 +63,8 @@ import com.mobile.superiorutils.theme.DividerColor
 import com.mobile.superiorutils.theme.PrimaryLight
 import com.mobile.superiorutils.theme.SurfaceLevel2
 import com.mobile.superiorutils.ui.ChatViewModel
-import com.mobile.superiorutils.ui.LocalFileItem
-import com.mobile.superiorutils.ui.LocalMediaItem
+import com.mobile.superiorutils.data.repository.LocalFileItem
+import com.mobile.superiorutils.data.repository.LocalMediaItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -372,8 +372,8 @@ fun FileExplorer(
                                             .padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val icon = if (item.isDirectory) Icons.Default.Folder else resolveFileIcon(item.name)
-                                        val iconColor = if (item.isDirectory) PrimaryLight else resolveFileIconColor(item.name)
+                                        val icon = if (item.isDirectory) Icons.Default.Folder else com.mobile.superiorutils.utils.FileUtils.resolveFileIcon(item.name)
+                                        val iconColor = if (item.isDirectory) PrimaryLight else com.mobile.superiorutils.utils.FileUtils.resolveFileIconColor(item.name)
 
                                         Box(
                                             modifier = Modifier
@@ -465,8 +465,8 @@ private fun FileListItem(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val icon = resolveFileIcon(item.name)
-        val iconColor = resolveFileIconColor(item.name)
+        val icon = com.mobile.superiorutils.utils.FileUtils.resolveFileIcon(item.name)
+        val iconColor = com.mobile.superiorutils.utils.FileUtils.resolveFileIconColor(item.name)
         
         Box(
             modifier = Modifier
@@ -575,18 +575,3 @@ private fun StorageLocationItem(
     }
 }
 
-private fun resolveFileIcon(filename: String): ImageVector {
-    return when (filename.substringAfterLast(".").lowercase()) {
-        "pdf" -> Icons.Default.PictureAsPdf
-        else -> Icons.Default.Description
-    }
-}
-
-private fun resolveFileIconColor(filename: String): Color {
-    return when (filename.substringAfterLast(".").lowercase()) {
-        "pdf" -> Color(0xFFFF8B8B) // Light Red for PDFs
-        "doc", "docx" -> Color(0xFF8BBAFF) // Light Blue for Word
-        "xls", "xlsx" -> Color(0xFF8BFF9B) // Light Green for Excel
-        else -> PrimaryLight
-    }
-}

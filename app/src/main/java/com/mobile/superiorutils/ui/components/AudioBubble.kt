@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material3.*
@@ -150,7 +151,9 @@ fun AudioBubble(
     mediaType: String,
     status: MessageStatus,
     isFromMe: Boolean,
-    onDownloadClick: () -> Unit
+    progress: Float = 0f,
+    onDownloadClick: () -> Unit,
+    onCancelClick: () -> Unit = {}
 ) {
     val currentPath by AudioPlayer.currentPlayingPath.collectAsState()
     val isPlayingFlow by AudioPlayer.isPlaying.collectAsState()
@@ -170,7 +173,7 @@ fun AudioBubble(
 
     val playedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFFC0C1FF)
     val unplayedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f) else Color(0xFFC0C1FF).copy(alpha = 0.3f)
-    val textDurationColor = if (isFromMe) Color.White else MaterialTheme.colorScheme.onSurface
+    val textDurationColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     val textDurationWeight = if (isFromMe) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
 
     val buttonBg = if (isFromMe) Color.White else Color(0xFF353535)
@@ -205,7 +208,9 @@ fun AudioBubble(
                 isDownloading = isDownloading,
                 isFailed = isFailed,
                 isDownloaded = isDownloaded,
+                progress = progress,
                 onDownloadClick = onDownloadClick,
+                onCancelClick = onCancelClick,
                 playedColor = playedColor,
                 unplayedColor = unplayedColor,
                 textDurationColor = textDurationColor,
@@ -334,7 +339,9 @@ fun InactiveAudioPlayer(
     isDownloading: Boolean,
     isFailed: Boolean,
     isDownloaded: Boolean,
+    progress: Float,
     onDownloadClick: () -> Unit,
+    onCancelClick: () -> Unit,
     playedColor: Color,
     unplayedColor: Color,
     textDurationColor: Color,
@@ -351,8 +358,10 @@ fun InactiveAudioPlayer(
             .size(40.dp)
             .clip(CircleShape)
             .background(buttonBg)
-            .clickable(enabled = !isDownloading) {
-                if (mediaLocalPath != null) {
+            .clickable(enabled = true) {
+                if (isDownloading) {
+                    onCancelClick()
+                } else if (mediaLocalPath != null) {
                     AudioPlayer.play(context, mediaLocalPath)
                 } else {
                     onDownloadClick()
@@ -361,11 +370,20 @@ fun InactiveAudioPlayer(
         contentAlignment = Alignment.Center
     ) {
         if (isDownloading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(16.dp),
-                color = buttonIconTint,
-                strokeWidth = 2.dp
-            )
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    progress = { if (progress > 0f) progress else 0f },
+                    modifier = Modifier.size(40.dp),
+                    color = buttonIconTint,
+                    strokeWidth = 2.dp
+                )
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cancel",
+                    tint = buttonIconTint,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         } else if (isDownloaded) {
             Icon(
                 imageVector = Icons.Default.PlayArrow,

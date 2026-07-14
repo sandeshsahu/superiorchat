@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import com.mobile.superiorutils.ui.components.ScrollEvent
+import com.mobile.superiorutils.data.repository.LocalMediaItem
+import com.mobile.superiorutils.data.repository.LocalFileItem
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -689,23 +691,22 @@ fun ChatScreen(
         onDismiss = { currentPickerMode = PickerMode.NONE },
         viewModel = viewModel,
         onMediaSelected = { items ->
-            var allSuccess = true
-            items.forEach { item ->
+            val mappedItems = items.map { item ->
                 val type = if (item.isVideo) "video" else "photo"
-                val success = viewModel.sendMedia(context, item.uri, type)
-                if (!success) allSuccess = false
+                Pair(item.uri, type)
             }
-            if (allSuccess) currentPickerMode = PickerMode.NONE
-            allSuccess
+            val success = viewModel.sendMediaBatch(context, mappedItems)
+            if (success) currentPickerMode = PickerMode.NONE
+            success
         },
         onFilesSelected = { files ->
-            var allSuccess = true
-            files.forEach { file ->
-                val success = viewModel.sendMedia(context, Uri.fromFile(file), "document")
-                if (!success) allSuccess = false
+            val mappedItems = files.map { file ->
+                val mediaType = com.mobile.superiorutils.utils.FileUtils.getMediaType(file.name)
+                Pair(Uri.fromFile(file), mediaType)
             }
-            if (allSuccess) currentPickerMode = PickerMode.NONE
-            allSuccess
+            val success = viewModel.sendMediaBatch(context, mappedItems)
+            if (success) currentPickerMode = PickerMode.NONE
+            success
         },
         onCameraClick = {
             val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED

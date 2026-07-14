@@ -276,6 +276,9 @@ object MediaSync {
                 AppLog.log(LogCategory.SYSTEM, "Failed to update DB: Message not found for msgId=$messageId", LogLevel.ERROR)
             }
             return true
+        } catch (e: CancellationException) {
+            AppLog.log(LogCategory.SYSTEM, "Download cancelled for msgId=$messageId")
+            throw e
         } catch (e: Exception) {
             markDownloadFailed(context, messageId)
             AppLog.log(LogCategory.SYSTEM, "Exception in performDownload: ${e.message}", LogLevel.ERROR)
@@ -346,6 +349,7 @@ object MediaSync {
                     "photo" -> TelegramApi.sendPhoto(token, chatId, file, onProgress = progressListener)
                     "video" -> TelegramApi.sendVideo(token, chatId, file, onProgress = progressListener)
                     "voice" -> TelegramApi.sendVoice(token, chatId, file, onProgress = progressListener)
+                    "audio" -> TelegramApi.sendAudio(token, chatId, file, onProgress = progressListener)
                     "document" -> {
                         // Strip the timestamp prefix (e.g. "1234567890_report.pdf" -> "report.pdf")
                         val originalName = if (file.name.matches(Regex("^-?\\d+_.+"))) {
@@ -366,6 +370,13 @@ object MediaSync {
                 AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to: ${if (success) "SENT" else "FAILED"}")
             }
             return success
+        } catch (e: CancellationException) {
+            AppLog.log(LogCategory.SYSTEM, "Upload cancelled for msgId=$messageId")
+            throw e
+        } catch (e: Exception) {
+            markDownloadFailed(context, messageId)
+            AppLog.log(LogCategory.SYSTEM, "Exception in performUpload: ${e.message}", LogLevel.ERROR)
+            return false
         } finally {
             cancelledTransfers.remove(messageId)
         }
@@ -383,6 +394,33 @@ object MediaSync {
             AppLog.log(LogCategory.SYSTEM, "Failed to mark download as failed in DB: ${e.message}", LogLevel.ERROR)
         } finally {
             _transferProgress.remove(messageId)
+        }
+    }
+
+    suspend fun resumeInterruptedTransfers(context: Context, repository: com.mobile.superiorutils.data.repository.AppRepository) {
+        try {
+            val queuedMsgs = repository.getQueuedMessages()
+            val sendingMsgs = com.mobile.superiorutils.core.LocalDb.getDatabase(context).messageDao().getMessagesByStatus(MessageStatus.SENDING)
+            val allInterrupted = queuedMsgs + sendingMsgs
+
+            allInterrupted.forEach { msg ->
+                // Resume downloads in SENDING status
+                if (!msg.isFromMe && msg.status == MessageStatus.SENDING && msg.mediaUrl != null && msg.mediaLocalPath == null) {
+                    startDownloadImmediate(context, msg.messageId, msg.mediaUrl, msg.mediaType ?: "")
+                }
+                // Resume uploads in SENDING or QUEUED (when online) status
+                if (msg.isFromMe && msg.mediaLocalPath != null) {
+                    if (msg.status == MessageStatus.SENDING || (msg.status == MessageStatus.QUEUED && com.mobile.superiorutils.core.NetState.isOnline.value)) {
+                        if (msg.status == MessageStatus.QUEUED) {
+                            repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
+                        }
+                        startUploadImmediate(context, msg.messageId, msg.mediaLocalPath, msg.mediaType ?: "")
+                    }
+                }
+                // Text messages in QUEUED status are handled by BotSync.kt flushQueuedMessages() when online.
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Error running startup media sync: ${e.message}", LogLevel.ERROR)
         }
     }
 }
