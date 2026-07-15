@@ -276,9 +276,9 @@ fun AppScreen(
                     // External Links
                     Spacer(modifier = Modifier.height(16.dp))
                     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        ExternalLinkItem("LinkedIn", Icons.Filled.Link)
-                        ExternalLinkItem("GitHub", Icons.Filled.Code)
-                        ExternalLinkItem("GitLab", Icons.Filled.Terminal)
+                        ExternalLinkItem("LinkedIn", Icons.Filled.Link, "https://www.linkedin.com/in/sandesh-sahu/")
+                        ExternalLinkItem("GitHub", Icons.Filled.Code, "https://github.com/sandeshsahu/")
+                        ExternalLinkItem("GitLab", Icons.Filled.Terminal, "https://gitlab.com/sandeshsahu")
                     }
                 }
             }
@@ -346,7 +346,10 @@ fun AppScreen(
                     label = "screen_transition"
                 ) { screen ->
                     when (screen) {
-                        NavScreen.Chat -> ChatScreen(onShowGlobalDialog = { viewModel.activeGlobalDialog = it })
+                        NavScreen.Chat -> ChatScreen(
+                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
+                            onNavigateToSettings = { currentScreen = NavScreen.Settings }
+                        )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
                         NavScreen.Logs -> LogsScreen()
                         NavScreen.Settings -> SettingsScreen(
@@ -359,7 +362,6 @@ fun AppScreen(
                             onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                             onSave = {
                                 viewModel.saveCredentials()
-                                Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
                             }
                         )
                     }
@@ -370,14 +372,17 @@ fun AppScreen(
 }
 
 @Composable
-private fun ExternalLinkItem(title: String, icon: ImageVector) {
+private fun ExternalLinkItem(title: String, icon: ImageVector, url: String) {
+    val context = LocalContext.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable { }
+            .clickable { 
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))

@@ -47,3 +47,5 @@ GEMINI.md
 Goal.md
 .claude
 logcat*
+.agent
+do-not-delete-folder/

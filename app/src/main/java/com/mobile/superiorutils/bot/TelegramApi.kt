@@ -110,6 +110,39 @@ object TelegramApi {
         return "https://api.telegram.org/file/bot${sanitizeToken(token)}/$filePath"
     }
 
+    fun getChat(token: String, chatId: String): ChatResponse? {
+        return try {
+            val request = Request.Builder().url(apiUrl(token, "getChat") + "?chat_id=$chatId").build()
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    response.body?.string()?.let { json.decodeFromString<ChatResponse>(it) }
+                } else null
+            }
+        } catch (e: Exception) { null }
+    }
+
+    fun downloadFileToLocal(url: String, destFile: File): Boolean {
+        return try {
+            val request = Request.Builder().url(url).build()
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val body = response.body
+                    if (body != null) {
+                        body.byteStream().use { input ->
+                            destFile.outputStream().use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        true
+                    } else false
+                } else false
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "downloadFileToLocal error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════
     //  SENDING MESSAGES
     // ═══════════════════════════════════════════════════════════

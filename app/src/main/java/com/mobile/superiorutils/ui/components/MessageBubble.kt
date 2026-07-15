@@ -68,10 +68,12 @@ import com.mobile.superiorutils.media.MediaSync
 @Composable
 fun MessageBubble(
     message: MessageNode,
+    userProfile: com.mobile.superiorutils.data.entity.UserProfile?,
     viewModel: ChatViewModel,
     onMediaClick: (String, String) -> Unit,
     onMediaLongPressStart: (String, String) -> Unit = { _, _ -> },
-    onMediaLongPressEnd: () -> Unit = {}
+    onMediaLongPressEnd: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
@@ -114,10 +116,59 @@ fun MessageBubble(
     val verticalPadding = if (message.mediaType == "voice" || message.mediaType == "audio") 6.dp else 10.dp
 
     Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = alignment) {
-        Column(
-            horizontalAlignment = if (message.isFromMe) Alignment.End else Alignment.Start,
+        Row(
+            verticalAlignment = Alignment.Bottom,
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
+            if (!message.isFromMe) {
+                val profilePath = userProfile?.profilePhotoPath ?: ""
+                val title = userProfile?.title?.ifEmpty { "Unknown" } ?: "Unknown"
+                
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceLevel2)
+                        .border(1.dp, PrimaryLight.copy(alpha = 0.3f), CircleShape)
+                        .clickable { onProfileClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (profilePath.isNotEmpty() && File(profilePath).exists()) {
+                        AsyncImage(
+                            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                .data(File(profilePath))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Profile",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        val initials = try {
+                            title.trim().split(Regex("\\s+")).take(2).mapNotNull { 
+                                if (it.isNotEmpty()) {
+                                    val cp = it.codePointAt(0)
+                                    String(Character.toChars(cp)).uppercase()
+                                } else null
+                            }.joinToString("").take(4)
+                        } catch (e: Exception) {
+                            "?"
+                        }
+                        Text(
+                            text = initials.ifEmpty { "?" },
+                            color = PrimaryLight,
+                            fontSize = 12.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            
+            Column(
+                horizontalAlignment = if (message.isFromMe) Alignment.End else Alignment.Start,
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
             Box(
                 modifier = Modifier
                     .then(glowModifier)
@@ -679,6 +730,7 @@ fun MessageBubble(
                     }
                 }
             }
+        }
         }
     }
 }

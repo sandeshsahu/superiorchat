@@ -121,6 +121,15 @@ dependencies {
   // Coil
   implementation("io.coil-kt:coil-compose:2.6.0")
   implementation("io.coil-kt:coil-video:2.6.0")
+
+  // ZXing for QR Code generation & decoding
+  implementation("com.google.zxing:core:3.5.3")
+
+  // CameraX for QR Scanning
+  val cameraxVersion = "1.3.3"
+  implementation("androidx.camera:camera-camera2:$cameraxVersion")
+  implementation("androidx.camera:camera-lifecycle:$cameraxVersion")
+  implementation("androidx.camera:camera-view:$cameraxVersion")
 }
 
 ksp {

@@ -29,7 +29,8 @@ object AppGraph {
 
         appRepository = AppRepository(
             database.conversationDao(),
-            database.messageDao()
+            database.messageDao(),
+            database.profileDao()
         )
         
         isInitialized = true

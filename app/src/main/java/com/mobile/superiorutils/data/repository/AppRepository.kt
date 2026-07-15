@@ -15,6 +15,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import com.mobile.superiorutils.data.dao.ProfileDao
+import com.mobile.superiorutils.data.entity.UserProfile
 
 data class LocalMediaItem(
     val id: Long,
@@ -36,7 +38,8 @@ data class LocalFileItem(
 
 class AppRepository(
     private val conversationDao: ThreadDao,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val profileDao: ProfileDao
 ) {
     fun getAllConversations(): Flow<List<ChatNode>> {
         return conversationDao.getAllConversations()
@@ -70,7 +73,21 @@ class AppRepository(
 
     suspend fun updateMessageStatus(messageId: Long, status: MessageStatus) {
         messageDao.updateMessageStatus(messageId, status)
-     }
+    }
+
+    fun getProfile(chatId: String): Flow<UserProfile?> {
+        return profileDao.getProfile(chatId)
+    }
+
+    suspend fun getProfileSync(chatId: String): UserProfile? {
+        return profileDao.getProfileSync(chatId)
+    }
+
+    suspend fun insertProfile(profile: UserProfile) {
+        profileDao.insertProfile(profile)
+    }
+
+
 
     suspend fun getQueuedMessages(): List<MessageNode> {
         return messageDao.getMessagesByStatus(MessageStatus.QUEUED)

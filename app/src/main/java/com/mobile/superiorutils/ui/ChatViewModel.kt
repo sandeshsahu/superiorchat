@@ -67,6 +67,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     val isOnline = NetState.isOnline
     val isTelegramApiReachable = AppLog.isTelegramApiReachable
+    val isBotTokenInvalid = AppLog.isBotTokenInvalid
     
     var isRetryingConnection by mutableStateOf(false)
         private set
@@ -115,6 +116,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _messages = MutableStateFlow<List<MessageNode>>(emptyList())
     val messages: StateFlow<List<MessageNode>> = _messages.asStateFlow()
+
+    private val _userProfile = MutableStateFlow<com.mobile.superiorutils.data.entity.UserProfile?>(null)
+    val userProfile: StateFlow<com.mobile.superiorutils.data.entity.UserProfile?> = _userProfile.asStateFlow()
 
     private val _scrollEvents = MutableSharedFlow<ScrollEvent>(extraBufferCapacity = 16)
     val scrollEvents: SharedFlow<ScrollEvent> = _scrollEvents.asSharedFlow()
@@ -166,6 +170,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             // One-time startup sync scan for interrupted/queued messages globally
             MediaSync.resumeInterruptedTransfers(getApplication(), repository)
 
+            launch {
+                repository.getProfile(chatId).collectLatest { profile ->
+                    _userProfile.value = profile
+                }
+            }
+
             // Collect live database updates to push directly to UI StateFlow with pagination
             var previousMsgs: List<MessageNode>? = null
             _messageLimit.collectLatest { limit ->
@@ -187,6 +197,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             }
+        }
+    }
+
+    fun forceSyncProfile(context: Context) {
+        val chatId = prefs.chatId
+        val token = prefs.botToken
+        if (chatId.isBlank() || token.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            MediaSync.syncTargetProfile(context, token, chatId)
         }
     }
 

@@ -5,7 +5,7 @@ import android.content.ContentValues
 import android.database.Cursor
 import android.database.MatrixCursor
 import android.net.Uri
-import com.mobile.superiorutils.utils.CryptoUtils
+import com.mobile.superiorutils.utils.Security
 
 class KeyProvider : ContentProvider() {
 
@@ -21,7 +21,7 @@ class KeyProvider : ContentProvider() {
         sortOrder: String?
     ): Cursor? {
         // Return a cursor containing the public key
-        val publicKey = CryptoUtils.getPublicKeyBase64()
+        val publicKey = Security.getPublicKeyBase64()
         val cursor = MatrixCursor(arrayOf("public_key"))
         cursor.addRow(arrayOf(publicKey))
         return cursor

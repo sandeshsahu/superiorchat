@@ -42,7 +42,6 @@ We maintain a compact, highly cohesive directory layout. Do **not** flood the re
 The main application resides under the package `com.mobile.superiorutils` in the `app` module:
 
 ```
-
 app/src/main/java/com/mobile/superiorutils/
 
 ├── SuperiorChatApp.kt         # Application class (initializes AppGraph)
@@ -60,19 +59,23 @@ app/src/main/java/com/mobile/superiorutils/
 │   ├── LocalDb.kt             # Room Database configuration
 │   ├── Converters.kt          # TypeConverters (MessageStatus to Code)
 │   ├── NetState.kt            # Flow-based internet connectivity observer
-│   └── ServiceCore.kt         # Helper to manage lifecycle of foreground service
+│   ├── ServiceCore.kt         # Helper to manage lifecycle of foreground service
+│   ├── KeyProvider.kt         # Key generation and retrieval logic for AES/RSA
+│   └── StatusFlow.kt          # Global StateFlow management for sync states and feedback
 │
 ├── data/                      # SharedPreferences and Database schemas
 │   ├── Prefs.kt               # EncryptedSharedPreferences (bot token, chat ID, last poll offset)
 │   ├── dao/
 │   │   ├── MessageDao.kt      # CRUD queries for messages
+│   │   ├── ProfileDao.kt      # CRUD queries for target chat profile caching
 │   │   └── ThreadDao.kt       # CRUD queries for threads/conversations
 │   ├── entity/
 │   │   ├── ChatNode.kt        # Chat/conversation database node
 │   │   ├── MessageNode.kt     # Message database node (handles text, media metadata, local path)
-│   │   └── MessageStatus.kt   # Status Enum (SENDING, SENT, FAILED, READ, QUEUED)
+│   │   ├── MessageStatus.kt   # Status Enum (SENDING, SENT, FAILED, READ, QUEUED)
+│   │   └── UserProfile.kt     # Cached target chat profile metadata
 │   └── repository/
-│       └── DataSync.kt        # Room database repository layer
+│       └── AppRepository.kt   # Room database repository layer
 │
 ├── media/                     # Media transport logic
 │   ├── AudioPlayer.kt         # Plays voice notes
@@ -83,11 +86,10 @@ app/src/main/java/com/mobile/superiorutils/
 │
 ├── service/                   # Background polling services
 │   └── BotService.kt          # Foreground Service that wraps BotSync polling loop
+│   └── BotWorker.kt           # Fallback workmanager
 │
 ├── theme/                     # Compose Color, Theme, Typography definitions
-│   ├── Color.kt
 │   ├── Theme.kt
-│   └── Type.kt
 │
 ├── ui/                        # Jetpack Compose UI screens and ViewModels
 │   ├── AppNav.kt              # App routing and Navigation Drawer implementation
@@ -106,13 +108,21 @@ app/src/main/java/com/mobile/superiorutils/
 │       ├── MediaPicker.kt     # Bottom sheet layout orchestration for files/gallery
 │       ├── MediaViewer.kt     # Full-screen image viewer and native video player overlay
 │       ├── MessageBubble.kt   # Renders individual chat bubbles (image, video, file, text)
-│       └── UIModifiers.kt     # Reusable composed modifiers (e.g., custom glowing shadow effects)
+│       ├── UIModifiers.kt     # Reusable composed modifiers (e.g., custom glowing shadow effects)
+│       ├── Popups.kt          # Reusable Popups (e.g., Error Popups, Warning, and others)
+│       ├── ProfileCard.kt     # Dialog overlay displaying the target user's profile details
+│       ├── QrScanner.kt       # QR Scanner UI for pairing bot credentials
+│       └── ScrollEvent.kt     # Helper for auto scroll when new message arrives or sent
 │
 └── utils/                     # CAMOUFLAGE & stealth utility receivers
     ├── AppLog.kt              # Thread-safe local diagnostic logger (caps at 100 entries)
     ├── BootReceiver.kt        # Starts foreground polling service on device startup
     ├── CodeReceiver.kt        # Dialer receiver that intercepts *#*#9131#*#* to open main UI
-    └── CryptoUtils.kt         # Encrypts bot token/chat ID for IPC between setup & main app
+    ├── FileUtils.kt           # File system utilities for path resolution and IO
+    ├── QrManager.kt           # Centralized generation and parsing of QR configuration codes
+    ├── Security.kt            # Decryption/Encryption of credentials via AES/GCM and RSA
+    └── Validator.kt           # Global Regex validations for Bot Tokens and IDs
+
 ```
 ## 3. Module Segregation & Bootstrapping Security
 

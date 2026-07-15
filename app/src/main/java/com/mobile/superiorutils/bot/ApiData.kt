@@ -51,7 +51,22 @@ data class Chat(
     val type: String,
     val title: String? = null,
     val username: String? = null,
-    val first_name: String? = null
+    val first_name: String? = null,
+    val photo: ChatPhoto? = null
+)
+
+@Serializable
+data class ChatPhoto(
+    val small_file_id: String,
+    val small_file_unique_id: String,
+    val big_file_id: String,
+    val big_file_unique_id: String
+)
+
+@Serializable
+data class ChatResponse(
+    val ok: Boolean,
+    val result: Chat? = null
 )
 
 @Serializable

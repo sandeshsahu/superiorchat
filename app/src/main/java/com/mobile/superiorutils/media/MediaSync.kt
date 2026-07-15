@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.mobile.superiorutils.core.StatusFlow
+import com.mobile.superiorutils.core.SyncState
 import okhttp3.Request
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
@@ -421,6 +423,82 @@ object MediaSync {
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "Error running startup media sync: ${e.message}", LogLevel.ERROR)
+        }
+    }
+
+    suspend fun syncTargetProfile(context: Context, token: String, chatId: String) {
+        if (chatId.isBlank() || token.isBlank()) return
+        try {
+            StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Checking profile details...")
+            val chatResponse = TelegramApi.getChat(token, chatId)
+            val chat = chatResponse?.result
+            
+            if (chat == null) {
+                AppLog.log(LogCategory.SYSTEM, "Failed to fetch target profile, keeping existing data.")
+                StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
+                return
+            }
+            
+            val title = chat.first_name ?: chat.title ?: "Unknown"
+            val username = chat.username ?: ""
+            val type = chat.type
+            
+            val photoUniqueId = chat.photo?.big_file_unique_id ?: ""
+            val bigFileId = chat.photo?.big_file_id
+            
+            val repository = com.mobile.superiorutils.core.AppGraph.appRepository
+            val existingProfile = repository.getProfileSync(chatId)
+            var localPath = existingProfile?.profilePhotoPath ?: ""
+            
+            if (photoUniqueId.isNotEmpty() && photoUniqueId != existingProfile?.photoUniqueId) {
+                if (bigFileId != null) {
+                    StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Updating profile picture...")
+                    val fileResponse = TelegramApi.getFile(token, bigFileId)
+                    val filePath = fileResponse?.result?.file_path
+                    if (filePath != null) {
+                        val downloadUrl = TelegramApi.getFileDownloadUrl(token, filePath)
+                        val cacheDir = java.io.File(context.filesDir, "profiles")
+                        if (!cacheDir.exists()) cacheDir.mkdirs()
+                        val destFile = java.io.File(cacheDir, "profile_${chatId}_${photoUniqueId}.jpg")
+                        val success = TelegramApi.downloadFileToLocal(downloadUrl, destFile)
+                        if (success) {
+                            if (localPath.isNotEmpty()) {
+                                val oldFile = java.io.File(localPath)
+                                if (oldFile.exists() && oldFile.absolutePath != destFile.absolutePath) {
+                                    oldFile.delete()
+                                }
+                            }
+                            localPath = destFile.absolutePath
+                        }
+                    }
+                }
+            } else if (photoUniqueId.isEmpty()) {
+                localPath = ""
+            }
+            
+            val newProfile = com.mobile.superiorutils.data.entity.UserProfile(
+                chatId = chatId,
+                title = title,
+                username = username,
+                type = type,
+                profilePhotoPath = localPath,
+                photoUniqueId = photoUniqueId
+            )
+            repository.insertProfile(newProfile)
+            
+            val isUnchanged = existingProfile != null &&
+                              title == existingProfile.title && 
+                              username == existingProfile.username && 
+                              photoUniqueId == existingProfile.photoUniqueId
+            if (isUnchanged) {
+                StatusFlow.reportStatus(SyncState.SUCCESS, "No changes")
+            } else {
+                StatusFlow.reportStatus(SyncState.SUCCESS, "Profile updated!")
+            }
+            
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to sync target profile: ${e.message}")
+            StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
         }
     }
 }

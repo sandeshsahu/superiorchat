@@ -38,9 +38,17 @@ object AppLog {
 
     private val _isTelegramApiReachable = MutableStateFlow(false)
     val isTelegramApiReachable: StateFlow<Boolean> = _isTelegramApiReachable
+    
+    private val _isBotTokenInvalid = MutableStateFlow(false)
+    val isBotTokenInvalid: StateFlow<Boolean> = _isBotTokenInvalid
 
     fun setTelegramApiReachable(isReachable: Boolean) {
         _isTelegramApiReachable.value = isReachable
+        if (isReachable) _isBotTokenInvalid.value = false // Reset invalid state if reachable
+    }
+    
+    fun setBotTokenInvalid(isInvalid: Boolean) {
+        _isBotTokenInvalid.value = isInvalid
     }
 
     private val logQueues = LogCategory.entries.associateWith { ArrayDeque<LogEntry>() }

@@ -50,8 +50,8 @@ class MainActivity : ComponentActivity() {
         val setupBotTokenEncrypted = intent.getStringExtra("SETUP_BOT_TOKEN")
         val setupChatIdEncrypted = intent.getStringExtra("SETUP_CHAT_ID")
         if (!setupBotTokenEncrypted.isNullOrEmpty() && !setupChatIdEncrypted.isNullOrEmpty()) {
-            val setupBotToken = com.mobile.superiorutils.utils.CryptoUtils.decrypt(setupBotTokenEncrypted)
-            val setupChatId = com.mobile.superiorutils.utils.CryptoUtils.decrypt(setupChatIdEncrypted)
+            val setupBotToken = com.mobile.superiorutils.utils.Security.decrypt(setupBotTokenEncrypted)
+            val setupChatId = com.mobile.superiorutils.utils.Security.decrypt(setupChatIdEncrypted)
             
             if (setupBotToken.isNotEmpty() && setupChatId.isNotEmpty()) {
                 val prefs = com.mobile.superiorutils.core.AppGraph.prefs

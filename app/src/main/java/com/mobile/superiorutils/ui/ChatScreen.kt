@@ -70,6 +70,7 @@ import com.mobile.superiorutils.ui.components.MediaPicker
 import com.mobile.superiorutils.ui.components.PickerTab
 import com.mobile.superiorutils.ui.components.ErrorDialog
 import com.mobile.superiorutils.ui.components.ActionDialog
+import com.mobile.superiorutils.ui.components.TargetProfileDialog
 import com.mobile.superiorutils.ui.components.bounceClick
 import com.mobile.superiorutils.ui.components.glow
 import java.io.File
@@ -82,10 +83,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     viewModel: ChatViewModel = viewModel(),
-    onShowGlobalDialog: (com.mobile.superiorutils.ui.GlobalDialogState) -> Unit = {}
+    onShowGlobalDialog: (com.mobile.superiorutils.ui.GlobalDialogState) -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     val messages by viewModel.messages.collectAsState()
     val messageLimit by viewModel.messageLimit.collectAsState()
+    val userProfile by viewModel.userProfile.collectAsState()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -94,6 +97,7 @@ fun ChatScreen(
     var activeFullScreenMediaType by remember { mutableStateOf<String?>(null) }
     var currentPickerMode by remember { mutableStateOf(PickerMode.NONE) }
     var showAttachmentMenu by remember { mutableStateOf(false) }
+    var showUserInfoDialog by remember { mutableStateOf(false) }
 
     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
     val isKeyboardVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
@@ -105,8 +109,9 @@ fun ChatScreen(
 
     val isOnline by viewModel.isOnline.collectAsState()
     val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
+    val isBotTokenInvalid by viewModel.isBotTokenInvalid.collectAsState()
     val isRetrying = viewModel.isRetryingConnection
-    val hasConnectionError = !isOnline || !isTelegramApiReachable
+    val hasConnectionError = !isOnline || !isTelegramApiReachable || isBotTokenInvalid
 
     val activeConversationId = remember(messages) { messages.firstOrNull()?.conversationId }
     val coroutineScope = rememberCoroutineScope()
@@ -488,10 +493,15 @@ fun ChatScreen(
                         ) { msg ->
                             MessageBubble(
                                 message = msg,
+                                userProfile = userProfile,
                                 viewModel = viewModel,
                                 onMediaClick = onMediaClickRemembered,
                                 onMediaLongPressStart = onMediaLongPressStartRemembered,
-                                onMediaLongPressEnd = onMediaLongPressEndRemembered
+                                onMediaLongPressEnd = onMediaLongPressEndRemembered,
+                                onProfileClick = {
+                                    viewModel.forceSyncProfile(context)
+                                    showUserInfoDialog = true
+                                }
                             )
                         }
                         
@@ -511,6 +521,55 @@ fun ChatScreen(
                                 }
                             }
                         }
+                    }
+                }
+                
+                val syncState by com.mobile.superiorutils.core.StatusFlow.syncState.collectAsState()
+                val syncMessage by com.mobile.superiorutils.core.StatusFlow.syncMessage.collectAsState()
+
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = syncState != com.mobile.superiorutils.core.SyncState.IDLE,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
+                ) {
+                    val pillBgColor = when (syncState) {
+                        com.mobile.superiorutils.core.SyncState.SUCCESS,
+                        com.mobile.superiorutils.core.SyncState.SYNCING_PROFILE,
+                        com.mobile.superiorutils.core.SyncState.SYNCING_MESSAGES -> PrimaryLight
+                        com.mobile.superiorutils.core.SyncState.ERROR,
+                        com.mobile.superiorutils.core.SyncState.OFFLINE,
+                        com.mobile.superiorutils.core.SyncState.AUTH_ERROR -> Color(0xFF690005) // Dark Red
+                        else -> SurfaceLevel1
+                    }
+                    val pillTextColor = when (syncState) {
+                        com.mobile.superiorutils.core.SyncState.SUCCESS,
+                        com.mobile.superiorutils.core.SyncState.SYNCING_PROFILE,
+                        com.mobile.superiorutils.core.SyncState.SYNCING_MESSAGES -> Color(0xFF1000A9) // Matches sent message text
+                        else -> Color.White
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(pillBgColor)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (syncState == com.mobile.superiorutils.core.SyncState.SYNCING_PROFILE || syncState == com.mobile.superiorutils.core.SyncState.SYNCING_MESSAGES) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = pillTextColor,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = syncMessage ?: "",
+                            color = pillTextColor,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
 
@@ -585,85 +644,38 @@ fun ChatScreen(
                         onCloseClick = onCloseClickRemembered
                     )
                     
-                    AnimatedContent(
-                        targetState = hasConnectionError,
-                        transitionSpec = {
-                            (slideInVertically(initialOffsetY = { it }) + fadeIn())
-                                .togetherWith(slideOutVertically(targetOffsetY = { -it }) + fadeOut())
-                        },
-                        label = "input_area_transition"
-                    ) { connectionError ->
-                        if (connectionError) {
-                            // Offline / Connection retry panel
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(24.dp))
-                                    .background(PrimaryLight.copy(alpha = 0.1f))
-                                    .border(1.dp, PrimaryLight.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
-                                    .bounceClick(scaleDown = 0.95f) { if (!isRetrying) viewModel.retryConnection(context) }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                if (isRetrying) {
-                                    CircularProgressIndicator(
-                                        color = ErrorRed,
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "Connecting...",
-                                        color = ErrorRed,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.ErrorOutline,
-                                        contentDescription = "Offline",
-                                        tint = ErrorRed,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = "Connection lost. Tap to retry",
-                                        color = ErrorRed,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        } else {
-                                ChatInputBox(
-                                    viewModel = viewModel,
-                                    showAttachmentMenu = showAttachmentMenu,
-                                    onAttachmentMenuChange = { showAttachmentMenu = it },
-                                    onRequestStoragePermission = { _ ->
-                                        onShowGlobalDialog(
-                                            com.mobile.superiorutils.ui.GlobalDialogState.StoragePermissionRationale(
-                                                onConfirm = {
-                                                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
-                                                    } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                                                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO))
-                                                    } else {
-                                                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
-                                                    }
-                                                }
-                                            )
-                                        )
-                                    },
-                                    onRequestAudioPermission = { perm ->
-                                        onShowGlobalDialog(
-                                            com.mobile.superiorutils.ui.GlobalDialogState.MicrophonePermissionRationale(
-                                                onConfirm = { audioPermissionLauncher.launch(perm) }
-                                            )
-                                        )
+                    ChatInputBox(
+                        viewModel = viewModel,
+                        showAttachmentMenu = showAttachmentMenu,
+                        onAttachmentMenuChange = { showAttachmentMenu = it },
+                        onRequestStoragePermission = { _ ->
+                            onShowGlobalDialog(
+                                com.mobile.superiorutils.ui.GlobalDialogState.StoragePermissionRationale(
+                                    onConfirm = {
+                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                            storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+                                        } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                                            storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO))
+                                        } else {
+                                            storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                                        }
                                     }
                                 )
-                        }
-                    }
+                            )
+                        },
+                        onRequestAudioPermission = { perm ->
+                            onShowGlobalDialog(
+                                com.mobile.superiorutils.ui.GlobalDialogState.MicrophonePermissionRationale(
+                                    onConfirm = { audioPermissionLauncher.launch(perm) }
+                                )
+                            )
+                        },
+                        hasConnectionError = hasConnectionError,
+                        isBotTokenInvalid = isBotTokenInvalid,
+                        isRetrying = isRetrying,
+                        onRetryConnection = { viewModel.retryConnection(context) },
+                        onNavigateToSettings = onNavigateToSettings
+                    )
                 }
             }
         }
@@ -681,6 +693,17 @@ fun ChatScreen(
             ErrorDialog(
                 message = errorMessage,
                 onDismiss = { viewModel.errorPopupMessage = null }
+            )
+        }
+
+        if (showUserInfoDialog) {
+            TargetProfileDialog(
+                userProfile = userProfile,
+                onImageClick = { path ->
+                    activeFullScreenMediaPath = path
+                    activeFullScreenMediaType = "photo"
+                },
+                onDismiss = { showUserInfoDialog = false }
             )
         }
     }

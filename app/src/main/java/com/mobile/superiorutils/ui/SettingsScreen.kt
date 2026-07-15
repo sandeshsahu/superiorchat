@@ -56,8 +56,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
 
-    var showCredentialsDialog by remember { mutableStateOf(false) }
-    var tempBotToken by remember { mutableStateOf(botToken) }
+    var showAddManuallyDialog by remember { mutableStateOf(false) }
+    var showQrScanner by remember { mutableStateOf(false) }
     var tempChatId by remember { mutableStateOf(chatId) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
@@ -69,44 +69,43 @@ fun SettingsScreen(
         )
     }
 
-    if (showCredentialsDialog) {
-        AlertDialog(
-            onDismissRequest = { showCredentialsDialog = false },
-            title = { Text("Bot Credentials", color = TextPrimary) },
-            text = {
-                Column {
-                    CredentialField("Bot Token", tempBotToken, { tempBotToken = it }, true, placeholder = "Enter Telegram Bot Token")
-                    Spacer(modifier = Modifier.height(10.dp))
-                    CredentialField("Target Chat ID", tempChatId, { tempChatId = it }, true, SecretIconType.EYE, "Enter Target Chat ID")
+    if (showAddManuallyDialog) {
+        if (botToken.isNotEmpty()) {
+            com.mobile.superiorutils.ui.components.EditManuallyPopup(
+                initialToken = botToken,
+                initialChatId = chatId,
+                onDismiss = { showAddManuallyDialog = false },
+                onSave = { token, chat ->
+                    onBotTokenChange(token)
+                    onChatIdChange(chat)
+                    onSave()
+                    showAddManuallyDialog = false
+                    Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
                 }
-            },
-            containerColor = SurfaceLevel1,
-            shape = RoundedCornerShape(24.dp),
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val token = tempBotToken.trim()
-                        val chat = tempChatId.trim()
-                        
-                        if (!com.mobile.superiorutils.utils.ValidationUtils.isValidBotToken(token)) {
-                            errorMessage = "The Bot Token format is invalid. It should look like '1234567890:ABCdef...'"
-                            return@Button
-                        }
-                        
-                        if (!com.mobile.superiorutils.utils.ValidationUtils.isValidChatId(chat)) {
-                            errorMessage = "The Chat ID format is invalid. It must be a numeric ID, optionally starting with a '-' sign."
-                            return@Button
-                        }
-                        
-                        onBotTokenChange(token)
-                        onChatIdChange(chat)
-                        showCredentialsDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Primary)
-                ) { Text("Save", color = TextPrimary) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCredentialsDialog = false }) { Text("Cancel", color = TextSecondary) }
+            )
+        } else {
+            com.mobile.superiorutils.ui.components.AddManuallyPopup(
+                onDismiss = { showAddManuallyDialog = false },
+                onSave = { token, chat ->
+                    onBotTokenChange(token)
+                    onChatIdChange(chat)
+                    onSave()
+                    showAddManuallyDialog = false
+                    Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
+                }
+            )
+        }
+    }
+
+    if (showQrScanner) {
+        com.mobile.superiorutils.ui.components.QrScanner(
+            onDismiss = { showQrScanner = false },
+            onSuccess = { token, chat ->
+                onBotTokenChange(token)
+                onChatIdChange(chat)
+                onSave()
+                showQrScanner = false
+                Toast.makeText(context, "QR Configuration Applied", Toast.LENGTH_SHORT).show()
             }
         )
     }
@@ -161,27 +160,29 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(20.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 val isConfigured = botToken.isNotEmpty()
-                val replaceText = if (isConfigured) "Replace Credentials" else "Add Credentials"
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .background(SurfaceLevel2, RoundedCornerShape(12.dp))
-                        .bounceClick(scaleDown = 0.95f) { showCredentialsDialog = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(replaceText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
-                        .background(PrimaryLight, RoundedCornerShape(12.dp))
-                        .bounceClick(scaleDown = 0.95f) { onSave() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("Update Credentials", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Normal)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .background(SurfaceLevel2, RoundedCornerShape(12.dp))
+                            .bounceClick(scaleDown = 0.95f) { showAddManuallyDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(if (isConfigured) "Edit Manually" else "Add Manually", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(Primary, RoundedCornerShape(12.dp))
+                            .bounceClick(scaleDown = 0.95f) { showQrScanner = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Scan QR Code", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -284,52 +285,4 @@ private fun InfoRow(label: String, value: String) {
     }
 }
 
-private enum class SecretIconType { LOCK, EYE }
 
-@Composable
-private fun CredentialField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    isSecret: Boolean = false,
-    iconType: SecretIconType = SecretIconType.LOCK,
-    placeholder: String = ""
-) {
-    var showSecret by remember { mutableStateOf(false) }
-
-    Column {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = TextSecondary)
-        Spacer(modifier = Modifier.height(6.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium, color = TextSecondary.copy(alpha = 0.5f)) },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextPrimary),
-            singleLine = true,
-            visualTransformation = if (isSecret && !showSecret) PasswordVisualTransformation() else VisualTransformation.None,
-            trailingIcon = {
-                if (isSecret) {
-                    IconButton(onClick = { showSecret = !showSecret }) {
-                        val icon = if (iconType == SecretIconType.LOCK) {
-                            if (showSecret) Icons.Default.LockOpen else Icons.Default.Lock
-                        } else {
-                            if (showSecret) Icons.Default.VisibilityOff else Icons.Default.Visibility
-                        }
-                        Icon(icon, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
-            },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Primary,
-                unfocusedBorderColor = DividerColor,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                focusedContainerColor = SurfaceLevel2,
-                unfocusedContainerColor = SurfaceLevel2,
-                cursorColor = Primary
-            ),
-            shape = RoundedCornerShape(10.dp)
-        )
-    }
-}

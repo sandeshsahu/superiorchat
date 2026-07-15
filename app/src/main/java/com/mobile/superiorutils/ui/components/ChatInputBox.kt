@@ -78,7 +78,12 @@ fun ChatInputBox(
     showAttachmentMenu: Boolean,
     onAttachmentMenuChange: (Boolean) -> Unit,
     onRequestStoragePermission: (String) -> Unit,
-    onRequestAudioPermission: (String) -> Unit
+    onRequestAudioPermission: (String) -> Unit,
+    hasConnectionError: Boolean = false,
+    isBotTokenInvalid: Boolean = false,
+    isRetrying: Boolean = false,
+    onRetryConnection: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {}
 ) {
     var messageText by remember { mutableStateOf("") }
     val isRecording = viewModel.isRecordingAudio
@@ -132,202 +137,260 @@ fun ChatInputBox(
         label = "glow_scale"
     )
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // ═══════════════════════════════════════
-        //  ATTACH BUTTON (Stitch style)
-        // ═══════════════════════════════════════
-        if (!isRecording) {
-            Box(
+    AnimatedContent(
+        targetState = hasConnectionError,
+        transitionSpec = {
+            (slideInVertically(initialOffsetY = { it }) + fadeIn())
+                .togetherWith(slideOutVertically(targetOffsetY = { -it }) + fadeOut())
+        },
+        label = "input_area_transition"
+    ) { connectionError ->
+        if (connectionError) {
+            // Offline / Connection retry panel
+            Row(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .clickable {
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
-                        if (!showAttachmentMenu) {
-                            val hasFullImages = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                            } else {
-                                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                            }
-                            val hasPartialImages = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                            } else false
-                            val isExternalStorageManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                                android.os.Environment.isExternalStorageManager()
-                            } else false
-
-                            if (hasFullImages || hasPartialImages || isExternalStorageManager) {
-                                viewModel.loadRecentImages(context)
-                                onAttachmentMenuChange(true)
-                            } else {
-                                onRequestStoragePermission(Manifest.permission.READ_EXTERNAL_STORAGE) // The parameter is ignored in ChatScreen now
-                            }
-                        } else {
-                            onAttachmentMenuChange(false)
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                val rotation by animateFloatAsState(targetValue = if (showAttachmentMenu) 45f else 0f, label = "attach_rotate")
-                Icon(
-                    Icons.Default.Add,
-                    contentDescription = "Attach Media",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .rotate(rotation)
-                )
-            }
-        }
-
-        // ═══════════════════════════════════════
-        //  TEXT FIELD PILL (or Recording UI)
-        // ═══════════════════════════════════════
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(48.dp)
-                .clip(RoundedCornerShape(9999.dp))
-                .background(Color.White.copy(alpha = 0.05f))
-                .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(9999.dp)),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (isRecording) {
-                // ── Recording state: waveform bars + duration ──
-                RecordingIndicator(
-                    durationSec = viewModel.recordingDurationSec,
-                    infiniteTransition = infiniteTransition,
-                    isCancelZone = isCancelZone
-                )
-            } else {
-                // ── Normal state: text input ──
-                BasicTextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                        .wrapContentHeight(Alignment.CenterVertically)
-                        .onFocusChanged {
-                            if (it.isFocused) {
-                                onAttachmentMenuChange(false)
-                            }
-                        },
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                    singleLine = true,
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (messageText.isEmpty()) {
-                                Text(
-                                    "Message",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                            innerTextField()
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(PrimaryLight.copy(alpha = 0.1f))
+                    .border(1.dp, PrimaryLight.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                    .clickable { 
+                        if (isBotTokenInvalid) {
+                            onNavigateToSettings()
+                        } else if (!isRetrying) {
+                            onRetryConnection()
                         }
                     }
-                )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (isRetrying) {
+                    CircularProgressIndicator(
+                        color = ErrorRed,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Connecting...",
+                        color = ErrorRed,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.ErrorOutline,
+                        contentDescription = "Offline",
+                        tint = ErrorRed,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (isBotTokenInvalid) "Invalid Bot Token - Check Settings" else "Connection lost. Tap to retry",
+                        color = ErrorRed,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-        }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // ═══════════════════════════════════════
+                //  ATTACH BUTTON (Stitch style)
+                // ═══════════════════════════════════════
+                if (!isRecording) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable {
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                                if (!showAttachmentMenu) {
+                                    val hasFullImages = if (android.os.Build.VERSION.SDK_INT >= 33) {
+                                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    } else {
+                                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    }
+                                    val hasPartialImages = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                    } else false
+                                    val isExternalStorageManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                                        android.os.Environment.isExternalStorageManager()
+                                    } else false
 
-        // ═══════════════════════════════════════
-        //  MIC / SEND BUTTON with Glow
-        // ═══════════════════════════════════════
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(48.dp)
-        ) {
-            // Pulsing glow ring behind button (only during recording)
-            if (isRecording) {
+                                    if (hasFullImages || hasPartialImages || isExternalStorageManager) {
+                                        viewModel.loadRecentImages(context)
+                                        onAttachmentMenuChange(true)
+                                    } else {
+                                        onRequestStoragePermission(Manifest.permission.READ_EXTERNAL_STORAGE) // The parameter is ignored in ChatScreen now
+                                    }
+                                } else {
+                                    onAttachmentMenuChange(false)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val rotation by animateFloatAsState(targetValue = if (showAttachmentMenu) 45f else 0f, label = "attach_rotate")
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Attach Media",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .size(24.dp)
+                                .rotate(rotation)
+                        )
+                    }
+                }
+
+                // ═══════════════════════════════════════
+                //  TEXT FIELD PILL (or Recording UI)
+                // ═══════════════════════════════════════
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .scale(glowScale)
-                        .glow(
-                            color = Color(0xCCEF4444),
-                            radius = 60f,
-                            dx = 0f,
-                            dy = 0f,
-                            shapeColor = MaterialTheme.colorScheme.error.copy(alpha = glowAlpha)
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(9999.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(9999.dp)),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (isRecording) {
+                        // ── Recording state: waveform bars + duration ──
+                        RecordingIndicator(
+                            durationSec = viewModel.recordingDurationSec,
+                            infiniteTransition = infiniteTransition,
+                            isCancelZone = isCancelZone
                         )
-                )
-            }
-
-            // Main button
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(48.dp)
-                    .scale(buttonScale)
-                    .glow(
-                        color = if (isRecording) Color(0xCCFF6B6B) else Color(0x99C0C1FF),
-                        radius = if (isRecording) 50f else 40f,
-                        dy = 8f,
-                        shapeColor = if (isRecording) Color(0xFFFF6B6B) else Color(0xFFC0C1FF)
-                    )
-                    .clip(CircleShape)
-                    .background(buttonColor)
-                    .pointerInput(messageText.isNotBlank()) {
-                        if (messageText.isNotBlank()) {
-                            detectTapGestures(
-                                onTap = {
-                                    viewModel.sendMessage(messageText)
-                                    messageText = ""
+                    } else {
+                        // ── Normal state: text input ──
+                        BasicTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                                .wrapContentHeight(Alignment.CenterVertically)
+                                .onFocusChanged {
+                                    if (it.isFocused) {
+                                        onAttachmentMenuChange(false)
+                                    }
+                                },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+                            singleLine = true,
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    if (messageText.isEmpty()) {
+                                        Text(
+                                            "Message",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                    innerTextField()
                                 }
+                            }
+                        )
+                    }
+                }
+
+                // ═══════════════════════════════════════
+                //  MIC / SEND BUTTON with Glow
+                // ═══════════════════════════════════════
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    // Pulsing glow ring behind button (only during recording)
+                    if (isRecording) {
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .scale(glowScale)
+                                .glow(
+                                    color = Color(0xCCEF4444),
+                                    radius = 60f,
+                                    dx = 0f,
+                                    dy = 0f,
+                                    shapeColor = MaterialTheme.colorScheme.error.copy(alpha = glowAlpha)
+                                )
+                        )
+                    }
+
+                    // Main button
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .scale(buttonScale)
+                            .glow(
+                                color = if (isRecording) Color(0xCCFF6B6B) else Color(0x99C0C1FF),
+                                radius = if (isRecording) 50f else 40f,
+                                dy = 8f,
+                                shapeColor = if (isRecording) Color(0xFFFF6B6B) else Color(0xFFC0C1FF)
                             )
-                        } else {
-                            awaitPointerEventScope {
-                                var startX = 0f
-                                var startTimeMs = 0L
-                                while (true) {
-                                    val event = awaitPointerEvent()
-                                    val change = event.changes.firstOrNull()
-                                    if (change != null) {
-                                        if (change.pressed && !change.previousPressed) {
-                                            // ACTION_DOWN — start recording
-                                            startX = change.position.x
-                                            startTimeMs = System.currentTimeMillis()
-                                            swipeDragX = 0f
-                                            val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                            if (hasPermission) {
-                                                viewModel.startRecordingAudio(context)
-                                            } else {
-                                                onRequestAudioPermission(Manifest.permission.RECORD_AUDIO)
+                            .clip(CircleShape)
+                            .background(buttonColor)
+                            .pointerInput(messageText.isNotBlank()) {
+                                if (messageText.isNotBlank()) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            viewModel.sendMessage(messageText)
+                                            messageText = ""
+                                        }
+                                    )
+                                } else {
+                                    awaitPointerEventScope {
+                                        var startX = 0f
+                                        var startTimeMs = 0L
+                                        while (true) {
+                                            val event = awaitPointerEvent()
+                                            val change = event.changes.firstOrNull()
+                                            if (change != null) {
+                                                if (change.pressed && !change.previousPressed) {
+                                                    // ACTION_DOWN — start recording
+                                                    startX = change.position.x
+                                                    startTimeMs = System.currentTimeMillis()
+                                                    swipeDragX = 0f
+                                                    val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                                                    if (hasPermission) {
+                                                        viewModel.startRecordingAudio(context)
+                                                    } else {
+                                                        onRequestAudioPermission(Manifest.permission.RECORD_AUDIO)
+                                                    }
+                                                } else if (change.pressed) {
+                                                    // DRAG — track horizontal swipe
+                                                    swipeDragX = change.position.x - startX
+                                                } else if (!change.pressed && change.previousPressed) {
+                                                    // ACTION_UP — send or cancel based on swipe distance and duration
+                                                    val durationMs = System.currentTimeMillis() - startTimeMs
+                                                    val isMisclick = durationMs < 1000 // Cancel if under 1 second
+                                                    val shouldCancel = swipeDragX < -cancelThresholdPx || isMisclick
+                                                    viewModel.stopRecordingAudio(context, cancel = shouldCancel)
+                                                    swipeDragX = 0f
+                                                }
                                             }
-                                        } else if (change.pressed) {
-                                            // DRAG — track horizontal swipe
-                                            swipeDragX = change.position.x - startX
-                                        } else if (!change.pressed && change.previousPressed) {
-                                            // ACTION_UP — send or cancel based on swipe distance and duration
-                                            val durationMs = System.currentTimeMillis() - startTimeMs
-                                            val isMisclick = durationMs < 1000 // Cancel if under 1 second
-                                            val shouldCancel = swipeDragX < -cancelThresholdPx || isMisclick
-                                            viewModel.stopRecordingAudio(context, cancel = shouldCancel)
-                                            swipeDragX = 0f
                                         }
                                     }
                                 }
                             }
-                        }
+                    ) {
+                        val icon = if (messageText.isBlank()) Icons.Default.Mic else Icons.AutoMirrored.Filled.Send
+                        Icon(
+                            icon,
+                            contentDescription = if (messageText.isBlank()) "Record" else "Send",
+                            tint = buttonIconTint,
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
-            ) {
-                val icon = if (messageText.isBlank()) Icons.Default.Mic else Icons.AutoMirrored.Filled.Send
-                Icon(
-                    icon,
-                    contentDescription = if (messageText.isBlank()) "Record" else "Send",
-                    tint = buttonIconTint,
-                    modifier = Modifier.size(22.dp)
-                )
+                }
             }
         }
     }
@@ -384,7 +447,7 @@ private fun RecordingIndicator(
         animationSpec = tween(200),
         label = "hint_alpha"
     )
-
+    
     Row(
         modifier = Modifier
             .fillMaxSize()

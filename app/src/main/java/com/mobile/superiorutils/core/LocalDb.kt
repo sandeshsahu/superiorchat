@@ -10,16 +10,20 @@ import com.mobile.superiorutils.data.dao.MessageDao
 import com.mobile.superiorutils.data.entity.ChatNode
 import com.mobile.superiorutils.data.dao.ThreadDao
 
+import com.mobile.superiorutils.data.entity.UserProfile
+import com.mobile.superiorutils.data.dao.ProfileDao
+
 import androidx.room.TypeConverters
 import com.mobile.superiorutils.core.Converters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [MessageNode::class, ChatNode::class], version = 3, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun conversationDao(): ThreadDao
+    abstract fun profileDao(): ProfileDao
 
     companion object {
         @Volatile
@@ -68,6 +72,7 @@ abstract class LocalDb : RoomDatabase() {
                     "superior_chat_database"
                 )
                 .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

@@ -14,12 +14,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.mobile.superiorutils.media.MediaSync
+import com.mobile.superiorutils.core.StatusFlow
+import com.mobile.superiorutils.core.SyncState
 
 class BotSync(private val context: Context) {
 
@@ -35,7 +38,9 @@ class BotSync(private val context: Context) {
             prefs.lastUpdateId = value
         }
     private var networkCollectorJob: Job? = null
-    private val networkWakeChannel = kotlinx.coroutines.channels.Channel<Unit>(kotlinx.coroutines.channels.Channel.CONFLATED)
+    private val networkWakeChannel = Channel<Unit>(Channel.CONFLATED)
+
+    private var showSyncFeedback = true // Flag to control sync feedback spam
     @Volatile private var isNetworkAvailable = false
 
     fun startPolling() {
@@ -44,6 +49,7 @@ class BotSync(private val context: Context) {
         registerNetworkCallback()
         launchPollingLoop()
         flushQueuedMessages()
+        syncTargetProfile()
     }
 
     fun stopPolling() {
@@ -62,20 +68,30 @@ class BotSync(private val context: Context) {
                 NetState.isOnline.collect { isOnline ->
                     isNetworkAvailable = isOnline
                     if (isOnline) {
+                        if (StatusFlow.syncState.value == SyncState.OFFLINE) {
+                            StatusFlow.reportStatus(SyncState.SUCCESS, "Online")
+                        }
                         AppLog.log(LogCategory.SYSTEM, "Network available. Waking up polling loop and flushing queue.")
                         networkWakeChannel.trySend(Unit)
                         flushQueuedMessages()
                     } else {
+                        StatusFlow.reportStatus(SyncState.OFFLINE, "Connection offline")
                         AppLog.log(LogCategory.SYSTEM, "Network lost. Polling will pause after current request times out.")
                         AppLog.setTelegramApiReachable(false)
+                        showSyncFeedback = true
                     }
                 }
             }
             launch {
                 AppLog.isTelegramApiReachable.collect { isReachable ->
-                    // If the user manually retries from the UI and succeeds, wake up the polling loop!
-                    if (isReachable && isNetworkAvailable) {
-                        AppLog.log(LogCategory.SYSTEM, "API reachable via UI retry. Waking up polling loop.")
+                    if (!isReachable && isNetworkAvailable) {
+                        StatusFlow.reportStatus(SyncState.OFFLINE, "Telegram API Unreachable")
+                        showSyncFeedback = true
+                    } else if (isReachable && isNetworkAvailable) {
+                        if (StatusFlow.syncState.value == SyncState.OFFLINE) {
+                            StatusFlow.reportStatus(SyncState.SUCCESS, "Online")
+                        }
+                        AppLog.log(LogCategory.SYSTEM, "API reachable. Waking up polling loop.")
                         networkWakeChannel.trySend(Unit)
                         flushQueuedMessages()
                     }
@@ -122,6 +138,9 @@ class BotSync(private val context: Context) {
                                 val updateResponse = TelegramApi.json.decodeFromString<UpdateResponse>(body)
                                 if (updateResponse.ok) {
                                     hasUpdates = updateResponse.result.isNotEmpty()
+                                    if (hasUpdates && showSyncFeedback) {
+                                        StatusFlow.reportStatus(SyncState.SYNCING_MESSAGES, "Syncing new messages...")
+                                    }
                                     for (update in updateResponse.result) {
                                         try {
                                             lastUpdateId = update.update_id
@@ -130,11 +149,20 @@ class BotSync(private val context: Context) {
                                             AppLog.log(LogCategory.SYSTEM, "Failed to handle update ${update.update_id}: ${e.message}", LogLevel.ERROR)
                                         }
                                     }
+                                    if (hasUpdates && showSyncFeedback) {
+                                        val count = updateResponse.result.size
+                                        StatusFlow.reportStatus(SyncState.SUCCESS, "Synced $count message${if(count > 1) "s" else ""}")
+                                    }
+                                    showSyncFeedback = false // Silence future continuous polling
                                 }
                             }
                         } else {
                             if (response.code == 409) {
                                 consecutiveFailures += 2 // Give other instances time to die
+                            } else if (response.code == 401) {
+                                AppLog.setBotTokenInvalid(true)
+                                StatusFlow.reportStatus(SyncState.AUTH_ERROR, "Invalid Bot Token")
+                                consecutiveFailures += 5 // Backoff strongly
                             } else {
                                 consecutiveFailures++
                             }
@@ -163,7 +191,7 @@ class BotSync(private val context: Context) {
                 
                 if (backoffMs > 0L) {
                     // Wait for backoff, or wake up instantly if network becomes available
-                    kotlinx.coroutines.withTimeoutOrNull(backoffMs) {
+                    kotlinx.coroutines.withTimeoutOrNull<Unit>(backoffMs) {
                         networkWakeChannel.receive()
                     }
                 }
@@ -223,7 +251,7 @@ class BotSync(private val context: Context) {
         if (fileSize != null && fileSize > 20 * 1024 * 1024) {
             val formattedSize = com.mobile.superiorutils.utils.FileUtils.formatFileSize(fileSize)
             val replyText = """
-                *Failed*
+                *Failed To Upload*
                 
                 Your file is not delivered because the file size $formattedSize is more than 20MB.
                 
@@ -305,6 +333,20 @@ class BotSync(private val context: Context) {
             } catch (e: Exception) {
                 AppLog.log(LogCategory.ERROR, "Failed to flush queued messages: ${e.message}")
             }
+        }
+    }
+
+    fun forceSyncProfile() {
+        syncTargetProfile()
+    }
+
+    private fun syncTargetProfile() {
+        coroutineScope.launch(Dispatchers.IO) {
+            if (!isNetworkAvailable) return@launch
+            val token = prefs.botToken
+            val chatId = prefs.chatId
+            if (token.isEmpty() || chatId.isEmpty()) return@launch
+            MediaSync.syncTargetProfile(context, token, chatId)
         }
     }
 }
