@@ -1,6 +1,6 @@
-package com.mobile.superiorsetup.utils
+package com.mobile.superiorsetup.core
 
-object ValidationUtils {
+object Validator {
     private val BOT_TOKEN_REGEX = Regex("^\\d{8,10}:[A-Za-z0-9_-]{35}\$")
     private val CHAT_ID_REGEX = Regex("^-?\\d{7,15}\$")
 
