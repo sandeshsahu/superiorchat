@@ -341,7 +341,7 @@ object MediaSync {
 
             AppLog.log(LogCategory.NETWORK, "Uploading $mediaType file of size ${file.length()} bytes to chat $chatId")
             val progressFlow = _transferProgress.getOrPut(messageId) { MutableStateFlow(0f) }
-            val success = uploadMutex.withLock {
+            val resultMessageId = uploadMutex.withLock {
                 val progressListener: (Long, Long) -> Unit = { bytesWritten, totalBytes ->
                     if (totalBytes > 0) {
                         progressFlow.value = (bytesWritten.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
@@ -361,17 +361,23 @@ object MediaSync {
                         }
                         TelegramApi.sendDocument(token, chatId, file, caption = "", displayName = originalName, onProgress = progressListener)
                     }
-                    else -> false
+                    else -> null
                 }
             }
             _transferProgress.remove(messageId)
 
             val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
             if (freshMsg != null) {
-                db.messageDao().insertMessage(freshMsg.copy(status = if (success) MessageStatus.SENT else MessageStatus.FAILED))
-                AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to: ${if (success) "SENT" else "FAILED"}")
+                if (resultMessageId != null) {
+                    db.messageDao().deleteMessage(messageId)
+                    db.messageDao().insertMessage(freshMsg.copy(messageId = resultMessageId, status = MessageStatus.SENT))
+                    AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to SENT with real ID: $resultMessageId")
+                } else {
+                    db.messageDao().insertMessage(freshMsg.copy(status = MessageStatus.FAILED))
+                    AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to: FAILED")
+                }
             }
-            return success
+            return resultMessageId != null
         } catch (e: CancellationException) {
             AppLog.log(LogCategory.SYSTEM, "Upload cancelled for msgId=$messageId")
             throw e

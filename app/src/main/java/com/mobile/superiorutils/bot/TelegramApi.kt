@@ -204,7 +204,7 @@ object TelegramApi {
 
 
 
-    /** Send a photo file. Returns true on success. */
+    /** Send a photo file. Returns the message ID on success, null on failure. */
     suspend fun sendPhoto(
         token: String,
         chatId: String,
@@ -212,7 +212,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Boolean {
+    ): Long? {
         return try {
             val photoBody = if (onProgress != null) {
                 ProgressRequestBody(file, "image/jpeg".toMediaType(), onProgress)
@@ -238,20 +238,31 @@ object TelegramApi {
 
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
+                var messageId: Long? = null
                 if (!success) {
                     AppLog.log(LogCategory.NETWORK, "sendPhoto failed: ${response.code}", com.mobile.superiorutils.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Photo: ${file.name}" + (if (caption != null) " - ${caption.take(100)}" else ""))
+                    val body = response.body?.string()
+                    if (body != null) {
+                        try {
+                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
+                            val result = jsonObject["result"]?.jsonObject
+                            messageId = result?.get("message_id")?.jsonPrimitive?.long
+                        } catch (e: Exception) {
+                            AppLog.log(LogCategory.NETWORK, "Failed to parse sendPhoto response: ${e.message}", com.mobile.superiorutils.utils.LogLevel.WARN)
+                        }
+                    }
                 }
-                success
+                messageId
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendPhoto error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
-            false
+            null
         }
     }
 
-    /** Send a voice audio file. Returns true on success. */
+    /** Send a voice audio file. Returns the message ID on success, null on failure. */
     suspend fun sendVoice(
         token: String,
         chatId: String,
@@ -259,7 +270,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Boolean {
+    ): Long? {
         return try {
             val voiceBody = if (onProgress != null) {
                 ProgressRequestBody(file, "audio/mp4".toMediaType(), onProgress)
@@ -285,21 +296,32 @@ object TelegramApi {
 
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
+                var messageId: Long? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendVoice failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Voice: ${file.name}")
+                    val body = response.body?.string()
+                    if (body != null) {
+                        try {
+                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
+                            val result = jsonObject["result"]?.jsonObject
+                            messageId = result?.get("message_id")?.jsonPrimitive?.long
+                        } catch (e: Exception) {
+                            AppLog.log(LogCategory.NETWORK, "Failed to parse sendVoice response: ${e.message}", com.mobile.superiorutils.utils.LogLevel.WARN)
+                        }
+                    }
                 }
-                success
+                messageId
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendVoice error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
-            false
+            null
         }
     }
 
-    /** Send an audio file (e.g. mp3). Returns true on success. */
+    /** Send an audio file (e.g. mp3). Returns the message ID on success, null on failure. */
     suspend fun sendAudio(
         token: String,
         chatId: String,
@@ -307,7 +329,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Boolean {
+    ): Long? {
         return try {
             val audioBody = if (onProgress != null) {
                 ProgressRequestBody(file, "audio/mpeg".toMediaType(), onProgress)
@@ -333,21 +355,32 @@ object TelegramApi {
 
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
+                var messageId: Long? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendAudio failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Audio: ${file.name}")
+                    val body = response.body?.string()
+                    if (body != null) {
+                        try {
+                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
+                            val result = jsonObject["result"]?.jsonObject
+                            messageId = result?.get("message_id")?.jsonPrimitive?.long
+                        } catch (e: Exception) {
+                            AppLog.log(LogCategory.NETWORK, "Failed to parse sendAudio response: ${e.message}", com.mobile.superiorutils.utils.LogLevel.WARN)
+                        }
+                    }
                 }
-                success
+                messageId
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendAudio error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
-            false
+            null
         }
     }
 
-    /** Send a video file. Returns true on success. */
+    /** Send a video file. Returns the message ID on success, null on failure. */
     suspend fun sendVideo(
         token: String,
         chatId: String,
@@ -355,7 +388,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Boolean {
+    ): Long? {
         return try {
             val videoBody = if (onProgress != null) {
                 ProgressRequestBody(file, "video/mp4".toMediaType(), onProgress)
@@ -381,21 +414,32 @@ object TelegramApi {
 
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
+                var messageId: Long? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendVideo failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Video: ${file.name}")
+                    val body = response.body?.string()
+                    if (body != null) {
+                        try {
+                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
+                            val result = jsonObject["result"]?.jsonObject
+                            messageId = result?.get("message_id")?.jsonPrimitive?.long
+                        } catch (e: Exception) {
+                            AppLog.log(LogCategory.NETWORK, "Failed to parse sendVideo response: ${e.message}", com.mobile.superiorutils.utils.LogLevel.WARN)
+                        }
+                    }
                 }
-                success
+                messageId
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendVideo error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
-            false
+            null
         }
     }
 
-    /** Send a document file. Returns true on success. */
+    /** Send a document file. Returns the message ID on success, null on failure. */
     suspend fun sendDocument(
         token: String,
         chatId: String,
@@ -405,7 +449,7 @@ object TelegramApi {
         displayName: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Boolean {
+    ): Long? {
         return try {
             // Use displayName if provided, otherwise fall back to file.name
             val uploadName = displayName ?: file.name
@@ -434,17 +478,28 @@ object TelegramApi {
 
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
+                var messageId: Long? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendDocument failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Document: ${file.name} - ${caption.take(100)}")
+                    val body = response.body?.string()
+                    if (body != null) {
+                        try {
+                            val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
+                            val result = jsonObject["result"]?.jsonObject
+                            messageId = result?.get("message_id")?.jsonPrimitive?.long
+                        } catch (e: Exception) {
+                            AppLog.log(LogCategory.NETWORK, "Failed to parse sendDocument response: ${e.message}", com.mobile.superiorutils.utils.LogLevel.WARN)
+                        }
+                    }
                 }
-                success
+                messageId
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendDocument error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
-            false
+            null
         }
     }
 

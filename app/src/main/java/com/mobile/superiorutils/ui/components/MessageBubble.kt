@@ -17,9 +17,11 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -196,13 +198,16 @@ fun MessageBubble(
     onMessageLongPress: (MessageNode) -> Unit = {},
     onCopyMessage: (MessageNode) -> Unit = {},
     onDeleteMessage: (MessageNode) -> Unit = {},
+    onSelectMessage: (MessageNode) -> Unit = {},
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     repliedMessageText: String? = null,
     repliedMessageAuthor: String? = null
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
     var showApkInstallDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showContextMenu by remember { androidx.compose.runtime.mutableStateOf(false) }
+    val view = androidx.compose.ui.platform.LocalView.current
 
     if (showApkInstallDialog) {
         ActionDialog(
@@ -242,72 +247,153 @@ fun MessageBubble(
 
     var swipeOffsetX by remember { androidx.compose.runtime.mutableStateOf(0f) }
     val animatedSwipeOffsetX by androidx.compose.animation.core.animateFloatAsState(targetValue = swipeOffsetX)
+    val currentMessageState = androidx.compose.runtime.rememberUpdatedState(message)
 
-    Box(
-        modifier = Modifier
+    val selectionBgColor by animateColorAsState(
+        targetValue = if (isSelected) PrimaryLight.copy(alpha = 0.12f) else Color.Transparent,
+        animationSpec = tween(150),
+        label = "selectionBg"
+    )
+
+    // Animate checkbox offset: slides from off-screen left (-40dp) to visible (8dp from left)
+    val checkboxOffsetX by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isSelectionMode) 8.dp else (-40).dp,
+        animationSpec = tween(180),
+        label = "checkboxOffset"
+    )
+
+    // Animate content shift: pushes received messages to the right so they don't overlap the checkbox
+    val contentPaddingStart by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (isSelectionMode && !message.isFromMe) 36.dp else 0.dp,
+        animationSpec = tween(180),
+        label = "contentPadding"
+    )
+
+    val currentViewConfig = androidx.compose.ui.platform.LocalViewConfiguration.current
+    val customViewConfig = remember(currentViewConfig) {
+        object : androidx.compose.ui.platform.ViewConfiguration by currentViewConfig {
+            override val longPressTimeoutMillis: Long
+                get() = 250L // Snappier long press!
+        }
+    }
+
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalViewConfiguration provides customViewConfig
+    ) {
+        Box(
+            modifier = Modifier
+            .padding(horizontal = 4.dp, vertical = 2.dp) // Margin around the selected item
             .fillMaxWidth()
-            .padding(bottom = 8.dp)
+            .clip(RoundedCornerShape(14.dp)) // Round the background corners
+            .background(selectionBgColor)
+            .padding(vertical = 4.dp) // Inner padding
+            // Outer Box handles swipe-to-reply gestures
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (message.isFromMe) {
-                            if (swipeOffsetX < -50f) {
-                                viewModel.setReplyingToMessage(message)
-                            }
-                        } else {
-                            if (swipeOffsetX > 50f) {
-                                viewModel.setReplyingToMessage(message)
+                        if (!isSelectionMode) {
+                            if (message.isFromMe) {
+                                if (swipeOffsetX < -50f) viewModel.setReplyingToMessage(message)
+                            } else {
+                                if (swipeOffsetX > 50f) viewModel.setReplyingToMessage(message)
                             }
                         }
                         swipeOffsetX = 0f
                     },
-                    onHorizontalDrag = { change, dragAmount ->
-                        if (message.isFromMe) {
-                            if (dragAmount < 0 || swipeOffsetX < 0) { // Allow left swipe
-                                swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(-60f, 0f)
-                            }
-                        } else {
-                            if (dragAmount > 0 || swipeOffsetX > 0) { // Allow right swipe
-                                swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(0f, 60f)
+                    onHorizontalDrag = { _, dragAmount ->
+                        if (!isSelectionMode) {
+                            if (message.isFromMe) {
+                                if (dragAmount < 0 || swipeOffsetX < 0)
+                                    swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(-60f, 0f)
+                            } else {
+                                if (dragAmount > 0 || swipeOffsetX > 0)
+                                    swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(0f, 60f)
                             }
                         }
                     }
                 )
+            }
+            // Taps on the empty area outside the bubble trigger selection or open the popup instantly
+            .pointerInput(isSelectionMode) {
+                detectTapGestures(
+                    onTap = {
+                        if (isSelectionMode) {
+                            onSelectMessage(currentMessageState.value)
+                        } else {
+                            if (viewModel.activePopupMessageId != null) viewModel.hideContextMenu()
+                        }
+                    },
+                    onLongPress = {
+                        if (!isSelectionMode) {
+                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                            viewModel.showContextMenu(currentMessageState.value.messageId)
+                        }
+                    }
+                )
             },
-        contentAlignment = alignment
+        contentAlignment = alignment  // ← This is what aligns sent right / received left
     ) {
-        if (message.isFromMe && animatedSwipeOffsetX < -20f) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Reply,
-                contentDescription = "Reply",
-                tint = PrimaryLight.copy(alpha = ((-animatedSwipeOffsetX) / 60f).coerceIn(0f, 1f)),
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp)
-                    .size(28.dp)
-            )
-        } else if (!message.isFromMe && animatedSwipeOffsetX > 20f) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Reply,
-                contentDescription = "Reply",
-                tint = PrimaryLight.copy(alpha = (animatedSwipeOffsetX / 60f).coerceIn(0f, 1f)),
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
-                    .size(28.dp)
-            )
+        // Swipe-to-reply hint icons (only shown when not in selection mode)
+        if (!isSelectionMode) {
+            if (message.isFromMe && animatedSwipeOffsetX < -20f) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Reply,
+                    contentDescription = "Reply",
+                    tint = PrimaryLight.copy(alpha = ((-animatedSwipeOffsetX) / 60f).coerceIn(0f, 1f)),
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
+                        .size(28.dp)
+                )
+            } else if (!message.isFromMe && animatedSwipeOffsetX > 20f) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Reply,
+                    contentDescription = "Reply",
+                    tint = PrimaryLight.copy(alpha = (animatedSwipeOffsetX / 60f).coerceIn(0f, 1f)),
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp)
+                        .size(28.dp)
+                )
+            }
         }
 
+        // Selection checkbox — positioned at the left edge, slides in/out via offset animation.
+        // Using Box.align() keeps it as an overlay that does NOT affect the bubble's alignment.
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .offset(x = checkboxOffsetX)
+                .size(24.dp)
+                .clip(CircleShape)
+                .background(if (isSelected) PrimaryLight else Color.Transparent)
+                .border(2.dp, if (isSelected) PrimaryLight else Color(0xFF8E8E93), CircleShape)
+                .clickable(enabled = isSelectionMode) { onSelectMessage(currentMessageState.value) },
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Selected",
+                    tint = Color.White,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+
+        // The actual message bubble row — offset by checkbox width when in selection mode
+        // so it doesn't overlap the checkbox. Uses padding instead of weight to preserve widthIn.
         Row(
             verticalAlignment = Alignment.Bottom,
             modifier = Modifier
                 .widthIn(max = 280.dp)
                 .offset(x = animatedSwipeOffsetX.dp)
+                .padding(start = contentPaddingStart)
         ) {
             if (!message.isFromMe) {
                 val profilePath = userProfile?.profilePhotoPath ?: ""
                 val title = userProfile?.title?.ifEmpty { "Unknown" } ?: "Unknown"
-                
+
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -360,26 +446,43 @@ fun MessageBubble(
                     .background(bgColor)
                     .widthIn(min = 60.dp, max = 260.dp)
                     .then(if (!message.isFromMe) Modifier.border(1.dp, DividerColor, shape) else Modifier)
-                    .pointerInput(Unit) {
+                    .pointerInput(isSelectionMode) {
                         detectTapGestures(
                             onTap = {
-                                // Single tap: open combined emoji + actions popup
-                                showContextMenu = true
+                                if (isSelectionMode) {
+                                    // In selection mode: toggle selection
+                                    onSelectMessage(currentMessageState.value)
+                                } else {
+                                    // Tap outside clears open popups (if any)
+                                    if (viewModel.activePopupMessageId != null) viewModel.hideContextMenu()
+                                }
                             },
-                            onDoubleTap = {
-                                // Double tap: quick-react with last used emoji (fallback 👍)
-                                val emoji = viewModel.lastUsedEmoji ?: "👍"
-                                viewModel.sendReaction(message, emoji)
+                            onDoubleTap = if (isSelectionMode) null else { _ ->
+                                // Double tap: if already reacted, undo that specific reaction.
+                                val msg = currentMessageState.value
+                                val currentReactions = msg.reactions?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+                                val emojiToToggle = if (!currentReactions.isNullOrEmpty()) {
+                                    currentReactions.first()
+                                } else {
+                                    viewModel.lastUsedEmoji ?: "👍"
+                                }
+                                viewModel.sendReaction(msg, emojiToToggle)
+                            },
+                            onLongPress = {
+                                if (!isSelectionMode) {
+                                    view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                                    viewModel.showContextMenu(message.messageId)
+                                }
                             }
                         )
                     }
                     .padding(horizontal = 16.dp, vertical = verticalPadding)
             ) {
                 MessageContextMenu(
-                    expandedProvider = { showContextMenu },
+                    expandedProvider = { viewModel.activePopupMessageId == message.messageId },
                     message = message,
                     sortedEmojis = viewModel.sortedEmojis,
-                    onDismiss = { showContextMenu = false },
+                    onDismiss = { viewModel.hideContextMenu() },
                     onReact = { emoji -> viewModel.sendReaction(message, emoji) },
                     onReplyClick = {
                         viewModel.setReplyingToMessage(message)
@@ -389,6 +492,9 @@ fun MessageBubble(
                     },
                     onEditClick = {
                         viewModel.setEditingMessage(message)
+                    },
+                    onSelectClick = {
+                        viewModel.enterSelectionMode(message)
                     },
                     onDeleteClick = {
                         onDeleteMessage(message)
@@ -1026,7 +1132,8 @@ fun MessageBubble(
                     }
                 }
             }
-        }
-        }
-    }
-}
+        } // end Column
+        } // end inner bubble Row
+        } // end outer Box
+    } // end CompositionLocalProvider
+} // end MessageBubble

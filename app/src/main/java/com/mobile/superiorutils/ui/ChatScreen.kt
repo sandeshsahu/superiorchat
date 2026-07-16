@@ -43,6 +43,7 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import com.mobile.superiorutils.ui.components.ScrollEvent
 import com.mobile.superiorutils.ui.components.MessageContextMenu
 import com.mobile.superiorutils.ui.components.DeleteWarningDialog
+import com.mobile.superiorutils.ui.components.SelectionActionBar
 import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.data.repository.LocalMediaItem
 import com.mobile.superiorutils.data.repository.LocalFileItem
@@ -107,7 +108,37 @@ fun ChatScreen(
     var showUserInfoDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
     var selectedMessageForAction by remember { androidx.compose.runtime.mutableStateOf<MessageNode?>(null) }
     var messageToDelete by remember { androidx.compose.runtime.mutableStateOf<MessageNode?>(null) }
+    var bulkDeleteRequested by remember { androidx.compose.runtime.mutableStateOf(false) }
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+    val isInSelectionMode = viewModel.isInSelectionMode
+    val selectedMessageIds = viewModel.selectedMessageIds
+
+    LaunchedEffect(Unit) {
+        viewModel.undoDeleteEvent.collect { message ->
+            val result = snackbarHostState.showSnackbar(
+                message = "Message deleted",
+                actionLabel = "UNDO",
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                viewModel.undoDeleteMessage(message)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.undoBulkDeleteEvent.collect { messages ->
+            val result = snackbarHostState.showSnackbar(
+                message = "${messages.size} messages deleted",
+                actionLabel = "UNDO",
+                duration = androidx.compose.material3.SnackbarDuration.Short
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                viewModel.undoBulkDeleteMessages(messages)
+            }
+        }
+    }
 
     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
     val isKeyboardVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
@@ -447,6 +478,21 @@ fun ChatScreen(
                 .fillMaxSize()
                 .background(Background)
         ) {
+            // Selection Action Bar (replaces top bar in selection mode)
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isInSelectionMode,
+                enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) +
+                        androidx.compose.animation.fadeIn(animationSpec = tween(180)),
+                exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) +
+                        androidx.compose.animation.fadeOut(animationSpec = tween(180))
+            ) {
+                SelectionActionBar(
+                    selectedCount = selectedMessageIds.size,
+                    onCancelSelection = { viewModel.exitSelectionMode() },
+                    onDeleteSelected = { bulkDeleteRequested = true }
+                )
+            }
+
             // Chat Area
             Box(
                 modifier = Modifier
@@ -509,6 +555,9 @@ fun ChatScreen(
                                 message = msg,
                                 userProfile = userProfile,
                                 viewModel = viewModel,
+                                isSelectionMode = isInSelectionMode,
+                                isSelected = selectedMessageIds.contains(msg.messageId),
+                                onSelectMessage = { viewModel.toggleMessageSelection(it) },
                                 repliedMessageText = if (!repliedMsg?.text.isNullOrBlank()) {
                                     repliedMsg?.text
                                 } else when (repliedMsg?.mediaType) {
@@ -645,6 +694,18 @@ fun ChatScreen(
                             }
                     )
                 }
+
+                androidx.compose.material3.SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp)
+                ) { data ->
+                    androidx.compose.material3.Snackbar(
+                        snackbarData = data,
+                        containerColor = SurfaceLevel2,
+                        contentColor = Color.White,
+                        actionColor = PrimaryLight
+                    )
+                }
             }
 
             // Input Area - Glass panel
@@ -742,12 +803,38 @@ fun ChatScreen(
         if (messageToDelete != null) {
             DeleteWarningDialog(
                 onDismiss = { messageToDelete = null },
-                onConfirmDelete = {
+                targetUserName = userProfile?.title,
+                onConfirmDeleteForEveryone = {
                     viewModel.deleteMessage(messageToDelete!!)
+                    messageToDelete = null
+                },
+                onConfirmDeleteForMe = {
+                    viewModel.deleteMessageForMe(messageToDelete!!)
                     messageToDelete = null
                 }
             )
         }
+
+        // Bulk delete confirmation dialog
+        if (bulkDeleteRequested) {
+            DeleteWarningDialog(
+                onDismiss = { bulkDeleteRequested = false },
+                targetUserName = userProfile?.title,
+                onConfirmDeleteForEveryone = {
+                    viewModel.deleteSelectedMessages(messages)
+                    bulkDeleteRequested = false
+                },
+                onConfirmDeleteForMe = {
+                    viewModel.deleteSelectedMessagesForMe(messages)
+                    bulkDeleteRequested = false
+                }
+            )
+        }
+    }
+
+    // Handle system back press to exit selection mode before navigating away
+    androidx.activity.compose.BackHandler(enabled = isInSelectionMode) {
+        viewModel.exitSelectionMode()
     }
 
     MediaPicker(

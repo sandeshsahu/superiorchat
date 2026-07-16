@@ -33,9 +33,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.shape.CircleShape
 import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.theme.*
@@ -610,6 +612,7 @@ fun MessageContextMenu(
     onReplyClick: () -> Unit,
     onCopyClick: () -> Unit,
     onEditClick: () -> Unit,
+    onSelectClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
     val expanded = expandedProvider()
@@ -632,7 +635,7 @@ fun MessageContextMenu(
     if (isRendered) {
         androidx.compose.ui.window.Popup(
             onDismissRequest = onDismiss,
-            properties = androidx.compose.ui.window.PopupProperties(focusable = false)
+            properties = androidx.compose.ui.window.PopupProperties(focusable = true)
         ) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = expanded,
@@ -723,6 +726,13 @@ fun MessageContextMenu(
                         )
                     }
 
+                    // Select
+                    ContextMenuItem(
+                        text = "Select",
+                        icon = Icons.Filled.CheckBox,
+                        onClick = { onSelectClick(); onDismiss() }
+                    )
+
                     // Delete
                     ContextMenuItem(
                         text = "Delete",
@@ -773,8 +783,12 @@ fun ContextMenuItem(
 @Composable
 fun DeleteWarningDialog(
     onDismiss: () -> Unit,
-    onConfirmDelete: () -> Unit
+    targetUserName: String? = null,
+    onConfirmDeleteForEveryone: () -> Unit,
+    onConfirmDeleteForMe: () -> Unit
 ) {
+    var deleteForEveryone by remember { androidx.compose.runtime.mutableStateOf(false) }
+    
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = RoundedCornerShape(20.dp),
@@ -803,6 +817,65 @@ fun DeleteWarningDialog(
                     lineHeight = 20.sp
                 )
 
+                if (targetUserName != null && targetUserName.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null
+                            ) { deleteForEveryone = !deleteForEveryone },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = deleteForEveryone,
+                            onCheckedChange = { deleteForEveryone = it },
+                            colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                checkedColor = PrimaryLight,
+                                uncheckedColor = Color(0xFFAAAAAA),
+                                checkmarkColor = Color.Black
+                            ),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Also delete for $targetUserName",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+                } else {
+                    // Fallback if we don't have a name
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                indication = null
+                            ) { deleteForEveryone = !deleteForEveryone },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Checkbox(
+                            checked = deleteForEveryone,
+                            onCheckedChange = { deleteForEveryone = it },
+                            colors = androidx.compose.material3.CheckboxDefaults.colors(
+                                checkedColor = PrimaryLight,
+                                uncheckedColor = Color(0xFFAAAAAA),
+                                checkmarkColor = Color.Black
+                            ),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Also delete for everyone",
+                            color = Color.White,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Row(
@@ -821,17 +894,73 @@ fun DeleteWarningDialog(
                         )
                     }
                     TextButton(
-                        onClick = onConfirmDelete,
+                        onClick = {
+                            if (deleteForEveryone) onConfirmDeleteForEveryone() else onConfirmDeleteForMe()
+                        },
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Delete for everyone",
+                            text = "Delete",
                             color = ErrorRed,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+
+@Composable
+fun SelectionActionBar(
+    selectedCount: Int,
+    onCancelSelection: () -> Unit,
+    onDeleteSelected: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFF1A1A1A),
+        shadowElevation = 4.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Cancel / Close Button
+            IconButton(onClick = onCancelSelection) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Cancel selection",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            // Selection count — center-weighted
+            Text(
+                text = "$selectedCount selected",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            )
+
+            // Delete action
+            IconButton(
+                onClick = onDeleteSelected,
+                enabled = selectedCount > 0
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Delete selected",
+                    tint = if (selectedCount > 0) ErrorRed else ErrorRed.copy(alpha = 0.4f),
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }

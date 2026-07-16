@@ -131,12 +131,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private var lastReactionTime = 0L
+
     /**
      * Toggle a reaction emoji on a message.
      * If the message already has this emoji, it will be removed (toggle off).
      * Optimistically updates the local DB; rolls back silently on API failure.
      */
     fun sendReaction(message: MessageNode, emoji: String) {
+        val now = System.currentTimeMillis()
+        if (now - lastReactionTime < 400) return // Debounce rapid accidental double-taps on the badge
+        lastReactionTime = now
+
         val token = prefs.botToken
         val chatId = prefs.chatId
         if (token.isBlank() || chatId.isBlank()) return
@@ -165,16 +171,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 updateSortedEmojis(usages)
             }
             repository.updateMessageReactions(message.messageId, newReactions)
-            var success = false
             if (NetState.isOnline.value) {
                 // Send only the last/most recent emoji to the API (Telegram allows one reaction per user)
                 val apiEmoji = if (isToggleOff) "" else emoji
-                success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
-            }
-            if (!success) {
-                // Roll back
-                repository.updateMessageReactions(message.messageId, message.reactions)
-                com.mobile.superiorutils.core.StatusFlow.reportStatus(com.mobile.superiorutils.core.SyncState.ERROR, "Unable to React")
+                val success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
+                if (!success) {
+                    // Telegram has strict rate limits for reactions (429 Too Many Requests).
+                    // We DO NOT roll back the local database anymore to keep the UI feeling fluid.
+                    // The Android app stays fast, even if Telegram drops a rapid-fire reaction.
+                }
             }
         }
     }
@@ -220,6 +225,112 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         private set
         
     var errorPopupMessage by mutableStateOf<String?>(null)
+
+    // ── Multi-selection state ──────────────────────────────────────────────────
+    var isInSelectionMode by mutableStateOf(false)
+        private set
+    var selectedMessageIds by mutableStateOf<Set<Long>>(emptySet())
+        private set
+
+    fun enterSelectionMode(message: MessageNode) {
+        isInSelectionMode = true
+        selectedMessageIds = setOf(message.messageId)
+    }
+
+    fun toggleMessageSelection(message: MessageNode) {
+        val id = message.messageId
+        selectedMessageIds = if (selectedMessageIds.contains(id)) {
+            selectedMessageIds - id
+        } else {
+            selectedMessageIds + id
+        }
+        if (selectedMessageIds.isEmpty()) {
+            isInSelectionMode = false
+        }
+    }
+
+    fun exitSelectionMode() {
+        isInSelectionMode = false
+        selectedMessageIds = emptySet()
+    }
+
+    var activePopupMessageId by mutableStateOf<Long?>(null)
+        private set
+
+    fun showContextMenu(messageId: Long) {
+        activePopupMessageId = messageId
+    }
+
+    fun hideContextMenu() {
+        activePopupMessageId = null
+    }
+
+    private val _undoDeleteEvent = MutableSharedFlow<MessageNode>()
+    val undoDeleteEvent = _undoDeleteEvent.asSharedFlow()
+
+    private val _undoBulkDeleteEvent = MutableSharedFlow<List<MessageNode>>()
+    val undoBulkDeleteEvent = _undoBulkDeleteEvent.asSharedFlow()
+
+    fun deleteMessageForMe(message: MessageNode) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteMessage(message.messageId)
+            _undoDeleteEvent.emit(message)
+        }
+    }
+
+    fun undoDeleteMessage(message: MessageNode) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.insertMessage(message)
+        }
+    }
+
+    fun deleteSelectedMessagesForMe(messagesToDelete: List<MessageNode>) {
+        val selected = messagesToDelete.filter { selectedMessageIds.contains(it.messageId) }
+        exitSelectionMode()
+        viewModelScope.launch(Dispatchers.IO) {
+            selected.forEach { message ->
+                repository.deleteMessage(message.messageId)
+            }
+            _undoBulkDeleteEvent.emit(selected)
+        }
+    }
+
+    fun undoBulkDeleteMessages(messages: List<MessageNode>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            messages.forEach { message ->
+                repository.insertMessage(message)
+            }
+        }
+    }
+
+    fun deleteSelectedMessages(messagesToDelete: List<MessageNode>) {
+        val chatId = prefs.chatId
+        val token = prefs.botToken
+        if (chatId.isBlank() || token.isBlank()) return
+        val selected = messagesToDelete.filter { selectedMessageIds.contains(it.messageId) }
+        exitSelectionMode()
+        viewModelScope.launch(Dispatchers.IO) {
+            var anyFailed = false
+            selected.forEach { message ->
+                repository.deleteMessage(message.messageId)
+                var success = false
+                if (NetState.isOnline.value) {
+                    success = TelegramApi.deleteMessage(token, chatId, message.messageId)
+                }
+                if (!success) {
+                    AppLog.log(LogCategory.ERROR, "Failed to bulk-delete message ${message.messageId} via API")
+                    repository.insertMessage(message)
+                    anyFailed = true
+                }
+            }
+            // Report a single consolidated error if any delete failed (messages were re-inserted)
+            if (anyFailed) {
+                StatusFlow.reportStatus(SyncState.ERROR, "Some messages could not be deleted")
+            }
+        }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
 
     private val _messages = MutableStateFlow<List<MessageNode>>(emptyList())
     val messages: StateFlow<List<MessageNode>> = _messages.asStateFlow()
