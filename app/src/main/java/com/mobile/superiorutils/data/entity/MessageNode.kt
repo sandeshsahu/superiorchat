@@ -35,5 +35,7 @@ data class MessageNode(
     val mediaFileName: String? = null,
     val mediaFileSize: Long? = null,
     val replyToMessageId: Long? = null,
-    val isEdited: Boolean = false
+    val isEdited: Boolean = false,
+    // Comma-separated emoji reactions, e.g. "👍,❤️". Null means no reactions.
+    val reactions: String? = null
 )

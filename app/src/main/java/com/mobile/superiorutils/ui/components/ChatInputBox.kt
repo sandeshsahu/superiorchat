@@ -148,7 +148,17 @@ fun ChatInputBox(
             exit = slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.shrinkVertically() + fadeOut()
         ) {
             val title = if (editingMsg != null) "Edit Message" else "Reply to Message"
-            val body = editingMsg?.text?.takeIf { it.isNotBlank() } ?: replyingMsg?.text?.takeIf { it.isNotBlank() } ?: "Media"
+            val msg = editingMsg ?: replyingMsg
+            val body = if (!msg?.text.isNullOrBlank()) {
+                msg.text
+            } else when (msg?.mediaType) {
+                "photo" -> "📷 Photo"
+                "video" -> "🎬 Video"
+                "voice" -> "🎵 Voice message"
+                "document" -> "📄 ${msg.mediaFileName ?: "File"}"
+                "audio" -> "🎵 ${msg.mediaFileName ?: "Audio"}"
+                else -> "📎 Attachment"
+            }
             
             Row(
                 modifier = Modifier

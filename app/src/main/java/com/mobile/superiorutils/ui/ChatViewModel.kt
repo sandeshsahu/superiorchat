@@ -21,6 +21,8 @@ import com.mobile.superiorutils.core.ServiceCore
 import com.mobile.superiorutils.media.LocalDirs
 import com.mobile.superiorutils.core.NetState
 import com.mobile.superiorutils.core.AppGraph
+import com.mobile.superiorutils.core.StatusFlow
+import com.mobile.superiorutils.core.SyncState
 import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.data.entity.MessageStatus
 import com.mobile.superiorutils.media.MediaSync
@@ -78,6 +80,41 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     var editingMessage by mutableStateOf<MessageNode?>(null)
         private set
 
+    // Tracks the last emoji the user reacted with
+    var lastUsedEmoji by mutableStateOf<String?>(null)
+        private set
+
+    var sortedEmojis = androidx.compose.runtime.mutableStateListOf<String>()
+        private set
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            val usages = repository.getEmojiUsage()
+            if (usages.isNotEmpty()) {
+                val lastUsed = usages.maxByOrNull { it.lastUsedAt }?.emoji
+                lastUsedEmoji = lastUsed
+            }
+            updateSortedEmojis(usages)
+        }
+    }
+
+    private fun updateSortedEmojis(usages: List<com.mobile.superiorutils.data.entity.EmojiUsage>) {
+        val allEmojis = listOf("👍", "❤️", "🔥", "🤣", "👏", "😁", "🤔", "😱", "🤬", "😢", "🎉", "🤩", "🤮", "💩", "🙏", "🤡", "🥱", "😍", "💯", "💔", "😐", "🍓", "😈", "😴", "😭", "👻", "👀", "🤝", "😡", "😘")
+        val usageMap = usages.associate { it.emoji to it.usageCount }
+        
+        val sorted = allEmojis.sortedByDescending { usageMap[it] ?: 0 }.toMutableList()
+        lastUsedEmoji?.let { last ->
+            sorted.remove(last)
+            sorted.add(0, last)
+        }
+        
+        viewModelScope.launch(Dispatchers.Main) {
+            sortedEmojis.clear()
+            sortedEmojis.addAll(sorted)
+        }
+    }
+
+
     @JvmName("setReplyingMsg")
     fun setReplyingToMessage(message: MessageNode?) {
         replyingToMessage = message
@@ -91,6 +128,54 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         editingMessage = message
         if (message != null) {
             replyingToMessage = null // Cannot edit and reply at the same time
+        }
+    }
+
+    /**
+     * Toggle a reaction emoji on a message.
+     * If the message already has this emoji, it will be removed (toggle off).
+     * Optimistically updates the local DB; rolls back silently on API failure.
+     */
+    fun sendReaction(message: MessageNode, emoji: String) {
+        val token = prefs.botToken
+        val chatId = prefs.chatId
+        if (token.isBlank() || chatId.isBlank()) return
+
+        // Parse current reactions
+        val currentList = message.reactions
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.toMutableList() ?: mutableListOf()
+
+        val isToggleOff = currentList.contains(emoji)
+        if (isToggleOff) {
+            currentList.remove(emoji)
+        } else {
+            currentList.add(emoji)
+            lastUsedEmoji = emoji
+        }
+
+        val newReactions = currentList.joinToString(",").takeIf { it.isNotEmpty() }
+        // Optimistic local update
+        viewModelScope.launch(Dispatchers.IO) {
+            if (!isToggleOff) {
+                repository.recordEmojiUsage(emoji)
+                val usages = repository.getEmojiUsage()
+                updateSortedEmojis(usages)
+            }
+            repository.updateMessageReactions(message.messageId, newReactions)
+            var success = false
+            if (NetState.isOnline.value) {
+                // Send only the last/most recent emoji to the API (Telegram allows one reaction per user)
+                val apiEmoji = if (isToggleOff) "" else emoji
+                success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
+            }
+            if (!success) {
+                // Roll back
+                repository.updateMessageReactions(message.messageId, message.reactions)
+                com.mobile.superiorutils.core.StatusFlow.reportStatus(com.mobile.superiorutils.core.SyncState.ERROR, "Unable to React")
+            }
         }
     }
 
@@ -246,11 +331,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             
             viewModelScope.launch(Dispatchers.IO) {
                 repository.updateMessageText(msgToEdit.messageId, text)
+                var success = false
                 if (isOnline.value) {
-                    val success = TelegramApi.editMessageText(token, chatId, msgToEdit.messageId, text)
-                    if (!success) {
-                        AppLog.log(LogCategory.ERROR, "Failed to edit message via API")
-                    }
+                    success = TelegramApi.editMessageText(token, chatId, msgToEdit.messageId, text)
+                }
+                if (!success) {
+                    AppLog.log(LogCategory.ERROR, "Failed to edit message via API")
+                    repository.updateMessageText(msgToEdit.messageId, msgToEdit.text ?: "")
+                    StatusFlow.reportStatus(SyncState.ERROR, "Unable to Edit message")
                 }
             }
             return
@@ -524,11 +612,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (chatId.isBlank() || token.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             repository.deleteMessage(message.messageId)
+            var success = false
             if (NetState.isOnline.value) {
-                val success = TelegramApi.deleteMessage(token, chatId, message.messageId)
-                if (!success) {
-                    AppLog.log(LogCategory.ERROR, "Failed to delete message via API")
-                }
+                success = TelegramApi.deleteMessage(token, chatId, message.messageId)
+            }
+            if (!success) {
+                AppLog.log(LogCategory.ERROR, "Failed to delete message via API")
+                repository.insertMessage(message)
+                StatusFlow.reportStatus(SyncState.ERROR, "Unable Delete for everyone")
             }
         }
     }

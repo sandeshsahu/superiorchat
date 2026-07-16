@@ -68,6 +68,121 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import com.mobile.superiorutils.media.MediaSync
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.animateContentSize
+
+// ──────────────────────────────────────────────────────────────
+// Markdown-aware text renderer
+// Supports: **bold**, __italic__, `monospace`, ~~strikethrough~~
+// ──────────────────────────────────────────────────────────────
+@Composable
+fun MarkdownText(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    style: androidx.compose.ui.text.TextStyle = androidx.compose.ui.text.TextStyle.Default
+) {
+    val annotated = remember(text) { parseMarkdown(text) }
+    Text(text = annotated, color = color, modifier = modifier, style = style)
+}
+
+/** Lightweight inline-markdown parser — no external libs needed. */
+private fun parseMarkdown(raw: String): AnnotatedString = buildAnnotatedString {
+    val patterns = listOf(
+        Pair(Regex("""\*\*(.+?)\*\*"""), "bold"),
+        Pair(Regex("""\*(.+?)\*"""), "bold"),
+        Pair(Regex("""__(.+?)__"""), "italic"),
+        Pair(Regex("""_(.+?)_"""), "italic"),
+        Pair(Regex("""`(.+?)`"""), "mono"),
+        Pair(Regex("""~~(.+?)~~"""), "strike")
+    )
+    var cursor = 0
+    data class Token(val start: Int, val end: Int, val inner: String, val type: String)
+    val tokens = mutableListOf<Token>()
+    for ((regex, type) in patterns) {
+        for (m in regex.findAll(raw)) {
+            tokens.add(Token(m.range.first, m.range.last + 1, m.groupValues[1], type))
+        }
+    }
+    tokens.sortBy { it.start }
+    // Remove overlapping tokens
+    val clean = mutableListOf<Token>()
+    var lastEnd = 0
+    for (t in tokens) {
+        if (t.start >= lastEnd) { clean.add(t); lastEnd = t.end }
+    }
+    for (t in clean) {
+        if (t.start > cursor) append(raw.substring(cursor, t.start))
+        val span = when (t.type) {
+            "bold" -> SpanStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            "italic" -> SpanStyle(fontStyle = FontStyle.Italic)
+            "mono" -> SpanStyle(fontFamily = FontFamily.Monospace, background = Color.White.copy(alpha = 0.1f))
+            "strike" -> SpanStyle(textDecoration = androidx.compose.ui.text.style.TextDecoration.LineThrough)
+            else -> SpanStyle()
+        }
+        withStyle(span) { append(t.inner) }
+        cursor = t.end
+    }
+    if (cursor < raw.length) append(raw.substring(cursor))
+}
+
+// ──────────────────────────────────────────────────────────────
+// Emoji reaction quick-tray (shown on double-tap)
+// ──────────────────────────────────────────────────────────────
+val QUICK_REACTIONS = listOf("👍", "❤️", "🤣", "😱", "😢", "🔥")
+
+@Composable
+fun EmojiReactionTray(
+    message: MessageNode,
+    onReact: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.ui.window.Popup(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.PopupProperties(focusable = true)
+    ) {
+        androidx.compose.animation.AnimatedVisibility(
+            visible = true,
+            enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
+            exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+        ) {
+            val currentReactions = message.reactions
+                ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color(0xFF1E1E2E))
+                    .border(1.dp, Color(0xFF3A3A4E), RoundedCornerShape(28.dp))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                QUICK_REACTIONS.forEach { emoji ->
+                    val isSelected = currentReactions.contains(emoji)
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(
+                                if (isSelected) PrimaryLight.copy(alpha = 0.25f)
+                                else Color.Transparent
+                            )
+                            .clickable { onReact(emoji); onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = emoji, fontSize = 22.sp)
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun MessageBubble(
@@ -236,26 +351,36 @@ fun MessageBubble(
             
             Column(
                 horizontalAlignment = if (message.isFromMe) Alignment.End else Alignment.Start,
-                modifier = Modifier.weight(1f, fill = false)
+                modifier = Modifier.wrapContentWidth()
             ) {
             Box(
                 modifier = Modifier
                     .then(glowModifier)
                     .clip(shape)
                     .background(bgColor)
+                    .widthIn(min = 60.dp, max = 260.dp)
                     .then(if (!message.isFromMe) Modifier.border(1.dp, DividerColor, shape) else Modifier)
                     .pointerInput(Unit) {
                         detectTapGestures(
-                            onTap = { showContextMenu = true }
+                            onTap = {
+                                // Single tap: open combined emoji + actions popup
+                                showContextMenu = true
+                            },
+                            onDoubleTap = {
+                                // Double tap: quick-react with last used emoji (fallback 👍)
+                                val emoji = viewModel.lastUsedEmoji ?: "👍"
+                                viewModel.sendReaction(message, emoji)
+                            }
                         )
                     }
                     .padding(horizontal = 16.dp, vertical = verticalPadding)
             ) {
-                // Context menu anchored to this bubble
                 MessageContextMenu(
-                    expanded = showContextMenu,
+                    expandedProvider = { showContextMenu },
                     message = message,
+                    sortedEmojis = viewModel.sortedEmojis,
                     onDismiss = { showContextMenu = false },
+                    onReact = { emoji -> viewModel.sendReaction(message, emoji) },
                     onReplyClick = {
                         viewModel.setReplyingToMessage(message)
                     },
@@ -393,7 +518,8 @@ fun MessageBubble(
                                 ) {
                                     val totalSize = message.mediaFileSize ?: java.io.File(message.mediaLocalPath).length()
                                     val sizeText = if (totalSize > 0) " • ${com.mobile.superiorutils.utils.FileUtils.formatFileSize(totalSize)}" else ""
-                                    Text(if (isUploading) "UPLOADING$sizeText" else "IMAGE$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                    val label = "IMAGE"
+                                    Text(if (isUploading) "UPLOADING$sizeText" else "$label$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                 }
                             }
                             Spacer(modifier = Modifier.height(8.dp))
@@ -828,7 +954,44 @@ fun MessageBubble(
                     }
                     
                     if (!message.text.isNullOrEmpty()) {
-                        Text(text = message.text, color = textColor, style = MaterialTheme.typography.bodyMedium)
+                        MarkdownText(text = message.text, color = textColor, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    // Reaction pill badges
+                    val reactionList = message.reactions
+                        ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = reactionList.isNotEmpty(),
+                        enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                        exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                    ) {
+                        Column {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.wrapContentWidth().animateContentSize()
+                            ) {
+                                reactionList.forEach { emoji ->
+                                    val state = remember(emoji) { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visibleState = state,
+                                        enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn()
+                                    ) {
+                                        val pillBgColor = if (message.isFromMe) Color.Black.copy(alpha = 0.2f) else PrimaryLight.copy(alpha = 0.18f)
+                                        val pillBorderColor = if (message.isFromMe) Color.Black.copy(alpha = 0.1f) else PrimaryLight.copy(alpha = 0.35f)
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(pillBgColor)
+                                                .border(1.dp, pillBorderColor, RoundedCornerShape(12.dp))
+                                                .clickable { viewModel.sendReaction(message, emoji) }
+                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                        ) {
+                                            Text(text = emoji, fontSize = 14.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

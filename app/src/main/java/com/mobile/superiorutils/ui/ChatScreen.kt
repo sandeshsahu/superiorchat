@@ -515,8 +515,8 @@ fun ChatScreen(
                                     "photo" -> "📷 Photo"
                                     "video" -> "🎬 Video"
                                     "voice" -> "🎵 Voice message"
-                                    "document" -> "📄 File"
-                                    "audio" -> "🎵 Audio"
+                                    "document" -> "📄 ${repliedMsg.mediaFileName ?: "File"}"
+                                    "audio" -> "🎵 ${repliedMsg.mediaFileName ?: "Audio"}"
                                     else -> if (repliedMsg != null) "📎 Attachment" else null
                                 },
                                 repliedMessageAuthor = if (repliedMsg?.isFromMe == true) "You" else (userProfile?.title?.ifEmpty { "User" } ?: "User"),

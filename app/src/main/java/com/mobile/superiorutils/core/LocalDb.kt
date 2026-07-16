@@ -17,13 +17,16 @@ import androidx.room.TypeConverters
 import com.mobile.superiorutils.core.Converters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.mobile.superiorutils.data.entity.EmojiUsage
+import com.mobile.superiorutils.data.dao.EmojiDao
 
-@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class], version = 6, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class], version = 8, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun conversationDao(): ThreadDao
     abstract fun profileDao(): ProfileDao
+    abstract fun emojiDao(): EmojiDao
 
     companion object {
         @Volatile
@@ -80,6 +83,18 @@ abstract class LocalDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN reactions TEXT DEFAULT NULL")
+            }
+        }
+
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `emoji_usage` (`emoji` TEXT NOT NULL, `usageCount` INTEGER NOT NULL, `lastUsedAt` INTEGER NOT NULL, PRIMARY KEY(`emoji`))")
+            }
+        }
+
         fun getDatabase(context: Context): LocalDb {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -87,7 +102,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

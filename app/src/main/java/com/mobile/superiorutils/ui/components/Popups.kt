@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.foundation.shape.CircleShape
 import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.theme.*
 import com.mobile.superiorutils.theme.PrimaryLight
@@ -403,7 +406,7 @@ fun AddManuallyPopup(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Chat, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Chat ID", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
@@ -539,7 +542,7 @@ fun EditManuallyPopup(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Chat, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Chat ID", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
@@ -599,66 +602,142 @@ fun EditManuallyPopup(
 
 @Composable
 fun MessageContextMenu(
-    expanded: Boolean,
+    expandedProvider: () -> Boolean,
     message: MessageNode,
+    sortedEmojis: List<String>,
     onDismiss: () -> Unit,
+    onReact: (String) -> Unit,
     onReplyClick: () -> Unit,
     onCopyClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.copy(
-            surface = Color.Black,
-            onSurface = Color.White
-        ),
-        shapes = MaterialTheme.shapes.copy(
-            extraSmall = RoundedCornerShape(16.dp)
-        )
-    ) {
-        DropdownMenu(
-            expanded = expanded,
+    val expanded = expandedProvider()
+    val currentReactions = message.reactions
+        ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+    
+    var isRendered by remember { mutableStateOf(expanded) }
+
+    if (expanded && !isRendered) {
+        isRendered = true
+    }
+
+    LaunchedEffect(expanded) {
+        if (!expanded && isRendered) {
+            kotlinx.coroutines.delay(80)
+            isRendered = false
+        }
+    }
+
+    if (isRendered) {
+        androidx.compose.ui.window.Popup(
             onDismissRequest = onDismiss,
-            modifier = Modifier
-                .background(Color.Black, RoundedCornerShape(16.dp))
-                .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
-                .widthIn(min = 150.dp, max = 200.dp)
+            properties = androidx.compose.ui.window.PopupProperties(focusable = false)
         ) {
-            // Reply
-            ContextMenuItem(
-                text = "Reply",
-                icon = Icons.AutoMirrored.Filled.Reply,
-                onClick = { onReplyClick(); onDismiss() }
-            )
-
-            // Copy
-            ContextMenuItem(
-                text = "Copy",
-                icon = Icons.Filled.ContentCopy,
-                onClick = { onCopyClick(); onDismiss() }
-            )
-
-            // Edit (Only for own text messages)
-            if (message.isFromMe && !message.text.isNullOrBlank()) {
-                ContextMenuItem(
-                    text = "Edit",
-                    icon = Icons.Filled.Edit,
-                    onClick = { onEditClick(); onDismiss() }
-                )
+            androidx.compose.animation.AnimatedVisibility(
+                visible = expanded,
+                enter = androidx.compose.animation.scaleIn(
+                    initialScale = 0.85f,
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f),
+                    animationSpec = androidx.compose.animation.core.tween(80, easing = androidx.compose.animation.core.LinearOutSlowInEasing)
+                ) + androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(80)),
+                exit = androidx.compose.animation.scaleOut(
+                    targetScale = 0.85f,
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f)
+                ) + androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(80))
+            ) {
+                Column(
+                    modifier = Modifier.widthIn(min = 200.dp, max = 260.dp)
+                ) {
+                    // ── Emoji quick-react strip (Detached Pill) ──
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Color.Black,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp)
+                    .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    sortedEmojis.forEachIndexed { index, emoji ->
+                        val isSelected = currentReactions.contains(emoji)
+                        val isLastUsed = index == 0
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        isSelected -> PrimaryLight.copy(alpha = 0.28f)
+                                        isLastUsed -> Color.White.copy(alpha = 0.08f)
+                                        else -> Color.Transparent
+                                    }
+                                )
+                                .clickable { onReact(emoji); onDismiss() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = emoji, fontSize = 20.sp)
+                        }
+                    }
+                }
             }
 
-            // Delete
-            ContextMenuItem(
-                text = "Delete",
-                icon = Icons.Filled.Delete,
-                textColor = ErrorRed,
-                iconColor = ErrorRed,
-                onClick = { onDeleteClick(); onDismiss() }
-            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ── Actions menu (Detached Block) ──
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.Black,
+                modifier = Modifier
+                    .padding(horizontal = 8.dp)
+                    .widthIn(min = 150.dp, max = 200.dp)
+                    .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
+            ) {
+                Column {
+                    // Reply
+                    ContextMenuItem(
+                        text = "Reply",
+                        icon = Icons.AutoMirrored.Filled.Reply,
+                        onClick = { onReplyClick(); onDismiss() }
+                    )
+
+                    // Copy
+                    ContextMenuItem(
+                        text = "Copy",
+                        icon = Icons.Filled.ContentCopy,
+                        onClick = { onCopyClick(); onDismiss() }
+                    )
+
+                    // Edit (Only for own text messages)
+                    if (message.isFromMe && !message.text.isNullOrBlank()) {
+                        ContextMenuItem(
+                            text = "Edit",
+                            icon = Icons.Filled.Edit,
+                            onClick = { onEditClick(); onDismiss() }
+                        )
+                    }
+
+                    // Delete
+                    ContextMenuItem(
+                        text = "Delete",
+                        icon = Icons.Filled.Delete,
+                        textColor = ErrorRed,
+                        iconColor = ErrorRed,
+                        onClick = { onDeleteClick(); onDismiss() }
+                    )
+                }
+            }
         }
     }
 }
-
+}
+}
 @Composable
 fun ContextMenuItem(
     text: String,
@@ -667,27 +746,28 @@ fun ContextMenuItem(
     iconColor: Color = Color(0xFF8E8E93),
     onClick: () -> Unit
 ) {
-    DropdownMenuItem(
-        text = {
-            Text(
-                text = text,
-                color = textColor,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Normal
-            )
-        },
-        onClick = onClick,
-        leadingIcon = {
-            Icon(
-                imageVector = icon,
-                contentDescription = text,
-                tint = iconColor,
-                modifier = Modifier.size(20.dp)
-            )
-        },
-        modifier = Modifier.height(44.dp),
-        contentPadding = PaddingValues(horizontal = 14.dp)
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = text,
+            tint = iconColor,
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Normal
+        )
+    }
 }
 
 @Composable
@@ -745,7 +825,7 @@ fun DeleteWarningDialog(
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = "Delete",
+                            text = "Delete for everyone",
                             color = ErrorRed,
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp

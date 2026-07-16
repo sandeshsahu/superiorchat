@@ -30,9 +30,22 @@ object StatusFlow {
     
     private var resetJob: Job? = null
 
+    // Keep track of the last persistent state (like OFFLINE or AUTH_ERROR)
+    private var persistentState = SyncState.IDLE
+    private var persistentMessage: String? = null
+
     fun reportStatus(state: SyncState, message: String) {
         // Cancel any pending reset if a new status comes in
         resetJob?.cancel()
+        
+        // Update persistent state if it's a permanent error, or reset it if we see SUCCESS
+        if (state == SyncState.OFFLINE || state == SyncState.AUTH_ERROR || state == SyncState.IDLE) {
+            persistentState = state
+            persistentMessage = if (state == SyncState.IDLE) null else message
+        } else if (state == SyncState.SUCCESS) {
+            persistentState = SyncState.IDLE
+            persistentMessage = null
+        }
         
         _syncState.value = state
         _syncMessage.value = message
@@ -42,8 +55,8 @@ object StatusFlow {
         if (state == SyncState.SUCCESS || state == SyncState.ERROR) {
             resetJob = scope.launch {
                 delay(2000)
-                _syncState.value = SyncState.IDLE
-                _syncMessage.value = null
+                _syncState.value = persistentState
+                _syncMessage.value = persistentMessage
             }
         }
     }

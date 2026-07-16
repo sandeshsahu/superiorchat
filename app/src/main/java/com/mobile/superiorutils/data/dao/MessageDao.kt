@@ -34,6 +34,9 @@ interface MessageDao {
     @Query("DELETE FROM messages WHERE messageId = :messageId")
     suspend fun deleteMessage(messageId: Long): Int
 
+    @Query("UPDATE messages SET reactions = :reactions WHERE messageId = :messageId")
+    suspend fun updateMessageReactions(messageId: Long, reactions: String?): Int
+
     @Query("SELECT * FROM messages WHERE status = :status ORDER BY timestamp ASC")
     suspend fun getMessagesByStatus(status: MessageStatus): List<MessageNode>
 }

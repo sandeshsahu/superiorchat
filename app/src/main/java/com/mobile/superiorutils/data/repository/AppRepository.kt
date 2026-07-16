@@ -39,7 +39,8 @@ data class LocalFileItem(
 class AppRepository(
     private val conversationDao: ThreadDao,
     private val messageDao: MessageDao,
-    private val profileDao: ProfileDao
+    private val profileDao: ProfileDao,
+    private val emojiDao: com.mobile.superiorutils.data.dao.EmojiDao
 ) {
     fun getAllConversations(): Flow<List<ChatNode>> {
         return conversationDao.getAllConversations()
@@ -51,6 +52,18 @@ class AppRepository(
 
     suspend fun insertMessage(message: MessageNode) {
         messageDao.insertMessage(message)
+    }
+    suspend fun getEmojiUsage(): List<com.mobile.superiorutils.data.entity.EmojiUsage> {
+        return emojiDao.getAllEmojis()
+    }
+
+    suspend fun recordEmojiUsage(emoji: String) {
+        val current = emojiDao.getEmoji(emoji)
+        if (current != null) {
+            emojiDao.insertOrUpdate(current.copy(usageCount = current.usageCount + 1, lastUsedAt = System.currentTimeMillis()))
+        } else {
+            emojiDao.insertOrUpdate(com.mobile.superiorutils.data.entity.EmojiUsage(emoji, 1, System.currentTimeMillis()))
+        }
     }
 
     suspend fun insertOrUpdateConversation(conversation: ChatNode) {
@@ -81,6 +94,10 @@ class AppRepository(
 
     suspend fun deleteMessage(messageId: Long) {
         messageDao.deleteMessage(messageId)
+    }
+
+    suspend fun updateMessageReactions(messageId: Long, reactions: String?) {
+        messageDao.updateMessageReactions(messageId, reactions)
     }
 
     fun getProfile(chatId: String): Flow<UserProfile?> {

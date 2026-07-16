@@ -533,6 +533,48 @@ object TelegramApi {
         }
     }
 
+    /**
+     * Send a reaction emoji to a message via setMessageReaction.
+     * Pass an empty [emoji] to remove all reactions.
+     * Returns true on success.
+     */
+    fun setMessageReaction(
+        token: String,
+        chatId: String,
+        messageId: Long,
+        emoji: String
+    ): Boolean {
+        return try {
+            // Build JSON manually — the reactions field is an array of ReactionType objects
+            val reactionsArray = if (emoji.isBlank()) {
+                "[]"
+            } else {
+                """[{"type":"emoji","emoji":"$emoji"}]"""
+            }
+            val jsonBody = """{"chat_id":"$chatId","message_id":$messageId,"reaction":$reactionsArray}"""
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "setMessageReaction"))
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string()
+                    AppLog.log(LogCategory.NETWORK, "setMessageReaction failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
+                } else {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "[REACT] $emoji on $messageId")
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "setMessageReaction error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
     /** Verifies BOTH local internet capabilities and Telegram API reachability. */
     fun isApiReachable(context: Context, token: String): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

@@ -12,11 +12,10 @@ import com.mobile.superiorutils.utils.AppLog
 import java.io.File
 import java.io.FileOutputStream
 import coil.ImageLoaderFactory
-import coil.ImageLoader
 import coil.decode.VideoFrameDecoder
+import coil.ImageLoader
 
 class SuperiorChatApp : Application(), ImageLoaderFactory {
-
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)
             .components {
