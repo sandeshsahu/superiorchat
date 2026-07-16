@@ -10,5 +10,9 @@ data class UserProfile(
     val username: String,
     val type: String,
     val profilePhotoPath: String,
-    val photoUniqueId: String
+    val photoUniqueId: String,
+    val bio: String? = null,
+    val inviteLink: String? = null,
+    val hasProtectedContent: Boolean = false,
+    val isForum: Boolean = false
 )

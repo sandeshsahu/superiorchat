@@ -210,6 +210,7 @@ object TelegramApi {
         chatId: String,
         file: File,
         caption: String? = null,
+        replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
     ): Boolean {
         return try {
@@ -225,6 +226,9 @@ object TelegramApi {
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
                 builder.addFormDataPart("parse_mode", "Markdown")
+            }
+            if (replyToMessageId != null) {
+                builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
             }
 
             val request = Request.Builder()
@@ -253,6 +257,7 @@ object TelegramApi {
         chatId: String,
         file: File,
         caption: String? = null,
+        replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
     ): Boolean {
         return try {
@@ -268,6 +273,9 @@ object TelegramApi {
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
                 builder.addFormDataPart("parse_mode", "Markdown")
+            }
+            if (replyToMessageId != null) {
+                builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
             }
 
             val request = Request.Builder()
@@ -297,6 +305,7 @@ object TelegramApi {
         chatId: String,
         file: File,
         caption: String? = null,
+        replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
     ): Boolean {
         return try {
@@ -312,6 +321,9 @@ object TelegramApi {
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
                 builder.addFormDataPart("parse_mode", "Markdown")
+            }
+            if (replyToMessageId != null) {
+                builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
             }
 
             val request = Request.Builder()
@@ -341,6 +353,7 @@ object TelegramApi {
         chatId: String,
         file: File,
         caption: String? = null,
+        replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
     ): Boolean {
         return try {
@@ -356,6 +369,9 @@ object TelegramApi {
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
                 builder.addFormDataPart("parse_mode", "Markdown")
+            }
+            if (replyToMessageId != null) {
+                builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
             }
 
             val request = Request.Builder()
@@ -387,6 +403,7 @@ object TelegramApi {
         caption: String,
         parseMode: String = "Markdown",
         displayName: String? = null,
+        replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
     ): Boolean {
         return try {
@@ -397,13 +414,18 @@ object TelegramApi {
             } else {
                 file.asRequestBody("application/octet-stream".toMediaType())
             }
-            val requestBody = MultipartBody.Builder()
+            val requestBodyBuilder = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("chat_id", chatId)
                 .addFormDataPart("caption", caption)
                 .addFormDataPart("parse_mode", parseMode)
                 .addFormDataPart("document", uploadName, docBody)
-                .build()
+            
+            if (replyToMessageId != null) {
+                requestBodyBuilder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
+            }
+                
+            val requestBody = requestBodyBuilder.build()
 
             val request = Request.Builder()
                 .url(apiUrl(token, "sendDocument"))
@@ -428,6 +450,88 @@ object TelegramApi {
 
 
 
+
+    // ═══════════════════════════════════════════════════════════
+    //  MESSAGE EDITING & DELETION
+    // ═══════════════════════════════════════════════════════════
+
+    fun editMessageText(
+        token: String,
+        chatId: String,
+        messageId: Long,
+        text: String,
+        parseMode: String? = "Markdown"
+    ): Boolean {
+        return try {
+            @Serializable
+            data class EditMessageRequest(
+                @SerialName("chat_id") val chatId: String,
+                @SerialName("message_id") val messageId: Long,
+                val text: String,
+                @SerialName("parse_mode") val parseMode: String? = null
+            )
+            
+            val req = EditMessageRequest(chatId, messageId, text, parseMode)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "editMessageText"))
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string()
+                    AppLog.log(LogCategory.NETWORK, "editMessageText failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
+                } else {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "[EDITMSG] " + text.take(100))
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "editMessageText error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
+    fun deleteMessage(
+        token: String,
+        chatId: String,
+        messageId: Long
+    ): Boolean {
+        return try {
+            @Serializable
+            data class DeleteMessageRequest(
+                @SerialName("chat_id") val chatId: String,
+                @SerialName("message_id") val messageId: Long
+            )
+            
+            val req = DeleteMessageRequest(chatId, messageId)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "deleteMessage"))
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string()
+                    AppLog.log(LogCategory.NETWORK, "deleteMessage failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
+                } else {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "[DELMSG] ID $messageId")
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "deleteMessage error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
 
     /** Verifies BOTH local internet capabilities and Telegram API reachability. */
     fun isApiReachable(context: Context, token: String): Boolean {

@@ -5,15 +5,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Reply
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.animation.core.animateFloatAsState
@@ -50,6 +53,7 @@ import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.data.entity.MessageStatus
 import com.mobile.superiorutils.theme.DividerColor
 import com.mobile.superiorutils.theme.PrimaryLight
+import com.mobile.superiorutils.theme.InfoBlue
 import com.mobile.superiorutils.theme.SurfaceLevel1
 import com.mobile.superiorutils.theme.SurfaceLevel2
 import com.mobile.superiorutils.ui.ChatViewModel
@@ -73,11 +77,17 @@ fun MessageBubble(
     onMediaClick: (String, String) -> Unit,
     onMediaLongPressStart: (String, String) -> Unit = { _, _ -> },
     onMediaLongPressEnd: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onMessageLongPress: (MessageNode) -> Unit = {},
+    onCopyMessage: (MessageNode) -> Unit = {},
+    onDeleteMessage: (MessageNode) -> Unit = {},
+    repliedMessageText: String? = null,
+    repliedMessageAuthor: String? = null
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
     var showApkInstallDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showContextMenu by remember { androidx.compose.runtime.mutableStateOf(false) }
 
     if (showApkInstallDialog) {
         ActionDialog(
@@ -115,10 +125,69 @@ fun MessageBubble(
 
     val verticalPadding = if (message.mediaType == "voice" || message.mediaType == "audio") 6.dp else 10.dp
 
-    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), contentAlignment = alignment) {
+    var swipeOffsetX by remember { androidx.compose.runtime.mutableStateOf(0f) }
+    val animatedSwipeOffsetX by androidx.compose.animation.core.animateFloatAsState(targetValue = swipeOffsetX)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        if (message.isFromMe) {
+                            if (swipeOffsetX < -50f) {
+                                viewModel.setReplyingToMessage(message)
+                            }
+                        } else {
+                            if (swipeOffsetX > 50f) {
+                                viewModel.setReplyingToMessage(message)
+                            }
+                        }
+                        swipeOffsetX = 0f
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        if (message.isFromMe) {
+                            if (dragAmount < 0 || swipeOffsetX < 0) { // Allow left swipe
+                                swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(-60f, 0f)
+                            }
+                        } else {
+                            if (dragAmount > 0 || swipeOffsetX > 0) { // Allow right swipe
+                                swipeOffsetX = (swipeOffsetX + dragAmount).coerceIn(0f, 60f)
+                            }
+                        }
+                    }
+                )
+            },
+        contentAlignment = alignment
+    ) {
+        if (message.isFromMe && animatedSwipeOffsetX < -20f) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Reply,
+                contentDescription = "Reply",
+                tint = PrimaryLight.copy(alpha = ((-animatedSwipeOffsetX) / 60f).coerceIn(0f, 1f)),
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp)
+                    .size(28.dp)
+            )
+        } else if (!message.isFromMe && animatedSwipeOffsetX > 20f) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Reply,
+                contentDescription = "Reply",
+                tint = PrimaryLight.copy(alpha = (animatedSwipeOffsetX / 60f).coerceIn(0f, 1f)),
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp)
+                    .size(28.dp)
+            )
+        }
+
         Row(
             verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.widthIn(max = 280.dp)
+            modifier = Modifier
+                .widthIn(max = 280.dp)
+                .offset(x = animatedSwipeOffsetX.dp)
         ) {
             if (!message.isFromMe) {
                 val profilePath = userProfile?.profilePhotoPath ?: ""
@@ -175,9 +244,70 @@ fun MessageBubble(
                     .clip(shape)
                     .background(bgColor)
                     .then(if (!message.isFromMe) Modifier.border(1.dp, DividerColor, shape) else Modifier)
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { showContextMenu = true }
+                        )
+                    }
                     .padding(horizontal = 16.dp, vertical = verticalPadding)
             ) {
+                // Context menu anchored to this bubble
+                MessageContextMenu(
+                    expanded = showContextMenu,
+                    message = message,
+                    onDismiss = { showContextMenu = false },
+                    onReplyClick = {
+                        viewModel.setReplyingToMessage(message)
+                    },
+                    onCopyClick = {
+                        onCopyMessage(message)
+                    },
+                    onEditClick = {
+                        viewModel.setEditingMessage(message)
+                    },
+                    onDeleteClick = {
+                        onDeleteMessage(message)
+                    }
+                )
                 Column {
+                    if (message.replyToMessageId != null) {
+                        // Reply stub — compact Telegram-style
+                        Row(
+                            modifier = Modifier
+                                .widthIn(max = 240.dp)
+                                .padding(bottom = 6.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (message.isFromMe) SurfaceLevel2.copy(alpha = 0.65f)
+                                    else PrimaryLight.copy(alpha = 0.12f)
+                                )
+                                .padding(start = if (message.isFromMe) 0.dp else 3.dp)
+                                .background(
+                                    if (message.isFromMe) Color.Transparent
+                                    else SurfaceLevel2
+                                )
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    text = repliedMessageAuthor ?: "Message",
+                                    color = if (message.isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
+                                    fontSize = 11.sp,
+                                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = repliedMessageText?.takeIf { it.isNotBlank() } ?: "📎 Attachment",
+                                    color = if (message.isFromMe) Color.White else textColor.copy(alpha = 0.7f),
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+
                     if (message.mediaType == "photo" && message.mediaLocalPath != null) {
                             val isUploading = message.isFromMe && (message.status == MessageStatus.SENDING || message.status == MessageStatus.QUEUED)
                             val isFailedUpload = message.isFromMe && message.status == MessageStatus.FAILED
@@ -203,7 +333,7 @@ fun MessageBubble(
                                                 onPress = {
                                                     val job = CoroutineScope(Dispatchers.Main).launch {
                                                         delay(150)
-                                                        onMediaLongPressStart(message.mediaLocalPath ?: "", "photo")
+                                                        onMediaLongPressStart(message.mediaLocalPath, "photo")
                                                     }
                                                     val success = tryAwaitRelease()
                                                     job.cancel()
@@ -212,7 +342,7 @@ fun MessageBubble(
                                                         if (isFailedUpload) {
                                                             viewModel.retryMessage(message)
                                                         } else {
-                                                            onMediaClick(message.mediaLocalPath ?: "", "photo")
+                                                            onMediaClick(message.mediaLocalPath, "photo")
                                                         }
                                                     }
                                                 }
@@ -349,7 +479,7 @@ fun MessageBubble(
                                         onPress = {
                                             val job = CoroutineScope(Dispatchers.Main).launch {
                                                 delay(150)
-                                                onMediaLongPressStart(message.mediaLocalPath ?: "", "video")
+                                                onMediaLongPressStart(message.mediaLocalPath, "video")
                                             }
                                             val success = tryAwaitRelease()
                                             job.cancel()
@@ -358,7 +488,7 @@ fun MessageBubble(
                                                 if (isFailedUpload) {
                                                     viewModel.retryMessage(message)
                                                 } else {
-                                                    onMediaClick(message.mediaLocalPath ?: "", "video")
+                                                    onMediaClick(message.mediaLocalPath, "video")
                                                 }
                                             }
                                         }
@@ -707,6 +837,9 @@ fun MessageBubble(
                 modifier = Modifier.padding(top = 4.dp, start = if (message.isFromMe) 0.dp else 6.dp, end = if (message.isFromMe) 6.dp else 0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                if (message.isEdited) {
+                    Text(text = "edited", color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp), modifier = Modifier.padding(end = 4.dp))
+                }
                 Text(text = timeString, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp))
                 if (message.isFromMe) {
                     Spacer(modifier = Modifier.width(4.dp))

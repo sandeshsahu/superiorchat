@@ -442,6 +442,10 @@ object MediaSync {
             val title = chat.first_name ?: chat.title ?: "Unknown"
             val username = chat.username ?: ""
             val type = chat.type
+            val bio = chat.bio ?: chat.description
+            val inviteLink = chat.invite_link
+            val hasProtectedContent = chat.has_protected_content ?: false
+            val isForum = chat.is_forum ?: false
             
             val photoUniqueId = chat.photo?.big_file_unique_id ?: ""
             val bigFileId = chat.photo?.big_file_id
@@ -482,14 +486,22 @@ object MediaSync {
                 username = username,
                 type = type,
                 profilePhotoPath = localPath,
-                photoUniqueId = photoUniqueId
+                photoUniqueId = photoUniqueId,
+                bio = bio,
+                inviteLink = inviteLink,
+                hasProtectedContent = hasProtectedContent,
+                isForum = isForum
             )
             repository.insertProfile(newProfile)
             
             val isUnchanged = existingProfile != null &&
                               title == existingProfile.title && 
                               username == existingProfile.username && 
-                              photoUniqueId == existingProfile.photoUniqueId
+                              photoUniqueId == existingProfile.photoUniqueId &&
+                              bio == existingProfile.bio &&
+                              inviteLink == existingProfile.inviteLink &&
+                              hasProtectedContent == existingProfile.hasProtectedContent &&
+                              isForum == existingProfile.isForum
             if (isUnchanged) {
                 StatusFlow.reportStatus(SyncState.SUCCESS, "No changes")
             } else {

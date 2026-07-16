@@ -33,5 +33,7 @@ data class MessageNode(
     val mediaLocalPath: String? = null,
     val status: MessageStatus = MessageStatus.SENDING,
     val mediaFileName: String? = null,
-    val mediaFileSize: Long? = null
+    val mediaFileSize: Long? = null,
+    val replyToMessageId: Long? = null,
+    val isEdited: Boolean = false
 )

@@ -39,7 +39,11 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.filled.Reply
 import com.mobile.superiorutils.ui.components.ScrollEvent
+import com.mobile.superiorutils.ui.components.MessageContextMenu
+import com.mobile.superiorutils.ui.components.DeleteWarningDialog
+import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.data.repository.LocalMediaItem
 import com.mobile.superiorutils.data.repository.LocalFileItem
 import androidx.compose.material3.*
@@ -56,6 +60,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -79,6 +84,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
+private const val PAGE_SIZE = 50
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
@@ -97,7 +104,10 @@ fun ChatScreen(
     var activeFullScreenMediaType by remember { mutableStateOf<String?>(null) }
     var currentPickerMode by remember { mutableStateOf(PickerMode.NONE) }
     var showAttachmentMenu by remember { mutableStateOf(false) }
-    var showUserInfoDialog by remember { mutableStateOf(false) }
+    var showUserInfoDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var selectedMessageForAction by remember { androidx.compose.runtime.mutableStateOf<MessageNode?>(null) }
+    var messageToDelete by remember { androidx.compose.runtime.mutableStateOf<MessageNode?>(null) }
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
     @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
     val isKeyboardVisible = androidx.compose.foundation.layout.WindowInsets.isImeVisible
@@ -491,16 +501,37 @@ fun ChatScreen(
                             items = messages.reversed(),
                             key = { it.messageId }
                         ) { msg ->
+                            val repliedMsg = if (msg.replyToMessageId != null) {
+                                messages.find { it.messageId == msg.replyToMessageId }
+                            } else null
+
                             MessageBubble(
                                 message = msg,
                                 userProfile = userProfile,
                                 viewModel = viewModel,
+                                repliedMessageText = if (!repliedMsg?.text.isNullOrBlank()) {
+                                    repliedMsg?.text
+                                } else when (repliedMsg?.mediaType) {
+                                    "photo" -> "📷 Photo"
+                                    "video" -> "🎬 Video"
+                                    "voice" -> "🎵 Voice message"
+                                    "document" -> "📄 File"
+                                    "audio" -> "🎵 Audio"
+                                    else -> if (repliedMsg != null) "📎 Attachment" else null
+                                },
+                                repliedMessageAuthor = if (repliedMsg?.isFromMe == true) "You" else (userProfile?.title?.ifEmpty { "User" } ?: "User"),
                                 onMediaClick = onMediaClickRemembered,
                                 onMediaLongPressStart = onMediaLongPressStartRemembered,
                                 onMediaLongPressEnd = onMediaLongPressEndRemembered,
                                 onProfileClick = {
                                     viewModel.forceSyncProfile(context)
                                     showUserInfoDialog = true
+                                },
+                                onCopyMessage = { msgToCopy ->
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(msgToCopy.text ?: ""))
+                                },
+                                onDeleteMessage = { msgToDelete ->
+                                    messageToDelete = msgToDelete
                                 }
                             )
                         }
@@ -704,6 +735,17 @@ fun ChatScreen(
                     activeFullScreenMediaType = "photo"
                 },
                 onDismiss = { showUserInfoDialog = false }
+            )
+        }
+
+
+        if (messageToDelete != null) {
+            DeleteWarningDialog(
+                onDismiss = { messageToDelete = null },
+                onConfirmDelete = {
+                    viewModel.deleteMessage(messageToDelete!!)
+                    messageToDelete = null
+                }
             )
         }
     }

@@ -24,14 +24,19 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.*
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import com.mobile.superiorutils.data.entity.MessageNode
 import com.mobile.superiorutils.theme.*
 import com.mobile.superiorutils.theme.PrimaryLight
-
 @Composable
 fun ErrorDialog(
     title: String = "Error",
@@ -587,6 +592,166 @@ fun EditManuallyPopup(
             
             TextButton(onClick = onDismiss) {
                 Text("Cancel", color = TextSecondary)
+            }
+        }
+    }
+}
+
+@Composable
+fun MessageContextMenu(
+    expanded: Boolean,
+    message: MessageNode,
+    onDismiss: () -> Unit,
+    onReplyClick: () -> Unit,
+    onCopyClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme.copy(
+            surface = Color.Black,
+            onSurface = Color.White
+        ),
+        shapes = MaterialTheme.shapes.copy(
+            extraSmall = RoundedCornerShape(16.dp)
+        )
+    ) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = onDismiss,
+            modifier = Modifier
+                .background(Color.Black, RoundedCornerShape(16.dp))
+                .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
+                .widthIn(min = 150.dp, max = 200.dp)
+        ) {
+            // Reply
+            ContextMenuItem(
+                text = "Reply",
+                icon = Icons.AutoMirrored.Filled.Reply,
+                onClick = { onReplyClick(); onDismiss() }
+            )
+
+            // Copy
+            ContextMenuItem(
+                text = "Copy",
+                icon = Icons.Filled.ContentCopy,
+                onClick = { onCopyClick(); onDismiss() }
+            )
+
+            // Edit (Only for own text messages)
+            if (message.isFromMe && !message.text.isNullOrBlank()) {
+                ContextMenuItem(
+                    text = "Edit",
+                    icon = Icons.Filled.Edit,
+                    onClick = { onEditClick(); onDismiss() }
+                )
+            }
+
+            // Delete
+            ContextMenuItem(
+                text = "Delete",
+                icon = Icons.Filled.Delete,
+                textColor = ErrorRed,
+                iconColor = ErrorRed,
+                onClick = { onDeleteClick(); onDismiss() }
+            )
+        }
+    }
+}
+
+@Composable
+fun ContextMenuItem(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    textColor: Color = Color.White,
+    iconColor: Color = Color(0xFF8E8E93),
+    onClick: () -> Unit
+) {
+    DropdownMenuItem(
+        text = {
+            Text(
+                text = text,
+                color = textColor,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal
+            )
+        },
+        onClick = onClick,
+        leadingIcon = {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp)
+            )
+        },
+        modifier = Modifier.height(44.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp)
+    )
+}
+
+@Composable
+fun DeleteWarningDialog(
+    onDismiss: () -> Unit,
+    onConfirmDelete: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = Color.Black,
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Color(0xFF333333), RoundedCornerShape(20.dp)),
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(top = 22.dp, start = 22.dp, end = 22.dp, bottom = 8.dp)
+            ) {
+                Text(
+                    text = "Delete message?",
+                    color = Color.White,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "Are you sure you want to delete this message?",
+                    color = Color(0xFFAAAAAA),
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(
+                        onClick = onDismiss,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            color = InfoBlue,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                    }
+                    TextButton(
+                        onClick = onConfirmDelete,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Delete",
+                            color = ErrorRed,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
             }
         }
     }

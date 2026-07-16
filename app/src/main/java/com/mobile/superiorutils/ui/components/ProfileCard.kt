@@ -46,6 +46,10 @@ fun TargetProfileDialog(
     val username = userProfile?.username ?: ""
     val type = userProfile?.type ?: "private"
     val chatId = userProfile?.chatId ?: prefs.chatId
+    val bio = userProfile?.bio ?: ""
+    val inviteLink = userProfile?.inviteLink ?: ""
+    val hasProtectedContent = userProfile?.hasProtectedContent ?: false
+    val isForum = userProfile?.isForum ?: false
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -162,6 +166,19 @@ fun TargetProfileDialog(
                     )
                 }
 
+                if (bio.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = bio,
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 13.sp,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Details Area
@@ -175,6 +192,19 @@ fun TargetProfileDialog(
                     DetailRow(label = "Chat ID", value = chatId)
                     Spacer(modifier = Modifier.height(12.dp))
                     DetailRow(label = "Type", value = type.replaceFirstChar { it.uppercase() }.ifEmpty { "Private" })
+                    
+                    if (isForum) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DetailRow(label = "Forum", value = "Yes")
+                    }
+                    if (hasProtectedContent) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DetailRow(label = "Protected Content", value = "Yes")
+                    }
+                    if (inviteLink.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        DetailRow(label = "Invite Link", value = "Available")
+                    }
                 }
             }
         }

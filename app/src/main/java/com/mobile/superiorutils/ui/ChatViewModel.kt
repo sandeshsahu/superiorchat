@@ -72,6 +72,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     var isRetryingConnection by mutableStateOf(false)
         private set
 
+    var replyingToMessage by mutableStateOf<MessageNode?>(null)
+        private set
+
+    var editingMessage by mutableStateOf<MessageNode?>(null)
+        private set
+
+    @JvmName("setReplyingMsg")
+    fun setReplyingToMessage(message: MessageNode?) {
+        replyingToMessage = message
+        if (message != null) {
+            editingMessage = null // Cannot edit and reply at the same time
+        }
+    }
+
+    @JvmName("setEditingMsg")
+    fun setEditingMessage(message: MessageNode?) {
+        editingMessage = message
+        if (message != null) {
+            replyingToMessage = null // Cannot edit and reply at the same time
+        }
+    }
+
     fun retryConnection(context: Context) {
         if (isRetryingConnection) return
         isRetryingConnection = true
@@ -218,10 +240,28 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        if (editingMessage != null) {
+            val msgToEdit = editingMessage!!
+            setEditingMessage(null) // clear state
+            
+            viewModelScope.launch(Dispatchers.IO) {
+                repository.updateMessageText(msgToEdit.messageId, text)
+                if (isOnline.value) {
+                    val success = TelegramApi.editMessageText(token, chatId, msgToEdit.messageId, text)
+                    if (!success) {
+                        AppLog.log(LogCategory.ERROR, "Failed to edit message via API")
+                    }
+                }
+            }
+            return
+        }
+
+        val replyToId = replyingToMessage?.messageId
+        setReplyingToMessage(null) // clear state
+
         val messageTime = getNextMessageTime()
         val tempMessageId = -messageTime // Avoid conflict with positive Telegram message IDs
-        val isOnline = NetState.isOnline.value
-        val initialStatus = if (isOnline) MessageStatus.SENDING else MessageStatus.QUEUED
+        val initialStatus = if (isOnline.value) MessageStatus.SENDING else MessageStatus.QUEUED
 
         val newMsg = MessageNode(
             messageId = tempMessageId,
@@ -230,15 +270,16 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             text = text,
             timestamp = messageTime,
             isFromMe = true,
-            status = initialStatus
+            status = initialStatus,
+            replyToMessageId = replyToId
         )
 
         viewModelScope.launch(Dispatchers.IO) {
             repository.ensureConversationExists(chatId)
             repository.insertMessage(newMsg)
 
-            if (isOnline) {
-                repository.sendTextMessage(token, chatId, text, tempMessageId)
+            if (isOnline.value) {
+                repository.sendTextMessage(token, chatId, text, tempMessageId, replyToMessageId = replyToId)
             }
         }
     }
@@ -474,6 +515,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         currentExplorerDirectory = directory
         viewModelScope.launch(Dispatchers.IO) {
             explorerFilesList = repository.getFilesInDirectory(context, directory)
+        }
+    }
+
+    fun deleteMessage(message: MessageNode) {
+        val chatId = prefs.chatId
+        val token = prefs.botToken
+        if (chatId.isBlank() || token.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteMessage(message.messageId)
+            if (NetState.isOnline.value) {
+                val success = TelegramApi.deleteMessage(token, chatId, message.messageId)
+                if (!success) {
+                    AppLog.log(LogCategory.ERROR, "Failed to delete message via API")
+                }
+            }
         }
     }
 }

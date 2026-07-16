@@ -19,7 +19,8 @@ data class UpdateResponse(
 @Serializable
 data class Update(
     val update_id: Long,
-    val message: Message? = null
+    val message: Message? = null,
+    val edited_message: Message? = null
 )
 
 @Serializable
@@ -33,7 +34,8 @@ data class Message(
     val document: JsonElement? = null,
     val video: JsonElement? = null,
     val audio: JsonElement? = null,
-    val voice: JsonElement? = null
+    val voice: JsonElement? = null,
+    val reply_to_message: Message? = null
 )
 
 
@@ -52,7 +54,12 @@ data class Chat(
     val title: String? = null,
     val username: String? = null,
     val first_name: String? = null,
-    val photo: ChatPhoto? = null
+    val photo: ChatPhoto? = null,
+    val bio: String? = null,
+    val description: String? = null,
+    val invite_link: String? = null,
+    val has_protected_content: Boolean? = null,
+    val is_forum: Boolean? = null
 )
 
 @Serializable

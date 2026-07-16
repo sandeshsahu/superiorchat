@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -137,8 +138,53 @@ fun ChatInputBox(
         label = "glow_scale"
     )
 
-    AnimatedContent(
-        targetState = hasConnectionError,
+    Column(modifier = Modifier.fillMaxWidth()) {
+        val replyingMsg = viewModel.replyingToMessage
+        val editingMsg = viewModel.editingMessage
+        
+        AnimatedVisibility(
+            visible = replyingMsg != null || editingMsg != null,
+            enter = slideInVertically(initialOffsetY = { it }) + androidx.compose.animation.expandVertically() + fadeIn(),
+            exit = slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.shrinkVertically() + fadeOut()
+        ) {
+            val title = if (editingMsg != null) "Edit Message" else "Reply to Message"
+            val body = editingMsg?.text?.takeIf { it.isNotBlank() } ?: replyingMsg?.text?.takeIf { it.isNotBlank() } ?: "Media"
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(PrimaryLight.copy(alpha = 0.1f))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        color = PrimaryLight,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = body,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = { 
+                    if (editingMsg != null) viewModel.setEditingMessage(null)
+                    if (replyingMsg != null) viewModel.setReplyingToMessage(null)
+                }) {
+                    Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+
+        AnimatedContent(
+            targetState = hasConnectionError,
         transitionSpec = {
             (slideInVertically(initialOffsetY = { it }) + fadeIn())
                 .togetherWith(slideOutVertically(targetOffsetY = { -it }) + fadeOut())
@@ -394,6 +440,7 @@ fun ChatInputBox(
             }
         }
     }
+}
 }
 
 // ═══════════════════════════════════════════════════════════

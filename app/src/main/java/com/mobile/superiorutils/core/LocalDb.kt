@@ -18,7 +18,7 @@ import com.mobile.superiorutils.core.Converters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class], version = 4, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class], version = 6, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
@@ -64,6 +64,22 @@ abstract class LocalDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN bio TEXT")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN inviteLink TEXT")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN hasProtectedContent INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN isForum INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE messages ADD COLUMN replyToMessageId INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN isEdited INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): LocalDb {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -71,7 +87,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

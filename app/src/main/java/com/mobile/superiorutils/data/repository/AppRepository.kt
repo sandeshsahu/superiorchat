@@ -75,6 +75,14 @@ class AppRepository(
         messageDao.updateMessageStatus(messageId, status)
     }
 
+    suspend fun updateMessageText(messageId: Long, newText: String) {
+        messageDao.updateMessageText(messageId, newText)
+    }
+
+    suspend fun deleteMessage(messageId: Long) {
+        messageDao.deleteMessage(messageId)
+    }
+
     fun getProfile(chatId: String): Flow<UserProfile?> {
         return profileDao.getProfile(chatId)
     }
@@ -93,10 +101,10 @@ class AppRepository(
         return messageDao.getMessagesByStatus(MessageStatus.QUEUED)
     }
 
-    suspend fun sendTextMessage(token: String, chatId: String, text: String, tempMessageId: Long): Boolean {
-        val sentId = TelegramApi.sendMessage(token, chatId, text)
+    suspend fun sendTextMessage(token: String, chatId: String, text: String, tempMessageId: Long, replyToMessageId: Long? = null): Boolean {
+        val sentId = TelegramApi.sendMessage(token, chatId, text, replyToMessageId = replyToMessageId)
         return if (sentId != null) {
-            updateMessageStatus(tempMessageId, MessageStatus.SENT)
+            messageDao.updateMessageIdAndStatus(tempMessageId, sentId, MessageStatus.SENT)
             true
         } else {
             updateMessageStatus(tempMessageId, MessageStatus.FAILED)

@@ -200,6 +200,15 @@ class BotSync(private val context: Context) {
     }
 
     private suspend fun handleUpdate(update: Update) {
+        if (update.edited_message != null) {
+            val editedMsg = update.edited_message
+            if (editedMsg.text != null) {
+                repository.updateMessageText(editedMsg.message_id, editedMsg.text)
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${editedMsg.text.take(50)}")
+            }
+            return
+        }
+
         val message = update.message ?: return
 
         // Intruder filtering: only accept messages from the target chat
@@ -299,7 +308,8 @@ class BotSync(private val context: Context) {
             mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
             status = finalStatus,
             mediaFileName = fileName,
-            mediaFileSize = fileSize
+            mediaFileSize = fileSize,
+            replyToMessageId = message.reply_to_message?.message_id
         )
 
         repository.insertMessage(messageEntity)
