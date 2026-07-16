@@ -378,12 +378,9 @@ fun Step2Screen(onNext: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            FeatureRow(Icons.Filled.SmartToy, "@BotFather", "Create a new bot on Telegram and copy your Bot Token.")
-            Spacer(modifier = Modifier.height(12.dp))
-            FeatureRow(Icons.Filled.PersonSearch, "@MissRose_bot", "Search MissRose_bot and use /id command to get your Chat ID.")
-            
+            FeatureRow(Icons.Filled.QrCodeScanner, "Scan Configuration", "Use the built-in scanner to import credentials.")
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Button(
                 onClick = { showAddManuallyPopup = true },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
