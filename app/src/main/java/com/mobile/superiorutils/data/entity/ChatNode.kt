@@ -10,5 +10,6 @@ data class ChatNode(
     val title: String,
     val lastMessageText: String?,
     val lastMessageTimestamp: Long,
-    val unreadCount: Int = 0
+    val unreadCount: Int = 0,
+    val pinnedMessageId: Long? = null
 )

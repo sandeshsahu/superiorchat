@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.Close
 import com.mobile.superiorutils.ui.components.ScrollEvent
 import com.mobile.superiorutils.ui.components.MessageContextMenu
 import com.mobile.superiorutils.ui.components.DeleteWarningDialog
@@ -95,6 +96,7 @@ fun ChatScreen(
     onNavigateToSettings: () -> Unit = {}
 ) {
     val messages by viewModel.messages.collectAsState()
+    val currentPinnedMessage by viewModel.currentPinnedMessage.collectAsState()
     val messageLimit by viewModel.messageLimit.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val context = LocalContext.current
@@ -493,6 +495,74 @@ fun ChatScreen(
                 )
             }
 
+            // Pinned Message Bar
+            androidx.compose.animation.AnimatedVisibility(
+                visible = currentPinnedMessage != null,
+                enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+            ) {
+                currentPinnedMessage?.let { pinnedMsg ->
+                    val coroutineScope = rememberCoroutineScope()
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                // Find index of pinned message in the current list
+                                val index = messages.reversed().indexOfFirst { it.messageId == pinnedMsg.messageId }
+                                if (index != -1) {
+                                    coroutineScope.launch {
+                                        listState.scrollToItem(index)
+                                    }
+                                }
+                            },
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(3.dp)
+                                    .height(36.dp)
+                                    .background(Primary, RoundedCornerShape(2.dp))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Pinned message",
+                                    color = Primary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (pinnedMsg.text.isNullOrBlank()) "Media message" else pinnedMsg.text,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 14.sp,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
+                            }
+                            
+                            IconButton(
+                                onClick = { viewModel.unpinMessage(pinnedMsg) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Unpin message",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Chat Area
             Box(
                 modifier = Modifier
@@ -581,6 +651,14 @@ fun ChatScreen(
                                 },
                                 onDeleteMessage = { msgToDelete ->
                                     messageToDelete = msgToDelete
+                                },
+                                isPinned = msg.messageId == currentPinnedMessage?.messageId,
+                                onPinClick = { msgToPin ->
+                                    if (msgToPin.messageId == currentPinnedMessage?.messageId) {
+                                        viewModel.unpinMessage(msgToPin)
+                                    } else {
+                                        viewModel.pinMessage(msgToPin)
+                                    }
                                 }
                             )
                         }

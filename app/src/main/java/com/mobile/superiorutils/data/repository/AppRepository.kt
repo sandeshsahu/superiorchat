@@ -46,8 +46,24 @@ class AppRepository(
         return conversationDao.getAllConversations()
     }
 
+    fun getChat(chatId: String): Flow<ChatNode?> {
+        return conversationDao.getConversation(chatId)
+    }
+
+    suspend fun getChatSync(chatId: String): ChatNode? {
+        return conversationDao.getConversationSync(chatId)
+    }
+
+    suspend fun updateChat(chatNode: ChatNode) {
+        conversationDao.updateConversation(chatNode)
+    }
+
     fun getMessagesForConversation(chatId: String, limit: Int): Flow<List<MessageNode>> {
         return messageDao.getMessagesForConversation(chatId, limit)
+    }
+
+    suspend fun getMessageById(messageId: Long): MessageNode? {
+        return messageDao.getMessageById(messageId)
     }
 
     suspend fun insertMessage(message: MessageNode) {

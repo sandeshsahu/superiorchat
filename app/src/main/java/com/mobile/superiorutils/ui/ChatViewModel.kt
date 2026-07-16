@@ -335,6 +335,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _messages = MutableStateFlow<List<MessageNode>>(emptyList())
     val messages: StateFlow<List<MessageNode>> = _messages.asStateFlow()
 
+    private val _currentPinnedMessage = MutableStateFlow<MessageNode?>(null)
+    val currentPinnedMessage: StateFlow<MessageNode?> = _currentPinnedMessage.asStateFlow()
+
     private val _userProfile = MutableStateFlow<com.mobile.superiorutils.data.entity.UserProfile?>(null)
     val userProfile: StateFlow<com.mobile.superiorutils.data.entity.UserProfile?> = _userProfile.asStateFlow()
 
@@ -393,6 +396,16 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     _userProfile.value = profile
                 }
             }
+            
+            launch {
+                repository.getChat(chatId).collectLatest { chat ->
+                    if (chat?.pinnedMessageId != null) {
+                        _currentPinnedMessage.value = repository.getMessageById(chat.pinnedMessageId)
+                    } else {
+                        _currentPinnedMessage.value = null
+                    }
+                }
+            }
 
             // Collect live database updates to push directly to UI StateFlow with pagination
             var previousMsgs: List<MessageNode>? = null
@@ -424,6 +437,82 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (chatId.isBlank() || token.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             MediaSync.syncTargetProfile(context, token, chatId)
+        }
+    }
+
+    fun pinMessage(message: MessageNode) {
+        val chatId = prefs.chatId
+        val token = prefs.botToken
+        if (chatId.isBlank() || token.isBlank()) return
+
+        // Optimistic UI update via DB
+        viewModelScope.launch(Dispatchers.IO) {
+            StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Pinning message...")
+            val chatNode = repository.getChatSync(chatId)
+            if (chatNode != null) {
+                repository.updateChat(chatNode.copy(pinnedMessageId = message.messageId))
+            }
+            
+            if (isOnline.value) {
+                val success = TelegramApi.pinChatMessage(token, chatId, message.messageId)
+                if (success) {
+                    StatusFlow.reportStatus(SyncState.SUCCESS, "Message pinned")
+                } else {
+                    if (!NetState.isOnline.value) {
+                        StatusFlow.reportStatus(SyncState.ERROR, "Failed to pin: You are offline.")
+                    } else {
+                        StatusFlow.reportStatus(SyncState.ERROR, "Failed to pin: No admin rights")
+                    }
+                    // Rollback
+                    if (chatNode != null) {
+                        repository.updateChat(chatNode)
+                    }
+                }
+            } else {
+                StatusFlow.reportStatus(SyncState.ERROR, "Failed to pin: You are offline.")
+                // Rollback
+                if (chatNode != null) {
+                    repository.updateChat(chatNode)
+                }
+            }
+        }
+    }
+
+    fun unpinMessage(message: MessageNode) {
+        val chatId = prefs.chatId
+        val token = prefs.botToken
+        if (chatId.isBlank() || token.isBlank()) return
+
+        // Optimistic UI update via DB
+        viewModelScope.launch(Dispatchers.IO) {
+            StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Unpinning message...")
+            val chatNode = repository.getChatSync(chatId)
+            if (chatNode != null) {
+                repository.updateChat(chatNode.copy(pinnedMessageId = null))
+            }
+
+            if (isOnline.value) {
+                val success = TelegramApi.unpinChatMessage(token, chatId, message.messageId)
+                if (success) {
+                    StatusFlow.reportStatus(SyncState.SUCCESS, "Message unpinned")
+                } else {
+                    if (!NetState.isOnline.value) {
+                        StatusFlow.reportStatus(SyncState.ERROR, "Failed to unpin: You are offline.")
+                    } else {
+                        StatusFlow.reportStatus(SyncState.ERROR, "Failed to unpin: No Admin rights.")
+                    }
+                    // Rollback
+                    if (chatNode != null) {
+                        repository.updateChat(chatNode)
+                    }
+                }
+            } else {
+                StatusFlow.reportStatus(SyncState.ERROR, "Failed to unpin: You are offline.")
+                // Rollback
+                if (chatNode != null) {
+                    repository.updateChat(chatNode)
+                }
+            }
         }
     }
 

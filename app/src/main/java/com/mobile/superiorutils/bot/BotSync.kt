@@ -287,13 +287,26 @@ class BotSync(private val context: Context) {
         val finalStatus = if (isAutoDownload) MessageStatus.SENDING else MessageStatus.SENT
 
         val receiveTimestamp = System.currentTimeMillis()
+        
+        var parsedText = text
+        var parsedMediaType = mediaType
+        
+        val existingChat = repository.getChatSync(chatId)
+        var newPinnedMessageId = existingChat?.pinnedMessageId
+        
+        if (message.pinned_message != null) {
+            parsedMediaType = "system_pin"
+            parsedText = "${message.from?.first_name ?: "User"} pinned a message"
+            newPinnedMessageId = message.pinned_message.message_id
+        }
 
         val conversationEntity = ChatNode(
             chatId = chatId,
-            title = message.from?.first_name ?: message.chat.first_name ?: "Unknown",
-            lastMessageText = text,
+            title = message.from?.first_name ?: message.chat.first_name ?: existingChat?.title ?: "Unknown",
+            lastMessageText = parsedText,
             lastMessageTimestamp = receiveTimestamp,
-            unreadCount = 1
+            unreadCount = (existingChat?.unreadCount ?: 0) + 1,
+            pinnedMessageId = newPinnedMessageId
         )
         repository.insertOrUpdateConversation(conversationEntity)
 
@@ -301,10 +314,10 @@ class BotSync(private val context: Context) {
             messageId = message.message_id,
             conversationId = chatId,
             senderId = senderId,
-            text = text,
+            text = parsedText,
             timestamp = receiveTimestamp,
             isFromMe = false,
-            mediaType = mediaType,
+            mediaType = parsedMediaType,
             mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
             status = finalStatus,
             mediaFileName = fileName,

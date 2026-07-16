@@ -499,7 +499,14 @@ object MediaSync {
                 isForum = isForum
             )
             repository.insertProfile(newProfile)
-            
+
+            // Update ChatNode with pinnedMessageId
+            val pinnedMsgId = chat.pinned_message?.message_id
+            val chatNode = repository.getChatSync(chatId)
+            if (chatNode != null) {
+                repository.updateChat(chatNode.copy(pinnedMessageId = pinnedMsgId))
+            }
+
             val isUnchanged = existingProfile != null &&
                               title == existingProfile.title && 
                               username == existingProfile.username && 

@@ -613,7 +613,9 @@ fun MessageContextMenu(
     onCopyClick: () -> Unit,
     onEditClick: () -> Unit,
     onSelectClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    isPinned: Boolean = false,
+    onPinClick: () -> Unit = {}
 ) {
     val expanded = expandedProvider()
     val currentReactions = message.reactions
@@ -731,6 +733,13 @@ fun MessageContextMenu(
                         text = "Select",
                         icon = Icons.Filled.CheckBox,
                         onClick = { onSelectClick(); onDismiss() }
+                    )
+
+                    // Pin
+                    ContextMenuItem(
+                        text = if (isPinned) "Unpin" else "Pin",
+                        icon = Icons.Filled.Lock,
+                        onClick = { onPinClick(); onDismiss() }
                     )
 
                     // Delete

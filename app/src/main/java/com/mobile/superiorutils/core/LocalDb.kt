@@ -20,7 +20,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mobile.superiorutils.data.entity.EmojiUsage
 import com.mobile.superiorutils.data.dao.EmojiDao
 
-@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class], version = 8, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class], version = 9, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao

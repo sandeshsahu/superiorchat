@@ -35,7 +35,8 @@ data class Message(
     val video: JsonElement? = null,
     val audio: JsonElement? = null,
     val voice: JsonElement? = null,
-    val reply_to_message: Message? = null
+    val reply_to_message: Message? = null,
+    val pinned_message: Message? = null
 )
 
 
@@ -59,7 +60,8 @@ data class Chat(
     val description: String? = null,
     val invite_link: String? = null,
     val has_protected_content: Boolean? = null,
-    val is_forum: Boolean? = null
+    val is_forum: Boolean? = null,
+    val pinned_message: Message? = null
 )
 
 @Serializable

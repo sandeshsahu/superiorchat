@@ -505,6 +505,80 @@ object TelegramApi {
 
 
 
+    // ═══════════════════════════════════════════════════════════
+    //  PINNED MESSAGES
+    // ═══════════════════════════════════════════════════════════
+    suspend fun pinChatMessage(
+        token: String,
+        chatId: String,
+        messageId: Long
+    ): Boolean {
+        return try {
+            @Serializable
+            data class PinMessageRequest(
+                @SerialName("chat_id") val chatId: String,
+                @SerialName("message_id") val messageId: Long,
+                @SerialName("disable_notification") val disableNotification: Boolean = false
+            )
+            
+            val req = PinMessageRequest(chatId, messageId, false)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "pinChatMessage"))
+                .post(body)
+                .build()
+
+            client.executeCancellable(request).use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string()
+                    AppLog.log(LogCategory.NETWORK, "pinChatMessage failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "pinChatMessage error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
+    suspend fun unpinChatMessage(
+        token: String,
+        chatId: String,
+        messageId: Long
+    ): Boolean {
+        return try {
+            @Serializable
+            data class UnpinMessageRequest(
+                @SerialName("chat_id") val chatId: String,
+                @SerialName("message_id") val messageId: Long
+            )
+            
+            val req = UnpinMessageRequest(chatId, messageId)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "unpinChatMessage"))
+                .post(body)
+                .build()
+
+            client.executeCancellable(request).use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string()
+                    AppLog.log(LogCategory.NETWORK, "unpinChatMessage failed: ${response.code} - $errorBody", com.mobile.superiorutils.utils.LogLevel.ERROR)
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "unpinChatMessage error: ${e.message}", com.mobile.superiorutils.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
 
     // ═══════════════════════════════════════════════════════════
     //  MESSAGE EDITING & DELETION

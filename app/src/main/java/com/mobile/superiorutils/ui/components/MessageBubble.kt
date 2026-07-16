@@ -48,6 +48,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
@@ -198,6 +199,8 @@ fun MessageBubble(
     onMessageLongPress: (MessageNode) -> Unit = {},
     onCopyMessage: (MessageNode) -> Unit = {},
     onDeleteMessage: (MessageNode) -> Unit = {},
+    isPinned: Boolean = false,
+    onPinClick: (MessageNode) -> Unit = {},
     onSelectMessage: (MessageNode) -> Unit = {},
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
@@ -208,6 +211,27 @@ fun MessageBubble(
     val context = LocalContext.current
     var showApkInstallDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
     val view = androidx.compose.ui.platform.LocalView.current
+
+    if (message.mediaType == "system_pin") {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = message.text ?: "Pinned a message",
+                color = Color.White.copy(alpha = 0.6f),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.2f))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+        }
+        return
+    }
 
     if (showApkInstallDialog) {
         ActionDialog(
@@ -498,6 +522,10 @@ fun MessageBubble(
                     },
                     onDeleteClick = {
                         onDeleteMessage(message)
+                    },
+                    isPinned = isPinned,
+                    onPinClick = {
+                        onPinClick(message)
                     }
                 )
                 Column {
