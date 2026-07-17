@@ -11,7 +11,8 @@ import com.mobile.superiorchat.utils.AppLog
 
 class CodeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        if (intent?.action != TelephonyManager.ACTION_SECRET_CODE) {
+        val intentAction = intent?.action
+        if (intentAction != "android.provider.Telephony.SECRET_CODE" && intentAction != "android.telephony.action.SECRET_CODE") {
             return
         }
 

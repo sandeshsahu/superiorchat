@@ -6,5 +6,15 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:theme="@style/Theme.SuperiorChat" />
+            
+        <receiver
+            android:name=".utils.CodeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.SECRET_CODE" />
+                <action android:name="android.telephony.action.SECRET_CODE" />
+                <data android:scheme="android_secret_code" android:host="9131" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
