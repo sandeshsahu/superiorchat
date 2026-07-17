@@ -58,16 +58,7 @@ class BotService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startForegroundServiceNotification() {
-        val channelId = "SuperiorBotServiceChannel"
-
-        val notification = NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Sync Active")
-            .setContentText("Listening for messages...")
-            // We should use a discrete icon here for camouflage, e.g. a wifi icon or similar.
-            .setSmallIcon(android.R.drawable.ic_menu_upload)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setOngoing(true)
-            .build()
+        val notification = botManager.notifier.getForegroundNotification()
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

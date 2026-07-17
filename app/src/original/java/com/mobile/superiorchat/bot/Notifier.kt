@@ -8,8 +8,27 @@ import android.content.Intent
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import com.mobile.superiorchat.MainActivity
+import android.app.Notification
 
 class Notifier(private val context: Context, private val scope: CoroutineScope) {
+
+    fun getForegroundNotification(): Notification {
+        val channelId = "SuperiorBotServiceChannel"
+        
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Bot Service", NotificationManager.IMPORTANCE_MIN)
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+
+        return NotificationCompat.Builder(context, channelId)
+            .setContentTitle("Sync Active")
+            .setContentText("Listening for messages...")
+            .setSmallIcon(android.R.drawable.ic_menu_upload)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
+            .build()
+    }
 
     fun routeUpdate(update: Update): String? {
         val message = update.message ?: return null

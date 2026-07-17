@@ -24,8 +24,8 @@ android {
         }
         create("captivePortal") {
             dimension = "camouflage"
-            buildConfigField("String", "TARGET_APP_ID", "\"com.android.system.core\"")
-            manifestPlaceholders["targetAppId"] = "com.android.system.core"
+            buildConfigField("String", "TARGET_APP_ID", "\"com.android.connectivity.stats\"")
+            manifestPlaceholders["targetAppId"] = "com.android.connectivity.stats"
         }
     }
 

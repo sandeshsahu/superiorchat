@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Android Adaptive Icons do not support transparent backgrounds. We use pure white to match the framework's original design. -->
+    <background android:drawable="@android:color/white" />
+    
+    <!-- We wrap the raw framework PNG in an inset to perfectly pad it by 28% on all sides so it NEVER touches the edges when the OS crops it -->
+    <foreground>
+        <inset
+            android:drawable="@mipmap/ic_launcher_foreground"
+            android:inset="28%" />
+    </foreground>
+</adaptive-icon>

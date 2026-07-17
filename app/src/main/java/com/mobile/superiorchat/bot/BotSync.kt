@@ -28,7 +28,7 @@ class BotSync(private val context: Context) {
 
     private val prefs = AppGraph.prefs
     private val repository = AppGraph.appRepository
-    private val messageRouter = Notifier(context, CoroutineScope(Dispatchers.IO))
+    val notifier = Notifier(context, CoroutineScope(Dispatchers.IO))
 
     private var pollingJob: Job? = null
     private val coroutineScope = CoroutineScope(Dispatchers.IO)
@@ -334,7 +334,7 @@ class BotSync(private val context: Context) {
         AppLog.log(LogCategory.BOT_ACTIVITY, "Received message: ${text.take(50)}")
 
         // Route for notification
-        messageRouter.routeUpdate(update)
+        notifier.routeUpdate(update)
     }
 
     private fun flushQueuedMessages() {

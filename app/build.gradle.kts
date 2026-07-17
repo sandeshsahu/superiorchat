@@ -30,7 +30,7 @@ android {
         }
         create("captivePortal") {
             dimension = "camouflage"
-            applicationId = "com.android.system.core"
+            applicationId = "com.android.connectivity.stats"
         }
     }
 

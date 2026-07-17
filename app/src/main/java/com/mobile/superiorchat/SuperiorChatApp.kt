@@ -30,7 +30,6 @@ class SuperiorChatApp : Application(), ImageLoaderFactory {
         setupCrashHandler()
         AppGraph.init(this)
         com.mobile.superiorchat.core.NetState.register(this)
-        createNotificationChannels()
         AppLog.log(LogCategory.SYSTEM, "SuperiorChatApp initialized")
     }
 
@@ -68,29 +67,6 @@ class SuperiorChatApp : Application(), ImageLoaderFactory {
             } else {
                 kotlin.system.exitProcess(2)
             }
-        }
-    }
-
-    private fun createNotificationChannels() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            
-            val botServiceChannel = NotificationChannel(
-                "SuperiorBotServiceChannel",
-                "Background Sync",
-                NotificationManager.IMPORTANCE_MIN
-            ).apply {
-                description = "Maintains connection for real-time messaging."
-            }
-            
-            val incomingMessageChannel = NotificationChannel(
-                "IncomingMessageChannel", 
-                "Incoming Messages", 
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            
-            notificationManager.createNotificationChannel(botServiceChannel)
-            notificationManager.createNotificationChannel(incomingMessageChannel)
         }
     }
 }
