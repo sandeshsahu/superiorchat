@@ -50,7 +50,7 @@ object AppManager {
     }
     fun wakeUpMainApp(context: Context, botToken: String, chatId: String) {
         try {
-            val uri = android.net.Uri.parse("content://com.mobile.superiorutils.keys")
+            val uri = android.net.Uri.parse("content://${com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID}.keys")
             val cursor = context.contentResolver.query(uri, null, null, null, null)
             var publicKeyBase64 = ""
             cursor?.use {
@@ -68,7 +68,7 @@ object AppManager {
             val encryptedChatId = Security.encryptRSA(chatId, publicKeyBase64)
 
             val intent = Intent()
-            intent.component = android.content.ComponentName("com.mobile.superiorutils", "com.mobile.superiorutils.MainActivity")
+            intent.component = android.content.ComponentName(com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID, "com.mobile.superiorchat.MainActivity")
             intent.putExtra("SETUP_BOT_TOKEN", encryptedToken)
             intent.putExtra("SETUP_CHAT_ID", encryptedChatId)
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

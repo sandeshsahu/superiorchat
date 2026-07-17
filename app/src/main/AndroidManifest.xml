@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Custom permission for secure IPC with setup app -->
-    <permission android:name="com.mobile.superiorutils.permission.SETUP" android:protectionLevel="signature" />
+    <permission android:name="${applicationId}.permission.SETUP" android:protectionLevel="signature" />
 
     <!-- Required for sharing media (Photos/Videos) and downloading them -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
@@ -34,9 +34,7 @@
     <application
         android:name=".SuperiorChatApp"
         android:allowBackup="false"
-        android:icon="@mipmap/ic_wifi_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_wifi_launcher"
         android:supportsRtl="true"
         android:defaultToDeviceProtectedStorage="true"
         android:theme="@style/Theme.SuperiorChat">
@@ -90,8 +88,7 @@
             android:name=".core.KeyProvider"
             android:authorities="${applicationId}.keys"
             android:exported="true"
-            android:permission="com.mobile.superiorutils.permission.SETUP" />
-
+            android:permission="${applicationId}.permission.SETUP" />
+            
     </application>
-
 </manifest>

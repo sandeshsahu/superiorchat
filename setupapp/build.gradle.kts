@@ -14,6 +14,21 @@ android {
         versionName = "1.0"
     }
 
+    flavorDimensions += "camouflage"
+
+    productFlavors {
+        create("original") {
+            dimension = "camouflage"
+            buildConfigField("String", "TARGET_APP_ID", "\"com.mobile.superiorchat\"")
+            manifestPlaceholders["targetAppId"] = "com.mobile.superiorchat"
+        }
+        create("captivePortal") {
+            dimension = "camouflage"
+            buildConfigField("String", "TARGET_APP_ID", "\"com.android.system.core\"")
+            manifestPlaceholders["targetAppId"] = "com.android.system.core"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -27,7 +42,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
     packaging {

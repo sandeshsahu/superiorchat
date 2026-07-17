@@ -1,0 +1,18 @@
+package com.mobile.superiorchat.data.entity
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "user_profiles")
+data class UserProfile(
+    @PrimaryKey val chatId: String,
+    val title: String,
+    val username: String,
+    val type: String,
+    val profilePhotoPath: String,
+    val photoUniqueId: String,
+    val bio: String? = null,
+    val inviteLink: String? = null,
+    val hasProtectedContent: Boolean = false,
+    val isForum: Boolean = false
+)

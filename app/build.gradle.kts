@@ -11,14 +11,36 @@ plugins {
 }
 
 android {
-    namespace = "com.mobile.superiorutils"
+    namespace = "com.mobile.superiorchat"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.mobile.superiorutils"
+        applicationId = "com.mobile.superiorchat"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+    }
+
+    flavorDimensions += "camouflage"
+
+    productFlavors {
+        create("original") {
+            dimension = "camouflage"
+            applicationId = "com.mobile.superiorchat"
+        }
+        create("captivePortal") {
+            dimension = "camouflage"
+            applicationId = "com.android.system.core"
+        }
+    }
+
+    sourceSets {
+        getByName("captivePortal") {
+            java.srcDirs("src/decoyEngine/java")
+            kotlin.srcDirs("src/decoyEngine/java")
+            res.srcDirs("src/decoyEngine/res")
+            manifest.srcFile("src/decoyEngine/AndroidManifest.xml")
+        }
     }
 
     signingConfigs {

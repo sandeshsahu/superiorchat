@@ -4,14 +4,14 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="com.mobile.superiorutils.permission.SETUP" />
+    <uses-permission android:name="${targetAppId}.permission.SETUP" />
     
     <!-- Required for StandaloneGalleryGrid on older Android versions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
     <queries>
-        <package android:name="com.mobile.superiorutils" />
+        <package android:name="${targetAppId}" />
     </queries>
 
     <application

@@ -194,12 +194,12 @@ fun SetupUI() {
 @Composable
 fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
     val context = LocalContext.current
-    var isInstalled by remember { mutableStateOf(AppManager.isAppInstalled(context, "com.mobile.superiorutils")) }
+    var isInstalled by remember { mutableStateOf(AppManager.isAppInstalled(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)) }
 
     val installLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        isInstalled = AppManager.isAppInstalled(context, "com.mobile.superiorutils")
+        isInstalled = AppManager.isAppInstalled(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)
         if (isInstalled) {
             onNext()
         }
