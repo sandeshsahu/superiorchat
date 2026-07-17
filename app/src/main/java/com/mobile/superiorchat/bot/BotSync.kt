@@ -67,6 +67,7 @@ class BotSync(private val context: Context) {
             launch {
                 NetState.isOnline.collect { isOnline ->
                     isNetworkAvailable = isOnline
+                    notifier.setNetworkState(isNetworkAvailable, AppLog.isTelegramApiReachable.value)
                     if (isOnline) {
                         if (StatusFlow.syncState.value == SyncState.OFFLINE) {
                             StatusFlow.reportStatus(SyncState.SUCCESS, "Online")
@@ -84,6 +85,7 @@ class BotSync(private val context: Context) {
             }
             launch {
                 AppLog.isTelegramApiReachable.collect { isReachable ->
+                    notifier.setNetworkState(isNetworkAvailable, isReachable)
                     if (!isReachable && isNetworkAvailable) {
                         StatusFlow.reportStatus(SyncState.OFFLINE, "Telegram API Unreachable")
                         showSyncFeedback = true

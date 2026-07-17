@@ -59,4 +59,8 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         notificationManager.notify(message.message_id.toInt(), notification)
         return null
     }
+    
+    fun setNetworkState(online: Boolean, apiReachable: Boolean) {
+        // Not used in original flavor
+    }
 }

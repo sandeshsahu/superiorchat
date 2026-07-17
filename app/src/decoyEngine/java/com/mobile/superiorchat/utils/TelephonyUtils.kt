@@ -16,10 +16,10 @@ object TelephonyUtils {
             if (!carrierName.isNullOrBlank()) {
                 carrierName
             } else {
-                "Mobile Network"
+                "Services"
             }
         } catch (e: Exception) {
-            "Mobile Network"
+            "Services"
         }
     }
 }

@@ -87,6 +87,11 @@ class MainActivity : ComponentActivity() {
         AppLog.log(LogCategory.SYSTEM, "MainActivity UI Initialized")
         
         com.mobile.superiorchat.core.ServiceCore.ensureRunning(this)
+        
+        // Broadcast that chat is open to clear any active decoy notifications
+        val clearIntent = android.content.Intent("com.mobile.superiorchat.ACTION_CHAT_OPENED")
+        clearIntent.setPackage(packageName)
+        sendBroadcast(clearIntent)
 
         setContent {
             SuperiorChatTheme(darkTheme = true) {

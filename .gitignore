@@ -49,3 +49,6 @@ Goal.md
 logcat*
 .agent
 do-not-delete-folder/
+.serena/
+.serena/cache/
+.serena/project.local.yml
