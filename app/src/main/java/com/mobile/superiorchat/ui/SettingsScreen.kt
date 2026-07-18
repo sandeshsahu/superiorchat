@@ -51,10 +51,12 @@ fun SettingsScreen(
     chatId: String,
     isAutoDownloadMediaEnabled: Boolean,
     isTileAccessEnabled: Boolean,
+    isScreenSecurityEnabled: Boolean,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
+    onScreenSecurityChange: (Boolean) -> Unit,
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
@@ -190,13 +192,13 @@ fun SettingsScreen(
             }
         }
 
-        // Media Preferences Card
+        // General Settings Card
         GlassCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Download, contentDescription = "Media", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Media Preferences", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("General Settings", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
@@ -220,6 +222,72 @@ fun SettingsScreen(
                     checked = isAutoDownloadMediaEnabled,
                     onCheckedChange = { onAutoDownloadMediaChange(it) },
                     thumbContent = if (isAutoDownloadMediaEnabled) {
+                        {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                tint = TextPrimary
+                            )
+                        }
+                    } else {
+                        {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                tint = Background
+                            )
+                        }
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Primary,
+                        checkedTrackColor = Primary.copy(alpha = 0.5f),
+                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        uncheckedTrackColor = Background.copy(alpha = 0.5f)
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(SurfaceLevel2, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Block Screenshots", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    var showSecurityInfo by remember { mutableStateOf(false) }
+                    Icon(
+                        Icons.Default.Info, 
+                        contentDescription = "Info", 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                        modifier = Modifier.size(16.dp).clickable { showSecurityInfo = true }
+                    )
+                    
+                    if (showSecurityInfo) {
+                        com.mobile.superiorchat.ui.components.ErrorDialog(
+                            title = "Screen Security",
+                            message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\nScreenshots will appear pure black.",
+                            onDismiss = { showSecurityInfo = false }
+                        )
+                    }
+                }
+                
+                val securityScale by animateFloatAsState(
+                    targetValue = if (isScreenSecurityEnabled) 1.05f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                )
+
+                Switch(
+                    modifier = Modifier.scale(securityScale),
+                    checked = isScreenSecurityEnabled,
+                    onCheckedChange = { onScreenSecurityChange(it) },
+                    thumbContent = if (isScreenSecurityEnabled) {
                         {
                             Icon(
                                 imageVector = Icons.Filled.Check,

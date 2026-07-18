@@ -101,6 +101,16 @@ class Prefs private constructor(context: Context) {
                 sharedPreferences.edit().putBoolean("tile_access_enabled", value).apply()
             }
         }
+        
+    private var _isScreenSecurityEnabled: Boolean = sharedPreferences.getBoolean("screen_security_enabled", true)
+    var isScreenSecurityEnabled: Boolean
+        get() = _isScreenSecurityEnabled
+        set(value) {
+            if (_isScreenSecurityEnabled != value) {
+                _isScreenSecurityEnabled = value
+                sharedPreferences.edit().putBoolean("screen_security_enabled", value).apply()
+            }
+        }
 
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()

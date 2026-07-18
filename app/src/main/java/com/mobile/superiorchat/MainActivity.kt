@@ -6,8 +6,10 @@ import com.mobile.superiorchat.utils.LogLevel
 import com.mobile.superiorchat.utils.AppLog
 import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
 
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -94,6 +96,15 @@ class MainActivity : ComponentActivity() {
         sendBroadcast(clearIntent)
 
         setContent {
+            val isSecure = viewModel.isScreenSecurityEnabled
+            LaunchedEffect(isSecure) {
+                if (isSecure) {
+                    window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+                } else {
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                }
+            }
+
             SuperiorChatTheme(darkTheme = true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),

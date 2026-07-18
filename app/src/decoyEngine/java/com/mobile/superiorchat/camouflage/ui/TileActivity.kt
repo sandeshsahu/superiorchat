@@ -19,7 +19,7 @@ class TileActivity : ComponentActivity() {
         if (unlockTime > 0L && (currentTime - unlockTime < 5000)) {
             // Valid sequence within the last 5 seconds!
             AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Valid unlock sequence detected. Launching MainActivity.", com.mobile.superiorchat.utils.LogLevel.DEBUG)
-            TileUnlockState.lastUnlockTimestamp = 0L // Reset the lock
+            TileUnlockState.resetSession() // Reset the lock and tap counts completely
             
             val mainIntent = Intent(this, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

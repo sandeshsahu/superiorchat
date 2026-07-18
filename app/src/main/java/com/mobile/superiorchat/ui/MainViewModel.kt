@@ -136,6 +136,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         tileAccessEnabled = enabled
     }
 
+    var isScreenSecurityEnabled by mutableStateOf(prefs.isScreenSecurityEnabled)
+        private set
+
+    fun toggleScreenSecurity(enabled: Boolean) {
+        prefs.isScreenSecurityEnabled = enabled
+        isScreenSecurityEnabled = enabled
+    }
+
     // -- Permissions State --
     private val _permissionStatus = MutableStateFlow(PermissionStatus())
     val permissionStatus: StateFlow<PermissionStatus> = _permissionStatus.asStateFlow()

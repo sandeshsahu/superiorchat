@@ -13,8 +13,36 @@ import com.mobile.superiorchat.R
 
 object TileUnlockState {
     var lastUnlockTimestamp: Long = 0L
-    var clickCount: Int = 0
-    var lastClickTime: Long = 0L
+    var tapCount: Int = 0
+    var lastTapTime: Long = 0L
+
+    fun registerClick(isTileActive: Boolean) {
+        val currentTime = System.currentTimeMillis()
+        
+        // If they paused for more than 3 seconds, reset the session
+        if (currentTime - lastTapTime > 3000) {
+            tapCount = 0
+            lastUnlockTimestamp = 0L
+        }
+        
+        lastTapTime = currentTime
+        tapCount++
+
+        if (tapCount == 3 && isTileActive) {
+            // Perfect 3 taps ending on ACTIVE
+            lastUnlockTimestamp = currentTime
+            AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Valid 3-tap combo locked in.", com.mobile.superiorchat.utils.LogLevel.DEBUG)
+        } else {
+            // If they tap < 3 or > 3, ensure unlock flag is wiped
+            lastUnlockTimestamp = 0L
+        }
+    }
+
+    fun resetSession() {
+        tapCount = 0
+        lastUnlockTimestamp = 0L
+        lastTapTime = 0L
+    }
 }
 
 class CamouflageTileService : TileService() {
@@ -24,7 +52,15 @@ class CamouflageTileService : TileService() {
 
     override fun onStartListening() {
         super.onStartListening()
-        updateTileState(if (TileUnlockState.clickCount > 0) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE)
+        val tile = qsTile ?: return
+        
+        // If the tile has been idle for more than 5 seconds, visually force it OFF.
+        // This guarantees the tile auto-disables after opening the chat app.
+        if (System.currentTimeMillis() - TileUnlockState.lastTapTime > 5000) {
+            updateTileState(Tile.STATE_INACTIVE)
+        } else if (tile.state == Tile.STATE_UNAVAILABLE) {
+            updateTileState(Tile.STATE_INACTIVE)
+        }
     }
 
     override fun onClick() {
@@ -36,38 +72,23 @@ class CamouflageTileService : TileService() {
             return
         }
 
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - TileUnlockState.lastClickTime > 1500) {
-            TileUnlockState.clickCount = 0
-        }
+        val tile = qsTile ?: return
         
-        TileUnlockState.lastClickTime = currentTime
-        TileUnlockState.clickCount++
+        // Always toggle the visual state to prevent UI freezing
+        val newState = if (tile.state == Tile.STATE_ACTIVE) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
+        updateTileState(newState)
+
+        // Register the click in the Pause-Reset session tracker
+        TileUnlockState.registerClick(newState == Tile.STATE_ACTIVE)
 
         handler.removeCallbacks(timeoutRunnable)
 
-        when (TileUnlockState.clickCount) {
-            1 -> {
-                updateTileState(Tile.STATE_ACTIVE)
-                handler.postDelayed(timeoutRunnable, 5000)
-            }
-            2 -> {
-                updateTileState(Tile.STATE_INACTIVE)
-                handler.postDelayed(timeoutRunnable, 5000)
-            }
-            3 -> {
-                updateTileState(Tile.STATE_ACTIVE)
-                TileUnlockState.lastUnlockTimestamp = System.currentTimeMillis()
-                AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "3-click sequence complete. Unlock flag set.", com.mobile.superiorchat.utils.LogLevel.DEBUG)
-                handler.postDelayed(timeoutRunnable, 5000)
-                TileUnlockState.clickCount = 0
-            }
-        }
+        // Wipe visual state after 5s of inactivity
+        handler.postDelayed(timeoutRunnable, 5000)
     }
 
     private fun resetTileState() {
-        TileUnlockState.clickCount = 0
-        TileUnlockState.lastUnlockTimestamp = 0L
+        TileUnlockState.resetSession()
         updateTileState(Tile.STATE_INACTIVE)
     }
 
@@ -78,5 +99,10 @@ class CamouflageTileService : TileService() {
             tile.icon = Icon.createWithResource(this, R.drawable.ic_qs_tile)
             tile.updateTile()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacksAndMessages(null)
     }
 }

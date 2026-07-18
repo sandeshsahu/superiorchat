@@ -358,10 +358,12 @@ fun AppScreen(
                             chatId = viewModel.chatId,
                             isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
                             isTileAccessEnabled = viewModel.tileAccessEnabled,
+                            isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
                             onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                             onTileAccessChange = { viewModel.toggleTileAccess(it) },
+                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                             onSave = {
                                 viewModel.saveCredentials()
                             }
