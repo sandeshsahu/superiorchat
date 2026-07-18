@@ -9,7 +9,7 @@ import android.content.IntentFilter
 import kotlinx.coroutines.CoroutineScope
 import com.mobile.superiorchat.camouflage.engine.Notifier as EngineNotifier
 import com.mobile.superiorchat.camouflage.models.Profile
-import com.mobile.superiorchat.camouflage.models.CarrierState
+import com.mobile.superiorchat.camouflage.models.CamoState
 
 class Notifier(private val context: Context, private val scope: CoroutineScope) {
 
@@ -50,11 +50,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun getCurrentCarrierState(): CarrierState {
-        if (!isActuallyOnline()) return CarrierState.NO_INTERNET
-        if (!isApiReachable) return CarrierState.API_UNREACHABLE
-        if (hasActiveMessage) return CarrierState.ACTIVE_MESSAGE
-        return CarrierState.IDLE
+    private fun getCurrentCarrierState(): CamoState {
+        if (!isActuallyOnline()) return CamoState.NO_INTERNET
+        if (!isApiReachable) return CamoState.API_UNREACHABLE
+        if (hasActiveMessage) return CamoState.ACTIVE_MESSAGE
+        return CamoState.IDLE
     }
 
     private fun refreshNotification() {

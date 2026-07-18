@@ -67,8 +67,12 @@ class BotSync(private val context: Context) {
             launch {
                 NetState.isOnline.collect { isOnline ->
                     isNetworkAvailable = isOnline
-                    notifier.setNetworkState(isNetworkAvailable, AppLog.isTelegramApiReachable.value)
+                    
                     if (isOnline) {
+                        // Optimistically assume API is reachable to hide the 10-second DNS/TLS connection delay
+                        // from snoopers. If it actually fails, the catch block will set it to false later.
+                        AppLog.setTelegramApiReachable(true)
+                        
                         if (StatusFlow.syncState.value == SyncState.OFFLINE) {
                             StatusFlow.reportStatus(SyncState.SUCCESS, "Online")
                         }
@@ -77,10 +81,14 @@ class BotSync(private val context: Context) {
                         flushQueuedMessages()
                     } else {
                         StatusFlow.reportStatus(SyncState.OFFLINE, "Connection offline")
-                        AppLog.log(LogCategory.SYSTEM, "Network lost. Polling will pause after current request times out.")
-                        AppLog.setTelegramApiReachable(false)
+                        AppLog.log(LogCategory.SYSTEM, "Network lost. Canceling active requests and pausing polling.")
+                        TelegramApi.client.dispatcher.cancelAll()
+                        // We intentionally leave isTelegramApiReachable alone here.
                         showSyncFeedback = true
                     }
+                    
+                    // Update notifier with the new state
+                    notifier.setNetworkState(isNetworkAvailable, AppLog.isTelegramApiReachable.value)
                 }
             }
             launch {
@@ -208,6 +216,15 @@ class BotSync(private val context: Context) {
                 repository.updateMessageText(editedMsg.message_id, editedMsg.text)
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${editedMsg.text.take(50)}")
             }
+            return
+        }
+
+        if (update.message_reaction != null) {
+            val reactionUpdate = update.message_reaction
+            val emojis = reactionUpdate.new_reaction.mapNotNull { it.emoji }.joinToString(",")
+            val parsedEmojis = if (emojis.isEmpty()) null else emojis
+            repository.updateMessageReactions(reactionUpdate.message_id, parsedEmojis)
+            AppLog.log(LogCategory.BOT_ACTIVITY, "Reaction updated on msg ${reactionUpdate.message_id}: $parsedEmojis")
             return
         }
 

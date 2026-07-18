@@ -1,9 +1,9 @@
 package com.mobile.superiorchat.camouflage.models
 
 /**
- * Defines the available camouflage states for Carrier Services.
+ * Defines the available camouflage states.
  */
-enum class CarrierState {
+enum class CamoState {
     IDLE,
     ACTIVE_MESSAGE,
     NO_INTERNET,
@@ -22,6 +22,6 @@ sealed class Profile {
         /**
          * Carrier Services decoy.
          */
-        data class CarrierServices(val state: CarrierState = CarrierState.IDLE) : Aosp()
+        data class CarrierServices(val state: CamoState = CamoState.IDLE) : Aosp()
     }
 }

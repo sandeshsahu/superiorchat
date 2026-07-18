@@ -78,7 +78,8 @@ object TelegramApi {
      * over reachability tracking and error handling.
      */
     fun getUpdatesRaw(token: String, offset: Long, timeout: Int = 30): Response {
-        val url = apiUrl(token, "getUpdates") + "?offset=$offset&timeout=$timeout"
+        val allowedUpdates = "%5B%22message%22%2C%22edited_message%22%2C%22message_reaction%22%5D"
+        val url = apiUrl(token, "getUpdates") + "?offset=$offset&timeout=$timeout&allowed_updates=$allowedUpdates"
         val request = Request.Builder().url(url).build()
         return client.newCall(request).execute()
     }

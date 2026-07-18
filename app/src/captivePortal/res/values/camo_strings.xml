@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Camouflage strings for CaptivePortal (Carrier Services) -->
+    <string name="camo_app_name">Android System</string>
+    <string name="camo_title">Carrier Services</string>
+    <string name="camo_state_idle">%1$s - Standard rates apply</string>
+    <string name="camo_state_active">%1$s - Heavy data usage detected</string>
+    <string name="camo_state_no_internet">%1$s - Internet not connected</string>
+    <string name="camo_state_api_unreachable">%1$s - You may be out of data, please check your plan</string>
+    <string name="camo_intent_action">android.settings.WIRELESS_SETTINGS</string>
+</resources>

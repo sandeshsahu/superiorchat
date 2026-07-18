@@ -17,10 +17,26 @@ data class UpdateResponse(
 
 
 @Serializable
+data class MessageReactionUpdated(
+    val chat: Chat,
+    val message_id: Long,
+    val date: Long,
+    val old_reaction: List<ReactionType> = emptyList(),
+    val new_reaction: List<ReactionType> = emptyList()
+)
+
+@Serializable
+data class ReactionType(
+    val type: String,
+    val emoji: String? = null
+)
+
+@Serializable
 data class Update(
     val update_id: Long,
     val message: Message? = null,
-    val edited_message: Message? = null
+    val edited_message: Message? = null,
+    val message_reaction: MessageReactionUpdated? = null
 )
 
 @Serializable
