@@ -128,6 +128,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         autoDownloadMedia = enabled
     }
 
+    var tileAccessEnabled by mutableStateOf(prefs.isTileAccessEnabled)
+        private set
+
+    fun toggleTileAccess(enabled: Boolean) {
+        prefs.isTileAccessEnabled = enabled
+        tileAccessEnabled = enabled
+    }
+
     // -- Permissions State --
     private val _permissionStatus = MutableStateFlow(PermissionStatus())
     val permissionStatus: StateFlow<PermissionStatus> = _permissionStatus.asStateFlow()

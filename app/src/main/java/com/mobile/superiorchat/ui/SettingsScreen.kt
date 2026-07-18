@@ -37,6 +37,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.draw.scale
 import com.mobile.superiorchat.theme.*
+import com.mobile.superiorchat.BuildConfig
 
 
 // ══════════════════════════════════════════════════════════
@@ -49,9 +50,11 @@ fun SettingsScreen(
     botToken: String,
     chatId: String,
     isAutoDownloadMediaEnabled: Boolean,
+    isTileAccessEnabled: Boolean,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
+    onTileAccessChange: (Boolean) -> Unit,
     onSave: () -> Unit
 ) {
     val context = LocalContext.current
@@ -245,6 +248,85 @@ fun SettingsScreen(
             }
         }
 
+
+        if (BuildConfig.ENABLE_QS_TILE) {
+            // App Accessibility Card
+            GlassCard {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("App Accessibility", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(SurfaceLevel2, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Access by Tile", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        var showAccessibilityInfo by remember { mutableStateOf(false) }
+                        Icon(
+                            Icons.Default.Info, 
+                            contentDescription = "Info", 
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                            modifier = Modifier.size(16.dp).clickable { showAccessibilityInfo = true }
+                        )
+                        
+                        if (showAccessibilityInfo) {
+                            com.mobile.superiorchat.ui.components.ErrorDialog(
+                                title = "Quick Settings Tile Access",
+                                message = "Open notification panel, click on the pencil icon, find 'Carrier Sync' and add it.\n\nThen when you want to open chat:\n1. Enable\n2. Disable\n3. Enable\n4. Hold Tile to open chat app",
+                                onDismiss = { showAccessibilityInfo = false }
+                            )
+                        }
+                    }
+                    
+                    val scale by animateFloatAsState(
+                        targetValue = if (isTileAccessEnabled) 1.05f else 1f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
+                    )
+
+                    Switch(
+                        modifier = Modifier.scale(scale),
+                        checked = isTileAccessEnabled,
+                        onCheckedChange = { onTileAccessChange(it) },
+                        thumbContent = if (isTileAccessEnabled) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    tint = TextPrimary
+                                )
+                            }
+                        } else {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    tint = Background
+                                )
+                            }
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Primary,
+                            checkedTrackColor = Primary.copy(alpha = 0.5f),
+                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            uncheckedTrackColor = Background.copy(alpha = 0.5f)
+                        )
+                    )
+                }
+            }
+        }
 
         // About Card
         GlassCard {

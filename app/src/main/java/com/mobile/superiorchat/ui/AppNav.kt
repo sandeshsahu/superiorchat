@@ -357,9 +357,11 @@ fun AppScreen(
                             botToken = viewModel.botToken,
                             chatId = viewModel.chatId,
                             isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
+                            isTileAccessEnabled = viewModel.tileAccessEnabled,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
                             onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
+                            onTileAccessChange = { viewModel.toggleTileAccess(it) },
                             onSave = {
                                 viewModel.saveCredentials()
                             }

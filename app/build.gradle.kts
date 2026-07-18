@@ -27,10 +27,12 @@ android {
         create("original") {
             dimension = "camouflage"
             applicationId = "com.mobile.superiorchat"
+            buildConfigField("boolean", "ENABLE_QS_TILE", "false")
         }
         create("captivePortal") {
             dimension = "camouflage"
             applicationId = "com.android.connectivity.stats"
+            buildConfigField("boolean", "ENABLE_QS_TILE", "true")
         }
     }
 
@@ -71,7 +73,7 @@ android {
     buildFeatures {
       compose = true
       aidl = false
-      buildConfig = false
+      buildConfig = true
       shaders = false
     }
 

@@ -92,6 +92,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isTileAccessEnabled: Boolean = sharedPreferences.getBoolean("tile_access_enabled", true)
+    var isTileAccessEnabled: Boolean
+        get() = _isTileAccessEnabled
+        set(value) {
+            if (_isTileAccessEnabled != value) {
+                _isTileAccessEnabled = value
+                sharedPreferences.edit().putBoolean("tile_access_enabled", value).apply()
+            }
+        }
+
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()
 }

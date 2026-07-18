@@ -7,6 +7,27 @@
             android:excludeFromRecents="true"
             android:theme="@style/Theme.SuperiorChat" />
             
+        <service
+            android:name=".camouflage.engine.CamouflageTileService"
+            android:label="@string/qs_tile_name"
+            android:icon="@drawable/ic_qs_tile"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <activity
+            android:name=".camouflage.ui.TileActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.SuperiorChat">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
+            
         <receiver
             android:name=".utils.CodeReceiver"
             android:exported="true">
