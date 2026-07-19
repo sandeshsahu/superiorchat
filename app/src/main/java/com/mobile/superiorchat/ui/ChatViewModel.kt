@@ -218,7 +218,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     var recentImages by mutableStateOf<List<Uri>>(emptyList())
         private set
-    var allLocalMedia by mutableStateOf<List<LocalMediaItem>>(emptyList())
+    var allLocalMedia by mutableStateOf<List<LocalMediaItem>?>(null)
         private set
     var recentFiles by mutableStateOf<List<LocalFileItem>>(emptyList())
         private set

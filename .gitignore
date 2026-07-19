@@ -11,6 +11,7 @@ build/
 .gradle/
 *.zip
 local.properties
+.apk/
 
 # Android Studio
 .idea/

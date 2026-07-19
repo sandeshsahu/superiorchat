@@ -65,6 +65,8 @@ import com.mobile.superiorchat.ui.components.profile.ProfileSettingsSheet
 
 @Composable
 fun ProfileScreen(
+    hasCredentials: Boolean,
+    onClearCredentials: () -> Unit,
     onShowGlobalDialog: (GlobalDialogState) -> Unit = {},
     onNavigateToSettings: (() -> Unit)? = null
 ) {
@@ -82,7 +84,6 @@ fun ProfileScreen(
     var showEditInfoSheet by remember { mutableStateOf(false) }
     var showProfileSettings by remember { mutableStateOf(false) }
     var showFullScreenPhoto by remember { mutableStateOf(false) }
-    var showRemovePhotoConfirm by remember { mutableStateOf(false) }
     var showRateLimitWarning by remember { mutableStateOf(false) }
     var pendingEditInfo by remember { mutableStateOf<Triple<String, String, String>?>(null) }
 
@@ -399,28 +400,10 @@ fun ProfileScreen(
     // Profile Settings bottom sheet
     if (showProfileSettings) {
         ProfileSettingsSheet(
-            hasPhoto = viewModel.avatarUri != null,
+            hasCredentials = hasCredentials,
             onDismiss = { showProfileSettings = false },
-            onRemovePhoto = { showRemovePhotoConfirm = true },
+            onClearCredentials = onClearCredentials,
             onNavigateToAppSettings = onNavigateToSettings
-        )
-    }
-
-    // Remove photo confirm
-    if (showRemovePhotoConfirm) {
-        ActionDialog(
-            title = "Remove Profile Photo",
-            message = "This will revert the bot to its default Telegram avatar.",
-            icon = Icons.Filled.DeleteForever,
-            iconTint = ErrorRed,
-            confirmText = "Remove",
-            dismissText = "Cancel",
-            onConfirm = {
-                viewModel.removeProfilePhoto()
-                showRemovePhotoConfirm = false
-                showProfileSettings = false
-            },
-            onDismiss = { showRemovePhotoConfirm = false }
         )
     }
 

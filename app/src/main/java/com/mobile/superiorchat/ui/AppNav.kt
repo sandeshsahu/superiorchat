@@ -366,8 +366,14 @@ fun AppScreen(
                             onNavigateToSettings = { currentScreen = NavScreen.Settings }
                         )
                         NavScreen.Profile -> ProfileScreen(
+                            hasCredentials = viewModel.hasCredentials,
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                            onNavigateToSettings = { currentScreen = NavScreen.Settings }
+                            onNavigateToSettings = { currentScreen = NavScreen.Settings },
+                            onClearCredentials = { 
+                                viewModel.botToken = ""
+                                viewModel.chatId = ""
+                                viewModel.saveCredentials()
+                            }
                         )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
                         NavScreen.Logs -> LogsScreen()
