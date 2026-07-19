@@ -71,6 +71,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val isTelegramApiReachable = AppLog.isTelegramApiReachable
     val isBotTokenInvalid = AppLog.isBotTokenInvalid
     
+    var isCredentialsEmpty by mutableStateOf(prefs.botToken.isBlank() || prefs.chatId.isBlank())
+        private set
+    
     var isRetryingConnection by mutableStateOf(false)
         private set
 
@@ -355,6 +358,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private var messageCollectionJob: kotlinx.coroutines.Job? = null
 
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "bot_token" || key == "chat_id") {
+            isCredentialsEmpty = prefs.botToken.isBlank() || prefs.chatId.isBlank()
+        }
         if (key == "chat_id") {
             loadMessages()
         }

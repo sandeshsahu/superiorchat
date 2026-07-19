@@ -154,7 +154,8 @@ fun ChatScreen(
     val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
     val isBotTokenInvalid by viewModel.isBotTokenInvalid.collectAsState()
     val isRetrying = viewModel.isRetryingConnection
-    val hasConnectionError = !isOnline || !isTelegramApiReachable || isBotTokenInvalid
+    val isCredentialsEmpty = viewModel.isCredentialsEmpty
+    val hasConnectionError = !isOnline || !isTelegramApiReachable || isBotTokenInvalid || isCredentialsEmpty
 
     val activeConversationId = remember(messages) { messages.firstOrNull()?.conversationId }
     val coroutineScope = rememberCoroutineScope()
@@ -842,6 +843,7 @@ fun ChatScreen(
                         },
                         hasConnectionError = hasConnectionError,
                         isBotTokenInvalid = isBotTokenInvalid,
+                        isCredentialsEmpty = isCredentialsEmpty,
                         isRetrying = isRetrying,
                         onRetryConnection = { viewModel.retryConnection(context) },
                         onNavigateToSettings = onNavigateToSettings

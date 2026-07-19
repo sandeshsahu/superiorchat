@@ -49,10 +49,12 @@ data class PermissionStatus(
     val isInternetConnected: Boolean = false,
     val hasCamera: Boolean = false,
     val hasMicrophone: Boolean = false,
-    val mediaAccessLevel: MediaAccessLevel = MediaAccessLevel.NONE
+    val mediaAccessLevel: MediaAccessLevel = MediaAccessLevel.NONE,
+    val hasInstallPackages: Boolean = false,
+    val hasManageStorage: Boolean = false
 ) {
     val allPermissionsGranted: Boolean
-        get() = hasPostNotifs && hasIgnoreBattery && hasCamera && hasMicrophone && mediaAccessLevel == MediaAccessLevel.FULL
+        get() = hasPostNotifs && hasIgnoreBattery && hasCamera && hasMicrophone && mediaAccessLevel == MediaAccessLevel.FULL && hasInstallPackages && hasManageStorage
 }
 
 sealed class GlobalDialogState {
@@ -195,13 +197,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
 
+            val hasInstallPackages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.packageManager.canRequestPackageInstalls()
+            } else {
+                true
+            }
+
+            val hasManageStorage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                android.os.Environment.isExternalStorageManager()
+            } else {
+                true
+            }
+
             _permissionStatus.value = PermissionStatus(
                 hasPostNotifs = hasPostNotifs,
                 hasIgnoreBattery = hasIgnoreBattery,
                 isInternetConnected = isInternetConnected,
                 hasCamera = hasCamera,
                 hasMicrophone = hasMicrophone,
-                mediaAccessLevel = mediaAccessLevel
+                mediaAccessLevel = mediaAccessLevel,
+                hasInstallPackages = hasInstallPackages,
+                hasManageStorage = hasManageStorage
             )
         }
     }

@@ -82,6 +82,7 @@ fun ChatInputBox(
     onRequestAudioPermission: (String) -> Unit,
     hasConnectionError: Boolean = false,
     isBotTokenInvalid: Boolean = false,
+    isCredentialsEmpty: Boolean = false,
     isRetrying: Boolean = false,
     onRetryConnection: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {}
@@ -210,7 +211,7 @@ fun ChatInputBox(
                     .background(PrimaryLight.copy(alpha = 0.1f))
                     .border(1.dp, PrimaryLight.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
                     .clickable { 
-                        if (isBotTokenInvalid) {
+                        if (isBotTokenInvalid || isCredentialsEmpty) {
                             onNavigateToSettings()
                         } else if (!isRetrying) {
                             onRetryConnection()
@@ -241,7 +242,11 @@ fun ChatInputBox(
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = if (isBotTokenInvalid) "Invalid Bot Token - Check Settings" else "Connection lost. Tap to retry",
+                        text = when {
+                            isCredentialsEmpty -> "Credentials empty - Check Settings"
+                            isBotTokenInvalid -> "Invalid Bot Token - Check Settings"
+                            else -> "Connection lost. Tap to retry"
+                        },
                         color = ErrorRed,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Bold

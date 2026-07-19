@@ -67,6 +67,23 @@ fun SettingsScreen(
     var tempChatId by remember { mutableStateOf(chatId) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
+    val cameraPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            showQrScanner = true
+        } else {
+            val activity = context as? android.app.Activity
+            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)) {
+                onShowGlobalDialog(
+                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
+                    )
+                )
+            }
+        }
+    }
+    
     if (errorMessage != null) {
         com.mobile.superiorchat.ui.components.ErrorDialog(
             title = "Invalid Credentials",
@@ -185,7 +202,18 @@ fun SettingsScreen(
                             .height(48.dp)
                             .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
                             .background(Primary, RoundedCornerShape(12.dp))
-                            .bounceClick(scaleDown = 0.95f) { showQrScanner = true },
+                            .bounceClick(scaleDown = 0.95f) {
+                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                                if (hasPermission) {
+                                    showQrScanner = true
+                                } else {
+                                    onShowGlobalDialog(
+                                        com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale(
+                                            onConfirm = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
+                                        )
+                                    )
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         Text("Scan QR Code", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
