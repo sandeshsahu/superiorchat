@@ -160,23 +160,19 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 inputStream?.close()
 
                 if (originalBitmap != null) {
-                    // 2. Center-crop to a perfect square first (matching ContentScale.Crop in UI)
                     val width = originalBitmap.width
                     val height = originalBitmap.height
                     val minDim = Math.min(width, height)
-                    val startX = (width - minDim) / 2
-                    val startY = (height - minDim) / 2
-                    val squareBitmap = Bitmap.createBitmap(originalBitmap, startX, startY, minDim, minDim)
                     
-                    // 3. Apply the user's fractional crop box on the square
-                    val pixelCropX = (cropX * minDim).toInt().coerceIn(0, minDim - 1)
-                    val pixelCropY = (cropY * minDim).toInt().coerceIn(0, minDim - 1)
-                    val maxPossibleSize = minDim - Math.max(pixelCropX, pixelCropY)
+                    // 2. Apply the user's fractional crop box on the original image
+                    val pixelCropX = (cropX * width).toInt().coerceIn(0, width - 1)
+                    val pixelCropY = (cropY * height).toInt().coerceIn(0, height - 1)
+                    val maxPossibleSize = Math.min(width - pixelCropX, height - pixelCropY)
                     val pixelCropSize = (cropSize * minDim).toInt().coerceAtMost(maxPossibleSize)
                     
                     val croppedBitmap = if (pixelCropSize > 0) {
-                         Bitmap.createBitmap(squareBitmap, pixelCropX, pixelCropY, pixelCropSize, pixelCropSize)
-                    } else squareBitmap
+                         Bitmap.createBitmap(originalBitmap, pixelCropX, pixelCropY, pixelCropSize, pixelCropSize)
+                    } else originalBitmap
 
                     // 4. Scale to 512x512
                     val scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, 512, 512, true)

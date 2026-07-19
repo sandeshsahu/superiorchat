@@ -57,7 +57,8 @@ fun SettingsScreen(
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -111,7 +112,8 @@ fun SettingsScreen(
                 onSave()
                 showQrScanner = false
                 Toast.makeText(context, "QR Configuration Applied", Toast.LENGTH_SHORT).show()
-            }
+            },
+            onShowGlobalDialog = onShowGlobalDialog
         )
     }
 

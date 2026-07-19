@@ -52,13 +52,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
+import android.graphics.BitmapFactory
 
 // ══════════════════════════════════════════════════════════
 //  Profile Screen
 // ══════════════════════════════════════════════════════════
 
+import com.mobile.superiorchat.ui.components.ImageCropper
+import com.mobile.superiorchat.ui.components.MediaViewer
+import com.mobile.superiorchat.ui.components.profile.EditInfoSheet
+import com.mobile.superiorchat.ui.components.profile.ProfileSettingsSheet
+
 @Composable
-fun ProfileScreen(onNavigateToSettings: (() -> Unit)? = null) {
+fun ProfileScreen(
+    onShowGlobalDialog: (GlobalDialogState) -> Unit = {},
+    onNavigateToSettings: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
@@ -77,29 +86,130 @@ fun ProfileScreen(onNavigateToSettings: (() -> Unit)? = null) {
     var showRateLimitWarning by remember { mutableStateOf(false) }
     var pendingEditInfo by remember { mutableStateOf<Triple<String, String, String>?>(null) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    val cameraUri = remember { mutableStateOf<Uri?>(null) }
+    
+    val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) {
+                cameraUri.value?.let { uri ->
+                    showGalleryPicker = false
+                    showCropDialog = uri
+                }
+            }
+        }
+    )
+
+    val cameraPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            if (isGranted) {
+                val imageFile = java.io.File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context, 
+                    "${context.packageName}.provider", 
+                    imageFile
+                )
+                cameraUri.value = uri
+                cameraLauncher.launch(uri)
+            } else {
+                val activity = context as? android.app.Activity
+                if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)) {
+                    onShowGlobalDialog(
+                        com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
+                        )
+                    )
+                }
+            }
+        }
+    )
+
+    val storagePermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val imagesGranted = results[android.Manifest.permission.READ_MEDIA_IMAGES] == true
+        val storageGranted = results[android.Manifest.permission.READ_EXTERNAL_STORAGE] == true
+        val partialGranted = results[android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
+
+        if (imagesGranted || storageGranted) {
+            showGalleryPicker = true
+        } else if (partialGranted) {
+            showGalleryPicker = true
+            val activity = context as? android.app.Activity
+            val fullPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                android.Manifest.permission.READ_MEDIA_IMAGES
+            } else {
+                android.Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
+                onShowGlobalDialog(
+                    com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
+                        onContinue = { /* Do nothing, already showing picker */ },
+                        onGoToSettings = {
+                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}")))
+                        }
+                    )
+                )
+            } else {
+                onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess(
+                    onContinue = { /* Do nothing, already showing picker */ },
+                    onUpgrade = {
+                        val requestLauncher = (context as? androidx.activity.ComponentActivity)?.activityResultRegistry?.register(
+                            "temp_partial", androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+                        ) { _ -> }
+                        requestLauncher?.launch(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VIDEO, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+                    }
+                ))
+            }
+        } else {
+            val activity = context as? android.app.Activity
+            val permsToCheck = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            if (activity != null && !permsToCheck.any { perm -> androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, perm) }) {
+                onShowGlobalDialog(
+                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
+                    )
+                )
+            }
+        }
+    }
+
+    val requestStoragePermission = {
+        onShowGlobalDialog(
+            GlobalDialogState.StoragePermissionRationale(
+                onConfirm = {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        storagePermissionLauncher.launch(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VIDEO, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+                    } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
+                        storagePermissionLauncher.launch(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VIDEO))
+                    } else {
+                        storagePermissionLauncher.launch(arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE))
+                    }
+                }
+            )
+        )
+    }
+
+    val launchGallery = {
+        val hasPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (hasPerm) showGalleryPicker = true else requestStoragePermission()
+    }
 
     val syncState by com.mobile.superiorchat.core.StatusFlow.syncState.collectAsState()
     val syncMessage by com.mobile.superiorchat.core.StatusFlow.syncMessage.collectAsState()
 
-    // Show errors/success messages from ViewModel
-    LaunchedEffect(syncMessage) {
-        if (!syncMessage.isNullOrBlank() && syncState != com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE && syncState != com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES) {
-            snackbarHostState.showSnackbar(syncMessage!!)
-        }
-    }
-
     Scaffold(
-        snackbarHost = {
-            SnackbarHost(snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = SurfaceLevel1,
-                    contentColor = TextPrimary,
-                    actionColor = Primary
-                )
-            }
-        },
         containerColor = Background
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
@@ -117,15 +227,15 @@ fun ProfileScreen(onNavigateToSettings: (() -> Unit)? = null) {
                     username = viewModel.username,
                     botId = viewModel.botId,
                     avatarUri = viewModel.avatarUri,
-                    onAvatarClick = { if (viewModel.avatarUri != null) showFullScreenPhoto = true else showGalleryPicker = true },
-                    onRemovePhotoClick = { showRemovePhotoConfirm = true }
+                    onAvatarClick = { if (viewModel.avatarUri != null) showFullScreenPhoto = true else launchGallery() },
+                    onEditPhotoClick = { launchGallery() }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // ── 3-Button Action Bar ──────────────────────
                 ProfileActionBar(
-                    onSetPhoto = { showGalleryPicker = true },
+                    onSetPhoto = { launchGallery() },
                     onEditInfo = { 
                         val expiry = com.mobile.superiorchat.core.AppGraph.prefs.profileEditRateLimitExpiry
                         if (System.currentTimeMillis() < expiry) {
@@ -161,26 +271,103 @@ fun ProfileScreen(onNavigateToSettings: (() -> Unit)? = null) {
                     CircularProgressIndicator(color = PrimaryLight)
                 }
             }
+
+            // StatusFlow Pill
+            androidx.compose.animation.AnimatedVisibility(
+                visible = syncState != com.mobile.superiorchat.core.SyncState.IDLE,
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = padding.calculateTopPadding() + 8.dp)
+            ) {
+                val pillBgColor = when (syncState) {
+                    com.mobile.superiorchat.core.SyncState.SUCCESS,
+                    com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
+                    com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> PrimaryLight
+                    com.mobile.superiorchat.core.SyncState.ERROR,
+                    com.mobile.superiorchat.core.SyncState.OFFLINE,
+                    com.mobile.superiorchat.core.SyncState.AUTH_ERROR -> Color(0xFF690005) // Dark Red
+                    else -> SurfaceLevel1
+                }
+                val pillTextColor = when (syncState) {
+                    com.mobile.superiorchat.core.SyncState.SUCCESS,
+                    com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
+                    com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> Color(0xFF1000A9) // Dark Blue for contrast
+                    else -> Color.White
+                }
+
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(pillBgColor)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (syncState == com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE || syncState == com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = pillTextColor,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(
+                        text = syncMessage ?: "",
+                        color = pillTextColor,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 
     // ── Overlays ─────────────────────────────────────────
 
-    // Gallery picker sheet
+    // Gallery picker using GalleryGrid
     if (showGalleryPicker) {
-        ProfileImagePickerSheet(
-            context = context,
-            onDismiss = { showGalleryPicker = false },
-            onImagePicked = { uri ->
-                showGalleryPicker = false
-                showCropDialog = uri
-            }
-        )
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { showGalleryPicker = false },
+            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        ) {
+            com.mobile.superiorchat.ui.components.GalleryGrid(
+                maxSelection = 1,
+                showVideos = false,
+                onDismiss = { showGalleryPicker = false },
+                onMediaSelected = { items ->
+                    if (items.isNotEmpty()) {
+                        showGalleryPicker = false
+                        showCropDialog = items.first().uri
+                        true
+                    } else false
+                },
+                onCameraClick = {
+                    val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                        context, android.Manifest.permission.CAMERA
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    if (hasPermission) {
+                        val imageFile = java.io.File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+                        val uri = androidx.core.content.FileProvider.getUriForFile(
+                            context, 
+                            "${context.packageName}.provider", 
+                            imageFile
+                        )
+                        cameraUri.value = uri
+                        cameraLauncher.launch(uri)
+                    } else {
+                        onShowGlobalDialog(
+                            GlobalDialogState.CameraPermissionRationale(
+                                onConfirm = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
+                            )
+                        )
+                    }
+                }
+            )
+        }
     }
 
     // Crop dialog
     showCropDialog?.let { uri ->
-        ImageCropDialog(
+        ImageCropper(
             imageUri = uri,
             onDismiss = { showCropDialog = null },
             onCropConfirm = { croppedUri, cropX, cropY, cropSize ->
@@ -239,8 +426,9 @@ fun ProfileScreen(onNavigateToSettings: (() -> Unit)? = null) {
 
     // Full-screen photo viewer
     if (showFullScreenPhoto && viewModel.avatarUri != null) {
-        FullScreenPhotoDialog(
-            imageUri = viewModel.avatarUri!!,
+        MediaViewer(
+            mediaPath = viewModel.avatarUri!!.toString(),
+            mediaType = "photo",
             onDismiss = { showFullScreenPhoto = false }
         )
     }
@@ -286,7 +474,7 @@ private fun ProfileHeroHeader(
     botId: String,
     avatarUri: Uri?,
     onAvatarClick: () -> Unit,
-    onRemovePhotoClick: () -> Unit
+    onEditPhotoClick: () -> Unit
 ) {
     val glowAlpha by rememberInfiniteTransition(label = "hero_glow").animateFloat(
         initialValue = 0.35f, targetValue = 0.75f,
@@ -347,20 +535,18 @@ private fun ProfileHeroHeader(
                     }
                 }
 
-                // Badge: only show when photo IS set — acts as quick-delete
-                if (avatarUri != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .offset(x = (-2).dp, y = (-2).dp)
-                            .glow(color = ErrorRed.copy(0.5f), radius = 14f, dy = 4f, cornerRadius = 16.dp)
-                            .clip(CircleShape)
-                            .background(Brush.linearGradient(listOf(ErrorRed, Color(0xFFB71C1C))))
-                            .bounceClick(onClick = onRemovePhotoClick),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Filled.Delete, null, tint = Color.White, modifier = Modifier.size(15.dp))
-                    }
+                // Badge: Edit icon on avatar
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .offset(x = (-2).dp, y = (-2).dp)
+                        .glow(color = PrimaryLight.copy(0.5f), radius = 14f, dy = 4f, cornerRadius = 16.dp)
+                        .clip(CircleShape)
+                        .background(Brush.linearGradient(listOf(PrimaryLight, Primary)))
+                        .bounceClick(onClick = onEditPhotoClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Edit, null, tint = Background, modifier = Modifier.size(15.dp))
                 }
             }
 
@@ -546,740 +732,4 @@ private fun InfoDivider() {
     )
 }
 
-// ══════════════════════════════════════════════════════════
-//  Edit Info — ModalBottomSheet with all editable fields
-// ══════════════════════════════════════════════════════════
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun EditInfoSheet(
-    currentName: String,
-    currentDescription: String,
-    currentShortDescription: String,
-    onDismiss: () -> Unit,
-    onSave: (String, String, String) -> Unit
-) {
-    var draftName by remember { mutableStateOf(currentName) }
-    var draftDesc by remember { mutableStateOf(currentDescription) }
-    var draftShortDesc by remember { mutableStateOf(currentShortDescription) }
-
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = SurfaceLevel1,
-        dragHandle = {
-            Box(
-                Modifier.padding(top = 12.dp, bottom = 8.dp)
-                    .width(40.dp).height(4.dp)
-                    .background(DividerColor, RoundedCornerShape(2.dp))
-            )
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
-        ) {
-            Text("Edit Info", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Changes saved locally — backend coming soon", color = TextSecondary, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Name field
-            EditSheetField(
-                label = "Display Name",
-                value = draftName,
-                onValueChange = { if (it.length <= 64) draftName = it },
-                maxLength = 64,
-                singleLine = true,
-                placeholder = "Bot display name"
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Short Description field
-            EditSheetField(
-                label = "About",
-                value = draftShortDesc,
-                onValueChange = { if (it.length <= 120) draftShortDesc = it },
-                maxLength = 120,
-                singleLine = true,
-                placeholder = "Shown when sharing (≤120 chars)"
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Description field
-            EditSheetField(
-                label = "Description",
-                value = draftDesc,
-                onValueChange = { if (it.length <= 512) draftDesc = it },
-                maxLength = 512,
-                singleLine = false,
-                placeholder = "Shown on bot profile page"
-            )
-            Spacer(modifier = Modifier.height(28.dp))
-
-            val canSave = draftName.trim().isNotEmpty() &&
-                    (draftName.trim() != currentName ||
-                     draftDesc.trim() != currentDescription ||
-                     draftShortDesc.trim() != currentShortDescription)
-
-            Button(
-                onClick = {
-                    if (canSave) onSave(draftName.trim(), draftDesc.trim(), draftShortDesc.trim())
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                enabled = canSave,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Primary,
-                    disabledContainerColor = SurfaceLevel2
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    color = if (canSave) Color.White else TextSecondary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun EditSheetField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    maxLength: Int,
-    singleLine: Boolean,
-    placeholder: String
-) {
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(label, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Text(
-                "${value.length}/$maxLength",
-                color = if (value.length >= maxLength) ErrorRed else TextSecondary,
-                fontSize = 11.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder, color = TextSecondary, fontSize = 14.sp) },
-            singleLine = singleLine,
-            minLines = if (singleLine) 1 else 3,
-            maxLines = if (singleLine) 1 else 5,
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedContainerColor = SurfaceLevel2,
-                focusedContainerColor = SurfaceLevel2,
-                unfocusedBorderColor = DividerColor,
-                focusedBorderColor = Primary,
-                unfocusedTextColor = TextPrimary,
-                focusedTextColor = TextPrimary,
-                cursorColor = PrimaryLight
-            ),
-            shape = RoundedCornerShape(12.dp),
-            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
-        )
-    }
-}
-
-// ══════════════════════════════════════════════════════════
-//  Profile Settings Sheet — danger zone + future features
-// ══════════════════════════════════════════════════════════
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileSettingsSheet(
-    hasPhoto: Boolean,
-    onDismiss: () -> Unit,
-    onRemovePhoto: () -> Unit,
-    onNavigateToAppSettings: (() -> Unit)?
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = SurfaceLevel1,
-        dragHandle = {
-            Box(
-                Modifier.padding(top = 12.dp, bottom = 8.dp)
-                    .width(40.dp).height(4.dp)
-                    .background(DividerColor, RoundedCornerShape(2.dp))
-            )
-        }
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
-        ) {
-            Text("Profile Settings", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Manage your profile preferences", color = TextSecondary, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Future features placeholder row
-            SettingsSheetRow(
-                icon = Icons.Filled.Shield,
-                iconTint = InfoBlue,
-                title = "Privacy & Security",
-                subtitle = "Coming soon",
-                onClick = { /* future */ }
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            SettingsSheetRow(
-                icon = Icons.Filled.Notifications,
-                iconTint = PrimaryLight,
-                title = "Notifications",
-                subtitle = "Coming soon",
-                onClick = { /* future */ }
-            )
-
-            // Danger Zone — always visible, styled as red card
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // Danger zone header
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.2f))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("Danger Zone", color = ErrorRed.copy(0.6f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Spacer(modifier = Modifier.width(10.dp))
-                HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.2f))
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Danger Zone card
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(ErrorRed.copy(alpha = 0.07f))
-                    .border(1.dp, ErrorRed.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
-                    .padding(4.dp)
-            ) {
-                if (hasPhoto) {
-                    SettingsSheetRow(
-                        icon = Icons.Filled.DeleteForever,
-                        iconTint = ErrorRed,
-                        title = "Remove Profile Photo",
-                        subtitle = "Reverts to default Telegram avatar",
-                        titleColor = ErrorRed,
-                        onClick = onRemovePhoto
-                    )
-                } else {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Filled.Info, null, tint = ErrorRed.copy(0.5f), modifier = Modifier.size(16.dp))
-                        Text(
-                            "No actions available — set a profile photo first",
-                            color = ErrorRed.copy(0.5f),
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsSheetRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    titleColor: Color = TextPrimary,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.97f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "row_scale"
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale)
-            .clip(RoundedCornerShape(14.dp))
-            .background(SurfaceLevel2)
-            .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(38.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconTint.copy(alpha = 0.12f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, color = titleColor, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(subtitle, color = TextSecondary, fontSize = 11.sp)
-        }
-        Icon(Icons.Filled.ChevronRight, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
-    }
-}
-
-// ══════════════════════════════════════════════════════════
-//  Full-Screen Photo Viewer — tap/swipe down to open
-// ══════════════════════════════════════════════════════════
-
-@Composable
-private fun FullScreenPhotoDialog(
-    imageUri: Uri,
-    onDismiss: () -> Unit
-) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { onDismiss() },
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(imageUri).crossfade(true).build(),
-                contentDescription = "Full Screen Photo",
-                modifier = Modifier.fillMaxWidth(),
-                contentScale = ContentScale.FillWidth
-            )
-            // Dismiss hint
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.7f))))
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(Icons.Filled.Close, null, tint = Color.White.copy(0.7f), modifier = Modifier.size(14.dp))
-                    Text("Tap anywhere to close", color = Color.White.copy(0.7f), fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}
-
-// ══════════════════════════════════════════════════════════
-//  Gallery Picker — images-only, scroll-safe tiles
-// ══════════════════════════════════════════════════════════
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProfileImagePickerSheet(
-    context: Context,
-    onDismiss: () -> Unit,
-    onImagePicked: (Uri) -> Unit
-) {
-    var mediaItems by remember { mutableStateOf<List<LocalMediaItem>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) {
-            val list = mutableListOf<LocalMediaItem>()
-            val projection = arrayOf(
-                android.provider.MediaStore.Images.Media._ID,
-                android.provider.MediaStore.Images.Media.DATE_ADDED
-            )
-            context.contentResolver.query(
-                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection, null, null,
-                "${android.provider.MediaStore.Images.Media.DATE_ADDED} DESC"
-            )?.use { cursor ->
-                val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID)
-                val dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DATE_ADDED)
-                while (cursor.moveToNext() && list.size < 200) {
-                    val id = cursor.getLong(idCol)
-                    val date = cursor.getLong(dateCol)
-                    val uri = android.content.ContentUris.withAppendedId(
-                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
-                    )
-                    list.add(LocalMediaItem(id, uri, false, null, date))
-                }
-            }
-            mediaItems = list
-        }
-        isLoading = false
-    }
-
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = SurfaceLevel1,
-        dragHandle = {
-            Box(
-                Modifier.padding(top = 12.dp, bottom = 8.dp)
-                    .width(40.dp).height(4.dp)
-                    .background(DividerColor, RoundedCornerShape(2.dp))
-            )
-        }
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Choose Photo", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text("Select an image to set as profile photo", color = TextSecondary, fontSize = 12.sp)
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Filled.Close, null, tint = TextSecondary)
-                }
-            }
-
-            when {
-                isLoading -> Box(
-                    modifier = Modifier.fillMaxWidth().height(300.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = PrimaryLight, modifier = Modifier.size(32.dp))
-                }
-                mediaItems.isEmpty() -> Box(
-                    modifier = Modifier.fillMaxWidth().height(300.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Filled.PhotoLibrary, null, tint = TextSecondary, modifier = Modifier.size(48.dp))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text("No photos found", color = TextSecondary, fontSize = 14.sp)
-                    }
-                }
-                else -> LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp)
-                ) {
-                    items(mediaItems, key = { it.id }) { item ->
-                        // Scroll-safe tile: uses clickable + interactionSource, NOT detectTapGestures
-                        ProfilePhotoTile(uri = item.uri, onClick = { onImagePicked(item.uri) })
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-    }
-}
-
-// Scroll-safe photo tile — clickable passes scroll gestures to LazyVerticalGrid
-@Composable
-private fun ProfilePhotoTile(uri: Uri, onClick: () -> Unit) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val tileScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.91f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "tile_scale"
-    )
-
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .scale(tileScale)
-            .clip(RoundedCornerShape(10.dp))
-            .background(SurfaceLevel2)
-            // clickable, not pointerInput — scroll events propagate to grid correctly
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-    ) {
-        SubcomposeAsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(uri).size(280)
-                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                .crossfade(true).build(),
-            contentDescription = "Photo",
-            loading = { Box(Modifier.fillMaxSize().background(SurfaceLevel2)) },
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
-        // Bottom gradient scrim
-        Box(
-            modifier = Modifier.fillMaxWidth().height(28.dp).align(Alignment.BottomCenter)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(0.28f))))
-        )
-    }
-}
-
-// ══════════════════════════════════════════════════════════
-//  Image Crop Dialog — resizable square with corner handles
-// ══════════════════════════════════════════════════════════
-
-@Composable
-private fun ImageCropDialog(
-    imageUri: Uri,
-    onDismiss: () -> Unit,
-    onCropConfirm: (Uri, Float, Float, Float) -> Unit
-) {
-    // Crop box state — normalized fractions [0..1] relative to canvas
-    // cropX, cropY = top-left corner; cropSize = side length (all 0..1)
-    var cropX by remember { mutableStateOf(0.14f) }
-    var cropY by remember { mutableStateOf(0.14f) }
-    var cropSize by remember { mutableStateOf(0.72f) }
-
-    // Animated crop border pulse
-    val borderAlpha by rememberInfiniteTransition(label = "crop_pulse").animateFloat(
-        initialValue = 0.55f, targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "border_alpha"
-    )
-
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.96f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color.Black)
-                .border(1.dp, DividerColor, RoundedCornerShape(24.dp))
-        ) {
-            Column {
-                // Title bar
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text("Cancel", color = TextSecondary, fontWeight = FontWeight.SemiBold)
-                    }
-                    Text("Crop Photo", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    TextButton(onClick = { onCropConfirm(imageUri, cropX, cropY, cropSize) }) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Primary.copy(0.15f))
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text("Use", color = PrimaryLight, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                // Crop canvas — BoxWithConstraints to get pixel size for hit tests
-                BoxWithConstraints(
-                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).background(Color.Black)
-                ) {
-                    val canvasWidthPx = constraints.maxWidth.toFloat()
-                    val canvasHeightPx = constraints.maxHeight.toFloat()
-
-                    // Background image (static)
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imageUri).crossfade(true).build(),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    // Crop overlay — scrim + box + grid + handles (drawn on Canvas)
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            // Move crop box by dragging INSIDE it
-                            .pointerInput(canvasWidthPx, canvasHeightPx) {
-                                detectDragGestures { change, dragAmount ->
-                                    val bx = cropX * canvasWidthPx
-                                    val by = cropY * canvasHeightPx
-                                    val bs = cropSize * canvasWidthPx
-                                    val touchX = change.position.x
-                                    val touchY = change.position.y
-                                    // Only move if touch is INSIDE crop box (not near corners)
-                                    val handleZone = 36f
-                                    val insideX = touchX in (bx + handleZone)..(bx + bs - handleZone)
-                                    val insideY = touchY in (by + handleZone)..(by + bs - handleZone)
-                                    if (insideX && insideY) {
-                                        val newX = cropX + dragAmount.x / canvasWidthPx
-                                        val newY = cropY + dragAmount.y / canvasHeightPx
-                                        cropX = newX.coerceIn(0f, 1f - cropSize)
-                                        cropY = newY.coerceIn(0f, 1f - cropSize)
-                                    }
-                                }
-                            }
-                    ) {
-                        val bx = cropX * size.width
-                        val by = cropY * size.height
-                        val bs = cropSize * size.width
-
-                        // Dark scrim (4 rects around crop box)
-                        val scrim = Color.Black.copy(alpha = 0.65f)
-                        drawRect(scrim, topLeft = Offset.Zero, size = Size(size.width, by))
-                        drawRect(scrim, topLeft = Offset(0f, by + bs), size = Size(size.width, size.height - by - bs))
-                        drawRect(scrim, topLeft = Offset(0f, by), size = Size(bx, bs))
-                        drawRect(scrim, topLeft = Offset(bx + bs, by), size = Size(size.width - bx - bs, bs))
-
-                        // Crop border
-                        drawRect(
-                            color = Primary.copy(alpha = borderAlpha),
-                            topLeft = Offset(bx, by),
-                            size = Size(bs, bs),
-                            style = Stroke(width = 2.dp.toPx())
-                        )
-
-                        // Rule-of-thirds grid
-                        val third = bs / 3f
-                        val gridColor = Color.White.copy(alpha = 0.18f)
-                        for (i in 1..2) {
-                            drawLine(gridColor, Offset(bx + third * i, by), Offset(bx + third * i, by + bs), 1.dp.toPx())
-                            drawLine(gridColor, Offset(bx, by + third * i), Offset(bx + bs, by + third * i), 1.dp.toPx())
-                        }
-
-                        // Corner L-handles
-                        val hLen = 20.dp.toPx()
-                        val hW = 3.dp.toPx()
-                        val hColor = PrimaryLight
-                        // TL
-                        drawLine(hColor, Offset(bx, by), Offset(bx + hLen, by), hW)
-                        drawLine(hColor, Offset(bx, by), Offset(bx, by + hLen), hW)
-                        // TR
-                        drawLine(hColor, Offset(bx + bs, by), Offset(bx + bs - hLen, by), hW)
-                        drawLine(hColor, Offset(bx + bs, by), Offset(bx + bs, by + hLen), hW)
-                        // BL
-                        drawLine(hColor, Offset(bx, by + bs), Offset(bx + hLen, by + bs), hW)
-                        drawLine(hColor, Offset(bx, by + bs), Offset(bx, by + bs - hLen), hW)
-                        // BR
-                        drawLine(hColor, Offset(bx + bs, by + bs), Offset(bx + bs - hLen, by + bs), hW)
-                        drawLine(hColor, Offset(bx + bs, by + bs), Offset(bx + bs, by + bs - hLen), hW)
-                    }
-
-                    // ── Corner resize handles (transparent hit areas on top of Canvas) ──
-                    val handleSizeDp: Dp = 44.dp
-                    
-                    val updateCrop: (Float, Float, Boolean, Boolean) -> Unit = { dragX, dragY, isLeft, isTop ->
-                        val dx = dragX / canvasWidthPx
-                        val dy = dragY / canvasHeightPx
-                        val sizeDeltaX = if (isLeft) -dx else dx
-                        val sizeDeltaY = if (isTop) -dy else dy
-                        val sizeDelta = (sizeDeltaX + sizeDeltaY) / 2f
-                        
-                        var newSize = cropSize + sizeDelta
-                        if (newSize < 0.20f) newSize = 0.20f
-                        
-                        val maxW = if (isLeft) cropX + cropSize else 1f - cropX
-                        val maxH = if (isTop) cropY + cropSize else 1f - cropY
-                        val maxSize = kotlin.math.min(maxW, maxH)
-                        if (newSize > maxSize) newSize = maxSize
-                        
-                        cropX = if (isLeft) cropX + cropSize - newSize else cropX
-                        cropY = if (isTop) cropY + cropSize - newSize else cropY
-                        cropSize = newSize
-                    }
-
-                    // TOP-LEFT handle
-                    Box(
-                        modifier = Modifier
-                            .size(handleSizeDp)
-                            .offset(
-                                x = (cropX * canvasWidthPx).pxToDp(density) - handleSizeDp/2,
-                                y = (cropY * canvasHeightPx).pxToDp(density) - handleSizeDp/2
-                            )
-                            .pointerInput(canvasWidthPx, canvasHeightPx) {
-                                detectDragGestures { _, drag -> updateCrop(drag.x, drag.y, true, true) }
-                            }
-                    )
-
-                    // BOTTOM-RIGHT handle
-                    Box(
-                        modifier = Modifier
-                            .size(handleSizeDp)
-                            .offset(
-                                x = ((cropX + cropSize) * canvasWidthPx).pxToDp(density) - handleSizeDp/2,
-                                y = ((cropY + cropSize) * canvasHeightPx).pxToDp(density) - handleSizeDp/2
-                            )
-                            .pointerInput(canvasWidthPx, canvasHeightPx) {
-                                detectDragGestures { _, drag -> updateCrop(drag.x, drag.y, false, false) }
-                            }
-                    )
-
-                    // TOP-RIGHT handle
-                    Box(
-                        modifier = Modifier
-                            .size(handleSizeDp)
-                            .offset(
-                                x = ((cropX + cropSize) * canvasWidthPx).pxToDp(density) - handleSizeDp/2,
-                                y = (cropY * canvasHeightPx).pxToDp(density) - handleSizeDp/2
-                            )
-                            .pointerInput(canvasWidthPx, canvasHeightPx) {
-                                detectDragGestures { _, drag -> updateCrop(drag.x, drag.y, false, true) }
-                            }
-                    )
-
-                    // BOTTOM-LEFT handle
-                    Box(
-                        modifier = Modifier
-                            .size(handleSizeDp)
-                            .offset(
-                                x = (cropX * canvasWidthPx).pxToDp(density) - handleSizeDp/2,
-                                y = ((cropY + cropSize) * canvasHeightPx).pxToDp(density) - handleSizeDp/2
-                            )
-                            .pointerInput(canvasWidthPx, canvasHeightPx) {
-                                detectDragGestures { _, drag -> updateCrop(drag.x, drag.y, true, false) }
-                            }
-                    )
-                }
-
-                // Hint row
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Filled.OpenWith, null, tint = TextSecondary, modifier = Modifier.size(13.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Drag inside to move · drag corners to resize", color = TextSecondary, fontSize = 11.sp)
-                }
-            }
-        }
-    }
-}
-
-// ── px/dp conversion helpers used in BoxWithConstraints ──
-private val density: Float
-    @Composable get() = LocalDensity.current.density
-
-private fun Float.pxToDp(density: Float) = (this / density).dp
-private fun Dp.toPx(density: Float) = (this.value * density)

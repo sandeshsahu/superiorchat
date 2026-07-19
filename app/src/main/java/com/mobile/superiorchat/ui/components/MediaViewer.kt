@@ -212,7 +212,12 @@ private fun MediaViewerContent(
             } else {
                 SubcomposeAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
-                        .data(if (path.startsWith("content://")) android.net.Uri.parse(path) else File(path))
+                        .data(
+                            when {
+                                path.startsWith("content://") || path.startsWith("http://") || path.startsWith("https://") -> android.net.Uri.parse(path)
+                                else -> File(path)
+                            }
+                        )
                         .size(2048)
                         .apply {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

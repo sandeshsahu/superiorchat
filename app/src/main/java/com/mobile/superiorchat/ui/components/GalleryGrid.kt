@@ -60,7 +60,6 @@ import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.Secondary
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
-import com.mobile.superiorchat.ui.ChatViewModel
 import kotlinx.coroutines.delay
 
 import com.mobile.superiorchat.data.repository.LocalMediaItem
@@ -68,7 +67,9 @@ import com.mobile.superiorchat.data.repository.LocalMediaItem
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryGrid(
-    viewModel: ChatViewModel,
+    preLoadedMedia: List<LocalMediaItem>? = null,
+    maxSelection: Int = Int.MAX_VALUE,
+    showVideos: Boolean = true,
     onDismiss: () -> Unit,
     onMediaSelected: (List<LocalMediaItem>) -> Boolean,
     onCameraClick: () -> Unit
@@ -76,25 +77,33 @@ fun GalleryGrid(
     val context = LocalContext.current
     val selectedItems = remember { mutableStateListOf<LocalMediaItem>() }
     var previewMedia by remember { mutableStateOf<LocalMediaItem?>(null) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by remember { mutableStateOf(preLoadedMedia == null) }
+    var localMediaState by remember { mutableStateOf<List<LocalMediaItem>>(preLoadedMedia ?: emptyList()) }
     
-    LaunchedEffect(Unit) {
-        delay(250) // Wait for Dialog entry slide-up animation to finish to prevent lag
-        viewModel.loadAllLocalMedia(context)
-        isLoading = false
+    LaunchedEffect(preLoadedMedia) {
+        if (preLoadedMedia == null) {
+            isLoading = true
+            delay(250) // Wait for Dialog entry slide-up animation to finish to prevent lag
+            localMediaState = com.mobile.superiorchat.core.AppGraph.appRepository.getAllLocalMedia(context)
+            isLoading = false
+        } else {
+            localMediaState = preLoadedMedia
+            isLoading = false
+        }
     }
 
-    val albums = remember(viewModel.allLocalMedia) {
-        listOf("All Media") + viewModel.allLocalMedia.map { it.bucketName }.distinct().sorted()
+    val albums = remember(localMediaState) {
+        listOf("All Media") + localMediaState.map { it.bucketName }.distinct().sorted()
     }
     var selectedAlbum by remember { mutableStateOf("All Media") }
     var dropdownExpanded by remember { mutableStateOf(false) }
 
-    val filteredMedia = remember(viewModel.allLocalMedia, selectedAlbum) {
+    val filteredMedia = remember(localMediaState, selectedAlbum, showVideos) {
+        val baseList = if (showVideos) localMediaState else localMediaState.filter { !it.isVideo }
         if (selectedAlbum == "All Media") {
-            viewModel.allLocalMedia
+            baseList
         } else {
-            viewModel.allLocalMedia.filter { it.bucketName == selectedAlbum }
+            baseList.filter { it.bucketName == selectedAlbum }
         }
     }
 
@@ -244,11 +253,21 @@ fun GalleryGrid(
                                 isVideo = media.isVideo,
                                 duration = media.duration,
                                 isSelected = isSelected,
+                                showCheckbox = maxSelection > 1,
                                 onClick = {
                                     if (isSelected) {
                                         selectedItems.removeAll { it.uri == media.uri }
                                     } else {
-                                        selectedItems.add(media)
+                                        if (maxSelection == 1) {
+                                            selectedItems.clear()
+                                            selectedItems.add(media)
+                                            val success = onMediaSelected(listOf(media))
+                                            if (success) {
+                                                onDismiss()
+                                            }
+                                        } else if (selectedItems.size < maxSelection) {
+                                            selectedItems.add(media)
+                                        }
                                     }
                                 },
                                 onLongPressStart = {
@@ -336,6 +355,7 @@ private fun MediaGridTile(
     isVideo: Boolean,
     duration: String?,
     isSelected: Boolean,
+    showCheckbox: Boolean,
     onClick: () -> Unit,
     onLongPressStart: () -> Unit,
     onLongPressEnd: () -> Unit
@@ -413,30 +433,34 @@ private fun MediaGridTile(
                 .background(Color.Black.copy(alpha = overlayAlpha))
         )
 
-        // Selection checkbox badge with spring scale physics
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp)
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(
-                    if (isSelected) PrimaryLight else Color.Black.copy(alpha = 0.4f)
-                )
-                .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            androidx.compose.animation.AnimatedVisibility(
-                visible = isSelected,
-                enter = scaleIn(spring(dampingRatio = 0.6f, stiffness = 400f)),
-                exit = scaleOut(tween(200))
+        if (showCheckbox) {
+            // Selection checkbox badge with spring scale physics
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isSelected) PrimaryLight else Color.Black.copy(alpha = 0.4f)
+                    )
+                    .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = "Selected",
-                    tint = Color.Black,
-                    modifier = Modifier.size(14.dp)
-                )
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = isSelected,
+                    enter = scaleIn(spring(dampingRatio = 0.6f, stiffness = 400f)),
+                    exit = scaleOut(tween(200))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "Selected",
+                        tint = Color.White,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .scale(checkScale)
+                    )
+                }
             }
         }
 

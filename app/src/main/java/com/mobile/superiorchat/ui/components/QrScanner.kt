@@ -53,7 +53,8 @@ import java.util.concurrent.Executors
 @Composable
 fun QrScanner(
     onDismiss: () -> Unit,
-    onSuccess: (botToken: String, chatId: String) -> Unit
+    onSuccess: (botToken: String, chatId: String) -> Unit,
+    onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -95,76 +96,85 @@ fun QrScanner(
         }
     }
     
-    val legacyPhotoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) {
-            QrManager.processUri(uri, context, onSuccess)
-        }
-    }
-
-    var hasStoragePermission by remember {
-        mutableStateOf(
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU || 
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    var showStorageSettingsDialog by remember { mutableStateOf(false) }
-
     val storagePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        hasStoragePermission = isGranted
-        if (!isGranted) {
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { results ->
+        val imagesGranted = results[Manifest.permission.READ_MEDIA_IMAGES] == true
+        val storageGranted = results[Manifest.permission.READ_EXTERNAL_STORAGE] == true
+        val partialGranted = results[Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
+
+        if (imagesGranted || storageGranted) {
+            showCustomGallery = true
+        } else if (partialGranted) {
+            showCustomGallery = true
             val activity = context as? Activity
-            if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.READ_EXTERNAL_STORAGE)) {
-                showStorageSettingsDialog = true
+            val fullPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                Manifest.permission.READ_MEDIA_IMAGES
             } else {
-                Toast.makeText(context, "Storage permission is required to select QR codes", Toast.LENGTH_LONG).show()
-                showCustomGallery = false
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            }
+            if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
+                onShowGlobalDialog(
+                    com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
+                        onContinue = { /* Do nothing, already showing picker */ },
+                        onGoToSettings = {
+                            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        }
+                    )
+                )
+            } else {
+                onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess(
+                    onContinue = { /* Do nothing, already showing picker */ },
+                    onUpgrade = {
+                        val requestLauncher = (context as? androidx.activity.ComponentActivity)?.activityResultRegistry?.register(
+                            "temp_partial", ActivityResultContracts.RequestMultiplePermissions()
+                        ) { _ -> }
+                        requestLauncher?.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+                    }
+                ))
+            }
+        } else {
+            val activity = context as? Activity
+            val permsToCheck = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+            } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
+                arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            } else {
+                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            if (activity != null && !permsToCheck.any { perm -> ActivityCompat.shouldShowRequestPermissionRationale(activity, perm) }) {
+                onShowGlobalDialog(
+                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    )
+                )
             }
         }
     }
 
-    if (showCameraSettingsDialog) {
-        ActionDialog(
-            title = "Permission Required",
-            message = "You have permanently denied Camera access. To scan QR codes, please enable it in Settings.",
-            confirmText = "Go to Settings",
-            onConfirm = {
-                showCameraSettingsDialog = false
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
+    val requestStoragePermission = {
+        onShowGlobalDialog(
+            com.mobile.superiorchat.ui.GlobalDialogState.StoragePermissionRationale(
+                onConfirm = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
+                    } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO))
+                    } else {
+                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                    }
                 }
-                context.startActivity(intent)
-                onDismiss()
-            },
-            onDismiss = {
-                showCameraSettingsDialog = false
-                onDismiss()
-            }
+            )
         )
     }
 
-    if (showStorageSettingsDialog) {
-        ActionDialog(
-            title = "Permission Required",
-            message = "You have permanently denied Storage access. To select QR codes from gallery, please enable it in Settings.",
-            confirmText = "Go to Settings",
-            onConfirm = {
-                showStorageSettingsDialog = false
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.fromParts("package", context.packageName, null)
-                }
-                context.startActivity(intent)
-                showCustomGallery = false
-            },
-            onDismiss = {
-                showStorageSettingsDialog = false
-                showCustomGallery = false
-            }
-        )
+    val launchGallery = {
+        val hasPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
+        if (hasPerm) showCustomGallery = true else requestStoragePermission()
     }
 
 
@@ -243,11 +253,7 @@ fun QrScanner(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         } else {
-                            if (hasStoragePermission) {
-                                legacyPhotoPickerLauncher.launch("image/*")
-                            } else {
-                                storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-                            }
+                            launchGallery()
                         }
                     },
                     modifier = Modifier
@@ -276,6 +282,29 @@ fun QrScanner(
             }
         }
         } // Added closing brace for Dialog
+    }
+    
+    if (showCustomGallery) {
+        Dialog(
+            onDismissRequest = { showCustomGallery = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
+        ) {
+            GalleryGrid(
+                maxSelection = 1,
+                showVideos = false,
+                onDismiss = { showCustomGallery = false },
+                onMediaSelected = { items ->
+                    if (items.isNotEmpty()) {
+                        QrManager.processUri(items.first().uri, context, onSuccess)
+                        showCustomGallery = false
+                        true
+                    } else false
+                },
+                onCameraClick = {
+                    showCustomGallery = false
+                }
+            )
+        }
     }
 }
 

@@ -405,6 +405,7 @@ fun AppScreen(
                             onNavigateToSettings = { currentScreen = NavScreen.Settings }
                         )
                         NavScreen.Profile -> ProfileScreen(
+                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
                             onNavigateToSettings = { currentScreen = NavScreen.Settings }
                         )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
@@ -423,7 +424,8 @@ fun AppScreen(
                             onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                             onSave = {
                                 viewModel.saveCredentials()
-                            }
+                            },
+                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                         )
                     }
                 }

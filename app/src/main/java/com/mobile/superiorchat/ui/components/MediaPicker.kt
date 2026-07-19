@@ -163,7 +163,7 @@ fun MediaPicker(
                             PickerTab.GALLERY -> {
                                 isBottomBarVisible = true
                                 GalleryGrid(
-                                    viewModel = viewModel,
+                                    preLoadedMedia = viewModel.allLocalMedia,
                                     onDismiss = animatedDismiss,
                                     onMediaSelected = onMediaSelected,
                                     onCameraClick = onCameraClick
