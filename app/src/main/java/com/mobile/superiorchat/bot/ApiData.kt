@@ -1,5 +1,6 @@
 package com.mobile.superiorchat.bot
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -106,4 +107,47 @@ data class TelegramFile(
 data class FileResponse(
     val ok: Boolean,
     val result: TelegramFile? = null
+)
+
+@Serializable
+data class BotDescriptionResponse(
+    val ok: Boolean,
+    val result: BotDescriptionResult? = null
+)
+
+@Serializable
+data class BotDescriptionResult(
+    val description: String = ""
+)
+
+@Serializable
+data class BotShortDescriptionResponse(
+    val ok: Boolean,
+    val result: BotShortDescriptionResult? = null
+)
+
+@Serializable
+data class BotShortDescriptionResult(
+    @SerialName("short_description") val shortDescription: String = ""
+)
+
+@Serializable
+data class UserProfilePhotosResponse(
+    val ok: Boolean,
+    val result: UserProfilePhotos? = null
+)
+
+@Serializable
+data class UserProfilePhotos(
+    @SerialName("total_count") val totalCount: Int = 0,
+    val photos: List<List<PhotoSize>> = emptyList()
+)
+
+@Serializable
+data class PhotoSize(
+    @SerialName("file_id") val fileId: String,
+    @SerialName("file_unique_id") val fileUniqueId: String,
+    val width: Int,
+    val height: Int,
+    @SerialName("file_size") val fileSize: Long? = null
 )

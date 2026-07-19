@@ -112,6 +112,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _profileEditRateLimitExpiry: Long = sharedPreferences.getLong("profile_edit_rate_limit_expiry", 0L)
+    var profileEditRateLimitExpiry: Long
+        get() = _profileEditRateLimitExpiry
+        set(value) {
+            if (_profileEditRateLimitExpiry != value) {
+                _profileEditRateLimitExpiry = value
+                sharedPreferences.edit().putLong("profile_edit_rate_limit_expiry", value).apply()
+            }
+        }
+
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()
 }

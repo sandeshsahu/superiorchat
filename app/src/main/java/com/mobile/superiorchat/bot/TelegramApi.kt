@@ -29,6 +29,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+class RateLimitException(val retryAfterSeconds: Int, message: String) : Exception(message)
+class TelegramApiException(message: String) : Exception(message)
 @Serializable
 private data class LinkPreviewOptions(
     @SerialName("is_disabled") val isDisabled: Boolean
@@ -710,6 +712,138 @@ object TelegramApi {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         if (cm.activeNetwork == null) return false
         return getMe(token) != null
+    }
+    // ═══════════════════════════════════════════════════════════
+    //  BOT IDENTITY MANAGEMENT
+    // ═══════════════════════════════════════════════════════════
+
+    suspend fun getMyDescription(token: String): String {
+        return try {
+            val request = Request.Builder().url(apiUrl(token, "getMyDescription")).build()
+            val response = client.executeCancellable(request)
+            if (response.isSuccessful) {
+                response.body?.string()?.let { 
+                    json.decodeFromString<BotDescriptionResponse>(it).result?.description ?: ""
+                } ?: ""
+            } else ""
+        } catch (e: Exception) { "" }
+    }
+
+    suspend fun getMyShortDescription(token: String): String {
+        return try {
+            val request = Request.Builder().url(apiUrl(token, "getMyShortDescription")).build()
+            val response = client.executeCancellable(request)
+            if (response.isSuccessful) {
+                response.body?.string()?.let { 
+                    json.decodeFromString<BotShortDescriptionResponse>(it).result?.shortDescription ?: ""
+                } ?: ""
+            } else ""
+        } catch (e: Exception) { "" }
+    }
+
+    suspend fun getMyProfilePhotoUrl(token: String): String? {
+        val botId = sanitizeToken(token).split(":")[0]
+        return try {
+            val request = Request.Builder()
+                .url(apiUrl(token, "getUserProfilePhotos") + "?user_id=$botId&limit=1")
+                .build()
+            val response = client.executeCancellable(request)
+            if (response.isSuccessful) {
+                response.body?.string()?.let { body ->
+                    val result = json.decodeFromString<UserProfilePhotosResponse>(body).result
+                    val photos = result?.photos
+                    if (!photos.isNullOrEmpty() && photos.first().isNotEmpty()) {
+                        val largestPhoto = photos.first().maxByOrNull { it.width * it.height }
+                        if (largestPhoto != null) {
+                            val fileInfo = getFile(token, largestPhoto.fileId)
+                            if (fileInfo?.result?.file_path != null) {
+                                getFileDownloadUrl(token, fileInfo.result.file_path)
+                            } else null
+                        } else null
+                    } else null
+                }
+            } else null
+        } catch (e: Exception) { null }
+    }
+
+    suspend fun setMyName(token: String, name: String): Boolean {
+        val jsonBody = org.json.JSONObject().apply { put("name", name) }.toString()
+        val body = jsonBody.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url(apiUrl(token, "setMyName")).post(body).build()
+        val response = client.executeCancellable(request)
+        if (!response.isSuccessful) {
+            parseErrorAndThrow(response, "setMyName")
+        }
+        return response.isSuccessful
+    }
+
+    suspend fun setMyDescription(token: String, description: String): Boolean {
+        val jsonBody = org.json.JSONObject().apply { put("description", description) }.toString()
+        val body = jsonBody.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url(apiUrl(token, "setMyDescription")).post(body).build()
+        val response = client.executeCancellable(request)
+        if (!response.isSuccessful) {
+            parseErrorAndThrow(response, "setMyDescription")
+        }
+        return response.isSuccessful
+    }
+
+    suspend fun setMyShortDescription(token: String, shortDescription: String): Boolean {
+        val jsonBody = org.json.JSONObject().apply { put("short_description", shortDescription) }.toString()
+        val body = jsonBody.toRequestBody("application/json".toMediaType())
+        val request = Request.Builder().url(apiUrl(token, "setMyShortDescription")).post(body).build()
+        val response = client.executeCancellable(request)
+        if (!response.isSuccessful) {
+            parseErrorAndThrow(response, "setMyShortDescription")
+        }
+        return response.isSuccessful
+    }
+
+    suspend fun setMyProfilePhoto(token: String, photoFile: java.io.File): Boolean {
+        return try {
+            val requestBody = okhttp3.MultipartBody.Builder()
+                .setType(okhttp3.MultipartBody.FORM)
+                .addFormDataPart(
+                    "photo",
+                    """{"type":"static","photo":"attach://profile_pic"}"""
+                )
+                .addFormDataPart(
+                    "profile_pic",
+                    photoFile.name,
+                    photoFile.asRequestBody("image/jpeg".toMediaType())
+                )
+                .build()
+            val request = Request.Builder()
+                .url(apiUrl(token, "setMyProfilePhoto"))
+                .post(requestBody)
+                .build()
+            val response = client.executeCancellable(request)
+            val bodyStr = response.body?.string()
+            if (!response.isSuccessful) {
+                AppLog.log(LogCategory.NETWORK, "setMyProfilePhoto failed: ${response.code} $bodyStr", com.mobile.superiorchat.utils.LogLevel.ERROR)
+            }
+            response.isSuccessful
+        } catch (e: Exception) { 
+            AppLog.log(LogCategory.NETWORK, "setMyProfilePhoto error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+            false 
+        }
+    }
+
+    private fun parseErrorAndThrow(response: Response, methodName: String) {
+        val bodyStr = response.body?.string() ?: ""
+        AppLog.log(LogCategory.NETWORK, "$methodName failed: ${response.code} $bodyStr", com.mobile.superiorchat.utils.LogLevel.ERROR)
+        try {
+            val json = org.json.JSONObject(bodyStr)
+            val desc = json.optString("description", "Unknown Telegram Error")
+            if (response.code == 429) {
+                val params = json.optJSONObject("parameters")
+                val retryAfter = params?.optInt("retry_after", 0) ?: 0
+                if (retryAfter > 0) throw RateLimitException(retryAfter, desc)
+            }
+            throw TelegramApiException("API Error ${response.code}: $desc")
+        } catch (e: org.json.JSONException) {
+            throw TelegramApiException("HTTP ${response.code}: $bodyStr")
+        }
     }
 }
 

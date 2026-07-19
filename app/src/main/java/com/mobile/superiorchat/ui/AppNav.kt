@@ -51,6 +51,7 @@ fun Context.findActivity(): ComponentActivity? = when (this) {
 
 enum class NavScreen(val title: String, val icon: ImageVector) {
     Chat("Chat", Icons.Filled.Dashboard),
+    Profile("Profile", Icons.Filled.SmartToy),
     Permissions("Permissions", Icons.Filled.Lock),
     Logs("Logs", Icons.AutoMirrored.Filled.List),
     Settings("Settings", Icons.Filled.Settings)
@@ -245,7 +246,7 @@ fun AppScreen(
                     }
 
                     // Navigation Items (excluding Settings — accessed via gear icon)
-                    NavScreen.entries.filter { it != NavScreen.Settings }.forEach { screen ->
+                    NavScreen.entries.filter { it != NavScreen.Settings && it != NavScreen.Profile }.forEach { screen ->
                         val isSelected = currentScreen == screen
                         val bgColor = if (isSelected) Primary.copy(alpha = 0.3f) else Color.Transparent
                         val contentColor = if (isSelected) TextPrimary else MaterialTheme.colorScheme.onSurfaceVariant
@@ -266,6 +267,59 @@ fun AppScreen(
                             Icon(screen.icon, contentDescription = screen.title, tint = contentColor, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(screen.title, fontSize = 16.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = contentColor)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Bot Profile — styled separately with gradient accent
+                    val isProfileSelected = currentScreen == NavScreen.Profile
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (isProfileSelected)
+                                    androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(Primary.copy(alpha = 0.3f), Secondary.copy(alpha = 0.15f))
+                                    )
+                                else
+                                    androidx.compose.ui.graphics.Brush.linearGradient(
+                                        listOf(Primary.copy(alpha = 0.06f), Secondary.copy(alpha = 0.04f))
+                                    )
+                            )
+                            .border(
+                                1.dp,
+                                if (isProfileSelected) Primary.copy(alpha = 0.4f) else DividerColor,
+                                RoundedCornerShape(12.dp)
+                            )
+                            .clickable {
+                                currentScreen = NavScreen.Profile
+                                scope.launch { drawerState.close() }
+                            }
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        Icon(
+                            NavScreen.Profile.icon,
+                            contentDescription = NavScreen.Profile.title,
+                            tint = if (isProfileSelected) PrimaryLight else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                NavScreen.Profile.title,
+                                fontSize = 16.sp,
+                                fontWeight = if (isProfileSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isProfileSelected) TextPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                "Name, photo, description",
+                                fontSize = 11.sp,
+                                color = if (isProfileSelected) PrimaryLight.copy(alpha = 0.7f) else TextSecondary.copy(alpha = 0.6f)
+                            )
                         }
                     }
 
@@ -291,7 +345,7 @@ fun AppScreen(
                         Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     },
                     navigationIcon = {
-                        if (currentScreen == NavScreen.Settings) {
+                        if (currentScreen == NavScreen.Settings || currentScreen == NavScreen.Profile) {
                             IconButton(onClick = { currentScreen = NavScreen.Chat }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                             }
@@ -348,6 +402,9 @@ fun AppScreen(
                     when (screen) {
                         NavScreen.Chat -> ChatScreen(
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
+                            onNavigateToSettings = { currentScreen = NavScreen.Settings }
+                        )
+                        NavScreen.Profile -> ProfileScreen(
                             onNavigateToSettings = { currentScreen = NavScreen.Settings }
                         )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
