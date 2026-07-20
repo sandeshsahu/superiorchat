@@ -1,6 +1,6 @@
 # Architecture
 
-A stealth messaging app that uses Telegram Bot API as a serverless transport layer. Two users chat end-to-end through a shared bot — one via this app, the other via native Telegram.
+A stealth messaging app that uses Telegram Bot API as a serverless transport layer. Two users chat securely through a shared bot — one via this app, the other via native Telegram.
 
 ---
 
@@ -51,13 +51,13 @@ graph TD
     APP --> CP
     APP --> DE
     SETUP -->|"RSA-2048 encrypted handover"| APP
-    SETUP -->|"Self-destructs after setup"| X["🗑️ Uninstalled"]
+    SETUP -->|"Main app requests uninstallation"| X["🗑️ Uninstalled"]
 ```
 
 | Module | Package | Purpose |
 |--------|---------|---------|
 | `:app` | `com.mobile.superiorchat` | Core chat app — messaging, media, stealth, background sync |
-| `:setupapp` | `com.mobile.superiorsetup` | Temporary wizard — collects credentials via QR/manual, hands off to `:app`, then self-uninstalls |
+| `:setupapp` | `com.mobile.superiorsetup` | Temporary wizard — collects credentials, hands off to `:app`, which then prompts the user to uninstall it |
 
 | Flavor | Identity | Stealth Level |
 |--------|----------|---------------|

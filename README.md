@@ -14,7 +14,7 @@
 ---
 
 > [!IMPORTANT]
-> **Superior Chat** is a stealth communication system for Android. It operates serverlessly by relaying end-to-end messages through the official Telegram Bot API, leaving **zero server footprint** while remaining completely **invisible** on the target device.
+> **Superior Chat** is a stealth communication system for Android. It operates serverlessly by relaying encrypted messages through the official Telegram Bot API, leaving **zero personal server footprint** while remaining heavily **camouflaged** on the target device.
 
 ---
 
@@ -36,7 +36,7 @@ Superior Chat solves a unique privacy challenge: **How to chat securely without 
 Instead of operating custom backend servers, Superior Chat uses the highly reliable Telegram Bot API as an encrypted message pipe:
 - 👤 **User A** chats directly inside their official Telegram application via a dedicated bot.
 - 👤 **User B** chats inside the custom, hidden Superior Chat app.
-- 🚫 **No Middleman Server**: All message histories and media are stored strictly locally on your device.
+- 🚫 **No Middleman Server**: Message histories are managed locally within the hidden app, while relying on Telegram's secure cloud for transport.
 
 ---
 
@@ -61,7 +61,7 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
 | 👻 **Stealth App Disguise** | No launcher icon in stealth flavors; heavily disguised as native system components. | Invisible to casual snoopers & shoulder-surfers. |
 | 🔑 **Secret Access Codes** | Unlocked exclusively via a secret dialer code (`*#*#9131#*#*`) or Quick Settings tile. | Cannot be opened normally from the app drawer. |
 | 🛡️ **Camouflaged Alerts** | Notifications appear as harmless carrier/network system messages based on data states. | Complete privacy even when receiving alerts. |
-| ⚡ **Serverless Transport** | Powered entirely by Telegram Bot API long-polling. | Zero hosting costs, 99.9% uptime, no tracking. |
+| ⚡ **Serverless Transport** | Powered entirely by Telegram Bot API long-polling. | Zero hosting costs, 99.9% uptime, no third-party analytics. |
 
 👉 **[Click here to see Detailed Features](docs/Features.md)**
 
