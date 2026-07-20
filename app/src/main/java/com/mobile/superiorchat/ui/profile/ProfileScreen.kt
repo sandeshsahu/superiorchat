@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui
+package com.mobile.superiorchat.ui.profile
 
 import android.content.Context
 import android.net.Uri
@@ -44,8 +44,8 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.mobile.superiorchat.data.repository.LocalMediaItem
 import com.mobile.superiorchat.theme.*
-import com.mobile.superiorchat.ui.components.ActionDialog
-import com.mobile.superiorchat.ui.components.ErrorDialog
+import com.mobile.superiorchat.ui.components.popups.ActionDialog
+import com.mobile.superiorchat.ui.components.popups.ErrorDialog
 import com.mobile.superiorchat.ui.components.bounceClick
 import com.mobile.superiorchat.ui.components.glow
 import kotlinx.coroutines.Dispatchers
@@ -58,10 +58,21 @@ import android.graphics.BitmapFactory
 //  Profile Screen
 // ══════════════════════════════════════════════════════════
 
-import com.mobile.superiorchat.ui.components.ImageCropper
-import com.mobile.superiorchat.ui.components.MediaViewer
+import com.mobile.superiorchat.ui.GlobalDialogState
+import com.mobile.superiorchat.ui.components.media.ImageCropper
+import com.mobile.superiorchat.ui.components.media.MediaViewer
 import com.mobile.superiorchat.ui.components.profile.EditInfoSheet
 import com.mobile.superiorchat.ui.components.profile.ProfileSettingsSheet
+
+sealed class ProfileOverlay {
+    data object None : ProfileOverlay()
+    data object GalleryPicker : ProfileOverlay()
+    data class CropDialog(val uri: Uri) : ProfileOverlay()
+    data object EditInfo : ProfileOverlay()
+    data object Settings : ProfileOverlay()
+    data object FullScreenPhoto : ProfileOverlay()
+    data class RateLimitWarning(val pendingInfo: Triple<String, String, String>) : ProfileOverlay()
+}
 
 @Composable
 fun ProfileScreen(
@@ -79,133 +90,18 @@ fun ProfileScreen(
     }
 
     // ── Overlay State ────────────────────────────────────────
-    var showGalleryPicker by remember { mutableStateOf(false) }
-    var showCropDialog by remember { mutableStateOf<Uri?>(null) }
-    var showEditInfoSheet by remember { mutableStateOf(false) }
-    var showProfileSettings by remember { mutableStateOf(false) }
-    var showFullScreenPhoto by remember { mutableStateOf(false) }
-    var showRateLimitWarning by remember { mutableStateOf(false) }
-    var pendingEditInfo by remember { mutableStateOf<Triple<String, String, String>?>(null) }
+    var currentOverlay by remember { mutableStateOf<ProfileOverlay>(ProfileOverlay.None) }
 
-    val cameraUri = remember { mutableStateOf<Uri?>(null) }
-    
-    val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.TakePicture(),
-        onResult = { success ->
-            if (success) {
-                cameraUri.value?.let { uri ->
-                    showGalleryPicker = false
-                    showCropDialog = uri
-                }
-            }
+    val permissionHandler = rememberProfilePermissionHandler(
+        context = context,
+        onShowGlobalDialog = onShowGlobalDialog,
+        onGalleryGranted = { currentOverlay = ProfileOverlay.GalleryPicker },
+        onCameraGranted = { uri -> 
+            currentOverlay = ProfileOverlay.CropDialog(uri) 
         }
     )
 
-    val cameraPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                val imageFile = java.io.File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
-                val uri = androidx.core.content.FileProvider.getUriForFile(
-                    context, 
-                    "${context.packageName}.provider", 
-                    imageFile
-                )
-                cameraUri.value = uri
-                cameraLauncher.launch(uri)
-            } else {
-                val activity = context as? android.app.Activity
-                if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)) {
-                    onShowGlobalDialog(
-                        com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                            android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
-                        )
-                    )
-                }
-            }
-        }
-    )
-
-    val storagePermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        val imagesGranted = results[android.Manifest.permission.READ_MEDIA_IMAGES] == true
-        val storageGranted = results[android.Manifest.permission.READ_EXTERNAL_STORAGE] == true
-        val partialGranted = results[android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
-
-        if (imagesGranted || storageGranted) {
-            showGalleryPicker = true
-        } else if (partialGranted) {
-            showGalleryPicker = true
-            val activity = context as? android.app.Activity
-            val fullPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                android.Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                android.Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
-                        onContinue = { /* Do nothing, already showing picker */ },
-                        onGoToSettings = {
-                            context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}")))
-                        }
-                    )
-                )
-            } else {
-                onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess(
-                    onContinue = { /* Do nothing, already showing picker */ },
-                    onUpgrade = {
-                        val requestLauncher = (context as? androidx.activity.ComponentActivity)?.activityResultRegistry?.register(
-                            "temp_partial", androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
-                        ) { _ -> }
-                        requestLauncher?.launch(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VIDEO, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
-                    }
-                ))
-            }
-        } else {
-            val activity = context as? android.app.Activity
-            val permsToCheck = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-            } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES)
-            } else {
-                arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-            if (activity != null && !permsToCheck.any { perm -> androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, perm) }) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
-
-    val requestStoragePermission = {
-        onShowGlobalDialog(
-            GlobalDialogState.StoragePermissionRationale(
-                onConfirm = {
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        storagePermissionLauncher.launch(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VIDEO, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
-                    } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                        storagePermissionLauncher.launch(arrayOf(android.Manifest.permission.READ_MEDIA_IMAGES, android.Manifest.permission.READ_MEDIA_VIDEO))
-                    } else {
-                        storagePermissionLauncher.launch(arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE))
-                    }
-                }
-            )
-        )
-    }
-
-    val launchGallery = {
-        val hasPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        } else {
-            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
-        }
-        if (hasPerm) showGalleryPicker = true else requestStoragePermission()
-    }
+    val launchGallery = { permissionHandler.requestGallery() }
 
     val syncState by com.mobile.superiorchat.core.StatusFlow.syncState.collectAsState()
     val syncMessage by com.mobile.superiorchat.core.StatusFlow.syncMessage.collectAsState()
@@ -228,7 +124,7 @@ fun ProfileScreen(
                     username = viewModel.username,
                     botId = viewModel.botId,
                     avatarUri = viewModel.avatarUri,
-                    onAvatarClick = { if (viewModel.avatarUri != null) showFullScreenPhoto = true else launchGallery() },
+                    onAvatarClick = { if (viewModel.avatarUri != null) currentOverlay = ProfileOverlay.FullScreenPhoto else launchGallery() },
                     onEditPhotoClick = { launchGallery() }
                 )
 
@@ -246,10 +142,10 @@ fun ProfileScreen(
                             val timeStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
                             viewModel.rateLimitError = "Telegram rate limit reached. Please try again in $timeStr."
                         } else {
-                            showEditInfoSheet = true 
+                            currentOverlay = ProfileOverlay.EditInfo 
                         }
                     },
-                    onSettings = { showProfileSettings = true }
+                    onSettings = { currentOverlay = ProfileOverlay.Settings }
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -325,99 +221,80 @@ fun ProfileScreen(
     // ── Overlays ─────────────────────────────────────────
 
     // Gallery picker using GalleryGrid
-    if (showGalleryPicker) {
+    if (currentOverlay is ProfileOverlay.GalleryPicker) {
         androidx.compose.ui.window.Dialog(
-            onDismissRequest = { showGalleryPicker = false },
+            onDismissRequest = { currentOverlay = ProfileOverlay.None },
             properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
         ) {
-            com.mobile.superiorchat.ui.components.GalleryGrid(
+            com.mobile.superiorchat.ui.components.media.GalleryGrid(
                 maxSelection = 1,
                 showVideos = false,
-                onDismiss = { showGalleryPicker = false },
+                onDismiss = { currentOverlay = ProfileOverlay.None },
                 onMediaSelected = { items ->
                     if (items.isNotEmpty()) {
-                        showGalleryPicker = false
-                        showCropDialog = items.first().uri
-                        true
+                        currentOverlay = ProfileOverlay.CropDialog(items.first().uri)
+                        false // Prevent GalleryGrid from firing onDismiss and wiping our CropDialog!
                     } else false
                 },
                 onCameraClick = {
-                    val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
-                        context, android.Manifest.permission.CAMERA
-                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                    if (hasPermission) {
-                        val imageFile = java.io.File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
-                        val uri = androidx.core.content.FileProvider.getUriForFile(
-                            context, 
-                            "${context.packageName}.provider", 
-                            imageFile
-                        )
-                        cameraUri.value = uri
-                        cameraLauncher.launch(uri)
-                    } else {
-                        onShowGlobalDialog(
-                            GlobalDialogState.CameraPermissionRationale(
-                                onConfirm = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
-                            )
-                        )
-                    }
+                    permissionHandler.requestCamera()
                 }
             )
         }
     }
 
     // Crop dialog
-    showCropDialog?.let { uri ->
+    if (currentOverlay is ProfileOverlay.CropDialog) {
+        val uri = (currentOverlay as ProfileOverlay.CropDialog).uri
         ImageCropper(
             imageUri = uri,
-            onDismiss = { showCropDialog = null },
+            onDismiss = { currentOverlay = ProfileOverlay.None },
             onCropConfirm = { croppedUri, cropX, cropY, cropSize ->
                 viewModel.uploadProfilePhoto(context, uri, cropX, cropY, cropSize)
-                showCropDialog = null
+                currentOverlay = ProfileOverlay.None
             }
         )
     }
 
     // Edit Info bottom sheet
-    if (showEditInfoSheet) {
+    if (currentOverlay is ProfileOverlay.EditInfo) {
         EditInfoSheet(
             currentName = viewModel.displayName,
             currentDescription = viewModel.description,
             currentShortDescription = viewModel.shortDescription,
-            onDismiss = { showEditInfoSheet = false },
+            onDismiss = { currentOverlay = ProfileOverlay.None },
             onSave = { name, desc, shortDesc ->
                 if (name != viewModel.displayName || desc != viewModel.description || shortDesc != viewModel.shortDescription) {
-                    pendingEditInfo = Triple(name, desc, shortDesc)
-                    showRateLimitWarning = true
-                    showEditInfoSheet = false
+                    currentOverlay = ProfileOverlay.RateLimitWarning(Triple(name, desc, shortDesc))
                 } else {
-                    showEditInfoSheet = false
+                    currentOverlay = ProfileOverlay.None
                 }
             }
         )
     }
 
     // Profile Settings bottom sheet
-    if (showProfileSettings) {
+    if (currentOverlay is ProfileOverlay.Settings) {
         ProfileSettingsSheet(
             hasCredentials = hasCredentials,
-            onDismiss = { showProfileSettings = false },
+            onDismiss = { currentOverlay = ProfileOverlay.None },
             onClearCredentials = onClearCredentials,
             onNavigateToAppSettings = onNavigateToSettings
         )
     }
 
     // Full-screen photo viewer
-    if (showFullScreenPhoto && viewModel.avatarUri != null) {
+    if (currentOverlay is ProfileOverlay.FullScreenPhoto && viewModel.avatarUri != null) {
         MediaViewer(
             mediaPath = viewModel.avatarUri!!.toString(),
             mediaType = "photo",
-            onDismiss = { showFullScreenPhoto = false }
+            onDismiss = { currentOverlay = ProfileOverlay.None }
         )
     }
 
     // Rate limit warning before saving
-    if (showRateLimitWarning && pendingEditInfo != null) {
+    if (currentOverlay is ProfileOverlay.RateLimitWarning) {
+        val pendingInfo = (currentOverlay as ProfileOverlay.RateLimitWarning).pendingInfo
         ActionDialog(
             title = "Warning: Rate Limits",
             message = "Telegram strictly limits how often you can change your bot's name and description. Frequent updates will result in a 24-hour ban. Are you sure you want to proceed?",
@@ -426,13 +303,11 @@ fun ProfileScreen(
             confirmText = "Proceed",
             dismissText = "Cancel",
             onConfirm = {
-                pendingEditInfo?.let { (n, d, sd) -> viewModel.saveInfo(n, d, sd) }
-                pendingEditInfo = null
-                showRateLimitWarning = false
+                viewModel.saveInfo(pendingInfo.first, pendingInfo.second, pendingInfo.third)
+                currentOverlay = ProfileOverlay.None
             },
             onDismiss = {
-                pendingEditInfo = null
-                showRateLimitWarning = false
+                currentOverlay = ProfileOverlay.None
             }
         )
     }
@@ -713,6 +588,60 @@ private fun InfoDivider() {
         color = DividerColor,
         thickness = 0.5.dp
     )
+}
+
+// ══════════════════════════════════════════════════════════
+//  Permission Handler Utility
+// ══════════════════════════════════════════════════════════
+
+class ProfilePermissionHandler(
+    val requestGallery: () -> Unit,
+    val requestCamera: () -> Unit,
+    val launchCameraDirectly: () -> Unit
+)
+
+@Composable
+fun rememberProfilePermissionHandler(
+    context: Context,
+    onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit,
+    onGalleryGranted: () -> Unit,
+    onCameraGranted: (Uri) -> Unit
+): ProfilePermissionHandler {
+    val cameraUri = remember { mutableStateOf<Uri?>(null) }
+    
+    val cameraLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.TakePicture(),
+        onResult = { success ->
+            if (success) cameraUri.value?.let { onCameraGranted(it) }
+        }
+    )
+
+    val launchCameraDirectly: () -> Unit = {
+        val imageFile = java.io.File(context.cacheDir, "camera_${System.currentTimeMillis()}.jpg")
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            context, "${context.packageName}.provider", imageFile
+        )
+        cameraUri.value = uri
+        cameraLauncher.launch(uri)
+    }
+
+    val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
+
+    return remember(context, onShowGlobalDialog, onGalleryGranted, onCameraGranted) {
+        ProfilePermissionHandler(
+            requestGallery = {
+                permissionHandler.requestStorageForMedia {
+                    onGalleryGranted()
+                }
+            },
+            requestCamera = { 
+                permissionHandler.requestCamera {
+                    launchCameraDirectly()
+                }
+            },
+            launchCameraDirectly = launchCameraDirectly
+        )
+    }
 }
 
 

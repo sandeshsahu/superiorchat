@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui.components
+package com.mobile.superiorchat.ui.components.media
 
 import android.net.Uri
 import androidx.compose.animation.AnimatedContent
@@ -83,9 +83,14 @@ fun GalleryGrid(
     LaunchedEffect(preLoadedMedia) {
         if (preLoadedMedia == null) {
             isLoading = true
-            delay(250) // Wait for Dialog entry slide-up animation to finish to prevent lag
-            localMediaState = com.mobile.superiorchat.core.AppGraph.appRepository.getAllLocalMedia(context)
-            isLoading = false
+            // Load media on IO dispatcher to prevent UI thread lag during entry animation
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                val media = com.mobile.superiorchat.core.AppGraph.appRepository.getAllLocalMedia(context)
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    localMediaState = media
+                    isLoading = false
+                }
+            }
         } else {
             localMediaState = preLoadedMedia
             isLoading = false

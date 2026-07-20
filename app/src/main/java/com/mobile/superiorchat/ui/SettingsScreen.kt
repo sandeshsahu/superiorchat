@@ -67,25 +67,10 @@ fun SettingsScreen(
     var tempChatId by remember { mutableStateOf(chatId) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    val cameraPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            showQrScanner = true
-        } else {
-            val activity = context as? android.app.Activity
-            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
+    val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
     
     if (errorMessage != null) {
-        com.mobile.superiorchat.ui.components.ErrorDialog(
+        com.mobile.superiorchat.ui.components.popups.ErrorDialog(
             title = "Invalid Credentials",
             message = errorMessage!!,
             onDismiss = { errorMessage = null }
@@ -93,31 +78,18 @@ fun SettingsScreen(
     }
 
     if (showAddManuallyDialog) {
-        if (botToken.isNotEmpty()) {
-            com.mobile.superiorchat.ui.components.EditManuallyPopup(
-                initialToken = botToken,
-                initialChatId = chatId,
-                onDismiss = { showAddManuallyDialog = false },
-                onSave = { token, chat ->
-                    onBotTokenChange(token)
-                    onChatIdChange(chat)
-                    onSave()
-                    showAddManuallyDialog = false
-                    Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
-                }
-            )
-        } else {
-            com.mobile.superiorchat.ui.components.AddManuallyPopup(
-                onDismiss = { showAddManuallyDialog = false },
-                onSave = { token, chat ->
-                    onBotTokenChange(token)
-                    onChatIdChange(chat)
-                    onSave()
-                    showAddManuallyDialog = false
-                    Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
-                }
-            )
-        }
+        com.mobile.superiorchat.ui.components.popups.CredentialsPopup(
+            initialToken = botToken,
+            initialChatId = chatId,
+            onDismiss = { showAddManuallyDialog = false },
+            onSave = { token, chat ->
+                onBotTokenChange(token)
+                onChatIdChange(chat)
+                onSave()
+                showAddManuallyDialog = false
+                Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
+            }
+        )
     }
 
     if (showQrScanner) {
@@ -203,15 +175,8 @@ fun SettingsScreen(
                             .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
                             .background(Primary, RoundedCornerShape(12.dp))
                             .bounceClick(scaleDown = 0.95f) {
-                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                                if (hasPermission) {
+                                permissionHandler.requestCamera {
                                     showQrScanner = true
-                                } else {
-                                    onShowGlobalDialog(
-                                        com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale(
-                                            onConfirm = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
-                                        )
-                                    )
                                 }
                             },
                         contentAlignment = Alignment.Center
@@ -300,7 +265,7 @@ fun SettingsScreen(
                     )
                     
                     if (showSecurityInfo) {
-                        com.mobile.superiorchat.ui.components.ErrorDialog(
+                        com.mobile.superiorchat.ui.components.popups.ErrorDialog(
                             title = "Screen Security",
                             message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\nScreenshots will appear pure black.",
                             onDismiss = { showSecurityInfo = false }
@@ -379,7 +344,7 @@ fun SettingsScreen(
                         )
                         
                         if (showAccessibilityInfo) {
-                            com.mobile.superiorchat.ui.components.ErrorDialog(
+                            com.mobile.superiorchat.ui.components.popups.ErrorDialog(
                                 title = "Quick Settings Tile Access",
                                 message = "Open notification panel, click on the pencil icon, find 'Carrier Sync' and add it.\n\nThen when you want to open chat:\n1. Enable\n2. Disable\n3. Enable\n4. Hold Tile to open chat app",
                                 onDismiss = { showAccessibilityInfo = false }

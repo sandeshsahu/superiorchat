@@ -65,10 +65,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.AttachMenu
-import com.mobile.superiorchat.ui.components.MessageBubble
-import com.mobile.superiorchat.ui.components.MediaViewer
-import com.mobile.superiorchat.ui.components.MediaPicker
-import com.mobile.superiorchat.ui.components.PickerTab
+import com.mobile.superiorchat.ui.components.bubbles.MessageBubble
+import com.mobile.superiorchat.ui.components.media.MediaViewer
+import com.mobile.superiorchat.ui.components.media.MediaPicker
+import com.mobile.superiorchat.ui.components.media.PickerTab
 import java.io.File
 import java.util.Locale
 
@@ -78,8 +78,8 @@ fun ChatInputBox(
     viewModel: ChatViewModel,
     showAttachmentMenu: Boolean,
     onAttachmentMenuChange: (Boolean) -> Unit,
-    onRequestStoragePermission: (String) -> Unit,
-    onRequestAudioPermission: (String) -> Unit,
+    onRequestStoragePermission: () -> Unit,
+    onRequestAudioPermission: () -> Unit,
     hasConnectionError: Boolean = false,
     isBotTokenInvalid: Boolean = false,
     isCredentialsEmpty: Boolean = false,
@@ -272,24 +272,7 @@ fun ChatInputBox(
                                 keyboardController?.hide()
                                 focusManager.clearFocus()
                                 if (!showAttachmentMenu) {
-                                    val hasFullImages = if (android.os.Build.VERSION.SDK_INT >= 33) {
-                                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                    } else {
-                                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                    }
-                                    val hasPartialImages = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                        androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                    } else false
-                                    val isExternalStorageManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                                        android.os.Environment.isExternalStorageManager()
-                                    } else false
-
-                                    if (hasFullImages || hasPartialImages || isExternalStorageManager) {
-                                        viewModel.loadRecentImages(context)
-                                        onAttachmentMenuChange(true)
-                                    } else {
-                                        onRequestStoragePermission(Manifest.permission.READ_EXTERNAL_STORAGE) // The parameter is ignored in ChatScreen now
-                                    }
+                                    onRequestStoragePermission()
                                 } else {
                                     onAttachmentMenuChange(false)
                                 }
@@ -420,12 +403,7 @@ fun ChatInputBox(
                                                     startX = change.position.x
                                                     startTimeMs = System.currentTimeMillis()
                                                     swipeDragX = 0f
-                                                    val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                                                    if (hasPermission) {
-                                                        viewModel.startRecordingAudio(context)
-                                                    } else {
-                                                        onRequestAudioPermission(Manifest.permission.RECORD_AUDIO)
-                                                    }
+                                                    onRequestAudioPermission()
                                                 } else if (change.pressed) {
                                                     // DRAG — track horizontal swipe
                                                     swipeDragX = change.position.x - startX

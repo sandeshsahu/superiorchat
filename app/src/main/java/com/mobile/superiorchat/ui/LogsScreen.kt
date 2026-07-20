@@ -235,7 +235,7 @@ fun LogsScreen() {
 
 @Composable
 private fun LogEntryRow(entry: LogEntry) {
-    val sdf = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("hh:mm:ss.SSS a", Locale.getDefault()) }
     val timeStr = sdf.format(Date(entry.timestamp))
 
     val levelColor = when (entry.level) {

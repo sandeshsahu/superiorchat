@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui.components
+package com.mobile.superiorchat.ui.components.media
 
 import android.graphics.Bitmap
 import android.media.MediaPlayer
@@ -122,9 +122,15 @@ private fun MediaViewerContent(
 ) {
     val scope = rememberCoroutineScope()
     var isControlsVisible by remember { mutableStateOf(true) }
+    var lastInteractionTime by remember { mutableStateOf(System.currentTimeMillis()) }
+
+    fun userInteracted() {
+        isControlsVisible = true
+        lastInteractionTime = System.currentTimeMillis()
+    }
 
     // Auto-hide controls loop
-    LaunchedEffect(isControlsVisible) {
+    LaunchedEffect(isControlsVisible, lastInteractionTime) {
         if (isControlsVisible) {
             delay(3500)
             isControlsVisible = false
@@ -206,7 +212,8 @@ private fun MediaViewerContent(
                     VideoPlayerComponent(
                         path = path,
                         isControlsVisible = isControlsVisible,
-                        onToggleControls = { isControlsVisible = !isControlsVisible }
+                        onToggleControls = { isControlsVisible = !isControlsVisible },
+                        onUserInteraction = { userInteracted() }
                     )
                 }
             } else {
@@ -362,7 +369,8 @@ private fun MediaViewerContent(
 private fun VideoPlayerComponent(
     path: String,
     isControlsVisible: Boolean,
-    onToggleControls: () -> Unit
+    onToggleControls: () -> Unit,
+    onUserInteraction: () -> Unit
 ) {
     val context = LocalContext.current
     var isPlaying by remember { mutableStateOf(false) }
@@ -404,7 +412,9 @@ private fun VideoPlayerComponent(
         mediaPlayer = mp
 
         onDispose {
-            mp.stop()
+            try {
+                if (mp.isPlaying) mp.stop()
+            } catch (e: Exception) {}
             mp.release()
             mediaPlayer = null
         }
@@ -489,6 +499,7 @@ private fun VideoPlayerComponent(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
                                 onClick = {
+                                    onUserInteraction()
                                     mediaPlayer?.let {
                                         if (it.isPlaying) {
                                             it.pause()
@@ -535,6 +546,7 @@ private fun VideoPlayerComponent(
                     Slider(
                         value = if (duration > 0) currentPos.toFloat() / duration else 0f,
                         onValueChange = { percent ->
+                            onUserInteraction()
                             mediaPlayer?.let {
                                 val targetMs = (percent * duration).toInt()
                                 it.seekTo(targetMs)

@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui.components
+package com.mobile.superiorchat.ui.components.media
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler

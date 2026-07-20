@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui.components
+package com.mobile.superiorchat.ui.components.media
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -129,38 +129,29 @@ fun MediaPicker(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .pointerInput(Unit) {
-                            var dragAmountX = 0f
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    if (dragAmountX < -150f && currentTab == PickerTab.GALLERY) {
-                                        currentTab = PickerTab.FILES
-                                    } else if (dragAmountX > 150f && currentTab == PickerTab.FILES) {
-                                        currentTab = PickerTab.GALLERY
-                                    }
-                                    dragAmountX = 0f
-                                }
-                            ) { _, dragAmount ->
-                                dragAmountX += dragAmount
-                            }
-                        }
                 ) {
-                    AnimatedContent(
-                        targetState = currentTab,
-                        transitionSpec = {
-                            if (targetState == PickerTab.FILES) {
-                                slideInHorizontally(animationSpec = spring()) { it } togetherWith 
-                                slideOutHorizontally(animationSpec = spring()) { -it }
-                            } else {
-                                slideInHorizontally(animationSpec = spring()) { -it } togetherWith 
-                                slideOutHorizontally(animationSpec = spring()) { it }
-                            }
-                        },
-                        label = "tab_switch_transition",
+                    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                        initialPage = if (initialTab == PickerTab.GALLERY) 0 else 1,
+                        pageCount = { 2 }
+                    )
+                    
+                    LaunchedEffect(pagerState.currentPage) {
+                        currentTab = if (pagerState.currentPage == 0) PickerTab.GALLERY else PickerTab.FILES
+                    }
+                    
+                    LaunchedEffect(currentTab) {
+                        val targetPage = if (currentTab == PickerTab.GALLERY) 0 else 1
+                        if (pagerState.currentPage != targetPage) {
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    }
+
+                    androidx.compose.foundation.pager.HorizontalPager(
+                        state = pagerState,
                         modifier = Modifier.fillMaxSize()
-                    ) { tab ->
-                        when (tab) {
-                            PickerTab.GALLERY -> {
+                    ) { page ->
+                        when (page) {
+                            0 -> {
                                 isBottomBarVisible = true
                                 GalleryGrid(
                                     preLoadedMedia = viewModel.allLocalMedia,
@@ -169,7 +160,7 @@ fun MediaPicker(
                                     onCameraClick = onCameraClick
                                 )
                             }
-                            PickerTab.FILES -> {
+                            1 -> {
                                 FileExplorer(
                                     viewModel = viewModel,
                                     onDismiss = animatedDismiss,

@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui
+package com.mobile.superiorchat.ui.profile
 
 import android.app.Application
 import android.content.Context
@@ -57,37 +57,67 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun loadProfile() {
         val token = prefs.botToken
         if (token.isBlank()) return
+        val expectedBotId = token.substringBefore(":")
         
         viewModelScope.launch(Dispatchers.IO) {
-            isLoading = true
-            
-            // Fetch everything in parallel
-            val meDeferred = async { TelegramApi.getMe(token) }
-            val descDeferred = async { TelegramApi.getMyDescription(token) }
-            val shortDescDeferred = async { TelegramApi.getMyShortDescription(token) }
-            val photoDeferred = async { TelegramApi.getMyProfilePhotoUrl(token) }
-            
-            val me = meDeferred.await()
-            val desc = descDeferred.await()
-            val shortDesc = shortDescDeferred.await()
-            val photoUrl = photoDeferred.await()
-            
-            if (me != null) {
-                botId = me.result?.id?.toString() ?: ""
-                displayName = me.result?.first_name ?: ""
-                username = me.result?.username ?: ""
-            }
-            description = desc
-            shortDescription = shortDesc
-            
-            if (photoUrl != null) {
-                // We just store the URL as Uri, AsyncImage will handle downloading and caching
-                avatarUri = Uri.parse(photoUrl)
+            // Load from Cache immediately
+            val cachedProfile = AppGraph.appRepository.getProfileSync(expectedBotId)
+            if (cachedProfile != null) {
+                botId = cachedProfile.chatId
+                displayName = cachedProfile.title
+                username = cachedProfile.username
+                description = cachedProfile.bio ?: ""
+                shortDescription = "" // Can be added to DB later if needed
+                avatarUri = if (cachedProfile.profilePhotoPath.isNotBlank()) Uri.parse(cachedProfile.profilePhotoPath) else null
             } else {
-                avatarUri = null
+                isLoading = true
             }
             
-            isLoading = false
+            // Sync from network
+            try {
+                val meDeferred = async { TelegramApi.getMe(token) }
+                val descDeferred = async { TelegramApi.getMyDescription(token) }
+                val shortDescDeferred = async { TelegramApi.getMyShortDescription(token) }
+                val photoDeferred = async { TelegramApi.getMyProfilePhotoUrl(token) }
+                
+                val me = meDeferred.await()
+                val desc = descDeferred.await()
+                val shortDesc = shortDescDeferred.await()
+                val photoUrl = photoDeferred.await()
+                
+                if (me != null) {
+                    botId = me.result?.id?.toString() ?: ""
+                    displayName = me.result?.first_name ?: ""
+                    username = me.result?.username ?: ""
+                    description = desc
+                    shortDescription = shortDesc
+                    
+                    if (photoUrl != null) {
+                        avatarUri = Uri.parse(photoUrl)
+                    } else {
+                        avatarUri = null
+                    }
+                    
+                    // Update cache
+                    val userProfile = com.mobile.superiorchat.data.entity.UserProfile(
+                        chatId = botId,
+                        title = displayName,
+                        username = username,
+                        type = "bot",
+                        profilePhotoPath = photoUrl ?: "",
+                        photoUniqueId = "",
+                        bio = description,
+                        inviteLink = null,
+                        hasProtectedContent = false,
+                        isForum = false
+                    )
+                    AppGraph.appRepository.insertProfile(userProfile)
+                }
+            } catch (e: Exception) {
+                // Silently ignore network errors during sync, relying on cache
+            } finally {
+                isLoading = false
+            }
         }
     }
 
@@ -154,52 +184,28 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch(Dispatchers.IO) {
             isSaving = true
             try {
-                // 1. Load bitmap
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val originalBitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream?.close()
-
-                if (originalBitmap != null) {
-                    val width = originalBitmap.width
-                    val height = originalBitmap.height
-                    val minDim = Math.min(width, height)
-                    
-                    // 2. Apply the user's fractional crop box on the original image
-                    val pixelCropX = (cropX * width).toInt().coerceIn(0, width - 1)
-                    val pixelCropY = (cropY * height).toInt().coerceIn(0, height - 1)
-                    val maxPossibleSize = Math.min(width - pixelCropX, height - pixelCropY)
-                    val pixelCropSize = (cropSize * minDim).toInt().coerceAtMost(maxPossibleSize)
-                    
-                    val croppedBitmap = if (pixelCropSize > 0) {
-                         Bitmap.createBitmap(originalBitmap, pixelCropX, pixelCropY, pixelCropSize, pixelCropSize)
-                    } else originalBitmap
-
-                    // 4. Scale to 512x512
-                    val scaledBitmap = Bitmap.createScaledBitmap(croppedBitmap, 512, 512, true)
-                    
-                    // 4. Save to temp file
-                    val tempFile = File(context.cacheDir, "profile_upload_${System.currentTimeMillis()}.jpg")
-                    val outputStream = FileOutputStream(tempFile)
-                    scaledBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
-                    outputStream.close()
-                    
-                    // 5. Upload via TelegramApi
+                val tempFile = com.mobile.superiorchat.utils.FileUtils.cropAndScaleImage(
+                    context = context,
+                    uri = uri,
+                    cropX = cropX,
+                    cropY = cropY,
+                    cropSize = cropSize,
+                    targetWidth = 512,
+                    targetHeight = 512
+                )
+                
+                if (tempFile != null) {
                     val success = TelegramApi.setMyProfilePhoto(token, tempFile)
-                    
                     if (success) {
                         avatarUri = Uri.fromFile(tempFile)
                         StatusFlow.reportStatus(SyncState.SUCCESS, "Saved")
                     } else {
                         StatusFlow.reportStatus(SyncState.ERROR, "Upload failed")
                     }
-                    
-                    // Clean up original bitmap to save memory
-                    originalBitmap.recycle()
-                    if (croppedBitmap != originalBitmap) croppedBitmap.recycle()
-                    scaledBitmap.recycle()
                 } else {
-                    StatusFlow.reportStatus(SyncState.ERROR, "Failed to load image")
+                    StatusFlow.reportStatus(SyncState.ERROR, "Failed to crop image")
                 }
+
             } catch (e: Exception) {
                 StatusFlow.reportStatus(SyncState.ERROR, "Crop failed")
             } finally {

@@ -10,7 +10,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
-import com.mobile.superiorchat.ui.components.ActionDialog
+import com.mobile.superiorchat.ui.components.popups.ActionDialog
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState

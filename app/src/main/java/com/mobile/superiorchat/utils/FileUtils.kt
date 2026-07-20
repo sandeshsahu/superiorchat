@@ -180,4 +180,59 @@ object FileUtils {
         }
         return null
     }
+
+    /**
+     * Safely loads an image, applies a fractional crop box, scales it to a target size,
+     * and saves it to a temporary file. Prevents OOM by downsampling before cropping.
+     */
+    suspend fun cropAndScaleImage(
+        context: Context,
+        uri: Uri,
+        cropX: Float,
+        cropY: Float,
+        cropSize: Float,
+        targetWidth: Int = 512,
+        targetHeight: Int = 512,
+        maxLoadSize: Int = 2048
+    ): File? {
+        return try {
+            val loader = coil.ImageLoader(context)
+            val request = coil.request.ImageRequest.Builder(context)
+                .data(uri)
+                .size(maxLoadSize)
+                .allowHardware(false)
+                .build()
+                
+            val result = loader.execute(request)
+            if (result is coil.request.SuccessResult) {
+                val bitmap = (result.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+                if (bitmap != null) {
+                    val width = bitmap.width
+                    val height = bitmap.height
+                    val minDim = Math.min(width, height)
+                    
+                    val pixelCropX = (cropX * width).toInt().coerceIn(0, width - 1)
+                    val pixelCropY = (cropY * height).toInt().coerceIn(0, height - 1)
+                    val maxPossibleSize = Math.min(width - pixelCropX, height - pixelCropY)
+                    val pixelCropSize = (cropSize * minDim).toInt().coerceAtMost(maxPossibleSize)
+                    
+                    val croppedBitmap = android.graphics.Bitmap.createBitmap(bitmap, pixelCropX, pixelCropY, pixelCropSize, pixelCropSize)
+                    val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(croppedBitmap, targetWidth, targetHeight, true)
+                    
+                    val tempFile = File(context.cacheDir, "crop_${System.currentTimeMillis()}.jpg")
+                    val outputStream = java.io.FileOutputStream(tempFile)
+                    scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    outputStream.close()
+                    
+                    if (croppedBitmap != bitmap) croppedBitmap.recycle()
+                    if (scaledBitmap != croppedBitmap && scaledBitmap != bitmap) scaledBitmap.recycle()
+                    
+                    tempFile
+                } else null
+            } else null
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.ERROR, "FileUtils: Failed to crop image: ${e.message}")
+            null
+        }
+    }
 }

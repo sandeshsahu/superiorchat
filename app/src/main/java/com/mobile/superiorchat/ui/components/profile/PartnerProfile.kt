@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.ui.components
+package com.mobile.superiorchat.ui.components.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,7 +35,7 @@ import androidx.compose.foundation.clickable
 import com.mobile.superiorchat.data.entity.UserProfile
 
 @Composable
-fun TargetProfileDialog(
+fun PartnerProfile(
     userProfile: UserProfile?,
     onImageClick: (String) -> Unit,
     onDismiss: () -> Unit

@@ -38,9 +38,7 @@ import com.mobile.superiorchat.ui.MainViewModel
 class MainActivity : ComponentActivity() {
     private var showSetupUninstallDialog by mutableStateOf(false)
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { _ -> }
+    // Removed old requestPermissionLauncher
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -66,12 +64,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Request POST_NOTIFICATIONS by default on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
+        // POST_NOTIFICATIONS is now handled inside Compose via permissionHandler
 
         // Request Disable Battery Optimization by default
         val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
@@ -105,6 +98,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
+
+            LaunchedEffect(Unit) {
+                permissionHandler.requestNotification(showDenial = false) {}
+            }
+
             SuperiorChatTheme(darkTheme = true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -113,10 +112,7 @@ class MainActivity : ComponentActivity() {
                     AppScreen(
                         viewModel = viewModel,
                         requestPostNotifications = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                AppLog.log(LogCategory.SYSTEM, "Requesting POST_NOTIFICATIONS permission")
-                                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
+                            permissionHandler.requestNotification {}
                         }
                     )
                     

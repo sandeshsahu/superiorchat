@@ -46,6 +46,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.ui.components.media.GalleryGrid
 import com.mobile.superiorchat.utils.QrManager
 import java.util.concurrent.Executors
 
@@ -71,85 +72,12 @@ fun QrScanner(
         }
     }
     
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        val imagesGranted = results[Manifest.permission.READ_MEDIA_IMAGES] == true
-        val storageGranted = results[Manifest.permission.READ_EXTERNAL_STORAGE] == true
-        val partialGranted = results[Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
-
-        if (imagesGranted || storageGranted) {
-            showCustomGallery = true
-        } else if (partialGranted) {
-            showCustomGallery = true
-            val activity = context as? Activity
-            val fullPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-            if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
-                        onContinue = { /* Do nothing, already showing picker */ },
-                        onGoToSettings = {
-                            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
-                        }
-                    )
-                )
-            } else {
-                onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess(
-                    onContinue = { /* Do nothing, already showing picker */ },
-                    onUpgrade = {
-                        val requestLauncher = (context as? androidx.activity.ComponentActivity)?.activityResultRegistry?.register(
-                            "temp_partial", ActivityResultContracts.RequestMultiplePermissions()
-                        ) { _ -> }
-                        requestLauncher?.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
-                    }
-                ))
-            }
-        } else {
-            val activity = context as? Activity
-            val permsToCheck = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-            } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
-                arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
-            } else {
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-            if (activity != null && !permsToCheck.any { perm -> ActivityCompat.shouldShowRequestPermissionRationale(activity, perm) }) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
-
-    val requestStoragePermission = {
-        onShowGlobalDialog(
-            com.mobile.superiorchat.ui.GlobalDialogState.StoragePermissionRationale(
-                onConfirm = {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
-                    } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
-                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO))
-                    } else {
-                        storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
-                    }
-                }
-            )
-        )
-    }
+    val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
 
     val launchGallery = {
-        val hasPerm = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED
-        } else {
-            ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        permissionHandler.requestStorageForMedia {
+            showCustomGallery = true
         }
-        if (hasPerm) showCustomGallery = true else requestStoragePermission()
     }
 
 
