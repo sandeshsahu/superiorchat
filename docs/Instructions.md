@@ -115,7 +115,7 @@ If you prefer to compile the application yourself instead of downloading the pre
 |------------|----------------|-------------|
 | **Original** | `./gradlew app:assembleOriginalDebug` | Builds the standard visible chat app. |
 | **Captive Portal** | `./gradlew app:assembleCaptivePortalDebug` | Builds the camouflaged, invisible chat app. |
-| **Setup App** | `./gradlew setupapp:assemblecaptiveDebug` | Builds the Setup wizard application with `CaptivePortal Flavor`. |
+| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug` | Builds the Setup wizard application with `CaptivePortal Flavor`. |
 
 > [!WARNING]
 > **Important Note for Setup App Compilation:**
