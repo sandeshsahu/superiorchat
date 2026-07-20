@@ -29,6 +29,7 @@ Thumbs.db
 # Keystore files
 *.jks
 *.keystore
+superiorchat-release.jks
 keystore.properties
 
 # Android Studio Profiling

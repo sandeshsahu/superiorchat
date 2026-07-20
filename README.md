@@ -1,105 +1,130 @@
-<h1 align="center">
-  Superior Chat
-</h1>
+<div align="center">
+  <h1>Superior Chat</h1>
+  <p><strong>Private, Stealth-First Messaging Powered by Telegram Bot API</strong></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Platform-Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android">
+    <img src="https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin">
+    <img src="https://img.shields.io/badge/Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose">
+    <img src="https://img.shields.io/badge/Telegram_Bot_API-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram">
+    <img src="https://img.shields.io/badge/License-Apache_2.0-D22128?style=for-the-badge" alt="License">
+  </p>
+</div>
+
+---
+
+> [!IMPORTANT]
+> **Superior Chat** is a stealth communication system for Android. It operates serverlessly by relaying end-to-end messages through the official Telegram Bot API, leaving **zero server footprint** while remaining completely **invisible** on the target device.
+
+---
+
+## 📑 Table of Contents
+- [🌟 Overview](#overview)
+- [📸 Screenshots](#screenshots)
+- [🚀 Key Highlights](#features)
+- [🤔 How It Works](#how-it-works)
+- [🛠️ Instructions & Setup](#setup)
+- [📚 Documentation](#documentation)
+- [⚖️ License](#license)
+
+---
+
+<h2 id="overview">🌟 Overview</h2>
+
+Superior Chat solves a unique privacy challenge: **How to chat securely without keeping a dedicated server or exposing a visible messaging app on your phone.**
+
+Instead of operating custom backend servers, Superior Chat uses the highly reliable Telegram Bot API as an encrypted message pipe:
+- 👤 **User A** chats directly inside their official Telegram application via a dedicated bot.
+- 👤 **User B** chats inside the custom, hidden Superior Chat app.
+- 🚫 **No Middleman Server**: All message histories and media are stored strictly locally on your device.
+
+---
+
+<h2 id="screenshots">📸 Screenshots</h2>
 
 <p align="center">
-  <strong>Stealthy, Serverless, End-to-End Android Chat via Telegram</strong>
+  <img src="docs/images/app/chat_screen2.jpg" width="30%" alt="Chat Screen">
+  &nbsp;
+  <img src="docs/images/app/chatscreen_withreactions.jpg" width="30%" alt="Chat with Reactions">
+  &nbsp;
+  <img src="docs/images/app/nav_menu.jpg" width="30%" alt="Navigation Menu">
 </p>
 
-<p align="center">
-  <img alt="Android" src="https://img.shields.io/badge/Android-10%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white" />
-  <img alt="Kotlin" src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" />
-  <img alt="Jetpack Compose" src="https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" />
-  <img alt="Telegram API" src="https://img.shields.io/badge/Telegram-Bot_API-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" />
-</p>
+> 🖼️ Explore more screenshots in the [docs/images/app](docs/images/app) and [docs/images/setupapp](docs/images/setupapp) directories.
 
 ---
 
-Superior Chat is a highly stealthy, serverless chat application built on Android. To eliminate maintenance costs and preserve absolute privacy, it utilizes the **Telegram Bot API** strictly as a transport layer. **Client A** chats via a custom, fully-featured, Room-backed Android UI, while **Client B** chats directly through their standard Telegram application with the configured bot. 
+<h2 id="features">🚀 Key Highlights</h2>
 
-> [!WARNING]  
-> **DISCLAIMER:** This project was built strictly as a technical experiment in serverless Android communication and stealth UX design. Users are responsible for complying with all applicable laws and regulations. I do not authorize its use for any malicious purposes. If you choose to use this software, you bear sole and absolute responsibility for any legal consequences. 
+| Feature | Description | Benefit |
+|---------|-------------|---------|
+| 👻 **Stealth App Disguise** | No launcher icon in stealth flavors; heavily disguised as native system components. | Invisible to casual snoopers & shoulder-surfers. |
+| 🔑 **Secret Access Codes** | Unlocked exclusively via a secret dialer code (`*#*#9131#*#*`) or Quick Settings tile. | Cannot be opened normally from the app drawer. |
+| 🛡️ **Camouflaged Alerts** | Notifications appear as harmless carrier/network system messages based on data states. | Complete privacy even when receiving alerts. |
+| ⚡ **Serverless Transport** | Powered entirely by Telegram Bot API long-polling. | Zero hosting costs, 99.9% uptime, no tracking. |
 
----
-<!-- 
-## 📸 Application Snapshots
-
-<p align="center">
-  <img src="docs/img/1.jpg" width="30%" />
-  <img src="docs/img/2.jpg" width="30%" />
-  <img src="docs/img/3.jpg" width="30%" />
-</p>
-
-*More snapshots are available in the [`docs/img/`](docs/img/) directory.*
-
---- -->
-
-## ✨ Highlights
-
-| Category | Capability |
-|:---|:---|
-| **Serverless Architecture** | No third-party backend or database. Telegram acts entirely as the secure transport pipe between Client A and Client B. |
-| **Absolute Stealth** | The main application has no launcher icon and hides completely from the app drawer. It is accessed exclusively by dialing `*#*#9131#*#*` in the native phone dialer. |
-| **Intruder Defense** | Incoming API updates are strictly filtered by Telegram Chat ID. Updates from any unauthorized chat are dropped instantly to prevent spam or intrusion. |
-| **Media & Queueing** | Handles text, photos, and voice notes (`.m4a`) flawlessly. Features instant media sync, offline queueing, and network recovery. |
-| **Rate Limiting** | Implements an intentional delay of 3 messages per second to prevent Telegram API flood limits. |
-| **Setup Application** | A temporary "burner" setup app provides a secure UI for injecting bot credentials via AES/GCM encrypted IPC intents, before permanently uninstalling itself. |
+👉 **[Click here to see Detailed Features](docs/Features.md)**
 
 ---
 
-## 🚀 Setup & Configuration
+<h2 id="how-it-works">🤔 How It Works</h2>
 
-Because Superior Chat operates in "Invisible Mode" from the moment it is installed, a temporary **Setup Application** (`:setupapp`) is bundled with the project to handle initial configuration securely.
+Superior Chat acts as a silent client that speaks directly to the Telegram API.
 
-### Client B (Target/Owner) Side
-1. Create a new bot using `@botfather` in Telegram and start the bot.
-2. Copy the **Bot Token** and your personal **Chat/Owner ID**.
-3. Send these credentials to Client A securely.
+```mermaid
+graph LR
+    subgraph "Your Device (Stealth)"
+        A["📱 Superior Chat App<br/>(Hidden Interface)"]
+    end
 
-### Client A (Android App) Side
-1. Install and open the **Setup Application**.
-2. The setup app will automatically install the main application (`com.mobile.superiorutils`) without a launcher icon, ensuring it is completely hidden.
-3. Enter Client B's Chat ID and Bot Token into the setup UI.
-4. Open the main application via the setup app's handshake prompt. 
-5. Follow the system prompt to **uninstall the setup application**, erasing all configuration footprints from the device.
-6. The app will launch the modern chat interface. For future access, simply dial `*#*#9131#*#*`.
+    subgraph "Cloud Pipe (Serverless)"
+        T["☁️ Telegram Bot API<br/>(Encrypted Relay)"]
+    end
 
----
+    subgraph "Partner Device"
+        B["💬 Official Telegram App<br/>(Standard Chat)"]
+    end
 
-## 🏗️ Architecture & Responsibilities 
-
-The application is built using a compact, highly cohesive MVVM directory layout under the `com.mobile.superiorutils` package. While Telegram handles data transport, the local app is fully responsible for UI, local storage, security, and media management.
-
-*   **`bot/`:** Wraps the OkHttp-based Telegram API and manages the long-polling loop (`BotSync.kt`) and secret local notifications.
-*   **`core/` & `data/`:** Houses the application graph, Room Database configuration, and `EncryptedSharedPreferences` for secure credential persistence.
-*   **`media/`:** Manages concurrency-safe foreground queueing and background uploads/downloads via WorkManager (`MediaWorker.kt`).
-*   **`service/`:** Background polling services (`BotService.kt`)
-*   **`ui/`:** Native Jetpack Compose UI (Material 3) featuring a rich chat bubble feed, voice recording interfaces, and camouflaged diagnostic logs.
-*   **`utils/`:** Contains stealth mechanisms, including the `CodeReceiver.kt` (intercepts the dialer code) and `CryptoUtils.kt` (AES/GCM/NoPadding 256-bit symmetric cryptography for secure IPC handshakes).
+    A -->|"Send Message<br/>(HTTPS POST)"| T
+    T -->|"Long Poll Update<br/>(getUpdates)"| A
+    T <-->|"Native Bot Chat"| B
+```
 
 ---
 
-## 🛠️ Tech Stack
+<h2 id="setup">🛠️ Instructions & Setup</h2>
 
-| Layer | Technology |
-|:---|:---|
-| **Language** | Kotlin 2.0 |
-| **UI Framework** | Jetpack Compose + Material 3 |
-| **Architecture** | MVVM with ViewModel & StateFlow |
-| **Networking** | `OkHttp3` & native `HttpURLConnection` |
-| **Security** | `androidx.security:security-crypto` (EncryptedSharedPreferences) & AES-256 GCM |
-| **Persistence** | Room Database |
-| **Background** | Foreground Service, WorkManager, BroadcastReceiver |
+Superior Chat utilizes a **two-app setup system** to ensure zero residual metadata is left behind on the device.
+
+1. **Setup App (`:setupapp`)**: A single-use configuration wizard used to scan QR codes or enter bot tokens. Once configured, it securely passes encrypted credentials to the main app via an RSA-2048 IPC handshake.
+2. **Main App (`:app`)**: The core hidden chat application that stays on the device.
+
+To install and set up the apps properly (including creating the Telegram Bot and generating the QR code), please read our complete setup guide:
+
+👉 **[Click here for the Installation & Setup Guide](docs/Instructions.md)**
 
 ---
 
-## ⚖️ License
+<h2 id="documentation">📚 Documentation</h2>
 
-This project is licensed under the **GNU General Public License v3.0** with the **Commons Clause** condition. 
+For detailed technical references, explore the dedicated documentation in this directory:
 
-This means:
-- ✅ You can view, modify, and use this code.
-- ❌ **You CANNOT sell this software** or provide it as a paid service.
-- ❌ This project cannot be used for commercial distribution or corporate earnings.
+- 🏗️ **[Architecture](docs/Architecture.md)** — System topology, module breakdown, component dependency graphs, and source trees.
+- ⚙️ **[Backend Mechanics](docs/Backend.md)** — Polling loops, network resilience, MediaSync upload/download engine, and background execution.
+- ✨ **[Features & Capabilities](docs/Features.md)** — Comprehensive user-facing capabilities, gestures, disguises, and UI interactions.
+- 📖 **[Installation Guide](docs/Instructions.md)** — Setup guide & building from source for developers.
+- ⚠️ **[Notes & Disclaimers](docs/Notes.md)** — Important known limitations, threat models, and legal disclaimers.
 
-See the full [LICENSE](LICENSE) file for exact terms.
+---
+
+<h2 id="license">⚖️ License</h2>
+
+This project is licensed under the Apache License 2.0. 
+For the full license text and terms of use, please view the **[LICENSE](LICENSE)** file.
+
+<br>
+
+<div align="center">
+  <sub>Built for privacy and discretion • Apache License 2.0</sub><br>
+  <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
+</div>
