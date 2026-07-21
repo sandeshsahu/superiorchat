@@ -89,6 +89,8 @@ fun AppScreen(
     }
 
     val permissionStatus by viewModel.permissionStatus.collectAsState()
+    val isNetworkAvailable by viewModel.isNetworkAvailable.collectAsState()
+    val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
 
     com.mobile.superiorchat.ui.components.popups.GlobalDialogHandler(
         dialogState = viewModel.activeGlobalDialog,
@@ -323,27 +325,37 @@ fun AppScreen(
                                 viewModel.botToken = ""
                                 viewModel.chatId = ""
                                 viewModel.saveCredentials()
-                            }
+                            },
+                            isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
+                            isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
+                            onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
+                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) }
                         )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
                         NavScreen.Logs -> LogsScreen()
-                        NavScreen.Settings -> SettingsScreen(
-                            isInternetConnected = permissionStatus.isInternetConnected,
+                        NavScreen.Settings -> {
+                            val tokenStatusText = when {
+                                !viewModel.hasCredentials -> "Invalid"
+                                !isNetworkAvailable -> "Offline"
+                                !isTelegramApiReachable -> "Invalid"
+                                else -> "Online"
+                            }
+                            
+                            SettingsScreen(
+                                isInternetConnected = isNetworkAvailable,
+                                tokenStatus = tokenStatusText,
                             botToken = viewModel.botToken,
                             chatId = viewModel.chatId,
-                            isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
                             isTileAccessEnabled = viewModel.tileAccessEnabled,
-                            isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
-                            onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                             onTileAccessChange = { viewModel.toggleTileAccess(it) },
-                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                             onSave = {
                                 viewModel.saveCredentials()
                             },
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                         )
+                        }
                     }
                 }
             }

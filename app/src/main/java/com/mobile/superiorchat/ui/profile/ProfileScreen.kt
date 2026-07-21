@@ -79,7 +79,11 @@ fun ProfileScreen(
     hasCredentials: Boolean,
     onClearCredentials: () -> Unit,
     onShowGlobalDialog: (GlobalDialogState) -> Unit = {},
-    onNavigateToSettings: (() -> Unit)? = null
+    onNavigateToSettings: (() -> Unit)? = null,
+    isAutoDownloadMediaEnabled: Boolean,
+    isScreenSecurityEnabled: Boolean,
+    onAutoDownloadMediaChange: (Boolean) -> Unit,
+    onScreenSecurityChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -279,7 +283,11 @@ fun ProfileScreen(
             hasCredentials = hasCredentials,
             onDismiss = { currentOverlay = ProfileOverlay.None },
             onClearCredentials = onClearCredentials,
-            onNavigateToAppSettings = onNavigateToSettings
+            onNavigateToAppSettings = onNavigateToSettings,
+            isAutoDownloadMediaEnabled = isAutoDownloadMediaEnabled,
+            isScreenSecurityEnabled = isScreenSecurityEnabled,
+            onAutoDownloadMediaChange = onAutoDownloadMediaChange,
+            onScreenSecurityChange = onScreenSecurityChange
         )
     }
 

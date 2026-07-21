@@ -297,10 +297,10 @@ fun ChatInputBox(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(9999.dp))
+                        .defaultMinSize(minHeight = 48.dp)
+                        .clip(RoundedCornerShape(24.dp))
                         .background(Color.White.copy(alpha = 0.05f))
-                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(9999.dp)),
+                        .border(1.dp, Color.White.copy(alpha = 0.05f), RoundedCornerShape(24.dp)),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     if (isRecording) {
@@ -316,19 +316,20 @@ fun ChatInputBox(
                             value = messageText,
                             onValueChange = { messageText = it },
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 16.dp)
-                                .wrapContentHeight(Alignment.CenterVertically)
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
                                 .onFocusChanged {
                                     if (it.isFocused) {
                                         onAttachmentMenuChange(false)
                                     }
                                 },
                             textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
-                            singleLine = true,
+                            singleLine = false,
+                            maxLines = 6,
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
                             decorationBox = { innerTextField ->
                                 Box(
-                                    modifier = Modifier.fillMaxSize(),
+                                    modifier = Modifier.fillMaxWidth(),
                                     contentAlignment = Alignment.CenterStart
                                 ) {
                                     if (messageText.isEmpty()) {

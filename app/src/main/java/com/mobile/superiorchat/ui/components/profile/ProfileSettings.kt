@@ -10,6 +10,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.BackHandler
 import com.mobile.superiorchat.ui.components.popups.ActionDialog
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.animation.core.Spring
@@ -45,11 +46,19 @@ import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.theme.DividerColor
 import com.mobile.superiorchat.theme.ErrorRed
 import com.mobile.superiorchat.theme.InfoBlue
+import com.mobile.superiorchat.theme.Primary
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
 import com.mobile.superiorchat.theme.TextPrimary
 import com.mobile.superiorchat.theme.TextSecondary
+import com.mobile.superiorchat.theme.Background
+
+import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+
+enum class ProfileSheetState { MAIN, DANGER_ZONE, CHAT_SETTINGS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,13 +66,21 @@ fun ProfileSettingsSheet(
     hasCredentials: Boolean,
     onDismiss: () -> Unit,
     onClearCredentials: () -> Unit,
-    onNavigateToAppSettings: (() -> Unit)?
+    onNavigateToAppSettings: (() -> Unit)?,
+    isAutoDownloadMediaEnabled: Boolean,
+    isScreenSecurityEnabled: Boolean,
+    onAutoDownloadMediaChange: (Boolean) -> Unit,
+    onScreenSecurityChange: (Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val context = LocalContext.current
-    var showDangerOptions by remember { mutableStateOf(false) }
+    var currentSheetState by remember { mutableStateOf(ProfileSheetState.MAIN) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var showUninstallConfirm by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = currentSheetState != ProfileSheetState.MAIN) {
+        currentSheetState = ProfileSheetState.MAIN
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -78,16 +95,21 @@ fun ProfileSettingsSheet(
         }
     ) {
         AnimatedContent(
-            targetState = showDangerOptions,
+            targetState = currentSheetState,
             transitionSpec = {
-                (slideInHorizontally(animationSpec = tween(300)) { width -> if (targetState) width else -width } +
+                val isForward = when (targetState) {
+                    ProfileSheetState.MAIN -> false
+                    else -> true
+                }
+                (slideInHorizontally(animationSpec = tween(300)) { width -> if (isForward) width else -width } +
                     fadeIn(animationSpec = tween(300))) togetherWith
-                (slideOutHorizontally(animationSpec = tween(300)) { width -> if (targetState) -width else width } +
+                (slideOutHorizontally(animationSpec = tween(300)) { width -> if (isForward) -width else width } +
                     fadeOut(animationSpec = tween(300)))
             },
             label = "sheet_content_anim"
-        ) { isDangerZone ->
-            if (!isDangerZone) {
+        ) { state ->
+            when (state) {
+                ProfileSheetState.MAIN -> {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -99,6 +121,16 @@ fun ProfileSettingsSheet(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Manage your profile preferences", color = TextSecondary, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(24.dp))
+                    
+                    SettingsSheetRow(
+                        icon = Icons.Filled.Chat,
+                        iconTint = PrimaryLight,
+                        title = "Chat Settings",
+                        subtitle = "Media, screenshots, and more",
+                        onClick = { currentSheetState = ProfileSheetState.CHAT_SETTINGS }
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Future features placeholder row
                     SettingsSheetRow(
@@ -148,11 +180,13 @@ fun ProfileSettingsSheet(
                             title = "Danger Zone",
                             subtitle = "Sensitive actions located here",
                             titleColor = ErrorRed,
-                            onClick = { showDangerOptions = true }
+                            onClick = { currentSheetState = ProfileSheetState.DANGER_ZONE }
                         )
                     }
                 }
-            } else {
+                }
+                
+                ProfileSheetState.DANGER_ZONE -> {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -167,7 +201,7 @@ fun ProfileSettingsSheet(
                                 .size(36.dp)
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(SurfaceLevel2)
-                                .bounceClick { showDangerOptions = false },
+                                .bounceClick { currentSheetState = ProfileSheetState.MAIN },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
@@ -242,6 +276,80 @@ fun ProfileSettingsSheet(
                             titleColor = ErrorRed,
                             onClick = { showUninstallConfirm = true }
                         )
+                    }
+                    }
+                }
+                
+                ProfileSheetState.CHAT_SETTINGS -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 24.dp)
+                    ) {
+                        // Back button and Chat Settings header
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(SurfaceLevel2)
+                                    .bounceClick { currentSheetState = ProfileSheetState.MAIN },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text("Chat Settings", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Media and security", color = TextSecondary, fontSize = 12.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Toggles
+                        var showAutoDownloadInfo by remember { mutableStateOf(false) }
+                        SettingsSwitchRow(
+                            title = "Auto-Download Media",
+                            subtitle = "Automatically download photos/videos",
+                            isChecked = isAutoDownloadMediaEnabled,
+                            onCheckedChange = onAutoDownloadMediaChange,
+                            onInfoClick = { showAutoDownloadInfo = true }
+                        )
+
+                        if (showAutoDownloadInfo) {
+                            com.mobile.superiorchat.ui.components.popups.ErrorDialog(
+                                title = "Auto-Download Media",
+                                message = "When enabled, photos and videos will automatically download when you receive them in chat. \n\nTurn this off to save mobile data.",
+                                onDismiss = { showAutoDownloadInfo = false }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        var showSecurityInfo by remember { mutableStateOf(false) }
+                        SettingsSwitchRow(
+                            title = "Block Screenshots",
+                            subtitle = "Prevent capturing chat screen",
+                            isChecked = isScreenSecurityEnabled,
+                            onCheckedChange = onScreenSecurityChange,
+                            onInfoClick = { showSecurityInfo = true }
+                        )
+
+                        if (showSecurityInfo) {
+                            com.mobile.superiorchat.ui.components.popups.ErrorDialog(
+                                title = "Screen Security",
+                                message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\nScreenshots will appear pure black.",
+                                onDismiss = { showSecurityInfo = false }
+                            )
+                        }
                     }
                 }
             }
@@ -327,5 +435,80 @@ private fun SettingsSheetRow(
             Text(subtitle, color = TextSecondary, fontSize = 11.sp)
         }
         Icon(trailingIcon, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    subtitle: String,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onInfoClick: (() -> Unit)? = null
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isChecked) 1.05f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+        label = "switch_scale"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(SurfaceLevel2)
+            .border(1.dp, DividerColor, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                if (onInfoClick != null) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = "Info",
+                        tint = TextSecondary,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable { onInfoClick() }
+                    )
+                }
+            }
+            Text(subtitle, color = TextSecondary, fontSize = 11.sp)
+        }
+        
+        Switch(
+            modifier = Modifier.scale(scale),
+            checked = isChecked,
+            onCheckedChange = onCheckedChange,
+            thumbContent = if (isChecked) {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                        tint = TextPrimary
+                    )
+                }
+            } else {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                        tint = Background
+                    )
+                }
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = Primary,
+                checkedTrackColor = Primary.copy(alpha = 0.5f),
+                uncheckedThumbColor = TextSecondary,
+                uncheckedTrackColor = Background.copy(alpha = 0.5f)
+            )
+        )
     }
 }

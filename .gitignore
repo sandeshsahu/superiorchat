@@ -54,3 +54,5 @@ do-not-delete-folder/
 .serena/
 .serena/cache/
 .serena/project.local.yml
+graphify-out/
+.graphify/

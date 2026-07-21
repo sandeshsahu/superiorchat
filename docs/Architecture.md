@@ -168,35 +168,43 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── LogsScreen.kt               # Diagnostic logs viewer
 │   ├── MainViewModel.kt            # Global app state
 │   ├── PermissionsScreen.kt        # Runtime permission handler
-│   ├── ProfileScreen.kt            # Target chat profile display
-│   ├── ProfileViewModel.kt         # Profile editing & photo state
 │   ├── SettingsScreen.kt           # Credential config & toggles
+│   ├── profile/                    # Profile feature package
+│   │   ├── ProfileScreen.kt        # Target chat profile display
+│   │   └── ProfileViewModel.kt     # Profile editing & photo state
 │   └── components/                 # Reusable UI components
-│       ├── profile/
-│       │   ├── EditInfoSheet.kt     # Modal sheet for editing profile details
-│       │   └── ProfileSettings.kt   # Danger zone & profile settings
-│       ├── AttachMenu.kt            # Attachment bottom sheet
-│       ├── AudioBubble.kt           # Waveform visualization & playback
-│       ├── ChatInputBox.kt          # Text input with recording & attachments
-│       ├── FileExplorer.kt          # Hierarchical file browser
-│       ├── GalleryGrid.kt           # Media grid with album filtering
-│       ├── ImageCropper.kt          # Photo cropping utility
-│       ├── MediaPicker.kt           # Media selection orchestrator
-│       ├── MediaViewer.kt           # Full-screen media viewer
-│       ├── MessageBubble.kt         # Message rendering (text/media)
-│       ├── Popups.kt                # Reusable dialogs (ActionDialog, etc.)
-│       ├── ProfileCard.kt           # Reusable profile header card
-│       ├── QrScanner.kt             # QR code scanner
-│       ├── ScrollEvent.kt           # Scroll state utility
-│       └── UIModifiers.kt           # Custom modifiers (glow, bounce, etc.)
+│       ├── AttachMenu.kt           # Attachment bottom sheet
+│       ├── ChatInputBox.kt         # Text input with recording & attachments
+│       ├── QrScanner.kt            # QR code scanner
+│       ├── ScrollEvent.kt          # Scroll state utility
+│       ├── UIModifiers.kt          # Custom modifiers (glow, bounce, etc.)
+│       ├── bubbles/                # Message rendering components
+│       │   ├── AudioBubble.kt      # Waveform visualization & playback
+│       │   ├── DocumentBubble.kt   # Document attachment rendering
+│       │   ├── MediaBubble.kt      # Photo/Video visualization
+│       │   └── MessageBubble.kt    # Standard text wrapper & orchestration
+│       ├── media/                  # Media handling UI
+│       │   ├── FileExplorer.kt     # Hierarchical file browser
+│       │   ├── GalleryGrid.kt      # Media grid with album filtering
+│       │   ├── ImageCropper.kt     # Photo cropping utility
+│       │   ├── MediaPicker.kt      # Media selection orchestrator
+│       │   └── MediaViewer.kt      # Full-screen media viewer
+│       ├── popups/                 # Modals and Dialogs
+│       │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
+│       │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
+│       └── profile/                # Profile UI fragments
+│           ├── EditInfoSheet.kt    # Modal sheet for editing profile details
+│           ├── PartnerProfile.kt   # Reusable profile header card
+│           └── ProfileSettings.kt  # Danger zone & profile settings
 │
 └── utils/                          # Cross-cutting utilities
-    ├── AppLog.kt                    # Thread-safe diagnostic logger
-    ├── BootReceiver.kt              # Starts service on device boot
-    ├── FileUtils.kt                 # File type resolution & IO
-    ├── QrManager.kt                 # QR code generation & AES decryption
-    ├── Security.kt                  # RSA/AES encryption (Keystore-backed)
-    └── Validator.kt                 # Regex patterns for bot token/chat ID
+    ├── AppLog.kt                   # Thread-safe diagnostic logger
+    ├── BootReceiver.kt             # Starts service on device boot
+    ├── FileUtils.kt                # File type resolution & IO
+    ├── Permissions.kt              # Universal permission state & rationale handler
+    ├── QrManager.kt                # QR code generation & AES decryption
+    ├── Security.kt                 # RSA/AES encryption (Keystore-backed)
+    └── Validator.kt                # Regex patterns for bot token/chat ID
 ```
 
 ### 4.2 Flavor Source Sets
