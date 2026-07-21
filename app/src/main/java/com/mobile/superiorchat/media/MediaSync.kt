@@ -58,6 +58,7 @@ object MediaSync {
         job?.cancel()
         activeTransfers.remove(messageId)
         _transferProgress.remove(messageId)
+        StatusFlow.unregisterTransfer(messageId)
         scope.launch {
             markDownloadFailed(context, messageId)
         }
@@ -248,7 +249,8 @@ object MediaSync {
 
             AppLog.log(LogCategory.SYSTEM, "Writing downloaded stream to local path: ${localFile.absolutePath}")
             val totalBytes = body.contentLength()
-            val progressFlow = _transferProgress.getOrPut(messageId) { MutableStateFlow(0f) }
+            val progressFlow = StatusFlow.registerTransfer(messageId, isUpload = false, mediaType = mediaType, fileName = msg?.mediaFileName ?: fileId, localPath = localFile.absolutePath)
+            _transferProgress[messageId] = progressFlow
             downloadMutex.withLock {
                 body.byteStream().use { input ->
                     FileOutputStream(localFile).use { output ->
@@ -262,7 +264,9 @@ object MediaSync {
                             output.write(buffer, 0, bytesRead)
                             totalRead += bytesRead
                             if (totalBytes > 0) {
-                                progressFlow.value = (totalRead.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                                val prog = (totalRead.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                                progressFlow.value = prog
+                                StatusFlow.updateProgress(messageId, prog)
                             }
                         }
                     }
@@ -287,6 +291,7 @@ object MediaSync {
             return false
         } finally {
             cancelledTransfers.remove(messageId)
+            StatusFlow.unregisterTransfer(messageId)
         }
     }
 
@@ -340,11 +345,15 @@ object MediaSync {
             }
 
             AppLog.log(LogCategory.NETWORK, "Uploading $mediaType file of size ${file.length()} bytes to chat $chatId")
-            val progressFlow = _transferProgress.getOrPut(messageId) { MutableStateFlow(0f) }
+            val displayName = if (file.name.matches(Regex("^-?\\d+_.+"))) file.name.substringAfter("_") else file.name
+            val progressFlow = StatusFlow.registerTransfer(messageId, isUpload = true, mediaType = mediaType, fileName = displayName, localPath = localPath)
+            _transferProgress[messageId] = progressFlow
             val resultMessageId = uploadMutex.withLock {
                 val progressListener: (Long, Long) -> Unit = { bytesWritten, totalBytes ->
                     if (totalBytes > 0) {
-                        progressFlow.value = (bytesWritten.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                        val prog = (bytesWritten.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+                        progressFlow.value = prog
+                        StatusFlow.updateProgress(messageId, prog)
                     }
                 }
                 when (mediaType) {
@@ -353,13 +362,7 @@ object MediaSync {
                     "voice" -> TelegramApi.sendVoice(token, chatId, file, onProgress = progressListener)
                     "audio" -> TelegramApi.sendAudio(token, chatId, file, onProgress = progressListener)
                     "document" -> {
-                        // Strip the timestamp prefix (e.g. "1234567890_report.pdf" -> "report.pdf")
-                        val originalName = if (file.name.matches(Regex("^-?\\d+_.+"))) {
-                            file.name.substringAfter("_")
-                        } else {
-                            file.name
-                        }
-                        TelegramApi.sendDocument(token, chatId, file, caption = "", displayName = originalName, onProgress = progressListener)
+                        TelegramApi.sendDocument(token, chatId, file, caption = "", displayName = displayName, onProgress = progressListener)
                     }
                     else -> null
                 }
@@ -387,6 +390,7 @@ object MediaSync {
             return false
         } finally {
             cancelledTransfers.remove(messageId)
+            StatusFlow.unregisterTransfer(messageId)
         }
     }
 

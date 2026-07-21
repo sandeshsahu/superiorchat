@@ -7,21 +7,26 @@ import java.io.IOException
 object LocalDirs {
 
     enum class MediaType(val folderName: String) {
-        IMAGE("SuperiorChat Images"),
-        VIDEO("SuperiorChat Video"),
-        AUDIO("SuperiorChat Audio"),
-        DOCUMENT("SuperiorChat Documents"),
-        VOICE_NOTE("SuperiorChat Voice Notes")
+        IMAGE("Images"),
+        VIDEO("Video"),
+        AUDIO("Audio"),
+        DOCUMENT("Documents"),
+        VOICE_NOTE("Voice Notes")
     }
 
-    private fun getBaseDir(context: Context): File {
+    private fun getAppName(context: Context): String {
+        return context.applicationInfo.loadLabel(context.packageManager).toString()
+    }
+
+    fun getBaseDir(context: Context): File {
+        val appName = getAppName(context)
         // Use externalMediaDirs to put it in Android/media/<packagename>
         val mediaDirs = context.externalMediaDirs
         val base = if (mediaDirs.isNotEmpty() && mediaDirs[0] != null) {
-            File(mediaDirs[0], "SuperiorChat/Media")
+            File(mediaDirs[0], "$appName/Media")
         } else {
             // Fallback
-            File(context.getExternalFilesDir(null), "SuperiorChat/Media")
+            File(context.getExternalFilesDir(null), "$appName/Media")
         }
         if (!base.exists()) {
             base.mkdirs()

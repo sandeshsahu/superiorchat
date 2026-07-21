@@ -32,6 +32,8 @@
 - 📌 **Replies & Pinning**: Swipe to reply to specific messages or pin critical messages to the top banner.
 - 🏷️ **Status Indicators**: Real-time delivery status updates (`Sending`, `Sent`, `Failed`) and `Edited` labels.
 - ✅ **Multi-Selection Mode**: Select multiple messages at once for bulk self-delete or "Delete for everyone".
+- 🕰️ **Message Timestamps**: Clear 12-hour (AM/PM) timestamps for all chat messages and system logs.
+- 💬 **Multi-line Input**: Smoothly expanding chat input box supporting multi-line text drafting.
 
 ---
 
@@ -40,15 +42,17 @@
 - 📷 **Photos & Videos**: In-app camera capture, high-resolution photo sharing, and video playback with smart thumbnails.
 - 🎙️ **Voice Messages**: Record voice notes featuring dynamic animated waveform visualizations and interactive playback controls.
 - 📁 **File & Document Sharing**: Send any file type (PDF, DOC, APK) up to `50MB` and download up to `20MB` with automatic file type icons.
-- 🗄️ **Integrated File Explorer**: Built-in, hierarchical file browser with recent items, folder navigation, and search.
-- 🖼️ **Smart Media Picker**: Custom gallery grid neatly organized by albums, featuring camera shortcuts and multi-file support.
+- 📊 **Real-Time Transfers**: Global, expandable overlay displaying live upload/download progress categorized by media type, featuring individual cancellation controls.
+- 🗄️ **Integrated File Explorer**: Built-in, hierarchical file browser with recent items, folder navigation, search, and native media thumbnails.
+- 🖼️ **Smart Media Picker**: Custom gallery grid neatly organized by albums, featuring camera shortcuts, multi-file support, and buttery-smooth swipe gestures.
 
 ---
 
 <h2 id="profile">🤖 3. Profile & Credential Management</h2>
 
-- 🎨 **Profile Customization**: Change the bot's profile photo (using a built-in cropping tool), display name, and bio directly from within the app.
+- 🎨 **Profile Customization**: Change the bot's profile photo (using a professional pan-and-zoom cropping tool), display name, and bio directly from within the app.
 - 🔑 **Credential Setup**: Quickly configure your Bot Token and Chat ID via QR Code scanning or manual entry with real-time format validation.
+- 🧹 **Chat Cleanup**: Dedicated options to completely wipe local chat history and locally downloaded media from the device.
 - ⚠️ **Danger Zone Controls**: Dedicated safety options to clear credentials (with warnings) or completely uninstall the app cleanly.
 
 ---

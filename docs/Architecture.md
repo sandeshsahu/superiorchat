@@ -72,7 +72,7 @@ graph TD
 ```mermaid
 graph TB
     subgraph "UI Layer (Jetpack Compose)"
-        NAV[AppNav] --> CS[ChatScreen]
+        NAV[AppNav & StatusFlowOverlay] --> CS[ChatScreen]
         NAV --> PS[ProfileScreen]
         NAV --> SS[SettingsScreen]
         NAV --> LS[LogsScreen]
@@ -129,7 +129,7 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── KeyProvider.kt              # ContentProvider exposing RSA public key for setup IPC
 │   ├── NetState.kt                 # Connectivity monitoring via StateFlow
 │   ├── ServiceCore.kt              # Foreground service lifecycle & WorkManager fallback
-│   └── StatusFlow.kt               # Global sync state management
+│   └── StatusFlow.kt               # Global sync & active media transfer state management
 │
 ├── data/                           # Persistence
 │   ├── Prefs.kt                    # EncryptedSharedPreferences (AES-256-GCM)
@@ -150,7 +150,7 @@ app/src/main/java/com/mobile/superiorchat/
 ├── media/                          # Media handling
 │   ├── AudioPlayer.kt              # Voice note playback
 │   ├── AudioRecorder.kt            # Voice note recording (M4A/AMR)
-│   ├── LocalDirs.kt                # Media directory management (sent/received)
+│   ├── LocalDirs.kt                # Dynamic media directory management (flavor aware)
 │   ├── MediaSync.kt                # Concurrent-safe transfers + WorkManager
 │   └── MediaWorker.kt              # WorkManager CoroutineWorker
 │
@@ -170,7 +170,7 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── PermissionsScreen.kt        # Runtime permission handler
 │   ├── SettingsScreen.kt           # Credential config & toggles
 │   ├── profile/                    # Profile feature package
-│   │   ├── ProfileScreen.kt        # Target chat profile display
+│   │   ├── ProfileScreen.kt        # Bot's own profile display (separated from receiver's profile)
 │   │   └── ProfileViewModel.kt     # Profile editing & photo state
 │   └── components/                 # Reusable UI components
 │       ├── AttachMenu.kt           # Attachment bottom sheet
@@ -191,6 +191,7 @@ app/src/main/java/com/mobile/superiorchat/
 │       │   └── MediaViewer.kt      # Full-screen media viewer
 │       ├── popups/                 # Modals and Dialogs
 │       │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
+│       │   ├── StatusPill.kt       # Future-proof global sync & transfer state pill
 │       │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
 │       └── profile/                # Profile UI fragments
 │           ├── EditInfoSheet.kt    # Modal sheet for editing profile details

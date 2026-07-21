@@ -41,6 +41,18 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.mobile.superiorchat.ui.components.ScrollEvent
 import com.mobile.superiorchat.ui.components.popups.MessageContextMenu
 import com.mobile.superiorchat.ui.components.popups.DeleteWarningDialog
@@ -531,54 +543,7 @@ fun ChatScreen(
                     }
                 }
                 
-                val syncState by com.mobile.superiorchat.core.StatusFlow.syncState.collectAsState()
-                val syncMessage by com.mobile.superiorchat.core.StatusFlow.syncMessage.collectAsState()
 
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = syncState != com.mobile.superiorchat.core.SyncState.IDLE,
-                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
-                ) {
-                    val pillBgColor = when (syncState) {
-                        com.mobile.superiorchat.core.SyncState.SUCCESS,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> PrimaryLight
-                        com.mobile.superiorchat.core.SyncState.ERROR,
-                        com.mobile.superiorchat.core.SyncState.OFFLINE,
-                        com.mobile.superiorchat.core.SyncState.AUTH_ERROR -> Color(0xFF690005) // Dark Red
-                        else -> SurfaceLevel1
-                    }
-                    val pillTextColor = when (syncState) {
-                        com.mobile.superiorchat.core.SyncState.SUCCESS,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> Color(0xFF1000A9) // Matches sent message text
-                        else -> Color.White
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(pillBgColor)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (syncState == com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE || syncState == com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                color = pillTextColor,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = syncMessage ?: "",
-                            color = pillTextColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
 
                 androidx.compose.animation.AnimatedVisibility(
                     visible = isScrolledUp || viewModel.hasUnreadMessages,
@@ -796,4 +761,6 @@ fun ChatScreen(
 }
 
 enum class PickerMode { NONE, GALLERY, FILES }
+
+
 

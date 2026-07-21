@@ -50,7 +50,7 @@ sequenceDiagram
 - **Online detection**: `ConnectivityManager.NetworkCallback` requiring both `NET_CAPABILITY_INTERNET` and `NET_CAPABILITY_VALIDATED`
 - **Offline behavior**: Polling suspends immediately on network loss, resumes instantly on reconnection via `NetworkWakeChannel`
 - **Backoff strategy**: Exponential — 333ms base, doubles per failure, capped at 5 minutes
-- **API reachability**: Tracked separately from general connectivity (Telegram may be blocked while device is online)
+- **API reachability**: Tracked separately from general connectivity via reactive state flows (`AppLog.isTelegramApiReachable`), allowing the system to instantly distinguish between being offline versus having invalid Telegram API access.
 
 ### Rate Limiting
 Token bucket algorithm in `SendRateLimiter`: 3 tokens, refills at 3/sec. Burst capacity of 3 messages, then ~333ms spacing.
@@ -99,14 +99,16 @@ graph TD
 
 ### Safety Guarantees
 - **Mutex protection**: Prevents concurrent transfers of the same file
-- **Cancellation support**: Proper cleanup via coroutine Job cancellation
+- **Cancellation support**: Proper cleanup via coroutine Job cancellation (integrated with `StatusFlow` for manual user cancellation)
+- **State tracking**: Real-time progress computation and active transfer registry via global `StatusFlow`
 - **Duplicate prevention**: WorkManager deduplication by tag (`msg_${messageId}`)
 - **Size limits**: 20MB download cap (auto-rejects with sender notification), 50MB upload cap (Telegram API limit)
 - **Transfer buffer**: 8KB streaming — files never fully loaded into memory
+- **Processing efficiency**: Heavy mathematical scaling, rotation, and compression (e.g., via `FileUtils.cropAndScaleImage()`) are processed asynchronously via `Dispatchers.IO`, utilizing `BitmapRegionDecoder` to strictly limit memory footprint and prevent OOM errors.
 
 ### Storage Organization
 ```
-/Android/media/<package>/SuperiorChat/Media/
+/Android/media/<package>/<AppName>/Media/
 ├── Images/       (Sent/ + Received/)
 ├── Video/        (Sent/ + Received/)
 ├── Audio/        (Sent/ + Received/)
@@ -150,10 +152,12 @@ graph TD
 |--------|---------|------------|
 | `MessageNode` | Individual messages | messageId, text, status, mediaType, replyToMessageId |
 | `ChatNode` | Conversation metadata | chatId, title, unreadCount, pinnedMessageId |
-| `UserProfile` | Cached target info | title, username, bio, profilePhotoPath |
+| `UserProfile` | Instant local caching of target info | title, username, bio, profilePhotoPath |
 | `EmojiUsage` | Reaction frequency | emoji, count |
 
 **Integrity**: Foreign keys with CASCADE delete (Message → Chat), indexed on `conversationId`, `status`, `timestamp`. Migrations v1→v8 with fallback handling at v3→v4.
+
+**Data Wiping**: Supports full recursive destruction via sequential database clearing (`MessageDao.clearAllMessages()`) and local media wiping (`LocalDirs.getBaseDir().deleteRecursively()`).
 
 ---
 

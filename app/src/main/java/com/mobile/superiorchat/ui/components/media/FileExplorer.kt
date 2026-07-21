@@ -372,23 +372,12 @@ fun FileExplorer(
                                             .padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        val icon = if (item.isDirectory) Icons.Default.Folder else com.mobile.superiorchat.utils.FileUtils.resolveFileIcon(item.name)
-                                        val iconColor = if (item.isDirectory) PrimaryLight else com.mobile.superiorchat.utils.FileUtils.resolveFileIconColor(item.name)
-
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(iconColor.copy(alpha = 0.1f)),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                imageVector = icon,
-                                                contentDescription = "File Type",
-                                                tint = iconColor,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
+                                        FileThumbnailOrIcon(
+                                            file = fileObj,
+                                            isDirectory = item.isDirectory,
+                                            modifier = Modifier.size(40.dp),
+                                            iconSize = 20.dp
+                                        )
                                         
                                         Spacer(modifier = Modifier.width(16.dp))
                                         
@@ -465,23 +454,12 @@ private fun FileListItem(
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val icon = com.mobile.superiorchat.utils.FileUtils.resolveFileIcon(item.name)
-        val iconColor = com.mobile.superiorchat.utils.FileUtils.resolveFileIconColor(item.name)
-        
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(iconColor.copy(alpha = 0.1f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = "File Icon",
-                tint = iconColor,
-                modifier = Modifier.size(22.dp)
-            )
-        }
+        FileThumbnailOrIcon(
+            file = File(item.path),
+            isDirectory = false,
+            modifier = Modifier.size(44.dp),
+            iconSize = 22.dp
+        )
         
         Spacer(modifier = Modifier.width(16.dp))
         
@@ -575,3 +553,48 @@ private fun StorageLocationItem(
     }
 }
 
+@Composable
+private fun FileThumbnailOrIcon(
+    file: File,
+    isDirectory: Boolean,
+    modifier: Modifier = Modifier,
+    iconSize: androidx.compose.ui.unit.Dp = 20.dp
+) {
+    val context = LocalContext.current
+    val mediaType = com.mobile.superiorchat.utils.FileUtils.getMediaType(file.name)
+    val isMedia = mediaType == "photo" || mediaType == "video"
+
+    Box(
+        modifier = modifier.clip(RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (!isDirectory && isMedia && file.exists()) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(file)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Thumbnail",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            val icon = if (isDirectory) Icons.Default.Folder else com.mobile.superiorchat.utils.FileUtils.resolveFileIcon(file.name)
+            val iconColor = if (isDirectory) PrimaryLight else com.mobile.superiorchat.utils.FileUtils.resolveFileIconColor(file.name)
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(iconColor.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = "File Type",
+                    tint = iconColor,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+        }
+    }
+}

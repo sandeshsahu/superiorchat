@@ -84,7 +84,7 @@ fun SettingsScreen(
                 onChatIdChange(chat)
                 onSave()
                 showAddManuallyDialog = false
-                Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
             }
         )
     }
@@ -97,7 +97,7 @@ fun SettingsScreen(
                 onChatIdChange(chat)
                 onSave()
                 showQrScanner = false
-                Toast.makeText(context, "QR Configuration Applied", Toast.LENGTH_SHORT).show()
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
             },
             onShowGlobalDialog = onShowGlobalDialog
         )

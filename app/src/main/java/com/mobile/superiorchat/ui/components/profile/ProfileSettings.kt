@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.NoAccounts
 import androidx.compose.material.icons.filled.DeleteForever
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Shield
@@ -70,17 +71,15 @@ fun ProfileSettingsSheet(
     isAutoDownloadMediaEnabled: Boolean,
     isScreenSecurityEnabled: Boolean,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
-    onScreenSecurityChange: (Boolean) -> Unit
+    onScreenSecurityChange: (Boolean) -> Unit,
+    onClearChat: (Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val context = LocalContext.current
     var currentSheetState by remember { mutableStateOf(ProfileSheetState.MAIN) }
     var showClearConfirm by remember { mutableStateOf(false) }
     var showUninstallConfirm by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = currentSheetState != ProfileSheetState.MAIN) {
-        currentSheetState = ProfileSheetState.MAIN
-    }
+    var showClearChatConfirm by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -94,6 +93,10 @@ fun ProfileSettingsSheet(
             )
         }
     ) {
+        BackHandler(enabled = currentSheetState != ProfileSheetState.MAIN) {
+            currentSheetState = ProfileSheetState.MAIN
+        }
+
         AnimatedContent(
             targetState = currentSheetState,
             transitionSpec = {
@@ -220,6 +223,29 @@ fun ProfileSettingsSheet(
                     }
                     
                     Spacer(modifier = Modifier.height(24.dp))
+
+                    if (hasCredentials) {
+                        // Clear Chat Button
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(ErrorRed.copy(alpha = 0.07f))
+                                .border(1.dp, ErrorRed.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
+                                .padding(4.dp)
+                        ) {
+                            SettingsSheetRow(
+                                icon = Icons.Filled.Delete,
+                                iconTint = ErrorRed,
+                                title = "Clear Chat",
+                                subtitle = "Permanently delete all messages",
+                                titleColor = ErrorRed,
+                                onClick = { showClearChatConfirm = true }
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
 
                     // Clear Credentials Button
                     Column(
@@ -370,6 +396,16 @@ fun ProfileSettingsSheet(
                 onDismiss()
             },
             onDismiss = { showClearConfirm = false }
+        )
+    }
+
+    if (showClearChatConfirm) {
+        com.mobile.superiorchat.ui.components.popups.ClearChatWarningDialog(
+            onDismiss = { showClearChatConfirm = false },
+            onConfirmClear = { deleteMedia ->
+                onClearChat(deleteMedia)
+                showClearChatConfirm = false
+            }
         )
     }
 

@@ -13,6 +13,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.zIndex
 import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.border
@@ -300,6 +301,10 @@ fun AppScreen(
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
             ) {
+                com.mobile.superiorchat.ui.components.popups.StatusPill(
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f)
+                )
+
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
@@ -329,7 +334,8 @@ fun AppScreen(
                             isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
                             isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
                             onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
-                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) }
+                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
+                            onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) }
                         )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
                         NavScreen.Logs -> LogsScreen()

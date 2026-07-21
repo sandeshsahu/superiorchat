@@ -39,4 +39,7 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE status = :status ORDER BY timestamp ASC")
     suspend fun getMessagesByStatus(status: MessageStatus): List<MessageNode>
+
+    @Query("DELETE FROM messages")
+    suspend fun clearAllMessages(): Int
 }

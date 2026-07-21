@@ -128,6 +128,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleAutoDownloadMedia(enabled: Boolean) {
         prefs.isAutoDownloadMediaEnabled = enabled
         autoDownloadMedia = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "Auto-Download Enabled" else "Auto-Download Disabled"
+        )
     }
 
     var tileAccessEnabled by mutableStateOf(prefs.isTileAccessEnabled)
@@ -144,6 +148,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleScreenSecurity(enabled: Boolean) {
         prefs.isScreenSecurityEnabled = enabled
         isScreenSecurityEnabled = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "Screenshot blocking Enabled" else "Screenshot blocking Disabled"
+        )
     }
 
     // -- Permissions State --
@@ -238,6 +246,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (prefs.isConfigured) {
             ServiceCore.ensureRunning(getApplication<Application>())
+            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
+        } else {
+            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Cleared")
+        }
+    }
+
+    fun clearChat(deleteMedia: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AppGraph.database.messageDao().clearAllMessages()
+                if (deleteMedia) {
+                    LocalDirs.getBaseDir(getApplication()).deleteRecursively()
+                    com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Chat and media cleared")
+                } else {
+                    com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Chat history cleared")
+                }
+                AppLog.log(LogCategory.SYSTEM, "Chat history cleared from local database", LogLevel.DEBUG)
+            } catch (e: Exception) {
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.ERROR, "Failed to clear chat")
+                AppLog.log(LogCategory.SYSTEM, "Error clearing chat history: ${e.message}", LogLevel.ERROR)
+            }
         }
     }
 }

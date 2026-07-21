@@ -73,7 +73,9 @@ class BotSync(private val context: Context) {
                         // from snoopers. If it actually fails, the catch block will set it to false later.
                         AppLog.setTelegramApiReachable(true)
                         
-                        if (StatusFlow.syncState.value == SyncState.OFFLINE) {
+                        if (prefs.botToken.isBlank()) {
+                            StatusFlow.reportStatus(SyncState.AUTH_ERROR, "Credentials empty")
+                        } else if (StatusFlow.syncState.value == SyncState.OFFLINE) {
                             StatusFlow.reportStatus(SyncState.SUCCESS, "Online")
                         }
                         AppLog.log(LogCategory.SYSTEM, "Network available. Waking up polling loop and flushing queue.")
@@ -95,10 +97,16 @@ class BotSync(private val context: Context) {
                 AppLog.isTelegramApiReachable.collect { isReachable ->
                     notifier.setNetworkState(isNetworkAvailable, isReachable)
                     if (!isReachable && isNetworkAvailable) {
-                        StatusFlow.reportStatus(SyncState.OFFLINE, "Telegram API Unreachable")
+                        if (prefs.botToken.isBlank()) {
+                            StatusFlow.reportStatus(SyncState.AUTH_ERROR, "Credentials empty")
+                        } else {
+                            StatusFlow.reportStatus(SyncState.OFFLINE, "Telegram API Unreachable")
+                        }
                         showSyncFeedback = true
                     } else if (isReachable && isNetworkAvailable) {
-                        if (StatusFlow.syncState.value == SyncState.OFFLINE) {
+                        if (prefs.botToken.isBlank()) {
+                            StatusFlow.reportStatus(SyncState.AUTH_ERROR, "Credentials empty")
+                        } else if (StatusFlow.syncState.value == SyncState.OFFLINE) {
                             StatusFlow.reportStatus(SyncState.SUCCESS, "Online")
                         }
                         AppLog.log(LogCategory.SYSTEM, "API reachable. Waking up polling loop.")

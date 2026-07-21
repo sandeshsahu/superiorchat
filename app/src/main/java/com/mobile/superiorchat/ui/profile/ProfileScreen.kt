@@ -83,7 +83,8 @@ fun ProfileScreen(
     isAutoDownloadMediaEnabled: Boolean,
     isScreenSecurityEnabled: Boolean,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
-    onScreenSecurityChange: (Boolean) -> Unit
+    onScreenSecurityChange: (Boolean) -> Unit,
+    onClearChat: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: ProfileViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -107,8 +108,6 @@ fun ProfileScreen(
 
     val launchGallery = { permissionHandler.requestGallery() }
 
-    val syncState by com.mobile.superiorchat.core.StatusFlow.syncState.collectAsState()
-    val syncMessage by com.mobile.superiorchat.core.StatusFlow.syncMessage.collectAsState()
 
     Scaffold(
         containerColor = Background
@@ -173,52 +172,6 @@ fun ProfileScreen(
                 }
             }
 
-            // StatusFlow Pill
-            androidx.compose.animation.AnimatedVisibility(
-                visible = syncState != com.mobile.superiorchat.core.SyncState.IDLE,
-                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = padding.calculateTopPadding() + 8.dp)
-            ) {
-                val pillBgColor = when (syncState) {
-                    com.mobile.superiorchat.core.SyncState.SUCCESS,
-                    com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
-                    com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> PrimaryLight
-                    com.mobile.superiorchat.core.SyncState.ERROR,
-                    com.mobile.superiorchat.core.SyncState.OFFLINE,
-                    com.mobile.superiorchat.core.SyncState.AUTH_ERROR -> Color(0xFF690005) // Dark Red
-                    else -> SurfaceLevel1
-                }
-                val pillTextColor = when (syncState) {
-                    com.mobile.superiorchat.core.SyncState.SUCCESS,
-                    com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
-                    com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> Color(0xFF1000A9) // Dark Blue for contrast
-                    else -> Color.White
-                }
-
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(pillBgColor)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (syncState == com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE || syncState == com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = pillTextColor,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(
-                        text = syncMessage ?: "",
-                        color = pillTextColor,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
         }
     }
 
@@ -281,13 +234,14 @@ fun ProfileScreen(
     if (currentOverlay is ProfileOverlay.Settings) {
         ProfileSettingsSheet(
             hasCredentials = hasCredentials,
-            onDismiss = { currentOverlay = ProfileOverlay.None },
-            onClearCredentials = onClearCredentials,
-            onNavigateToAppSettings = onNavigateToSettings,
             isAutoDownloadMediaEnabled = isAutoDownloadMediaEnabled,
             isScreenSecurityEnabled = isScreenSecurityEnabled,
             onAutoDownloadMediaChange = onAutoDownloadMediaChange,
-            onScreenSecurityChange = onScreenSecurityChange
+            onScreenSecurityChange = onScreenSecurityChange,
+            onDismiss = { currentOverlay = ProfileOverlay.None },
+            onClearCredentials = onClearCredentials,
+            onNavigateToAppSettings = onNavigateToSettings,
+            onClearChat = onClearChat
         )
     }
 
