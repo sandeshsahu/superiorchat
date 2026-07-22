@@ -221,93 +221,93 @@ fun DeleteWarningDialog(
 ) {
     var deleteForEveryone by remember { mutableStateOf(false) }
     
-    Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.Black,
+    BaseAppDialog(onDismiss = onDismiss) {
+        Text(
+            text = "Delete message?",
+            style = MaterialTheme.typography.titleLarge,
+            color = ErrorRed,
+            fontWeight = FontWeight.Bold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "Are you sure you want to delete this message?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+            lineHeight = 22.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFF333333), RoundedCornerShape(20.dp)),
-            shadowElevation = 8.dp
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { deleteForEveryone = !deleteForEveryone },
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(top = 22.dp, start = 22.dp, end = 22.dp, bottom = 8.dp)
+            Checkbox(
+                checked = deleteForEveryone,
+                onCheckedChange = { deleteForEveryone = it },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = PrimaryLight,
+                    uncheckedColor = TextSecondary,
+                    checkmarkColor = Color.Black
+                ),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = if (targetUserName != null && targetUserName.isNotBlank()) "Also delete for $targetUserName" else "Also delete for everyone",
+                color = TextPrimary,
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.height(40.dp)
             ) {
                 Text(
-                    text = "Delete message?",
-                    color = Color.White,
+                    text = "Cancel",
+                    color = TextSecondary,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 16.sp
+                    fontSize = 15.sp
                 )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Button(
+                onClick = {
+                    if (deleteForEveryone) onConfirmDeleteForEveryone() else onConfirmDeleteForMe()
+                },
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ErrorRed.copy(alpha = 0.15f),
+                    contentColor = ErrorRed
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+            ) {
                 Text(
-                    text = "Are you sure you want to delete this message?",
-                    color = Color(0xFFAAAAAA),
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp
+                    text = "Delete",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
                 )
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            indication = null
-                        ) { deleteForEveryone = !deleteForEveryone },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = deleteForEveryone,
-                        onCheckedChange = { deleteForEveryone = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = PrimaryLight,
-                            uncheckedColor = Color(0xFFAAAAAA),
-                            checkmarkColor = Color.Black
-                        ),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if (targetUserName != null && targetUserName.isNotBlank()) "Also delete for $targetUserName" else "Also delete for everyone",
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            color = InfoBlue,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                    }
-                    TextButton(
-                        onClick = {
-                            if (deleteForEveryone) onConfirmDeleteForEveryone() else onConfirmDeleteForMe()
-                        },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Delete",
-                            color = ErrorRed,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
             }
         }
     }
@@ -421,124 +421,124 @@ fun ClearChatWarningDialog(
 ) {
     var deleteMedia by remember { mutableStateOf(false) }
 
-    Dialog(onDismissRequest = onDismiss) {
+    BaseAppDialog(onDismiss = onDismiss) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Warning,
+                contentDescription = "Warning",
+                tint = ErrorRed,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Clear Chat History",
+                style = MaterialTheme.typography.titleLarge,
+                color = ErrorRed,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "This will permanently delete all messages from your device.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+            lineHeight = 22.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+        
         Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = Color.Black,
+            shape = RoundedCornerShape(8.dp),
+            color = ErrorRed.copy(alpha = 0.1f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Note: Due to Telegram limitations, messages will not be deleted for the other person.",
+                color = ErrorRed.copy(alpha = 0.9f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                lineHeight = 16.sp,
+                modifier = Modifier.padding(10.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, Color(0xFF333333), RoundedCornerShape(20.dp)),
-            shadowElevation = 8.dp
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { deleteMedia = !deleteMedia },
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(top = 22.dp, start = 22.dp, end = 22.dp, bottom = 8.dp)
+            Checkbox(
+                checked = deleteMedia,
+                onCheckedChange = { deleteMedia = it },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = PrimaryLight,
+                    uncheckedColor = TextSecondary,
+                    checkmarkColor = Color.Black
+                ),
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Also delete media from device",
+                color = TextPrimary,
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.height(40.dp)
             ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Warning,
-                        contentDescription = "Warning",
-                        tint = ErrorRed,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "Clear Chat History",
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 18.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-
                 Text(
-                    text = "This will permanently delete all messages from your device.",
-                    color = Color(0xFFAAAAAA),
-                    fontSize = 13.sp,
-                    lineHeight = 20.sp
+                    text = "Cancel",
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-                
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = ErrorRed.copy(alpha = 0.1f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Note: Due to Telegram limitations, messages will not be deleted for the other person.",
-                        color = ErrorRed.copy(alpha = 0.9f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 16.sp,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                            indication = null
-                        ) { deleteMedia = !deleteMedia },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(
-                        checked = deleteMedia,
-                        onCheckedChange = { deleteMedia = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = PrimaryLight,
-                            uncheckedColor = Color(0xFFAAAAAA),
-                            checkmarkColor = Color.Black
-                        ),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Also delete media from device",
-                        color = Color.White,
-                        fontSize = 14.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = onDismiss,
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Cancel",
-                            color = InfoBlue,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                    }
-                    TextButton(
-                        onClick = {
-                            onConfirmClear(deleteMedia)
-                            onDismiss()
-                        },
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = "Clear",
-                            color = ErrorRed,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Button(
+                onClick = {
+                    onConfirmClear(deleteMedia)
+                    onDismiss()
+                },
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ErrorRed.copy(alpha = 0.15f),
+                    contentColor = ErrorRed
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+            ) {
+                Text(
+                    text = "Clear",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
             }
         }
     }

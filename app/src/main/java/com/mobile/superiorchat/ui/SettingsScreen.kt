@@ -183,8 +183,8 @@ fun SettingsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
-                            .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
-                            .background(Primary, RoundedCornerShape(12.dp))
+                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(PrimaryLight, RoundedCornerShape(12.dp))
                             .bounceClick(scaleDown = 0.95f) {
                                 permissionHandler.requestCamera {
                                     showQrScanner = true
@@ -192,7 +192,7 @@ fun SettingsScreen(
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Scan QR Code", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Scan QR Code", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -255,7 +255,7 @@ fun SettingsScreen(
                                     imageVector = Icons.Filled.Check,
                                     contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    tint = TextPrimary
+                        tint = PrimaryLight
                                 )
                             }
                         } else {
@@ -268,12 +268,7 @@ fun SettingsScreen(
                                 )
                             }
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Primary,
-                            checkedTrackColor = Primary.copy(alpha = 0.5f),
-                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            uncheckedTrackColor = Background.copy(alpha = 0.5f)
-                        )
+                        colors = com.mobile.superiorchat.ui.components.luminaSwitchColors()
                     )
                 }
             }

@@ -29,6 +29,8 @@ import com.mobile.superiorchat.core.AppGraph
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
+import com.mobile.superiorchat.theme.TextPrimary
+import com.mobile.superiorchat.theme.TextSecondary
 import java.io.File
 
 import androidx.compose.foundation.clickable
@@ -79,7 +81,7 @@ fun PartnerProfile(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Close",
-                            tint = Color.White,
+                            tint = TextPrimary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -147,7 +149,7 @@ fun PartnerProfile(
                 // Title
                 Text(
                     text = title,
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -170,7 +172,7 @@ fun PartnerProfile(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = bio,
-                        color = Color.White.copy(alpha = 0.8f),
+                        color = TextSecondary,
                         fontSize = 13.sp,
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
@@ -220,12 +222,12 @@ private fun DetailRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            color = Color.White.copy(alpha = 0.6f),
+            color = TextSecondary,
             fontSize = 13.sp
         )
         Text(
             text = value,
-            color = Color.White,
+            color = TextPrimary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             maxLines = 1,

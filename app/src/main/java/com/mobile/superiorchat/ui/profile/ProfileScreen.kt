@@ -165,7 +165,7 @@ fun ProfileScreen(
 
             if (viewModel.isLoading) {
                 Box(
-                    modifier = Modifier.fillMaxSize().background(Color.Black.copy(0.4f)),
+                    modifier = Modifier.fillMaxSize().background(Background.copy(0.6f)),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = PrimaryLight)
@@ -261,7 +261,7 @@ fun ProfileScreen(
             title = "Warning: Rate Limits",
             message = "Telegram strictly limits how often you can change your bot's name and description. Frequent updates will result in a 24-hour ban. Are you sure you want to proceed?",
             icon = Icons.Filled.Warning,
-            iconTint = Color(0xFFE5C07B), // Warning Yellow
+            iconTint = WarningAmber,
             confirmText = "Proceed",
             dismissText = "Cancel",
             onConfirm = {
@@ -307,7 +307,7 @@ private fun ProfileHeroHeader(
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Primary.copy(alpha = 0.12f), Background),
+                    colors = listOf(PrimaryLight.copy(alpha = 0.12f), Background),
                     endY = Float.POSITIVE_INFINITY
                 )
             )
@@ -321,11 +321,11 @@ private fun ProfileHeroHeader(
                 Box(
                     modifier = Modifier
                         .size(110.dp)
-                        .glow(color = Primary.copy(alpha = glowAlpha), radius = 44f, dy = 0f, cornerRadius = 55.dp)
+                        .glow(color = PrimaryLight.copy(alpha = glowAlpha), radius = 44f, dy = 0f, cornerRadius = 55.dp)
                         .clip(CircleShape)
                         .border(
                             width = 2.dp,
-                            brush = Brush.sweepGradient(listOf(Primary, Secondary, PrimaryLight, Primary)),
+                            color = PrimaryLight,
                             shape = CircleShape
                         )
                         .bounceClick(onClick = onAvatarClick),
@@ -345,7 +345,7 @@ private fun ProfileHeroHeader(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(
-                                    Brush.radialGradient(listOf(Secondary.copy(0.4f), Primary.copy(0.2f))),
+                                    Brush.radialGradient(listOf(PrimaryLight.copy(0.4f), PrimaryLight.copy(0.2f))),
                                     CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -362,11 +362,11 @@ private fun ProfileHeroHeader(
                         .offset(x = (-2).dp, y = (-2).dp)
                         .glow(color = PrimaryLight.copy(0.5f), radius = 14f, dy = 4f, cornerRadius = 16.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(PrimaryLight, Primary)))
+                        .background(PrimaryLight)
                         .bounceClick(onClick = onEditPhotoClick),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Edit, null, tint = Background, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(15.dp))
                 }
             }
 
@@ -378,13 +378,13 @@ private fun ProfileHeroHeader(
                 transitionSpec = { slideInVertically { -it } + fadeIn() togetherWith slideOutVertically { it } + fadeOut() },
                 label = "name_anim"
             ) { name ->
-                Text(name, color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold,
+                Text(name, color = PrimaryLight, fontSize = 24.sp, fontWeight = FontWeight.Bold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            Text("@$username", color = PrimaryLight, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text("@$username", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
 
             Spacer(modifier = Modifier.height(10.dp))
 

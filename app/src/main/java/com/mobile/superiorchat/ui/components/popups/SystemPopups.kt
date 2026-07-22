@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -37,27 +38,50 @@ fun BaseAppDialog(
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            isVisible = false
+            onDismiss()
+        },
         properties = DialogProperties(
             dismissOnBackPress = true,
             dismissOnClickOutside = true,
             usePlatformDefaultWidth = false
         )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Background)
-                .border(1.dp, PrimaryLight.copy(alpha = 0.2f), RoundedCornerShape(24.dp))
-                .padding(24.dp)
+        val view = LocalView.current
+        val dialogWindow = (view.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.setDimAmount(0.65f)
+            dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = scaleIn(initialScale = 0.9f, animationSpec = tween(250)) + fadeIn(animationSpec = tween(250)),
+            exit = scaleOut(targetScale = 0.9f, animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                content = content
-            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .clip(RoundedCornerShape(24.dp)),
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.Start,
+                    content = content
+                )
+            }
         }
     }
 }
@@ -72,32 +96,42 @@ fun ErrorDialog(
         Text(
             text = title,
             style = MaterialTheme.typography.titleLarge,
-            color = Color(0xFFFFB4AB),
+            color = ErrorRed,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
         )
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            textAlign = TextAlign.Start,
+            lineHeight = 22.sp,
+            modifier = Modifier.fillMaxWidth()
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
         
-        Button(
-            onClick = onDismiss,
-            colors = ButtonDefaults.buttonColors(
-                containerColor = PrimaryLight.copy(alpha = 0.2f),
-                contentColor = PrimaryLight
-            ),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(0.5f)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "OK", fontWeight = FontWeight.Bold)
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ErrorRed.copy(alpha = 0.15f),
+                    contentColor = ErrorRed
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+            ) {
+                Text(text = "OK", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
         }
     }
 }
@@ -183,10 +217,7 @@ fun InfoDialog(
                                 onDismiss()
                             },
                             modifier = Modifier.height(40.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Primary,
-                                contentColor = Color.White
-                            ),
+                            colors = com.mobile.superiorchat.ui.components.luminaButtonColors(),
                             shape = RoundedCornerShape(24.dp),
                             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
                         ) {
@@ -217,56 +248,81 @@ fun ActionDialog(
     onDismiss: () -> Unit
 ) {
     BaseAppDialog(onDismiss = onDismiss) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(48.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = iconTint,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.weight(1f)
             )
-            Spacer(modifier = Modifier.height(16.dp))
         }
-        
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
         
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-            textAlign = TextAlign.Center
+            color = TextPrimary,
+            textAlign = TextAlign.Start,
+            lineHeight = 22.sp,
+            modifier = Modifier.fillMaxWidth()
         )
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(28.dp))
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = onDismiss) {
-                Text(text = dismissText, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontWeight = FontWeight.SemiBold)
-            }
             if (neutralText != null && onNeutral != null) {
-                TextButton(onClick = onNeutral) {
-                    Text(text = neutralText, color = PrimaryLight, fontWeight = FontWeight.SemiBold)
+                TextButton(
+                    onClick = onNeutral,
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Text(neutralText, color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
                 }
+                Spacer(modifier = Modifier.weight(1f))
             }
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryLight.copy(alpha = 0.2f),
-                    contentColor = PrimaryLight
-                ),
-                shape = RoundedCornerShape(12.dp),
+            
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.height(40.dp)
             ) {
-                Text(text = confirmText, fontWeight = FontWeight.Bold)
+                Text(dismissText, color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Button(
+                onClick = {
+                    onConfirm()
+                    onDismiss()
+                },
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (iconTint == ErrorRed) ErrorRed.copy(alpha = 0.15f) else PrimaryLight,
+                    contentColor = if (iconTint == ErrorRed) ErrorRed else MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+            ) {
+                Text(confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             }
         }
     }
@@ -283,6 +339,8 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "Permission Permanently Denied",
                 message = "This permission has been permanently denied. Please enable it in the App Settings.",
+                icon = Icons.Filled.Warning,
+                iconTint = ErrorRed,
                 confirmText = "Go to Settings",
                 onConfirm = {
                     context.startActivity(dialogState.intent)
@@ -295,6 +353,8 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "Media Access Denied",
                 message = "You have previously denied full access to your media. To allow full access or select more photos, please go to Settings.",
+                icon = Icons.Filled.Warning,
+                iconTint = ErrorRed,
                 confirmText = "Go to Settings",
                 dismissText = "Not Now",
                 onConfirm = {
@@ -433,7 +493,7 @@ fun CredentialsPopup(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = title,
-                color = Color.White,
+                color = PrimaryLight,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -523,9 +583,10 @@ fun CredentialsPopup(
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!isTokenValid || !isChatIdValid) ErrorRed else Primary,
-                    disabledContainerColor = Primary.copy(alpha = 0.3f),
-                    disabledContentColor = Color.White.copy(alpha = 0.5f)
+                    containerColor = if (!isTokenValid || !isChatIdValid) ErrorRed else PrimaryLight,
+                    contentColor = if (!isTokenValid || !isChatIdValid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = PrimaryLight.copy(alpha = 0.3f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
                 ),
                 shape = RoundedCornerShape(16.dp),
                 enabled = botToken.isNotBlank() && chatId.isNotBlank()
@@ -539,8 +600,16 @@ fun CredentialsPopup(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SurfaceLevel2,
+                    contentColor = TextSecondary
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

@@ -447,14 +447,14 @@ fun ChatScreen(
                                     modifier = Modifier
                                         .size(72.dp)
                                         .glow(color = Primary, radius = 40f, dx = 0f, dy = 0f)
-                                        .background(Primary.copy(alpha = 0.1f), CircleShape)
-                                        .border(1.dp, Primary.copy(alpha = 0.3f), CircleShape),
+                                        .background(PrimaryLight, CircleShape)
+                                        .border(1.dp, PrimaryLight.copy(alpha = 0.5f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Lock,
                                         contentDescription = "Secure Chat",
-                                        tint = PrimaryLight,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }

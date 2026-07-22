@@ -120,7 +120,7 @@ fun ProfileSettingsSheet(
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp)
                 ) {
-                    Text("Profile Settings", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text("Profile Settings", color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Manage your profile preferences", color = TextSecondary, fontSize = 12.sp)
                     Spacer(modifier = Modifier.height(24.dp))
@@ -333,7 +333,7 @@ fun ProfileSettingsSheet(
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
-                                Text("Chat Settings", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                Text("Chat Settings", color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("Media and security", color = TextSecondary, fontSize = 12.sp)
                             }
@@ -527,7 +527,7 @@ private fun SettingsSwitchRow(
                         imageVector = Icons.Filled.Check,
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize),
-                        tint = TextPrimary
+                        tint = PrimaryLight
                     )
                 }
             } else {
@@ -540,12 +540,7 @@ private fun SettingsSwitchRow(
                     )
                 }
             },
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = Primary,
-                checkedTrackColor = Primary.copy(alpha = 0.5f),
-                uncheckedThumbColor = TextSecondary,
-                uncheckedTrackColor = Background.copy(alpha = 0.5f)
-            )
+            colors = com.mobile.superiorchat.ui.components.luminaSwitchColors()
         )
     }
 }

@@ -54,7 +54,7 @@ fun EditInfoSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
         ) {
-            Text("Edit Info", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+            Text("Edit Info", color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Spacer(modifier = Modifier.height(4.dp))
             Text("Changes saved locally — backend coming soon", color = TextSecondary, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(24.dp))
@@ -104,13 +104,14 @@ fun EditInfoSheet(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 enabled = canSave,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Primary,
+                    containerColor = PrimaryLight,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     disabledContainerColor = SurfaceLevel2
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text("Save Changes", fontWeight = FontWeight.Bold, fontSize = 15.sp,
-                    color = if (canSave) Color.White else TextSecondary)
+                    color = if (canSave) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary)
             }
         }
     }

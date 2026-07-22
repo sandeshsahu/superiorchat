@@ -215,8 +215,8 @@ fun AppScreen(
                     // Navigation Items (excluding Settings — accessed via gear icon)
                     NavScreen.entries.filter { it != NavScreen.Settings }.forEach { screen ->
                         val isSelected = currentScreen == screen
-                        val bgColor = if (isSelected) Primary.copy(alpha = 0.3f) else Color.Transparent
-                        val contentColor = if (isSelected) TextPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        val bgColor = if (isSelected) PrimaryLight else Color.Transparent
+                        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,

@@ -85,7 +85,7 @@ fun LogsScreen() {
                     .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("Live Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Live Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
                 Spacer(modifier = Modifier.width(8.dp))
                 var showLogsInfo by remember { mutableStateOf(false) }
                 Icon(
