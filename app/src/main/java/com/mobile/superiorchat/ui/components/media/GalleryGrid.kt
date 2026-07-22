@@ -52,7 +52,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImage
+import androidx.compose.ui.graphics.painter.ColorPainter
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.mobile.superiorchat.theme.Primary
@@ -83,7 +84,8 @@ fun GalleryGrid(
     LaunchedEffect(preLoadedMedia) {
         if (preLoadedMedia == null) {
             isLoading = true
-            // Load media on IO dispatcher to prevent UI thread lag during entry animation
+            // Delay to allow MediaPicker's entry animation (300ms) to complete before stealing CPU for DB/Cursor query
+            delay(350)
             kotlinx.coroutines.withContext(Dispatchers.IO) {
                 val media = com.mobile.superiorchat.core.AppGraph.appRepository.getAllLocalMedia(context)
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
@@ -97,79 +99,50 @@ fun GalleryGrid(
         }
     }
 
-    val albums = remember(localMediaState) {
-        listOf("All Media") + localMediaState.map { it.bucketName }.distinct().sorted()
+    val folders = remember(localMediaState) {
+        listOf("All Folders") + localMediaState.map { it.bucketName }.distinct().sorted()
     }
-    var selectedAlbum by remember { mutableStateOf("All Media") }
-    var dropdownExpanded by remember { mutableStateOf(false) }
+    var selectedFolder by remember { mutableStateOf("All Folders") }
+    
+    val mediaTypes = listOf("All Media", "Images", "Videos")
+    var selectedMediaType by remember { mutableStateOf("All Media") }
 
-    val filteredMedia = remember(localMediaState, selectedAlbum, showVideos) {
-        val baseList = if (showVideos) localMediaState else localMediaState.filter { !it.isVideo }
-        if (selectedAlbum == "All Media") {
-            baseList
-        } else {
-            baseList.filter { it.bucketName == selectedAlbum }
+    val filteredMedia = remember(localMediaState, selectedFolder, selectedMediaType, showVideos) {
+        var result = if (showVideos) localMediaState else localMediaState.filter { !it.isVideo }
+        
+        result = when (selectedMediaType) {
+            "Images" -> result.filter { !it.isVideo }
+            "Videos" -> result.filter { it.isVideo }
+            else -> result
         }
+        
+        if (selectedFolder != "All Folders") {
+            result = result.filter { it.bucketName == selectedFolder }
+        }
+        
+        result
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Box {
-                        Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.05f))
-                                .clickable { dropdownExpanded = true }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = selectedAlbum,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Icon(
-                                imageVector = Icons.Default.ArrowDropDown,
-                                contentDescription = "Select Album",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        
-                        DropdownMenu(
-                            expanded = dropdownExpanded,
-                            onDismissRequest = { dropdownExpanded = false },
-                            modifier = Modifier.background(SurfaceLevel2)
-                        ) {
-                            albums.forEach { album ->
-                                DropdownMenuItem(
-                                    text = { 
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(album, color = MaterialTheme.colorScheme.onSurface)
-                                            if (album == selectedAlbum) {
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = "Selected",
-                                                    tint = PrimaryLight,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        selectedAlbum = album
-                                        dropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(end = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilterDropdown(
+                            selectedText = selectedMediaType,
+                            options = mediaTypes,
+                            onOptionSelected = { selectedMediaType = it }
+                        )
+                        FilterDropdown(
+                            selectedText = selectedFolder,
+                            options = folders,
+                            onOptionSelected = { selectedFolder = it },
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
                     }
                 },
                 navigationIcon = {
@@ -211,7 +184,8 @@ fun GalleryGrid(
                 )
             }
         },
-        containerColor = Color.Black
+        containerColor = Color.Black,
+        contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -411,7 +385,7 @@ private fun MediaGridTile(
             }
             .scale(imageScale)
     ) {
-        SubcomposeAsyncImage(
+        AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(uri)
                 .size(300) // Downsample grid thumbnails
@@ -420,13 +394,8 @@ private fun MediaGridTile(
                 .crossfade(true)
                 .build(),
             contentDescription = "Media thumbnail",
-            loading = {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(ShimmerBrush())
-                )
-            },
+            placeholder = ColorPainter(SurfaceLevel2),
+            error = ColorPainter(SurfaceLevel2),
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
         )
@@ -529,4 +498,69 @@ private fun ShimmerBrush(): Brush {
         start = Offset.Zero,
         end = Offset(x = translateAnim, y = translateAnim)
     )
+}
+
+@Composable
+private fun FilterDropdown(
+    selectedText: String,
+    options: List<String>,
+    modifier: Modifier = Modifier,
+    onOptionSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.05f))
+                .clickable { expanded = true }
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = selectedText,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = "Select option",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.background(SurfaceLevel2)
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(option, color = MaterialTheme.colorScheme.onSurface)
+                            if (option == selectedText) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = PrimaryLight,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    },
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }

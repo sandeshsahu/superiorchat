@@ -50,24 +50,27 @@ fun MediaBubble(
     val isPhoto = message.mediaType == "photo"
     val isVideo = message.mediaType == "video"
     val mediaLabel = if (isPhoto) "IMAGE" else "VIDEO"
-    val isUploading = message.isFromMe && (message.status == MessageStatus.SENDING || message.status == MessageStatus.QUEUED)
+    val isUploading = message.isFromMe && message.status == MessageStatus.SENDING
+    val isQueued = message.isFromMe && message.status == MessageStatus.QUEUED
     val isFailed = message.status == MessageStatus.FAILED
     val isDownloading = !message.isFromMe && message.status == MessageStatus.SENDING
 
-    if (message.mediaLocalPath != null) {
+    val context = LocalContext.current
+    val resolvedFile = com.mobile.superiorchat.media.LocalDirs.resolveFile(context, message.mediaLocalPath)
+    if (resolvedFile != null && resolvedFile.exists()) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = if (isPhoto) 300.dp else 180.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(if (isVideo) Color.Black.copy(alpha = 0.5f) else Color.Transparent)
-                .pointerInput(isUploading) {
-                    if (isUploading) return@pointerInput
+                .pointerInput(isUploading || isQueued) {
+                    if (isUploading || isQueued) return@pointerInput
                     detectTapGestures(
                         onPress = {
                             val job = CoroutineScope(Dispatchers.Main).launch {
                                 delay(150)
-                                onMediaLongPressStart(message.mediaLocalPath, message.mediaType ?: "")
+                                onMediaLongPressStart(resolvedFile.absolutePath, message.mediaType ?: "")
                             }
                             val success = tryAwaitRelease()
                             job.cancel()
@@ -76,7 +79,7 @@ fun MediaBubble(
                                 if (isFailed && message.isFromMe) {
                                     viewModel.retryMessage(message)
                                 } else {
-                                    onMediaClick(message.mediaLocalPath, message.mediaType ?: "")
+                                    onMediaClick(resolvedFile.absolutePath, message.mediaType ?: "")
                                 }
                             }
                         }
@@ -85,8 +88,8 @@ fun MediaBubble(
             contentAlignment = Alignment.Center
         ) {
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(File(message.mediaLocalPath))
+                model = ImageRequest.Builder(context)
+                    .data(resolvedFile)
                     .apply {
                         if (isPhoto) {
                             size(600)
@@ -108,7 +111,7 @@ fun MediaBubble(
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.3f)))
             }
 
-            if (isUploading || (isFailed && message.isFromMe)) {
+            if (isUploading || isQueued || (isFailed && message.isFromMe)) {
                 Box(
                     modifier = Modifier
                         .matchParentSize()
@@ -120,6 +123,16 @@ fun MediaBubble(
                             Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry", tint = Color.White, modifier = Modifier.size(36.dp))
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Failed. Tap to retry", color = Color.White.copy(alpha = 0.8f), fontSize = 12.sp)
+                        }
+                    } else if (isQueued) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(30.dp),
+                                color = Color.White,
+                                strokeWidth = 2.5.dp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Preparing...", color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                     } else {
                         Box(contentAlignment = Alignment.Center) {
@@ -140,7 +153,7 @@ fun MediaBubble(
                         }
                     }
                 }
-            } else if (isVideo && !isUploading && !isFailed) {
+            } else if (isVideo && !isUploading && !isQueued && !isFailed) {
                 Box(
                     modifier = Modifier
                         .size(50.dp)
@@ -165,9 +178,9 @@ fun MediaBubble(
                     .background(Color.Black.copy(alpha = 0.6f))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
-                val totalSize = message.mediaFileSize ?: File(message.mediaLocalPath).length()
+                val totalSize = message.mediaFileSize ?: resolvedFile.length()
                 val sizeText = if (totalSize > 0) " • ${FileUtils.formatFileSize(totalSize)}" else ""
-                Text(if (isUploading) "UPLOADING$sizeText" else "$mediaLabel$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(if (isQueued) "PREPARING$sizeText" else if (isUploading) "UPLOADING$sizeText" else "$mediaLabel$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
@@ -178,10 +191,20 @@ fun MediaBubble(
                 .height(if (isPhoto) 150.dp else 180.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.Gray.copy(alpha = 0.3f))
-                .clickable(enabled = !isDownloading) { if (!isDownloading) viewModel.retryDownload(message) },
+                .clickable(enabled = !isDownloading && !isQueued) { if (!isDownloading && !isQueued) viewModel.retryDownload(message) },
             contentAlignment = Alignment.Center
         ) {
-            if (isDownloading) {
+            if (isQueued) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(30.dp),
+                        color = Color.White,
+                        strokeWidth = 2.5.dp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Preparing...", color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                }
+            } else if (isDownloading) {
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = { if (progress > 0f) progress else 0f },
@@ -234,7 +257,7 @@ fun MediaBubble(
             ) {
                 val totalSize = message.mediaFileSize ?: 0L
                 val sizeText = if (totalSize > 0) " • ${FileUtils.formatFileSize(totalSize)}" else ""
-                Text("$mediaLabel$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(if (isQueued) "PREPARING$sizeText" else "$mediaLabel$sizeText", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }
         }
         Spacer(modifier = Modifier.height(8.dp))

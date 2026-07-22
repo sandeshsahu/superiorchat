@@ -19,7 +19,20 @@ import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.mobile.superiorchat.theme.PrimaryLight
+
 object FileUtils {
+
+    /**
+     * Safely deletes a file without throwing uncaught exceptions.
+     */
+    fun deleteQuietly(file: File?): Boolean {
+        if (file == null || !file.exists()) return false
+        return try {
+            file.delete()
+        } catch (e: Exception) {
+            false
+        }
+    }
 
     /**
      * Accurately gets the file size in bytes from either a content:// URI or a file:// URI.
@@ -150,7 +163,9 @@ object FileUtils {
     }
 
     /**
-     * Copies a Content URI to a local file in the app's media directories.
+     * Copies a Content/File URI to a permanent local file in the app's media directories.
+     * Prevents duplicate copying if file is already inside app storage, and immediately purges
+     * temporary cache files (like camera_*.jpg or crop_*.jpg) after copying to Sent/.
      */
     fun copyUriToLocalFile(context: Context, uri: Uri, mediaType: String, tempMessageId: Long): File? {
         try {
@@ -162,9 +177,29 @@ object FileUtils {
                 "audio" -> com.mobile.superiorchat.media.LocalDirs.getAudioDir(context, isSent = true)
                 else -> com.mobile.superiorchat.media.LocalDirs.getDocumentDir(context, isSent = true)
             }
+
+            // Check if source file is already a File located inside app's media storage
+            if (uri.scheme == "file" || uri.scheme == null) {
+                val sourcePath = uri.path
+                if (sourcePath != null) {
+                    val sourceFile = File(sourcePath)
+                    val baseMediaDir = com.mobile.superiorchat.media.LocalDirs.getBaseDir(context).canonicalPath
+                    if (sourceFile.exists() && sourceFile.canonicalPath.startsWith(baseMediaDir)) {
+                        // File is already in app storage; reuse directly without duplicating!
+                        return sourceFile
+                    }
+                }
+            }
+
             val originalName = getFileName(context, uri)
             val safeFileName = "${-tempMessageId}_$originalName"
             val localFile = File(mediaDir, safeFileName)
+            val expectedSize = getFileSize(context, uri)
+
+            // Deduplication check: if file already exists in target with matching size, reuse
+            if (localFile.exists() && expectedSize > 0L && localFile.length() == expectedSize) {
+                return localFile
+            }
             
             context.contentResolver.openInputStream(uri)?.use { input ->
                 java.io.FileOutputStream(localFile).use { output ->
@@ -173,6 +208,18 @@ object FileUtils {
             }
             
             if (localFile.exists()) {
+                // If source was a temporary file in cacheDir (e.g. camera capture or image crop), delete it now
+                if (uri.scheme == "file" || uri.scheme == null) {
+                    val sourcePath = uri.path
+                    if (sourcePath != null) {
+                        val sourceFile = File(sourcePath)
+                        val cachePath = context.cacheDir?.canonicalPath
+                        if (cachePath != null && sourceFile.canonicalPath.startsWith(cachePath)) {
+                            deleteQuietly(sourceFile)
+                            AppLog.log(LogCategory.SYSTEM, "FileUtils: Purged temporary cache file after copying to Sent: ${sourceFile.name}")
+                        }
+                    }
+                }
                 return localFile
             }
         } catch (e: Exception) {
@@ -220,12 +267,15 @@ object FileUtils {
                     val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(croppedBitmap, targetWidth, targetHeight, true)
                     
                     val tempFile = File(context.cacheDir, "crop_${System.currentTimeMillis()}.jpg")
-                    val outputStream = java.io.FileOutputStream(tempFile)
-                    scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
-                    outputStream.close()
-                    
-                    if (croppedBitmap != bitmap) croppedBitmap.recycle()
-                    if (scaledBitmap != croppedBitmap && scaledBitmap != bitmap) scaledBitmap.recycle()
+                    var outputStream: java.io.FileOutputStream? = null
+                    try {
+                        outputStream = java.io.FileOutputStream(tempFile)
+                        scaledBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
+                    } finally {
+                        outputStream?.close()
+                        if (croppedBitmap != bitmap) croppedBitmap.recycle()
+                        if (scaledBitmap != croppedBitmap && scaledBitmap != bitmap) scaledBitmap.recycle()
+                    }
                     
                     tempFile
                 } else null

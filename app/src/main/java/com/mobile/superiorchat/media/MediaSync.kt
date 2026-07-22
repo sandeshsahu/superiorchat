@@ -13,6 +13,7 @@ import com.mobile.superiorchat.data.entity.MessageStatus
 import com.mobile.superiorchat.utils.LogCategory
 import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.utils.LogLevel
+import com.mobile.superiorchat.utils.FileUtils
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -168,12 +169,27 @@ object MediaSync {
         
         val db = LocalDb.getDatabase(context)
         val msg = db.messageDao().getMessageById(messageId)
-        if (msg != null && msg.status == MessageStatus.SENT && msg.mediaLocalPath != null) {
-            val file = File(msg.mediaLocalPath)
-            if (file.exists()) {
-                AppLog.log(LogCategory.SYSTEM, "performDownload: File already exists locally, completing.")
-                return true
+        
+        val actualFileId = fileId.substringBefore("|")
+        val fileUniqueId = if (fileId.contains("|")) fileId.substringAfter("|") else null
+        
+        // Check if matching file already exists on local disk (in received or sent directory)
+        val existingLocalFile = LocalDirs.findExistingMedia(
+            context = context,
+            mediaType = mediaType,
+            fileUniqueId = fileUniqueId,
+            messageId = messageId,
+            fileName = msg?.mediaFileName,
+            fileSize = msg?.mediaFileSize
+        )
+
+        if (existingLocalFile != null && existingLocalFile.exists()) {
+            val relativePath = LocalDirs.toRelativePath(context, existingLocalFile)
+            if (msg != null) {
+                db.messageDao().insertMessage(msg.copy(mediaLocalPath = relativePath, status = MessageStatus.SENT))
             }
+            AppLog.log(LogCategory.SYSTEM, "performDownload: Found existing local media file on disk at $relativePath; skipping network fetch.")
+            return true
         }
 
         // Wait if another job is already active for this transfer, otherwise register this one
@@ -205,11 +221,13 @@ object MediaSync {
             return updatedMsg?.status == MessageStatus.SENT
         }
 
+
+        var tmpFile: File? = null
         try {
-            AppLog.log(LogCategory.NETWORK, "Fetching file path from Telegram for fileId=$fileId")
-            val fileResponse = TelegramApi.getFile(token, fileId)
+            AppLog.log(LogCategory.NETWORK, "Fetching file path from Telegram for fileId=$actualFileId")
+            val fileResponse = TelegramApi.getFile(token, actualFileId)
             val filePath = fileResponse?.result?.file_path ?: run {
-                AppLog.log(LogCategory.NETWORK, "Failed to get file path from Telegram for fileId=$fileId", LogLevel.ERROR)
+                AppLog.log(LogCategory.NETWORK, "Failed to get file path from Telegram for fileId=$actualFileId", LogLevel.ERROR)
                 markDownloadFailed(context, messageId)
                 return false
             }
@@ -240,20 +258,25 @@ object MediaSync {
             }
 
             val ext = filePath.substringAfterLast('.', "")
-            val localFileName = if (msg != null && !msg.mediaFileName.isNullOrBlank()) {
+            val localFileName = if (!fileUniqueId.isNullOrBlank()) {
+                val cleanName = msg?.mediaFileName ?: "${actualFileId}.${ext}"
+                "${fileUniqueId}_$cleanName"
+            } else if (msg != null && !msg.mediaFileName.isNullOrBlank()) {
                 "${messageId}_${msg.mediaFileName}"
             } else {
-                "${fileId}.${ext}"
+                "${actualFileId}.${ext}"
             }
             val localFile = File(mediaDir, localFileName)
+            tmpFile = File(mediaDir, "${localFileName}.tmp")
 
-            AppLog.log(LogCategory.SYSTEM, "Writing downloaded stream to local path: ${localFile.absolutePath}")
+            AppLog.log(LogCategory.SYSTEM, "Streaming download to temp file: ${tmpFile.absolutePath}")
             val totalBytes = body.contentLength()
-            val progressFlow = StatusFlow.registerTransfer(messageId, isUpload = false, mediaType = mediaType, fileName = msg?.mediaFileName ?: fileId, localPath = localFile.absolutePath)
+            val progressFlow = StatusFlow.registerTransfer(messageId, isUpload = false, mediaType = mediaType, fileName = msg?.mediaFileName ?: actualFileId, localPath = localFile.absolutePath)
             _transferProgress[messageId] = progressFlow
+            
             downloadMutex.withLock {
                 body.byteStream().use { input ->
-                    FileOutputStream(localFile).use { output ->
+                    FileOutputStream(tmpFile).use { output ->
                         val buffer = ByteArray(8192)
                         var bytesRead: Int
                         var totalRead = 0L
@@ -271,21 +294,35 @@ object MediaSync {
                         }
                     }
                 }
+
+                // Atomic rename to final destination file on 100% completion
+                if (tmpFile.exists()) {
+                    if (localFile.exists()) localFile.delete()
+                    tmpFile.renameTo(localFile)
+                }
             }
             _transferProgress.remove(messageId)
 
-            val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
-            if (freshMsg != null) {
-                db.messageDao().insertMessage(freshMsg.copy(mediaLocalPath = localFile.absolutePath, status = MessageStatus.SENT))
-                AppLog.log(LogCategory.SYSTEM, "Successfully completed download & updated DB status to SENT for msgId=$messageId")
+            if (localFile.exists()) {
+                val relativePath = LocalDirs.toRelativePath(context, localFile)
+                val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
+                if (freshMsg != null) {
+                    db.messageDao().insertMessage(freshMsg.copy(mediaLocalPath = relativePath, status = MessageStatus.SENT))
+                    AppLog.log(LogCategory.SYSTEM, "Successfully completed download & updated DB status to SENT for msgId=$messageId")
+                } else {
+                    AppLog.log(LogCategory.SYSTEM, "Failed to update DB: Message not found for msgId=$messageId", LogLevel.ERROR)
+                }
+                return true
             } else {
-                AppLog.log(LogCategory.SYSTEM, "Failed to update DB: Message not found for msgId=$messageId", LogLevel.ERROR)
+                markDownloadFailed(context, messageId)
+                return false
             }
-            return true
         } catch (e: CancellationException) {
             AppLog.log(LogCategory.SYSTEM, "Download cancelled for msgId=$messageId")
+            FileUtils.deleteQuietly(tmpFile)
             throw e
         } catch (e: Exception) {
+            FileUtils.deleteQuietly(tmpFile)
             markDownloadFailed(context, messageId)
             AppLog.log(LogCategory.SYSTEM, "Exception in performDownload: ${e.message}", LogLevel.ERROR)
             return false
@@ -338,17 +375,17 @@ object MediaSync {
                 return updatedMsg?.status == MessageStatus.SENT
             }
 
-            val file = File(localPath)
-            if (!file.exists()) {
+            val file = LocalDirs.resolveFile(context, localPath)
+            if (file == null || !file.exists()) {
                 AppLog.log(LogCategory.SYSTEM, "performUpload failed: Local file does not exist at $localPath", LogLevel.ERROR)
                 return false
             }
 
             AppLog.log(LogCategory.NETWORK, "Uploading $mediaType file of size ${file.length()} bytes to chat $chatId")
             val displayName = if (file.name.matches(Regex("^-?\\d+_.+"))) file.name.substringAfter("_") else file.name
-            val progressFlow = StatusFlow.registerTransfer(messageId, isUpload = true, mediaType = mediaType, fileName = displayName, localPath = localPath)
+            val progressFlow = StatusFlow.registerTransfer(messageId, isUpload = true, mediaType = mediaType, fileName = displayName, localPath = file.absolutePath)
             _transferProgress[messageId] = progressFlow
-            val resultMessageId = uploadMutex.withLock {
+            val uploadResult = uploadMutex.withLock {
                 val progressListener: (Long, Long) -> Unit = { bytesWritten, totalBytes ->
                     if (totalBytes > 0) {
                         val prog = (bytesWritten.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
@@ -369,14 +406,36 @@ object MediaSync {
             }
             _transferProgress.remove(messageId)
 
+            val resultMessageId = uploadResult?.messageId
+            val fileUniqueId = uploadResult?.fileUniqueId
+
             val freshMsg = db.messageDao().getMessageById(messageId) ?: msg
             if (freshMsg != null) {
                 if (resultMessageId != null) {
+                    // Rename local file on disk from temporary -msgId_name to real uniqueId_name
+                    var finalFile = file
+                    if (file.name.startsWith("-") || file.name.contains("_")) {
+                        val cleanName = if (file.name.matches(Regex("^-?\\d+_.+"))) file.name.substringAfter("_") else file.name
+                        val finalName = if (!fileUniqueId.isNullOrBlank()) {
+                            "${fileUniqueId}_$cleanName"
+                        } else {
+                            "${resultMessageId}_$cleanName"
+                        }
+                        val renamedFile = File(file.parentFile, finalName)
+                        if (file.renameTo(renamedFile)) {
+                            finalFile = renamedFile
+                            val oldRelative = LocalDirs.toRelativePath(context, file)
+                            val newRelative = LocalDirs.toRelativePath(context, renamedFile)
+                            db.messageDao().updateMediaLocalPaths(oldRelative, newRelative)
+                        }
+                    }
+                    val relativePath = LocalDirs.toRelativePath(context, finalFile)
                     db.messageDao().deleteMessage(messageId)
-                    db.messageDao().insertMessage(freshMsg.copy(messageId = resultMessageId, status = MessageStatus.SENT))
-                    AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to SENT with real ID: $resultMessageId")
+                    db.messageDao().insertMessage(freshMsg.copy(messageId = resultMessageId, mediaUrl = if (fileUniqueId != null) "${freshMsg.mediaUrl}|$fileUniqueId" else freshMsg.mediaUrl, mediaLocalPath = relativePath, status = MessageStatus.SENT))
+                    AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to SENT with real ID: $resultMessageId (Path: $relativePath)")
                 } else {
-                    db.messageDao().insertMessage(freshMsg.copy(status = MessageStatus.FAILED))
+                    val relativePath = LocalDirs.toRelativePath(context, file)
+                    db.messageDao().insertMessage(freshMsg.copy(mediaLocalPath = relativePath, status = MessageStatus.FAILED))
                     AppLog.log(LogCategory.SYSTEM, "Updated DB status for msgId=$messageId to: FAILED")
                 }
             }
@@ -399,11 +458,12 @@ object MediaSync {
             val db = LocalDb.getDatabase(context)
             val msg = db.messageDao().getMessageById(messageId)
             if (msg != null) {
+                // Keep all media details (fileName, size, mediaUrl, mediaType) so UI thumbnail/bubble stays intact!
                 db.messageDao().insertMessage(msg.copy(status = MessageStatus.FAILED))
-                AppLog.log(LogCategory.SYSTEM, "Marked download as FAILED in DB for msgId=$messageId")
+                AppLog.log(LogCategory.SYSTEM, "Marked download/upload as FAILED in DB for msgId=$messageId")
             }
         } catch (e: Exception) {
-            AppLog.log(LogCategory.SYSTEM, "Failed to mark download as failed in DB: ${e.message}", LogLevel.ERROR)
+            AppLog.log(LogCategory.SYSTEM, "Failed to mark transfer as failed in DB: ${e.message}", LogLevel.ERROR)
         } finally {
             _transferProgress.remove(messageId)
         }
@@ -416,8 +476,11 @@ object MediaSync {
             val allInterrupted = queuedMsgs + sendingMsgs
 
             allInterrupted.forEach { msg ->
+                val resolvedFile = LocalDirs.resolveFile(context, msg.mediaLocalPath)
+                val fileExists = resolvedFile != null && resolvedFile.exists()
+
                 // Resume downloads in SENDING status
-                if (!msg.isFromMe && msg.status == MessageStatus.SENDING && msg.mediaUrl != null && msg.mediaLocalPath == null) {
+                if (!msg.isFromMe && msg.status == MessageStatus.SENDING && msg.mediaUrl != null && !fileExists) {
                     startDownloadImmediate(context, msg.messageId, msg.mediaUrl, msg.mediaType ?: "")
                 }
                 // Resume uploads in SENDING or QUEUED (when online) status
@@ -429,7 +492,6 @@ object MediaSync {
                         startUploadImmediate(context, msg.messageId, msg.mediaLocalPath, msg.mediaType ?: "")
                     }
                 }
-                // Text messages in QUEUED status are handled by BotSync.kt flushQueuedMessages() when online.
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "Error running startup media sync: ${e.message}", LogLevel.ERROR)

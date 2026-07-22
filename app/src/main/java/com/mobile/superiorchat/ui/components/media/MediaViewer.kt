@@ -96,6 +96,22 @@ fun MediaViewer(
             decorFitsSystemWindows = false
         )
     ) {
+        val view = androidx.compose.ui.platform.LocalView.current
+        DisposableEffect(view) {
+            val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            window?.statusBarColor = android.graphics.Color.TRANSPARENT
+            window?.navigationBarColor = android.graphics.Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                window?.isNavigationBarContrastEnforced = false
+                window?.isStatusBarContrastEnforced = false
+            }
+            (view.parent as? android.view.View)?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            onDispose {}
+        }
+
         AnimatedVisibility(
             visibleState = transitionState,
             enter = fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.9f, animationSpec = tween(300)),
@@ -141,7 +157,7 @@ private fun MediaViewerContent(
     val dragOffsetY = remember { Animatable(0f) }
     val dragOffsetX = remember { Animatable(0f) }
     val scaleFactor = remember { derivedStateOf { (1f - (Math.abs(dragOffsetY.value) / 1000f)).coerceIn(0.7f, 1f) } }
-    val backdropAlpha = remember { derivedStateOf { (1f - (Math.abs(dragOffsetY.value) / 800f)).coerceIn(0f, 0.95f) } }
+    val backdropAlpha = remember { derivedStateOf { (1f - (Math.abs(dragOffsetY.value) / 800f)).coerceIn(0f, 1f) } }
 
     // Pinch-to-zoom states
     var scale by remember { mutableStateOf(1f) }
@@ -222,7 +238,7 @@ private fun MediaViewerContent(
                         .data(
                             when {
                                 path.startsWith("content://") || path.startsWith("http://") || path.startsWith("https://") -> android.net.Uri.parse(path)
-                                else -> File(path)
+                                else -> com.mobile.superiorchat.media.LocalDirs.resolveFile(LocalContext.current, path) ?: File(path)
                             }
                         )
                         .size(2048)
@@ -323,45 +339,7 @@ private fun MediaViewerContent(
             }
         }
 
-        // Beautiful glassmorphic top header bar containing back/close button
-        AnimatedVisibility(
-            visible = isControlsVisible,
-            enter = fadeIn(animationSpec = tween(200)),
-            exit = fadeOut(animationSpec = tween(200)),
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.7f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Close full screen media",
-                        tint = Color.White
-                    )
-                }
-            }
-        }
+        // Top header removed in favor of swipe-to-dismiss
     }
 }
 
@@ -387,7 +365,8 @@ private fun VideoPlayerComponent(
                 if (path.startsWith("content://")) {
                     setDataSource(context, android.net.Uri.parse(path))
                 } else {
-                    setDataSource(path)
+                    val resolved = com.mobile.superiorchat.media.LocalDirs.resolveFile(context, path)
+                    setDataSource(resolved?.absolutePath ?: path)
                 }
                 setOnPreparedListener {
                     isPrepared = true

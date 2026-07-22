@@ -40,6 +40,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE status = :status ORDER BY timestamp ASC")
     suspend fun getMessagesByStatus(status: MessageStatus): List<MessageNode>
 
+    @Query("UPDATE messages SET mediaLocalPath = :newPath WHERE mediaLocalPath = :oldPath")
+    suspend fun updateMediaLocalPaths(oldPath: String, newPath: String): Int
+
     @Query("DELETE FROM messages")
     suspend fun clearAllMessages(): Int
 }

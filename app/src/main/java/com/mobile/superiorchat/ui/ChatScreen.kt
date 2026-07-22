@@ -635,6 +635,7 @@ fun ChatScreen(
                         onRequestStoragePermission = {
                             permissionHandler.requestStorageForMedia {
                                 viewModel.loadRecentImages(context)
+                                viewModel.loadAllLocalMedia(context)
                                 showAttachmentMenu = true
                             }
                         },
@@ -717,6 +718,10 @@ fun ChatScreen(
     // Handle system back press to exit selection mode before navigating away
     androidx.activity.compose.BackHandler(enabled = isInSelectionMode) {
         viewModel.exitSelectionMode()
+    }
+
+    androidx.activity.compose.BackHandler(enabled = showAttachmentMenu) {
+        showAttachmentMenu = false
     }
 
     MediaPicker(

@@ -212,7 +212,8 @@ fun FileExplorer(
                 )
             }
         },
-        containerColor = Color.Black
+        containerColor = Color.Black,
+        contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
         Box(
             modifier = Modifier

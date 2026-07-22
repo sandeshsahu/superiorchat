@@ -65,12 +65,14 @@ fun DocumentBubble(
         )
     }
 
-    val isUploading = message.isFromMe && (message.status == MessageStatus.SENDING || message.status == MessageStatus.QUEUED)
+    val isUploading = message.isFromMe && message.status == MessageStatus.SENDING
+    val isQueued = message.isFromMe && message.status == MessageStatus.QUEUED
     val isFailed = message.status == MessageStatus.FAILED
     val isDownloading = !message.isFromMe && message.status == MessageStatus.SENDING
 
-    if (message.mediaLocalPath != null && File(message.mediaLocalPath).exists()) {
-        val file = File(message.mediaLocalPath)
+    val resolvedFile = com.mobile.superiorchat.media.LocalDirs.resolveFile(context, message.mediaLocalPath)
+    if (resolvedFile != null && resolvedFile.exists()) {
+        val file = resolvedFile
         val displayName = message.mediaFileName ?: if (file.name.matches(Regex("^-?\\d+_.+"))) {
             file.name.substringAfter("_")
         } else {
@@ -82,7 +84,7 @@ fun DocumentBubble(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(if (message.isFromMe) Color.White.copy(alpha = 0.1f) else SurfaceLevel2)
-                .clickable(enabled = !isUploading) {
+                .clickable(enabled = !isUploading && !isQueued) {
                     if (isFailed) {
                         viewModel.retryMessage(message)
                     } else {
@@ -114,7 +116,18 @@ fun DocumentBubble(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isUploading) {
+            if (isQueued) {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = textColor,
+                        strokeWidth = 2.dp
+                    )
+                }
+            } else if (isUploading) {
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = { if (progress > 0f) progress else 0f },
@@ -161,7 +174,9 @@ fun DocumentBubble(
                 val ext = displayName.substringAfterLast(".", "").uppercase(Locale.ROOT)
                 val extPrefix = if (ext.isNotEmpty()) "$ext • " else ""
                 Text(
-                    text = if (isUploading) {
+                    text = if (isQueued) {
+                        "${extPrefix}Preparing..."
+                    } else if (isUploading) {
                         val uploaded = (progress * totalSize).toLong()
                         "${extPrefix}${FileUtils.formatFileSize(uploaded)} / ${FileUtils.formatFileSize(totalSize)}"
                     } else if (isFailed) {
@@ -169,7 +184,7 @@ fun DocumentBubble(
                     } else {
                         "${extPrefix}${FileUtils.formatFileSize(totalSize)}"
                     },
-                    color = textColor.copy(alpha = 0.6f),
+                    color = if (isQueued) PrimaryLight else textColor.copy(alpha = 0.6f),
                     fontSize = 11.sp
                 )
             }
@@ -183,11 +198,22 @@ fun DocumentBubble(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(if (message.isFromMe) Color.White.copy(alpha = 0.1f) else SurfaceLevel2)
-                .clickable(enabled = !isDownloading) { if (!isDownloading) viewModel.retryDownload(message) }
+                .clickable(enabled = !isDownloading && !isQueued) { if (!isDownloading && !isQueued) viewModel.retryDownload(message) }
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isDownloading) {
+            if (isQueued) {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = textColor,
+                        strokeWidth = 2.dp
+                    )
+                }
+            } else if (isDownloading) {
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
                         progress = { if (progress > 0f) progress else 0f },
@@ -227,7 +253,9 @@ fun DocumentBubble(
                 val ext = displayName.substringAfterLast(".", "").uppercase(Locale.ROOT)
                 val extPrefix = if (ext.isNotEmpty()) "$ext • " else ""
                 Text(
-                    text = if (isDownloading && totalSize > 0L) {
+                    text = if (isQueued) {
+                        "${extPrefix}Preparing..."
+                    } else if (isDownloading && totalSize > 0L) {
                         val downloaded = (progress * totalSize).toLong()
                         "${extPrefix}${FileUtils.formatFileSize(downloaded)} / ${FileUtils.formatFileSize(totalSize)}"
                     } else if (isFailed) {

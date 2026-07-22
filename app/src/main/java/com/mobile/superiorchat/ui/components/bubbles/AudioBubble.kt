@@ -1,4 +1,4 @@
-﻿package com.mobile.superiorchat.ui.components.bubbles
+package com.mobile.superiorchat.ui.components.bubbles
 
 import android.media.MediaMetadataRetriever
 import androidx.compose.foundation.background
@@ -155,18 +155,22 @@ fun AudioBubble(
     onDownloadClick: () -> Unit,
     onCancelClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     val currentPath by AudioPlayer.currentPlayingPath.collectAsState()
     val isPlayingFlow by AudioPlayer.isPlaying.collectAsState()
 
-    val isDownloaded = mediaLocalPath != null
-    val isCurrent = isDownloaded && currentPath == mediaLocalPath
+    val resolvedFile = remember(mediaLocalPath) { com.mobile.superiorchat.media.LocalDirs.resolveFile(context, mediaLocalPath) }
+    val resolvedPath = remember(resolvedFile) { resolvedFile?.takeIf { it.exists() }?.absolutePath }
+
+    val isDownloaded = resolvedPath != null
+    val isCurrent = isDownloaded && currentPath == resolvedPath
     val isPlaying = isCurrent && isPlayingFlow
 
-    var localDurationMs by remember(mediaLocalPath) { mutableStateOf(0L) }
-    LaunchedEffect(mediaLocalPath) {
-        if (mediaLocalPath != null) {
+    var localDurationMs by remember(resolvedPath) { mutableStateOf(0L) }
+    LaunchedEffect(resolvedPath) {
+        if (resolvedPath != null) {
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                localDurationMs = getAudioDuration(mediaLocalPath)
+                localDurationMs = getAudioDuration(resolvedPath)
             }
         }
     }
@@ -179,15 +183,16 @@ fun AudioBubble(
     val buttonBg = if (isFromMe) Color.White else Color(0xFF353535)
     val buttonIconTint = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFFC0C1FF)
     val isDownloading = status == MessageStatus.SENDING
+    val isQueued = isFromMe && status == MessageStatus.QUEUED
     val isFailed = status == MessageStatus.FAILED
 
     Row(
         modifier = Modifier.wrapContentWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (isCurrent) {
+        if (isCurrent && resolvedPath != null) {
             ActiveAudioPlayer(
-                mediaLocalPath = mediaLocalPath,
+                mediaLocalPath = resolvedPath,
                 isPlaying = isPlaying,
                 isDownloading = isDownloading,
                 isFailed = isFailed,
@@ -202,10 +207,11 @@ fun AudioBubble(
             )
         } else {
             InactiveAudioPlayer(
-                mediaLocalPath = mediaLocalPath,
+                mediaLocalPath = resolvedPath,
                 mediaUrl = mediaUrl,
                 mediaType = mediaType,
                 isDownloading = isDownloading,
+                isQueued = isQueued,
                 isFailed = isFailed,
                 isDownloaded = isDownloaded,
                 progress = progress,
@@ -327,9 +333,7 @@ fun ActiveAudioPlayer(
     )
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  InactiveAudioPlayer â€” not currently playing
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  Inactive AudioPlayer not currently playing
 
 @Composable
 fun InactiveAudioPlayer(
@@ -337,6 +341,7 @@ fun InactiveAudioPlayer(
     mediaUrl: String?,
     mediaType: String,
     isDownloading: Boolean,
+    isQueued: Boolean,
     isFailed: Boolean,
     isDownloaded: Boolean,
     progress: Float,
@@ -369,7 +374,13 @@ fun InactiveAudioPlayer(
             },
         contentAlignment = Alignment.Center
     ) {
-        if (isDownloading) {
+        if (isQueued) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = buttonIconTint,
+                strokeWidth = 2.dp
+            )
+        } else if (isDownloading) {
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { if (progress > 0f) progress else 0f },
@@ -421,6 +432,8 @@ fun InactiveAudioPlayer(
     val displaySec = localDurationMs / 1000
     val textVal = if (isDownloaded && displaySec > 0) {
         String.format(Locale.getDefault(), "%d:%02d", displaySec / 60, displaySec % 60)
+    } else if (isQueued) {
+        "Prep..."
     } else if (isDownloading) {
         "..."
     } else if (isFailed) {

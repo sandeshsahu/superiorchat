@@ -30,6 +30,7 @@ class SuperiorChatApp : Application(), ImageLoaderFactory {
         setupCrashHandler()
         AppGraph.init(this)
         com.mobile.superiorchat.core.NetState.register(this)
+        com.mobile.superiorchat.media.LocalDirs.clearTransientCache(this)
         AppLog.log(LogCategory.SYSTEM, "SuperiorChatApp initialized")
     }
 

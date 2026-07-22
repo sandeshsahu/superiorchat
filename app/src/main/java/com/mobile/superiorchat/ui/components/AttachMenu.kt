@@ -54,8 +54,8 @@ fun AttachMenu(
     val context = LocalContext.current
     AnimatedVisibility(
         visible = visible,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        enter = slideInVertically(initialOffsetY = { it }) + androidx.compose.animation.expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
     ) {
         Column(
             modifier = Modifier

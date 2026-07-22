@@ -97,10 +97,26 @@ fun MediaPicker(
             decorFitsSystemWindows = false
         )
     ) {
+        val view = androidx.compose.ui.platform.LocalView.current
+        DisposableEffect(view) {
+            val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            window?.statusBarColor = android.graphics.Color.TRANSPARENT
+            window?.navigationBarColor = android.graphics.Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                window?.isNavigationBarContrastEnforced = false
+                window?.isStatusBarContrastEnforced = false
+            }
+            (view.parent as? android.view.View)?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            view.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            onDispose {}
+        }
+
         AnimatedVisibility(
             visibleState = transitionState,
-            enter = slideInVertically(initialOffsetY = { it }, animationSpec = spring(dampingRatio = 0.85f)) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }, animationSpec = spring(dampingRatio = 0.85f)) + fadeOut()
+            enter = slideInVertically(initialOffsetY = { it }, animationSpec = tween(300, easing = androidx.compose.animation.core.LinearOutSlowInEasing)) + fadeIn(tween(300)),
+            exit = slideOutVertically(targetOffsetY = { it }, animationSpec = tween(250, easing = androidx.compose.animation.core.FastOutLinearInEasing)) + fadeOut(tween(250))
         ) {
             // Root Box with systemBarsPadding to prevent overlapping system bars
             Column(

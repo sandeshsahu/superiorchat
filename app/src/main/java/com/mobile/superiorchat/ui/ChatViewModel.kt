@@ -616,7 +616,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 repository.ensureConversationExists(chatId)
                 repository.insertMessage(newMsg)
 
-                val localFile = com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                val existingFile = LocalDirs.findLocalSourceMedia(context, mediaType, originalName, fileSize)
+                val localFile = existingFile ?: com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                
                 if (localFile == null) {
                     repository.updateMessageStatus(tempMessageId, MessageStatus.FAILED)
                     return@launch
@@ -689,7 +691,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val (tempMessageId, uri, mediaType) = validItems[i]
                 val newMsg = initialNodes[i]
                 try {
-                    val localFile = com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                    val originalName = com.mobile.superiorchat.utils.FileUtils.getFileName(context, uri)
+                    val fileSize = com.mobile.superiorchat.utils.FileUtils.getFileSize(context, uri)
+                    val existingFile = LocalDirs.findLocalSourceMedia(context, mediaType, originalName, fileSize)
+                    val localFile = existingFile ?: com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                    
                     if (localFile == null) {
                         repository.updateMessageStatus(tempMessageId, MessageStatus.FAILED)
                         continue
@@ -794,6 +800,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadAllLocalMedia(context: Context) {
+        if (allLocalMedia != null) return // Already loaded
         viewModelScope.launch(Dispatchers.IO) {
             allLocalMedia = repository.getAllLocalMedia(context)
         }

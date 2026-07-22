@@ -13,6 +13,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.long
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -45,6 +46,8 @@ private data class SendMessageRequest(
     @SerialName("link_preview_options") val linkPreviewOptions: LinkPreviewOptions? = null,
     @SerialName("reply_to_message_id") val replyToMessageId: Long? = null
 )
+
+data class UploadResult(val messageId: Long, val fileUniqueId: String?)
 
 /**
  * Centralized Telegram Bot API client.
@@ -207,7 +210,7 @@ object TelegramApi {
 
 
 
-    /** Send a photo file. Returns the message ID on success, null on failure. */
+    /** Send a photo file. Returns the UploadResult on success, null on failure. */
     suspend fun sendPhoto(
         token: String,
         chatId: String,
@@ -215,7 +218,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Long? {
+    ): UploadResult? {
         return try {
             val photoBody = if (onProgress != null) {
                 ProgressRequestBody(file, "image/jpeg".toMediaType(), onProgress)
@@ -242,6 +245,7 @@ object TelegramApi {
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
                 var messageId: Long? = null
+                var fileUniqueId: String? = null
                 if (!success) {
                     AppLog.log(LogCategory.NETWORK, "sendPhoto failed: ${response.code}", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
@@ -252,12 +256,14 @@ object TelegramApi {
                             val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
                             val result = jsonObject["result"]?.jsonObject
                             messageId = result?.get("message_id")?.jsonPrimitive?.long
+                            val photoArr = result?.get("photo")?.jsonArray
+                            fileUniqueId = photoArr?.lastOrNull()?.jsonObject?.get("file_unique_id")?.jsonPrimitive?.content
                         } catch (e: Exception) {
                             AppLog.log(LogCategory.NETWORK, "Failed to parse sendPhoto response: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
                         }
                     }
                 }
-                messageId
+                if (messageId != null) UploadResult(messageId, fileUniqueId) else null
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendPhoto error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -265,7 +271,7 @@ object TelegramApi {
         }
     }
 
-    /** Send a voice audio file. Returns the message ID on success, null on failure. */
+    /** Send a voice audio file. Returns the UploadResult on success, null on failure. */
     suspend fun sendVoice(
         token: String,
         chatId: String,
@@ -273,7 +279,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Long? {
+    ): UploadResult? {
         return try {
             val voiceBody = if (onProgress != null) {
                 ProgressRequestBody(file, "audio/mp4".toMediaType(), onProgress)
@@ -300,6 +306,7 @@ object TelegramApi {
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
                 var messageId: Long? = null
+                var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendVoice failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -311,12 +318,14 @@ object TelegramApi {
                             val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
                             val result = jsonObject["result"]?.jsonObject
                             messageId = result?.get("message_id")?.jsonPrimitive?.long
+                            val voice = result?.get("voice")?.jsonObject
+                            fileUniqueId = voice?.get("file_unique_id")?.jsonPrimitive?.content
                         } catch (e: Exception) {
                             AppLog.log(LogCategory.NETWORK, "Failed to parse sendVoice response: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
                         }
                     }
                 }
-                messageId
+                if (messageId != null) UploadResult(messageId, fileUniqueId) else null
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendVoice error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -324,7 +333,7 @@ object TelegramApi {
         }
     }
 
-    /** Send an audio file (e.g. mp3). Returns the message ID on success, null on failure. */
+    /** Send an audio file (e.g. mp3). Returns the UploadResult on success, null on failure. */
     suspend fun sendAudio(
         token: String,
         chatId: String,
@@ -332,7 +341,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Long? {
+    ): UploadResult? {
         return try {
             val audioBody = if (onProgress != null) {
                 ProgressRequestBody(file, "audio/mpeg".toMediaType(), onProgress)
@@ -359,6 +368,7 @@ object TelegramApi {
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
                 var messageId: Long? = null
+                var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendAudio failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -370,12 +380,14 @@ object TelegramApi {
                             val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
                             val result = jsonObject["result"]?.jsonObject
                             messageId = result?.get("message_id")?.jsonPrimitive?.long
+                            val audio = result?.get("audio")?.jsonObject
+                            fileUniqueId = audio?.get("file_unique_id")?.jsonPrimitive?.content
                         } catch (e: Exception) {
                             AppLog.log(LogCategory.NETWORK, "Failed to parse sendAudio response: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
                         }
                     }
                 }
-                messageId
+                if (messageId != null) UploadResult(messageId, fileUniqueId) else null
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendAudio error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -383,7 +395,7 @@ object TelegramApi {
         }
     }
 
-    /** Send a video file. Returns the message ID on success, null on failure. */
+    /** Send a video file. Returns the UploadResult on success, null on failure. */
     suspend fun sendVideo(
         token: String,
         chatId: String,
@@ -391,7 +403,7 @@ object TelegramApi {
         caption: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Long? {
+    ): UploadResult? {
         return try {
             val videoBody = if (onProgress != null) {
                 ProgressRequestBody(file, "video/mp4".toMediaType(), onProgress)
@@ -418,6 +430,7 @@ object TelegramApi {
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
                 var messageId: Long? = null
+                var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendVideo failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -429,12 +442,14 @@ object TelegramApi {
                             val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
                             val result = jsonObject["result"]?.jsonObject
                             messageId = result?.get("message_id")?.jsonPrimitive?.long
+                            val video = result?.get("video")?.jsonObject
+                            fileUniqueId = video?.get("file_unique_id")?.jsonPrimitive?.content
                         } catch (e: Exception) {
                             AppLog.log(LogCategory.NETWORK, "Failed to parse sendVideo response: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
                         }
                     }
                 }
-                messageId
+                if (messageId != null) UploadResult(messageId, fileUniqueId) else null
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendVideo error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -442,7 +457,7 @@ object TelegramApi {
         }
     }
 
-    /** Send a document file. Returns the message ID on success, null on failure. */
+    /** Send a document file. Returns the UploadResult on success, null on failure. */
     suspend fun sendDocument(
         token: String,
         chatId: String,
@@ -452,7 +467,7 @@ object TelegramApi {
         displayName: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Long? {
+    ): UploadResult? {
         return try {
             // Use displayName if provided, otherwise fall back to file.name
             val uploadName = displayName ?: file.name
@@ -482,6 +497,7 @@ object TelegramApi {
             client.executeCancellable(request).use { response ->
                 val success = response.isSuccessful
                 var messageId: Long? = null
+                var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string()
                     AppLog.log(LogCategory.NETWORK, "sendDocument failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -493,12 +509,14 @@ object TelegramApi {
                             val jsonObject = kotlinx.serialization.json.Json.parseToJsonElement(body).jsonObject
                             val result = jsonObject["result"]?.jsonObject
                             messageId = result?.get("message_id")?.jsonPrimitive?.long
+                            val document = result?.get("document")?.jsonObject
+                            fileUniqueId = document?.get("file_unique_id")?.jsonPrimitive?.content
                         } catch (e: Exception) {
                             AppLog.log(LogCategory.NETWORK, "Failed to parse sendDocument response: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
                         }
                     }
                 }
-                messageId
+                if (messageId != null) UploadResult(messageId, fileUniqueId) else null
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "sendDocument error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)

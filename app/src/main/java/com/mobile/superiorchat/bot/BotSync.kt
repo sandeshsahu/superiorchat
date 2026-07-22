@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.mobile.superiorchat.media.MediaSync
+import com.mobile.superiorchat.media.LocalDirs
 import com.mobile.superiorchat.core.StatusFlow
 import com.mobile.superiorchat.core.SyncState
 
@@ -254,33 +255,39 @@ class BotSync(private val context: Context) {
         var fileId: String? = null
         var fileSize: Long? = null
         var fileName: String? = null
+        var fileUniqueId: String? = null
 
         if (!message.photo.isNullOrEmpty()) {
             mediaType = "photo"
             val photoObj = message.photo.last().jsonObject
             fileId = photoObj["file_id"]?.jsonPrimitive?.content
+            fileUniqueId = photoObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = photoObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
         } else if (message.document != null) {
             mediaType = "document"
             val docObj = message.document.jsonObject
             fileId = docObj["file_id"]?.jsonPrimitive?.content
+            fileUniqueId = docObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = docObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
             fileName = docObj["file_name"]?.jsonPrimitive?.content
         } else if (message.video != null) {
             mediaType = "video"
             val vidObj = message.video.jsonObject
             fileId = vidObj["file_id"]?.jsonPrimitive?.content
+            fileUniqueId = vidObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = vidObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
             fileName = vidObj["file_name"]?.jsonPrimitive?.content
         } else if (message.audio != null) {
             mediaType = "audio"
             val audioObj = message.audio.jsonObject
             fileId = audioObj["file_id"]?.jsonPrimitive?.content
+            fileUniqueId = audioObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = audioObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
             fileName = audioObj["file_name"]?.jsonPrimitive?.content
         } else if (message.voice != null) {
             mediaType = "voice"
             fileId = message.voice.jsonObject["file_id"]?.jsonPrimitive?.content
+            fileUniqueId = message.voice.jsonObject["file_unique_id"]?.jsonPrimitive?.content
             fileSize = message.voice.jsonObject["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
         }
 
@@ -310,8 +317,16 @@ class BotSync(private val context: Context) {
             return
         }
 
+        // Check if matching media file ALREADY exists locally in app storage (received or sent folder)
+        val existingLocalFile = if (mediaType != null) {
+            LocalDirs.findExistingMedia(context, mediaType, fileUniqueId, message.message_id, fileName, fileSize)
+        } else null
+
+        val localPath = if (existingLocalFile != null) LocalDirs.toRelativePath(context, existingLocalFile) else null
+        val isAlreadyOnDisk = existingLocalFile != null
+
         val isAutoDownload = AppGraph.prefs.isAutoDownloadMediaEnabled && fileId != null && mediaType != null
-        val finalStatus = if (isAutoDownload) MessageStatus.SENDING else MessageStatus.SENT
+        val finalStatus = if (!isAlreadyOnDisk && isAutoDownload) MessageStatus.SENDING else MessageStatus.SENT
 
         val receiveTimestamp = System.currentTimeMillis()
         
@@ -345,7 +360,8 @@ class BotSync(private val context: Context) {
             timestamp = receiveTimestamp,
             isFromMe = false,
             mediaType = parsedMediaType,
-            mediaUrl = fileId, // Store file ID inside mediaUrl for potential redownload retries
+            mediaUrl = if (fileId != null && fileUniqueId != null) "$fileId|$fileUniqueId" else fileId,
+            mediaLocalPath = localPath,
             status = finalStatus,
             mediaFileName = fileName,
             mediaFileSize = fileSize,
@@ -354,8 +370,8 @@ class BotSync(private val context: Context) {
 
         repository.insertMessage(messageEntity)
 
-        if (isAutoDownload) {
-            MediaSync.enqueueDownload(context, messageEntity.messageId, fileId!!, mediaType!!)
+        if (!isAlreadyOnDisk && isAutoDownload && fileId != null && mediaType != null) {
+            MediaSync.enqueueDownload(context, messageEntity.messageId, fileId, mediaType)
         }
 
         AppLog.log(LogCategory.BOT_ACTIVITY, "Received message: ${text.take(50)}")
