@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -68,6 +69,55 @@ fun ErrorDialog(
             text = title,
             style = MaterialTheme.typography.titleLarge,
             color = Color(0xFFFFB4AB),
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Button(
+            onClick = onDismiss,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = PrimaryLight.copy(alpha = 0.2f),
+                contentColor = PrimaryLight
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth(0.5f)
+        ) {
+            Text(text = "OK", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun InfoDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit
+) {
+    BaseAppDialog(onDismiss = onDismiss) {
+        Icon(
+            imageVector = Icons.Filled.Info,
+            contentDescription = "Info",
+            tint = PrimaryLight,
+            modifier = Modifier.size(48.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )

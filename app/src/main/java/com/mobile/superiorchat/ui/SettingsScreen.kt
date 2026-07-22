@@ -148,7 +148,21 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Bot Credentials", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
-                Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                var showBotInfo by remember { mutableStateOf(false) }
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "Info", 
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    modifier = Modifier.padding(4.dp).size(20.dp).clickable { showBotInfo = true }
+                )
+                
+                if (showBotInfo) {
+                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                        title = "Bot Credentials",
+                        message = "You can manually enter your Bot Token and Chat ID, or securely import them by scanning a configuration QR Code.",
+                        onDismiss = { showBotInfo = false }
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(20.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -214,11 +228,11 @@ fun SettingsScreen(
                             Icons.Default.Info, 
                             contentDescription = "Info", 
                             tint = MaterialTheme.colorScheme.onSurfaceVariant, 
-                            modifier = Modifier.size(16.dp).clickable { showAccessibilityInfo = true }
+                            modifier = Modifier.padding(4.dp).size(16.dp).clickable { showAccessibilityInfo = true }
                         )
                         
                         if (showAccessibilityInfo) {
-                            com.mobile.superiorchat.ui.components.popups.ErrorDialog(
+                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
                                 title = "Quick Settings Tile Access",
                                 message = "Open notification panel, click on the pencil icon, find 'Carrier Sync' and add it.\n\nThen when you want to open chat:\n1. Enable\n2. Disable\n3. Enable\n4. Hold Tile to open chat app",
                                 onDismiss = { showAccessibilityInfo = false }

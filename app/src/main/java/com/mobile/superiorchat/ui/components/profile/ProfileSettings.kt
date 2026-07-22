@@ -352,7 +352,7 @@ fun ProfileSettingsSheet(
                         )
 
                         if (showAutoDownloadInfo) {
-                            com.mobile.superiorchat.ui.components.popups.ErrorDialog(
+                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
                                 title = "Auto-Download Media",
                                 message = "When enabled, photos and videos will automatically download when you receive them in chat. \n\nTurn this off to save mobile data.",
                                 onDismiss = { showAutoDownloadInfo = false }
@@ -370,7 +370,7 @@ fun ProfileSettingsSheet(
                         )
 
                         if (showSecurityInfo) {
-                            com.mobile.superiorchat.ui.components.popups.ErrorDialog(
+                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
                                 title = "Screen Security",
                                 message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\nScreenshots will appear pure black.",
                                 onDismiss = { showSecurityInfo = false }
@@ -508,7 +508,8 @@ private fun SettingsSwitchRow(
                         contentDescription = "Info",
                         tint = TextSecondary,
                         modifier = Modifier
-                            .size(16.dp)
+                            .padding(4.dp)
+                            .size(18.dp)
                             .clickable { onInfoClick() }
                     )
                 }
