@@ -349,6 +349,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     var hasUnreadMessages by mutableStateOf(false)
 
+    private val _isLoadingInitial = MutableStateFlow(true)
+    val isLoadingInitial: StateFlow<Boolean> = _isLoadingInitial.asStateFlow()
+
     fun requestJumpToBottom() {
         viewModelScope.launch {
             _scrollEvents.emit(ScrollEvent.JumpToBottomRequested)
@@ -389,13 +392,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val chatId = prefs.chatId
         if (chatId.isBlank()) {
             _messages.value = emptyList()
+            _isLoadingInitial.value = false
             return
         }
 
+        _isLoadingInitial.value = true
         messageCollectionJob?.cancel()
         messageCollectionJob = viewModelScope.launch(Dispatchers.IO) {
             // One-time startup sync scan for interrupted/queued messages globally
-            MediaSync.resumeInterruptedTransfers(getApplication(), repository)
+            launch {
+                MediaSync.resumeInterruptedTransfers(getApplication(), repository)
+            }
 
             launch {
                 repository.getProfile(chatId).collectLatest { profile ->
@@ -420,6 +427,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     val oldMsgs = previousMsgs
                     previousMsgs = msgs
                     _messages.value = msgs
+                    _isLoadingInitial.value = false
 
                     if (oldMsgs != null) {
                         val newestOld = oldMsgs.lastOrNull()

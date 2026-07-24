@@ -59,10 +59,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.mobile.superiorchat.theme.DividerColor
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.SurfaceLevel2
 import com.mobile.superiorchat.ui.ChatViewModel
+import com.mobile.superiorchat.ui.skeletonEffect
+import com.mobile.superiorchat.ui.SkeletonFileListItem
+import com.mobile.superiorchat.ui.SkeletonStorageLocationItem
 import com.mobile.superiorchat.data.repository.LocalFileItem
 import com.mobile.superiorchat.data.repository.LocalMediaItem
 import kotlinx.coroutines.delay
@@ -221,11 +223,36 @@ fun FileExplorer(
                 .padding(paddingValues)
         ) {
             if (isLoading) {
-                Box(
+                LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    CircularProgressIndicator(color = PrimaryLight)
+                    item {
+                        Text(
+                            text = "RECENT FILES",
+                            color = PrimaryLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+                        )
+                    }
+                    items(3) {
+                        SkeletonFileListItem()
+                    }
+                    item {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "BROWSE STORAGE",
+                            color = PrimaryLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp)
+                        )
+                    }
+                    items(2) {
+                        SkeletonStorageLocationItem()
+                    }
                 }
             } else {
                 // Slide animation for folder navigation

@@ -35,6 +35,7 @@ import java.io.File
 
 import androidx.compose.foundation.clickable
 import com.mobile.superiorchat.data.entity.UserProfile
+import com.mobile.superiorchat.ui.skeletonEffect
 
 @Composable
 fun PartnerProfile(
@@ -91,19 +92,26 @@ fun PartnerProfile(
 
                 // Profile Image or Fallback
                 if (profilePath.isNotEmpty() && File(profilePath).exists()) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(File(profilePath))
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Profile Picture",
+                    Box(
                         modifier = Modifier
                             .size(100.dp)
                             .clip(CircleShape)
-                            .border(2.dp, PrimaryLight, CircleShape)
-                            .clickable { onImageClick(profilePath) },
-                        contentScale = ContentScale.Crop
-                    )
+                            .skeletonEffect()
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(File(profilePath))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Profile Picture",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                                .border(2.dp, PrimaryLight, CircleShape)
+                                .clickable { onImageClick(profilePath) },
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier

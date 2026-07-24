@@ -110,6 +110,7 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val currentPinnedMessage by viewModel.currentPinnedMessage.collectAsState()
     val messageLimit by viewModel.messageLimit.collectAsState()
+    val isLoadingInitial by viewModel.isLoadingInitial.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -437,7 +438,11 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     reverseLayout = true
                 ) {
-                    if (messages.isEmpty()) {
+                    if (isLoadingInitial) {
+                        items(7) { index ->
+                            com.mobile.superiorchat.ui.GhostMessageBubble(isFromMe = index % 2 != 0)
+                        }
+                    } else if (messages.isEmpty()) {
                         item {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
@@ -525,19 +530,8 @@ fun ChatScreen(
                         }
                         
                         if (messages.size >= messageLimit) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        strokeWidth = 2.dp
-                                    )
-                                }
+                            items(2) { index ->
+                                com.mobile.superiorchat.ui.GhostMessageBubble(isFromMe = index % 2 != 0)
                             }
                         }
                     }

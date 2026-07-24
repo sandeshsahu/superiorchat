@@ -46,6 +46,10 @@ import com.mobile.superiorchat.data.repository.LocalMediaItem
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.popups.ActionDialog
 import com.mobile.superiorchat.ui.components.popups.ErrorDialog
+import com.mobile.superiorchat.theme.TextPrimary
+import com.mobile.superiorchat.theme.TextSecondary
+import com.mobile.superiorchat.ui.skeletonEffect
+import com.mobile.superiorchat.ui.SkeletonTextLine
 import com.mobile.superiorchat.ui.components.bounceClick
 import com.mobile.superiorchat.ui.components.glow
 import kotlinx.coroutines.Dispatchers
@@ -127,6 +131,7 @@ fun ProfileScreen(
 
                 // ── Hero Header ──────────────────────────────
                 ProfileHeroHeader(
+                    isLoading = viewModel.isLoading,
                     displayName = viewModel.displayName,
                     username = viewModel.username,
                     botId = viewModel.botId,
@@ -139,6 +144,7 @@ fun ProfileScreen(
 
                 // ── 3-Button Action Bar ──────────────────────
                 ProfileActionBar(
+                    isLoading = viewModel.isLoading,
                     onSetPhoto = { launchGallery() },
                     onEditInfo = { 
                         val expiry = com.mobile.superiorchat.core.AppGraph.prefs.profileEditRateLimitExpiry
@@ -159,6 +165,7 @@ fun ProfileScreen(
 
                 // ── Info Rows ────────────────────────────────
                 ProfileInfoSection(
+                    isLoading = viewModel.isLoading,
                     displayName = viewModel.displayName,
                     description = viewModel.description,
                     shortDescription = viewModel.shortDescription
@@ -167,14 +174,7 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
-            if (viewModel.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize().background(Background.copy(0.6f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = PrimaryLight)
-                }
-            }
+
 
         }
     }
@@ -297,6 +297,7 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeroHeader(
+    isLoading: Boolean,
     displayName: String,
     username: String,
     botId: String,
@@ -336,10 +337,12 @@ private fun ProfileHeroHeader(
                             color = PrimaryLight,
                             shape = CircleShape
                         )
-                        .bounceClick(onClick = onAvatarClick),
+                        .bounceClick(onClick = { if (!isLoading) onAvatarClick() }),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (avatarUri != null) {
+                    if (isLoading) {
+                        Box(modifier = Modifier.fillMaxSize().skeletonEffect())
+                    } else if (avatarUri != null) {
                         AsyncImage(
                             model = ImageRequest.Builder(LocalContext.current)
                                 .data(avatarUri).crossfade(true).build(),
@@ -386,29 +389,41 @@ private fun ProfileHeroHeader(
                 transitionSpec = { slideInVertically { -it } + fadeIn() togetherWith slideOutVertically { it } + fadeOut() },
                 label = "name_anim"
             ) { name ->
-                Text(name, color = PrimaryLight, fontSize = 24.sp, fontWeight = FontWeight.Bold,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (isLoading) {
+                    SkeletonTextLine(width = 140.dp, height = 28.dp, cornerRadius = 8.dp)
+                } else {
+                    Text(name, color = PrimaryLight, fontSize = 24.sp, fontWeight = FontWeight.Bold,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
 
             Spacer(modifier = Modifier.height(3.dp))
-
-            Text("@$username", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            
+            if (isLoading) {
+                SkeletonTextLine(width = 90.dp, height = 16.dp, cornerRadius = 6.dp)
+            } else {
+                Text("@$username", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            }
 
             Spacer(modifier = Modifier.height(10.dp))
 
             // Bot ID chip — read-only
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(SurfaceLevel2)
-                    .border(1.dp, DividerColor, RoundedCornerShape(20.dp))
-                    .padding(horizontal = 12.dp, vertical = 5.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Icon(Icons.Filled.Tag, null, tint = TextSecondary, modifier = Modifier.size(12.dp))
-                Text("ID: $botId", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Icon(Icons.Filled.Lock, null, tint = TextSecondary.copy(0.45f), modifier = Modifier.size(10.dp))
+            if (isLoading) {
+                SkeletonTextLine(width = 100.dp, height = 24.dp, cornerRadius = 20.dp)
+            } else {
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(SurfaceLevel2)
+                        .border(1.dp, DividerColor, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(Icons.Filled.Tag, null, tint = TextSecondary, modifier = Modifier.size(12.dp))
+                    Text("ID: $botId", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Filled.Lock, null, tint = TextSecondary.copy(0.45f), modifier = Modifier.size(10.dp))
+                }
             }
         }
     }
@@ -420,6 +435,7 @@ private fun ProfileHeroHeader(
 
 @Composable
 private fun ProfileActionBar(
+    isLoading: Boolean,
     onSetPhoto: () -> Unit,
     onEditInfo: () -> Unit,
     onSettings: () -> Unit
@@ -431,18 +447,21 @@ private fun ProfileActionBar(
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         ProfileActionButton(
+            isLoading = isLoading,
             label = "Set Photo",
             icon = Icons.Filled.AddAPhoto,
             modifier = Modifier.weight(1f),
             onClick = onSetPhoto
         )
         ProfileActionButton(
+            isLoading = isLoading,
             label = "Edit Info",
             icon = Icons.Filled.Edit,
             modifier = Modifier.weight(1f),
             onClick = onEditInfo
         )
         ProfileActionButton(
+            isLoading = isLoading,
             label = "Settings",
             icon = Icons.Filled.Settings,
             modifier = Modifier.weight(1f),
@@ -453,6 +472,7 @@ private fun ProfileActionBar(
 
 @Composable
 private fun ProfileActionButton(
+    isLoading: Boolean,
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
@@ -470,15 +490,15 @@ private fun ProfileActionButton(
         modifier = modifier
             .scale(scale)
             .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceLevel1)
+            .background(SurfaceLevel1.copy(alpha = if (isLoading) 0.5f else 1f))
             .border(1.dp, DividerColor, RoundedCornerShape(16.dp))
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .clickable(interactionSource = interactionSource, indication = null, enabled = !isLoading) { onClick() }
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Icon(icon, contentDescription = label, tint = PrimaryLight, modifier = Modifier.size(22.dp))
-        Text(label, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Icon(icon, contentDescription = label, tint = PrimaryLight.copy(alpha = if (isLoading) 0.5f else 1f), modifier = Modifier.size(22.dp))
+        Text(label, color = TextPrimary.copy(alpha = if (isLoading) 0.5f else 1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
     }
 }
 
@@ -488,6 +508,7 @@ private fun ProfileActionButton(
 
 @Composable
 private fun ProfileInfoSection(
+    isLoading: Boolean,
     displayName: String,
     description: String,
     shortDescription: String
@@ -498,9 +519,10 @@ private fun ProfileInfoSection(
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
     ) {
-        InfoRow(value = displayName, label = "Name", icon = Icons.Filled.Person, isFirst = true)
+        InfoRow(isLoading = isLoading, value = displayName, label = "Name", icon = Icons.Filled.Person, isFirst = true)
         InfoDivider()
         InfoRow(
+            isLoading = isLoading,
             value = shortDescription.ifEmpty { "Not set" },
             label = "About",
             icon = Icons.AutoMirrored.Filled.ShortText,
@@ -508,6 +530,7 @@ private fun ProfileInfoSection(
         )
         InfoDivider()
         InfoRow(
+            isLoading = isLoading,
             value = description.ifEmpty { "Not set" },
             label = "Description",
             icon = Icons.Filled.Info,
@@ -519,6 +542,7 @@ private fun ProfileInfoSection(
 
 @Composable
 private fun InfoRow(
+    isLoading: Boolean,
     value: String,
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -539,13 +563,17 @@ private fun InfoRow(
     ) {
         Icon(icon, null, tint = PrimaryLight.copy(0.8f), modifier = Modifier.size(18.dp).padding(top = 2.dp))
         Column {
-            Text(
-                text = value,
-                color = if (dimValue) TextSecondary else TextPrimary,
-                fontSize = 14.sp,
-                lineHeight = 20.sp
-            )
-            Spacer(modifier = Modifier.height(2.dp))
+            if (isLoading) {
+                SkeletonTextLine(width = 160.dp, height = 16.dp, cornerRadius = 6.dp)
+            } else {
+                Text(
+                    text = value,
+                    color = if (dimValue) TextSecondary else TextPrimary,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
             Text(label, color = TextSecondary, fontSize = 11.sp)
         }
     }

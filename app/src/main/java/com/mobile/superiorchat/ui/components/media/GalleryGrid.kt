@@ -61,6 +61,9 @@ import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.Secondary
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
+import com.mobile.superiorchat.ui.skeletonEffect
+import com.mobile.superiorchat.ui.SkeletonGalleryItem
+import com.mobile.superiorchat.ui.SkeletonContainer
 import kotlinx.coroutines.delay
 
 import com.mobile.superiorchat.data.repository.LocalMediaItem
@@ -193,11 +196,19 @@ fun GalleryGrid(
                 .padding(paddingValues)
         ) {
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    contentPadding = PaddingValues(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    CircularProgressIndicator(color = PrimaryLight)
+                    items(18) {
+                        SkeletonContainer(
+                            modifier = Modifier.aspectRatio(1f),
+                            cornerRadius = 12.dp
+                        )
+                    }
                 }
             } else {
                 if (filteredMedia.isEmpty()) {
@@ -385,6 +396,7 @@ private fun MediaGridTile(
             }
             .scale(imageScale)
     ) {
+        SkeletonGalleryItem()
         AsyncImage(
             model = ImageRequest.Builder(context)
                 .data(uri)
@@ -394,7 +406,6 @@ private fun MediaGridTile(
                 .crossfade(true)
                 .build(),
             contentDescription = "Media thumbnail",
-            placeholder = ColorPainter(SurfaceLevel2),
             error = ColorPainter(SurfaceLevel2),
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
@@ -476,29 +487,7 @@ private fun MediaGridTile(
     }
 }
 
-@Composable
-private fun ShimmerBrush(): Brush {
-    val transition = rememberInfiniteTransition(label = "shimmer")
-    val translateAnim by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1000f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "shimmerTranslation"
-    )
 
-    return Brush.linearGradient(
-        colors = listOf(
-            SurfaceLevel2,
-            SurfaceLevel1,
-            SurfaceLevel2
-        ),
-        start = Offset.Zero,
-        end = Offset(x = translateAnim, y = translateAnim)
-    )
-}
 
 @Composable
 private fun FilterDropdown(
