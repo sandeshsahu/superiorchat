@@ -101,7 +101,9 @@ class MainActivity : ComponentActivity() {
             val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
 
             LaunchedEffect(Unit) {
-                permissionHandler.requestNotification(showDenial = false) {}
+                if (viewModel.appNotificationsEnabled) {
+                    permissionHandler.requestNotification(showDenial = false) {}
+                }
             }
 
             SuperiorChatTheme(darkTheme = true) {

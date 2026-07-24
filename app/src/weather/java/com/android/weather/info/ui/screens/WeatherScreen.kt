@@ -92,8 +92,41 @@ fun WeatherScreen(
                 }
             }
             uiState is WeatherUiState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = (uiState as WeatherUiState.Error).message, color = ColorTextPrimary)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues)
+                        .padding(horizontal = 24.dp, vertical = 10.dp)
+                ) {
+                    ActionBar(
+                        cityName = "Offline",
+                        isSaveSearchEnabled = isSaveSearchEnabled,
+                        onSaveSearchToggle = { viewModel.setSaveSearchEnabled(it) },
+                        onSearchClick = onNavigateToSearch
+                    )
+                    Spacer(modifier = Modifier.height(13.dp))
+                    
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = { 
+                            coroutineScope.launch {
+                                viewModel.refresh()
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .weight(1f, fill = false)
+                            .clipToBounds()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()), 
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = (uiState as WeatherUiState.Error).message, color = ColorTextPrimary)
+                        }
+                    }
                 }
             }
             uiState is WeatherUiState.Success -> {

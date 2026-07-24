@@ -186,7 +186,7 @@ class WeatherViewModel(application: Application) : AndroidViewModel(application)
                 // Keep showing cached UI, just alert user about offline status
                 _toastMessage.value = "No internet connection. Showing saved weather."
             } else {
-                _uiState.value = WeatherUiState.Error("No internet connection and no saved data available.")
+                _uiState.value = WeatherUiState.Error("No internet connection and no saved data available.\n\nIf you are online try refreshing the page\nBy swiping down to screen")
             }
         }
     }

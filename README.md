@@ -51,7 +51,7 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
   <img src="docs/images/app/nav_menu.jpg" width="30%" alt="Navigation Menu">
 </p>
 
-> 🖼️ Explore more screenshots in the [docs/images/app](docs/images/app) and [docs/images/setupapp](docs/images/setupapp) directories.
+> 🖼️ Explore more screenshots in the [Chat App](docs/images/app), [Setup App](docs/images/setupapp) and [Flavors](docs/flavors/images/) directories.
 
 ---
 
@@ -115,7 +115,11 @@ For detailed technical references, explore the dedicated documentation in this d
 - ✨ **[Features & Capabilities](docs/Features.md)** — Comprehensive user-facing capabilities, gestures, disguises, and UI interactions.
 - 📖 **[Installation Guide](docs/Instructions.md)** — Setup guide & building from source for developers.
 - ⚠️ **[Notes & Disclaimers](docs/Notes.md)** — Important known limitations, threat models, and legal disclaimers.
-
+---
+> [!IMPORTANT]
+> For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:
+> - **[Captive Portal Details](docs/flavors/CaptivePortal.md)**
+> - **[Weather Details](docs/flavors/FlavorWeather.md)**
 ---
 
 <h2 id="acknowledgments">🙌 Acknowledgments</h2>

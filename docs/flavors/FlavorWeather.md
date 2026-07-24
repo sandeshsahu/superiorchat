@@ -29,7 +29,7 @@ The Weather flavor unifies a standalone Compose UI facade, an isolated Retrofit 
 ```mermaid
 graph TD
     subgraph Weather Decoy Facade
-        WA[WeatherActivity] --> WVM[WeatherViewModel]
+        WMA["MainActivity (Weather)"] --> WVM[WeatherViewModel]
         WVM --> WR[WeatherRepository]
         WR --> API[Open-Meteo & Geocoding APIs]
         WR --> Cache[WeatherLocalStorage JSON]
@@ -43,13 +43,13 @@ graph TD
     end
 
     subgraph Hidden Superior Chat Engine
-        WA -- "Search Intercept" --> MA[MainActivity]
-        MA --> Core[BotSync & SuperiorChat Core]
+        WMA -- "Search Intercept" --> CMA["MainActivity (Chat)"]
+        CMA --> Core[BotSync & SuperiorChat Core]
     end
 ```
 
 ### Manifest Configuration
-The weather flavor sets the launcher activity in the Android OS drawer to the authentic Weather app icon and title (`WeatherActivity`). The main chat application's `MainActivity` is isolated; it does not have a `LAUNCHER` intent filter in this flavor's manifest, ensuring it never appears in the app drawer.
+The weather flavor sets the launcher activity in the Android OS drawer to the authentic Weather app icon and title (`MainActivity` under `com.android.weather.info`). The main chat application's `MainActivity` is isolated; it does not have a `LAUNCHER` intent filter in this flavor's manifest, ensuring it never appears in the app drawer.
 
 ### Folder Structure
 ```text
@@ -121,6 +121,7 @@ The decoy engine features a robust, multi-tier data fetching pipeline using `Ret
 ### State Management & Caching
 - **State Management**: `WeatherViewModel` drives the UI using a sealed `WeatherUiState` via `StateFlow`. Network requests run on `Dispatchers.IO` and search inputs are debounced (300ms) with `Job` cancellation to prevent API spam.
 - **Offline Resilience**: `WeatherLocalStorage` saves the full JSON response of the last successful fetch. If the device goes offline, `WeatherRepository` silently falls back to the cached JSON payload.
+- **Error State UI**: Even under total network failure without local data, the secret `ActionBar` entry point remains rendered, and the error screen utilizes `PullToRefreshBox` to allow manual API retries via swipe-down gestures.
 - **Decoy Feed**: Upon successful fetches, the repository independently saves primitive strings (`temperature`, `condition`, `humidity`) directly to `SharedPreferences`. The decoupled `Notifier.kt` reads these cached values to generate live, context-aware meteorological alerts without needing to instantiate `WeatherViewModel`.
 
 ---

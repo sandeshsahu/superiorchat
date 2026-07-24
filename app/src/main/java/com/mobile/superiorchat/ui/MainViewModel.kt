@@ -166,6 +166,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    var newMessageNotificationEnabled by mutableStateOf(prefs.isNewMessageNotificationEnabled)
+        private set
+
+    fun toggleNewMessageNotification(enabled: Boolean) {
+        prefs.isNewMessageNotificationEnabled = enabled
+        newMessageNotificationEnabled = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "New Message Notifications Enabled" else "New Message Notifications Disabled"
+        )
+    }
+
+    var appNotificationsEnabled by mutableStateOf(prefs.isAppNotificationsEnabled)
+        private set
+
+    fun updateAppNotificationsState(enabled: Boolean) {
+        prefs.isAppNotificationsEnabled = enabled
+        appNotificationsEnabled = enabled
+    }
+
     // -- Permissions State --
     private val _permissionStatus = MutableStateFlow(PermissionStatus())
     val permissionStatus: StateFlow<PermissionStatus> = _permissionStatus.asStateFlow()
@@ -239,7 +259,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 hasInstallPackages = hasInstallPackages,
                 hasManageStorage = hasManageStorage
             )
+            
+            // We ONLY want to sync from OS to Prefs if the OS is ENABLED. 
+            // If it's disabled, it might just be a fresh install (Android 13+ defaults to denied),
+            // so we don't want to blindly overwrite our default `true` to `false`, which would break the startup prompt!
+            if (hasPostNotifs && !prefs.isAppNotificationsEnabled) {
+                prefs.isAppNotificationsEnabled = true
+            }
+            appNotificationsEnabled = prefs.isAppNotificationsEnabled
         }
+    }
+
+    fun toggleAppNotificationsEnabled(enabled: Boolean) {
+        prefs.isAppNotificationsEnabled = enabled
+        appNotificationsEnabled = enabled
     }
 
     // -------------------------------------------------------------------------

@@ -377,7 +377,9 @@ class BotSync(private val context: Context) {
         AppLog.log(LogCategory.BOT_ACTIVITY, "Received message: ${text.take(50)}")
 
         // Route for notification
-        notifier.routeUpdate(update)
+        if (prefs.isNewMessageNotificationEnabled) {
+            notifier.routeUpdate(update)
+        }
     }
 
     private fun flushQueuedMessages() {

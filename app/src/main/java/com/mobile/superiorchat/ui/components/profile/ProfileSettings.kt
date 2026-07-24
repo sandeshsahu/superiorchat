@@ -58,8 +58,12 @@ import com.mobile.superiorchat.theme.Background
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Message
 
-enum class ProfileSheetState { MAIN, DANGER_ZONE, CHAT_SETTINGS }
+enum class ProfileSheetState { MAIN, DANGER_ZONE, CHAT_SETTINGS, NOTIFICATIONS, PRIVACY_SECURITY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,8 +74,12 @@ fun ProfileSettingsSheet(
     onNavigateToAppSettings: (() -> Unit)?,
     isAutoDownloadMediaEnabled: Boolean,
     isScreenSecurityEnabled: Boolean,
+    isNewMessageNotificationEnabled: Boolean,
+    isAppNotificationsEnabled: Boolean,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
+    onNewMessageNotificationChange: (Boolean) -> Unit,
+    onAppNotificationsChange: (Boolean) -> Unit,
     onClearChat: (Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -135,23 +143,23 @@ fun ProfileSettingsSheet(
                     
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Future features placeholder row
-                    SettingsSheetRow(
-                        icon = Icons.Filled.Shield,
-                        iconTint = InfoBlue,
-                        title = "Privacy & Security",
-                        subtitle = "Coming soon",
-                        onClick = { /* future */ }
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
                     SettingsSheetRow(
                         icon = Icons.Filled.Notifications,
                         iconTint = PrimaryLight,
                         title = "Notifications",
-                        subtitle = "Coming soon",
-                        onClick = { /* future */ }
+                        subtitle = "Alerts and stealth settings",
+                        onClick = { currentSheetState = ProfileSheetState.NOTIFICATIONS }
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Privacy & Security section
+                    SettingsSheetRow(
+                        icon = Icons.Filled.Shield,
+                        iconTint = InfoBlue,
+                        title = "Privacy & Security",
+                        subtitle = "Screen security and privacy",
+                        onClick = { currentSheetState = ProfileSheetState.PRIVACY_SECURITY }
                     )
 
                     // Danger Zone — always visible, styled as red card
@@ -344,6 +352,8 @@ fun ProfileSettingsSheet(
                         // Toggles
                         var showAutoDownloadInfo by remember { mutableStateOf(false) }
                         SettingsSwitchRow(
+                            icon = Icons.Filled.CloudDownload,
+                            iconTint = PrimaryLight,
                             title = "Auto-Download Media",
                             subtitle = "Automatically download photos/videos",
                             isChecked = isAutoDownloadMediaEnabled,
@@ -358,12 +368,50 @@ fun ProfileSettingsSheet(
                                 onDismiss = { showAutoDownloadInfo = false }
                             )
                         }
-                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+
+                ProfileSheetState.PRIVACY_SECURITY -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 24.dp)
+                    ) {
+                        // Back button and Privacy Settings header
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(SurfaceLevel2)
+                                    .bounceClick { currentSheetState = ProfileSheetState.MAIN },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text("Privacy & Security", color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Screen security and locking", color = TextSecondary, fontSize = 12.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
 
                         var showSecurityInfo by remember { mutableStateOf(false) }
                         SettingsSwitchRow(
+                            icon = Icons.Filled.Security,
+                            iconTint = InfoBlue,
                             title = "Block Screenshots",
-                            subtitle = "Prevent capturing chat screen",
+                            subtitle = "Prevent screen capture and recording",
                             isChecked = isScreenSecurityEnabled,
                             onCheckedChange = onScreenSecurityChange,
                             onInfoClick = { showSecurityInfo = true }
@@ -374,6 +422,117 @@ fun ProfileSettingsSheet(
                                 title = "Screen Security",
                                 message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\n*Screenshots* will appear pure black.",
                                 onDismiss = { showSecurityInfo = false }
+                            )
+                        }
+                    }
+                }
+
+                ProfileSheetState.NOTIFICATIONS -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 20.dp)
+                            .padding(bottom = 24.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(SurfaceLevel2)
+                                    .bounceClick { currentSheetState = ProfileSheetState.MAIN },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text("Notifications", color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Alerts and stealth rules", color = TextSecondary, fontSize = 12.sp)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        var showDisableNotificationsDialog by remember { mutableStateOf(false) }
+
+                        var showAppNotificationsInfo by remember { mutableStateOf(false) }
+
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.NotificationsActive,
+                            iconTint = PrimaryLight,
+                            title = "App Notifications",
+                            subtitle = "Allow decoy app to show notifications",
+                            isChecked = isAppNotificationsEnabled,
+                            onCheckedChange = {
+                                if (!it) {
+                                    showDisableNotificationsDialog = true
+                                } else {
+                                    // If they are trying to enable it, we also must redirect to settings
+                                    val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            },
+                            onInfoClick = { showAppNotificationsInfo = true }
+                        )
+                        
+                        if (showAppNotificationsInfo) {
+                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                                title = "App Notifications",
+                                message = "Controls the underlying Android System notification permissions.\n\nWhen disabled, the app is completely blocked from showing *Any background notifications*, making it ultra-stealthy. *Background sync* will still work perfectly.",
+                                onDismiss = { showAppNotificationsInfo = false }
+                            )
+                        }
+                        
+                        if (showDisableNotificationsDialog) {
+                            com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                                title = "Disable App Notifications",
+                                message = "To completely disable notifications without crashing the background service, you must turn them off from Android's System Settings.\n\nClick Proceed to open the *App Info* page, then tap *Notifications* and turn them off.",
+                                confirmText = "Proceed",
+                                dismissText = "Cancel",
+                                icon = Icons.Filled.Notifications,
+                                iconTint = PrimaryLight,
+                                onConfirm = {
+                                    showDisableNotificationsDialog = false
+                                    onAppNotificationsChange(false) // Save explicit intent to bypass startup prompt
+                                    val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                },
+                                onDismiss = {
+                                    showDisableNotificationsDialog = false
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        var showNotificationInfo by remember { mutableStateOf(false) }
+                        SettingsSwitchRow(
+                            icon = Icons.Filled.Message,
+                            iconTint = PrimaryLight,
+                            title = "New Messages",
+                            subtitle = "Visual decoy changes for messages",
+                            isChecked = isNewMessageNotificationEnabled,
+                            onCheckedChange = onNewMessageNotificationChange,
+                            onInfoClick = { showNotificationInfo = true }
+                        )
+
+                        if (showNotificationInfo) {
+                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                                title = "New Message Notifications",
+                                message = "When *Enabled*, the stealth app's background service notification will visually change states (e.g., \"*Live Update*\" or \"*Heavy data usage detected*\") to alert you of new incoming messages.\n\nWhen *Disabled*, messages will still sync silently in the background, but the decoy *notification* will never change its idle state.",
+                                onDismiss = { showNotificationInfo = false }
                             )
                         }
                     }
@@ -476,6 +635,8 @@ private fun SettingsSheetRow(
 
 @Composable
 private fun SettingsSwitchRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconTint: androidx.compose.ui.graphics.Color = TextPrimary,
     title: String,
     subtitle: String,
     isChecked: Boolean,
@@ -498,9 +659,22 @@ private fun SettingsSwitchRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(iconTint.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+            }
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 if (onInfoClick != null) {
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(
@@ -513,8 +687,9 @@ private fun SettingsSwitchRow(
                             .clickable { onInfoClick() }
                     )
                 }
+                }
+                Text(subtitle, color = TextSecondary, fontSize = 11.sp)
             }
-            Text(subtitle, color = TextSecondary, fontSize = 11.sp)
         }
         
         Switch(

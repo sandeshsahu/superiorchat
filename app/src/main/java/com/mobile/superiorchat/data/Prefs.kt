@@ -112,6 +112,26 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isNewMessageNotificationEnabled: Boolean = sharedPreferences.getBoolean("new_message_notification_enabled", true)
+    var isNewMessageNotificationEnabled: Boolean
+        get() = _isNewMessageNotificationEnabled
+        set(value) {
+            if (_isNewMessageNotificationEnabled != value) {
+                _isNewMessageNotificationEnabled = value
+                sharedPreferences.edit().putBoolean("new_message_notification_enabled", value).apply()
+            }
+        }
+
+    private var _isAppNotificationsEnabled: Boolean = sharedPreferences.getBoolean("app_notifications_enabled", true)
+    var isAppNotificationsEnabled: Boolean
+        get() = _isAppNotificationsEnabled
+        set(value) {
+            if (_isAppNotificationsEnabled != value) {
+                _isAppNotificationsEnabled = value
+                sharedPreferences.edit().putBoolean("app_notifications_enabled", value).apply()
+            }
+        }
+
     private var _profileEditRateLimitExpiry: Long = sharedPreferences.getLong("profile_edit_rate_limit_expiry", 0L)
     var profileEditRateLimitExpiry: Long
         get() = _profileEditRateLimitExpiry

@@ -333,8 +333,12 @@ fun AppScreen(
                             },
                             isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
                             isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
+                            isNewMessageNotificationEnabled = viewModel.newMessageNotificationEnabled,
+                            isAppNotificationsEnabled = viewModel.appNotificationsEnabled,
                             onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                             onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
+                            onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
+                            onAppNotificationsChange = { viewModel.toggleAppNotificationsEnabled(it) },
                             onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) }
                         )
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)

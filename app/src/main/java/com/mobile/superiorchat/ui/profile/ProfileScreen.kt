@@ -82,8 +82,12 @@ fun ProfileScreen(
     onNavigateToSettings: (() -> Unit)? = null,
     isAutoDownloadMediaEnabled: Boolean,
     isScreenSecurityEnabled: Boolean,
+    isNewMessageNotificationEnabled: Boolean,
+    isAppNotificationsEnabled: Boolean,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
+    onNewMessageNotificationChange: (Boolean) -> Unit,
+    onAppNotificationsChange: (Boolean) -> Unit,
     onClearChat: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -236,8 +240,12 @@ fun ProfileScreen(
             hasCredentials = hasCredentials,
             isAutoDownloadMediaEnabled = isAutoDownloadMediaEnabled,
             isScreenSecurityEnabled = isScreenSecurityEnabled,
+            isNewMessageNotificationEnabled = isNewMessageNotificationEnabled,
+            isAppNotificationsEnabled = isAppNotificationsEnabled,
             onAutoDownloadMediaChange = onAutoDownloadMediaChange,
             onScreenSecurityChange = onScreenSecurityChange,
+            onNewMessageNotificationChange = onNewMessageNotificationChange,
+            onAppNotificationsChange = onAppNotificationsChange,
             onDismiss = { currentOverlay = ProfileOverlay.None },
             onClearCredentials = onClearCredentials,
             onNavigateToAppSettings = onNavigateToSettings,
