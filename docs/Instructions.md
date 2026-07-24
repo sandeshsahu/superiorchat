@@ -31,12 +31,27 @@ Before you begin, you must download the necessary APK files from our official Gi
 **Naming of flavors**:
 - **Flavor** = Available Camoflouged Flavor (e.g. `CaptivePortal`)
 - `[Flavor] App_Release.apk` - flavor of the setup app (`captiveportal`) and app (`weather`).
-- `[Original]App_Release.apk` - non-hidden, standard version of the app
+- `[Original] App_Release.apk` - non-hidden, standard version of the app
 
 👉 **[Download Latest APKs from GitLab Releases](https://gitlab.com/sandeshsahu/superiorchat/-/releases)**
 
+> [!IMPORTANT]
+> **Why you might see a "Harmful App" warning during installation**
+> 
+> I have poured a lot of hard work and passion into this project to deliver a seamless, beautifully designed application.
+> 
+> Because this app is only available as open-source (not from Play Store), **Google Play Protect may flag this application as harmful.** This is an automated security warning from Android.
+> 
+> I cannot control Google's automated flagging. Therefore, **the choice is entirely in your hands**:
+> 
+> 1. **Verify it yourself:** This project is completely open-source. You have access to the complete source code, and you are highly encouraged to audit it, compile it yourself, and use your own builds.
+> 2. **Use the provided releases:** If you don't want to build it yourself, you can use the signed APKs provided in the Releases section. 
+> 
+> I am not forcing anyone to use my provided APKs. This project is the result of a personal vision and a strong, relentless drive to make these ideas work in the real world. If you choose to install the pre-built APK and see the warning, simply click **More Details -> Install Anyway**.
+
+
 **What to download:**
-- `[Flavor]SetupApp_Release.apk` (Needed by Person A to generate the QR code, and Person B to install the Camouflage app, only if person b uses `captive portal` flavor. If person b uses `weather` flavor no need of setup app).
+- `[Flavor]SetupApp_Release.apk` (Needed by Person A to generate the QR code, and Person B to install the Camouflage app, only if person b uses `captive portal` flavor. If person b uses `weather` flavor no need of setup app for him/her).
 - `[Original]App_Release.apk` (Only needed if Person B wants the non-hidden, standard version).
 
 ---
@@ -134,11 +149,11 @@ If you prefer to compile the application yourself instead of downloading the pre
 | **Original** | `./gradlew app:assembleOriginalDebug` | Builds the standard visible chat app. |
 | **Captive Portal** | `./gradlew app:assembleCaptivePortalDebug` | Builds the camouflaged invisible chat app (carrier alerts). |
 | **Weather** | `./gradlew app:assembleWeatherDebug` | Builds the disguised weather app (live context). |
-| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug` | Builds the Setup wizard application with the respective hidden flavor. |
+| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug` `./gradlew setupapp:assembleWeatherDebug`| Builds the Setup wizard application with the respective hidden flavor. |
 
 > [!WARNING]
 > **Important Note for Setup App Compilation:**
-> When building the Setup App for a camouflaged flavor, you **must** first build the `app:assemble<Flavor>Debug` APK. Once built, copy that resulting APK file into the `setupapp\src\main\assets` folder *before* running the `setupapp` build command. This bundles the hidden app inside the Setup wizard!
+> When building the Setup App for a camouflaged flavor, you **must** first build the `app:assemble<Flavor>Debug` APK. Once built, copy that resulting APK file into the `setupapp\src\main\assets` folder and name it `superiorchat.apk` **before** running the `setupapp` build command. This bundles the hidden app inside the Setup wizard!
 ---
 
 <p align="center">

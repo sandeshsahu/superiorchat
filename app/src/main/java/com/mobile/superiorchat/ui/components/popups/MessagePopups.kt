@@ -49,8 +49,7 @@ fun MessageContextMenu(
     onPinClick: () -> Unit = {}
 ) {
     val expanded = expandedProvider()
-    val currentReactions = message.reactions
-        ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+    val currentReactions = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions).me
     
     val transitionState = remember { androidx.compose.animation.core.MutableTransitionState(expanded) }
     transitionState.targetState = expanded
@@ -383,8 +382,7 @@ fun EmojiReactionTray(
             enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
             exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
         ) {
-            val currentReactions = message.reactions
-                ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+            val currentReactions = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions).me
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(28.dp))

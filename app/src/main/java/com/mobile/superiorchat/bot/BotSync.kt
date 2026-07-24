@@ -230,10 +230,19 @@ class BotSync(private val context: Context) {
 
         if (update.message_reaction != null) {
             val reactionUpdate = update.message_reaction
-            val emojis = reactionUpdate.new_reaction.mapNotNull { it.emoji }.joinToString(",")
-            val parsedEmojis = if (emojis.isEmpty()) null else emojis
-            repository.updateMessageReactions(reactionUpdate.message_id, parsedEmojis)
-            AppLog.log(LogCategory.BOT_ACTIVITY, "Reaction updated on msg ${reactionUpdate.message_id}: $parsedEmojis")
+            val isPeer = reactionUpdate.user?.id == reactionUpdate.chat.id
+            val emojis = reactionUpdate.new_reaction.mapNotNull { it.emoji }
+
+            val existingMsg = repository.getMessageById(reactionUpdate.message_id)
+            val currentData = com.mobile.superiorchat.data.entity.ReactionData.parse(existingMsg?.reactions)
+            val newData = if (isPeer) {
+                currentData.copy(peer = emojis)
+            } else {
+                currentData.copy(me = emojis)
+            }
+            val newJson = com.mobile.superiorchat.data.entity.ReactionData.toJson(newData)
+            repository.updateMessageReactions(reactionUpdate.message_id, newJson)
+            AppLog.log(LogCategory.BOT_ACTIVITY, "Reaction updated on msg ${reactionUpdate.message_id}: $newJson")
             return
         }
 

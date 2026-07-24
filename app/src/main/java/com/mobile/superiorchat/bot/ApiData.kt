@@ -22,6 +22,7 @@ data class MessageReactionUpdated(
     val chat: Chat,
     val message_id: Long,
     val date: Long,
+    val user: User? = null,
     val old_reaction: List<ReactionType> = emptyList(),
     val new_reaction: List<ReactionType> = emptyList()
 )

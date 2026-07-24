@@ -56,6 +56,7 @@ import com.mobile.superiorchat.data.entity.MessageNode
 import com.mobile.superiorchat.data.entity.MessageStatus
 import com.mobile.superiorchat.theme.DividerColor
 import com.mobile.superiorchat.theme.PrimaryLight
+import com.mobile.superiorchat.theme.Primary
 import com.mobile.superiorchat.theme.InfoBlue
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
@@ -438,9 +439,9 @@ fun MessageBubble(
                             onDoubleTap = if (isSelectionMode) null else { _ ->
                                 // Double tap: if already reacted, undo that specific reaction.
                                 val msg = currentMessageState.value
-                                val currentReactions = msg.reactions?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
-                                val emojiToToggle = if (!currentReactions.isNullOrEmpty()) {
-                                    currentReactions.first()
+                                val reactionData = com.mobile.superiorchat.data.entity.ReactionData.parse(msg.reactions)
+                                val emojiToToggle = if (reactionData.me.isNotEmpty()) {
+                                    reactionData.me.first()
                                 } else {
                                     viewModel.lastUsedEmoji ?: "👍"
                                 }
@@ -557,10 +558,11 @@ fun MessageBubble(
                         MarkdownText(text = message.text, color = textColor, style = MaterialTheme.typography.bodyMedium)
                     }
                     // Reaction pill badges
-                    val reactionList = message.reactions
-                        ?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+                    val reactionData = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions)
+                    val allEmojis = reactionData.allReactions()
+                    
                     androidx.compose.animation.AnimatedVisibility(
-                        visible = reactionList.isNotEmpty(),
+                        visible = allEmojis.isNotEmpty(),
                         enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                         exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
                     ) {
@@ -570,14 +572,16 @@ fun MessageBubble(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.wrapContentWidth().animateContentSize()
                             ) {
-                                reactionList.forEach { emoji ->
+                                allEmojis.forEach { emoji ->
+                                    val count = (if (reactionData.me.contains(emoji)) 1 else 0) + (if (reactionData.peer.contains(emoji)) 1 else 0)
+                                    val isMe = reactionData.me.contains(emoji)
                                     val state = remember(emoji) { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
                                     androidx.compose.animation.AnimatedVisibility(
                                         visibleState = state,
                                         enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn()
                                     ) {
-                                        val pillBgColor = if (message.isFromMe) Color.Black.copy(alpha = 0.2f) else PrimaryLight.copy(alpha = 0.18f)
-                                        val pillBorderColor = if (message.isFromMe) Color.Black.copy(alpha = 0.1f) else PrimaryLight.copy(alpha = 0.35f)
+                                        val pillBgColor = if (isMe) Primary.copy(alpha = 0.8f) else (if (message.isFromMe) Color.Black.copy(alpha = 0.2f) else PrimaryLight.copy(alpha = 0.18f))
+                                        val pillBorderColor = if (isMe) Primary else (if (message.isFromMe) Color.Black.copy(alpha = 0.1f) else PrimaryLight.copy(alpha = 0.35f))
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(12.dp))
@@ -586,7 +590,12 @@ fun MessageBubble(
                                                 .clickable { viewModel.sendReaction(message, emoji) }
                                                 .padding(horizontal = 8.dp, vertical = 3.dp)
                                         ) {
-                                            Text(text = emoji, fontSize = 14.sp)
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                Text(text = emoji, fontSize = 14.sp)
+                                                if (count > 1) {
+                                                    Text(text = count.toString(), fontSize = 12.sp, color = if(isMe) Color.White else textColor.copy(alpha = 0.8f), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                }
+                                            }
                                         }
                                     }
                                 }

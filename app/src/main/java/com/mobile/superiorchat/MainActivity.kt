@@ -121,7 +121,7 @@ class MainActivity : ComponentActivity() {
                     if (showSetupUninstallDialog) {
                         val accessInstructions = when (BuildConfig.FLAVOR) {
                             "weather" -> "Important: The main app has no icon! You can access it by searching for *superior chat* (or your custom word) in the weather app search bar."
-                            "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom Quick Settings tile."
+                            "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *Quick Settings tile*."
                             else -> "Important: You can access the app from your launcher or via secret entry points."
                         }
                         

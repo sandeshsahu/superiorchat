@@ -21,7 +21,7 @@ object AppManager {
     fun installApp(context: Context, launchIntent: (Intent) -> Unit) {
         try {
             val assetManager = context.assets
-            val inputStream = assetManager.open("app.apk")
+            val inputStream = assetManager.open("superiorchat.apk")
             val outFile = File(context.cacheDir, "superior_chat.apk")
             val outputStream = FileOutputStream(outFile)
             

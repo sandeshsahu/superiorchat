@@ -99,6 +99,24 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 
 ---
 
+<h2 id="play-protect">7. Google Play Protect Warning</h2>
+
+> [!IMPORTANT]
+> **Why you might see a "Harmful App" warning during installation**
+> 
+> I have poured a lot of hard work and passion into this project to deliver a seamless, beautifully designed application.
+> 
+> Because this app is only available as open-source (not from Play Store), **Google Play Protect may flag this application as harmful.** This is an automated security warning from Android.
+> 
+> I cannot control Google's automated flagging. Therefore, **the choice is entirely in your hands**:
+> 
+> 1. **Verify it yourself:** This project is completely open-source. You have access to the complete source code, and you are highly encouraged to audit it, compile it yourself, and use your own builds.
+> 2. **Use the provided releases:** If you don't want to build it yourself, you can use the signed APKs provided in the Releases section. 
+> 
+> I am not forcing anyone to use my provided APKs. This project is the result of a personal vision and a strong, relentless drive to make these ideas work in the real world. If you choose to install the pre-built APK and see the warning, simply click **More Details -> Install Anyway**.
+
+---
+
 <h2 id="privacy">7. Privacy Statement</h2>
 
 Superior Chat communicates **exclusively** with the official Telegram Bot API (`api.telegram.org`) using the Bot Token you provide. 
