@@ -17,8 +17,8 @@ android {
         applicationId = "com.mobile.superiorchat"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "v1.0.0"
+        versionCode = 2
+        versionName = "v1.0.1"
     }
 
     flavorDimensions += "camouflage"
@@ -34,6 +34,11 @@ android {
             applicationId = "com.android.connectivity.stats"
             buildConfigField("boolean", "ENABLE_QS_TILE", "true")
         }
+        create("weather") {
+            dimension = "camouflage"
+            applicationId = "com.android.weather.info"
+            buildConfigField("boolean", "ENABLE_QS_TILE", "false")
+        }
     }
 
     sourceSets {
@@ -42,6 +47,12 @@ android {
             kotlin.srcDirs("src/decoyEngine/java")
             res.srcDirs("src/decoyEngine/res")
             manifest.srcFile("src/decoyEngine/AndroidManifest.xml")
+        }
+        getByName("weather") {
+            java.srcDirs("src/decoyEngine/java", "src/weather/java")
+            kotlin.srcDirs("src/decoyEngine/java", "src/weather/java")
+            res.srcDirs("src/decoyEngine/res", "src/weather/res")
+            manifest.srcFile("src/weather/AndroidManifest.xml")
         }
     }
 
@@ -98,6 +109,11 @@ dependencies {
   // Arch Components
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
+
+  // Weather Flavor Specific Dependencies (Isolated from main chat engine)
+  "weatherImplementation"("androidx.navigation:navigation-compose:2.7.7")
+  "weatherImplementation"("com.squareup.retrofit2:converter-gson:2.11.0")
+  "weatherImplementation"("androidx.constraintlayout:constraintlayout-compose:1.1.0")
 
   // Compose
   implementation(libs.androidx.compose.ui)

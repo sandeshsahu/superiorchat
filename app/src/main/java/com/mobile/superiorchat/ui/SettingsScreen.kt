@@ -31,9 +31,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.draw.scale
 import com.mobile.superiorchat.theme.*
@@ -47,16 +50,15 @@ import com.mobile.superiorchat.BuildConfig
 @Composable
 fun SettingsScreen(
     isInternetConnected: Boolean,
+    tokenStatus: String,
     botToken: String,
     chatId: String,
-    isAutoDownloadMediaEnabled: Boolean,
     isTileAccessEnabled: Boolean,
-    isScreenSecurityEnabled: Boolean,
+    customAccessWord: String = "",
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
-    onAutoDownloadMediaChange: (Boolean) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
-    onScreenSecurityChange: (Boolean) -> Unit,
+    onCustomAccessWordChange: (String) -> Unit = {},
     onSave: () -> Unit,
     onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
 ) {
@@ -67,25 +69,10 @@ fun SettingsScreen(
     var tempChatId by remember { mutableStateOf(chatId) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    val cameraPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            showQrScanner = true
-        } else {
-            val activity = context as? android.app.Activity
-            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, android.Manifest.permission.CAMERA)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
+    val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
     
     if (errorMessage != null) {
-        com.mobile.superiorchat.ui.components.ErrorDialog(
+        com.mobile.superiorchat.ui.components.popups.ErrorDialog(
             title = "Invalid Credentials",
             message = errorMessage!!,
             onDismiss = { errorMessage = null }
@@ -93,31 +80,18 @@ fun SettingsScreen(
     }
 
     if (showAddManuallyDialog) {
-        if (botToken.isNotEmpty()) {
-            com.mobile.superiorchat.ui.components.EditManuallyPopup(
-                initialToken = botToken,
-                initialChatId = chatId,
-                onDismiss = { showAddManuallyDialog = false },
-                onSave = { token, chat ->
-                    onBotTokenChange(token)
-                    onChatIdChange(chat)
-                    onSave()
-                    showAddManuallyDialog = false
-                    Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
-                }
-            )
-        } else {
-            com.mobile.superiorchat.ui.components.AddManuallyPopup(
-                onDismiss = { showAddManuallyDialog = false },
-                onSave = { token, chat ->
-                    onBotTokenChange(token)
-                    onChatIdChange(chat)
-                    onSave()
-                    showAddManuallyDialog = false
-                    Toast.makeText(context, "Credentials Saved", Toast.LENGTH_SHORT).show()
-                }
-            )
-        }
+        com.mobile.superiorchat.ui.components.popups.CredentialsPopup(
+            initialToken = botToken,
+            initialChatId = chatId,
+            onDismiss = { showAddManuallyDialog = false },
+            onSave = { token, chat ->
+                onBotTokenChange(token)
+                onChatIdChange(chat)
+                onSave()
+                showAddManuallyDialog = false
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
+            }
+        )
     }
 
     if (showQrScanner) {
@@ -128,7 +102,7 @@ fun SettingsScreen(
                 onChatIdChange(chat)
                 onSave()
                 showQrScanner = false
-                Toast.makeText(context, "QR Configuration Applied", Toast.LENGTH_SHORT).show()
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
             },
             onShowGlobalDialog = onShowGlobalDialog
         )
@@ -154,11 +128,11 @@ fun SettingsScreen(
 
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).background(Success, CircleShape))
+                    Box(modifier = Modifier.size(8.dp).background(if (tokenStatus == "Online") Success else MaterialTheme.colorScheme.error, CircleShape))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Token Access", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                 }
-                Text("Online", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Success)
+                Text(tokenStatus, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = if (tokenStatus == "Online") Success else MaterialTheme.colorScheme.error)
             }
             HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 8.dp))
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -179,7 +153,21 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Bot Credentials", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
-                Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                var showBotInfo by remember { mutableStateOf(false) }
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "Info", 
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    modifier = Modifier.padding(4.dp).size(20.dp).clickable { showBotInfo = true }
+                )
+                
+                if (showBotInfo) {
+                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                        title = "Bot Credentials",
+                        message = "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*.",
+                        onDismiss = { showBotInfo = false }
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(20.dp))
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -200,151 +188,21 @@ fun SettingsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
-                            .glow(color = Primary, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
-                            .background(Primary, RoundedCornerShape(12.dp))
+                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(PrimaryLight, RoundedCornerShape(12.dp))
                             .bounceClick(scaleDown = 0.95f) {
-                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                                if (hasPermission) {
+                                permissionHandler.requestCamera {
                                     showQrScanner = true
-                                } else {
-                                    onShowGlobalDialog(
-                                        com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale(
-                                            onConfirm = { cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA) }
-                                        )
-                                    )
                                 }
                             },
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Scan QR Code", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text("Scan QR Code", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
-        // General Settings Card
-        GlassCard {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text("General Settings", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .background(SurfaceLevel2, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Auto-Download Media", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                val scale by animateFloatAsState(
-                    targetValue = if (isAutoDownloadMediaEnabled) 1.05f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                )
-
-                Switch(
-                    modifier = Modifier.scale(scale),
-                    checked = isAutoDownloadMediaEnabled,
-                    onCheckedChange = { onAutoDownloadMediaChange(it) },
-                    thumbContent = if (isAutoDownloadMediaEnabled) {
-                        {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = TextPrimary
-                            )
-                        }
-                    } else {
-                        {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = Background
-                            )
-                        }
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Primary,
-                        checkedTrackColor = Primary.copy(alpha = 0.5f),
-                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        uncheckedTrackColor = Background.copy(alpha = 0.5f)
-                    )
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .background(SurfaceLevel2, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Block Screenshots", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    var showSecurityInfo by remember { mutableStateOf(false) }
-                    Icon(
-                        Icons.Default.Info, 
-                        contentDescription = "Info", 
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant, 
-                        modifier = Modifier.size(16.dp).clickable { showSecurityInfo = true }
-                    )
-                    
-                    if (showSecurityInfo) {
-                        com.mobile.superiorchat.ui.components.ErrorDialog(
-                            title = "Screen Security",
-                            message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\nScreenshots will appear pure black.",
-                            onDismiss = { showSecurityInfo = false }
-                        )
-                    }
-                }
-                
-                val securityScale by animateFloatAsState(
-                    targetValue = if (isScreenSecurityEnabled) 1.05f else 1f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)
-                )
-
-                Switch(
-                    modifier = Modifier.scale(securityScale),
-                    checked = isScreenSecurityEnabled,
-                    onCheckedChange = { onScreenSecurityChange(it) },
-                    thumbContent = if (isScreenSecurityEnabled) {
-                        {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = TextPrimary
-                            )
-                        }
-                    } else {
-                        {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(SwitchDefaults.IconSize),
-                                tint = Background
-                            )
-                        }
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Primary,
-                        checkedTrackColor = Primary.copy(alpha = 0.5f),
-                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        uncheckedTrackColor = Background.copy(alpha = 0.5f)
-                    )
-                )
-            }
-        }
 
 
         if (BuildConfig.ENABLE_QS_TILE) {
@@ -375,13 +233,13 @@ fun SettingsScreen(
                             Icons.Default.Info, 
                             contentDescription = "Info", 
                             tint = MaterialTheme.colorScheme.onSurfaceVariant, 
-                            modifier = Modifier.size(16.dp).clickable { showAccessibilityInfo = true }
+                            modifier = Modifier.padding(4.dp).size(16.dp).clickable { showAccessibilityInfo = true }
                         )
                         
                         if (showAccessibilityInfo) {
-                            com.mobile.superiorchat.ui.components.ErrorDialog(
+                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
                                 title = "Quick Settings Tile Access",
-                                message = "Open notification panel, click on the pencil icon, find 'Carrier Sync' and add it.\n\nThen when you want to open chat:\n1. Enable\n2. Disable\n3. Enable\n4. Hold Tile to open chat app",
+                                message = "Open notification panel, click on the pencil icon, find *Carrier Sync*' and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app",
                                 onDismiss = { showAccessibilityInfo = false }
                             )
                         }
@@ -402,7 +260,7 @@ fun SettingsScreen(
                                     imageVector = Icons.Filled.Check,
                                     contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize),
-                                    tint = TextPrimary
+                        tint = PrimaryLight
                                 )
                             }
                         } else {
@@ -415,13 +273,143 @@ fun SettingsScreen(
                                 )
                             }
                         },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = Primary,
-                            checkedTrackColor = Primary.copy(alpha = 0.5f),
-                            uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            uncheckedTrackColor = Background.copy(alpha = 0.5f)
-                        )
+                        colors = com.mobile.superiorchat.ui.components.luminaSwitchColors()
                     )
+                }
+            }
+        }
+
+        if (BuildConfig.FLAVOR == "weather") {
+            // App Accessibility Card for Weather Flavor
+            GlassCard {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Set Custom Access Word", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    var showAccessInfo by remember { mutableStateOf(false) }
+                    Icon(
+                        Icons.Default.Info, 
+                        contentDescription = "Info", 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                        modifier = Modifier.padding(4.dp).size(20.dp).clickable { showAccessInfo = true }
+                    )
+                    
+                    if (showAccessInfo) {
+                        com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                            title = "Custom Access Word",
+                            message = "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *superior chat* will always work as a fallback.",
+                            onDismiss = { showAccessInfo = false }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                var tempWord by remember { mutableStateOf("") }
+                val isValid = tempWord.trim().length >= 4
+                var showWarning by remember { mutableStateOf(false) }
+                var isSaved by remember { mutableStateOf(false) }
+                val scope = rememberCoroutineScope()
+                
+                LaunchedEffect(isSaved) {
+                    if (isSaved) {
+                        kotlinx.coroutines.delay(2000)
+                        isSaved = false
+                    }
+                }
+                
+                if (showWarning) {
+                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                        title = "Warning",
+                        message = "Are you sure you want to set your access word to *${tempWord.trim()}*? If you forget this word, you can always use the default *superior chat* fallback to regain access.",
+                        icon = Icons.Default.Warning,
+                        iconTint = PrimaryLight,
+                        confirmText = "Save",
+                        onConfirm = {
+                            onCustomAccessWordChange(tempWord.trim())
+                            tempWord = ""
+                            
+                            // Trigger save animation
+                            isSaved = true
+                        },
+                        onDismiss = { showWarning = false }
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = tempWord,
+                        onValueChange = { tempWord = it },
+                        placeholder = { Text("e.g. open door", color = TextSecondary, fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                    
+                    if (customAccessWord.isNotEmpty()) {
+                        Text(
+                            text = "Current saved word: $customAccessWord",
+                            color = PrimaryLight,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .glow(color = if (isSaved) Success else if (isValid) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(if (isSaved) Success else if (isValid) PrimaryLight else SurfaceLevel2, RoundedCornerShape(12.dp))
+                            .bounceClick(scaleDown = 0.95f) {
+                                if (isValid && !isSaved) {
+                                    showWarning = true
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedContent(
+                            targetState = isSaved,
+                            transitionSpec = {
+                                (scaleIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn()) togetherWith 
+                                (scaleOut(targetScale = 0.8f, animationSpec = tween(150)) + fadeOut())
+                            },
+                            label = "save_animation"
+                        ) { saved ->
+                            if (saved) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Saved!", 
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer, 
+                                        fontSize = 14.sp, 
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = "Save Custom Word", 
+                                    color = if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary, 
+                                    fontSize = 14.sp, 
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

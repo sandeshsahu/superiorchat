@@ -121,3 +121,42 @@ fun Modifier.bounceClick(
         )
 }
 
+// ══════════════════════════════════════════════════════════
+//  Lumina Aesthetic (DRY Components)
+// ══════════════════════════════════════════════════════════
+
+/**
+ * Standard button colors for the "Lumina" active state (PrimaryLight background, deep blue icon/text)
+ */
+@Composable
+fun luminaButtonColors() = androidx.compose.material3.ButtonDefaults.buttonColors(
+    containerColor = PrimaryLight,
+    contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer
+)
+
+/**
+ * Standard switch colors for the "Lumina" active state.
+ */
+@Composable
+fun luminaSwitchColors() = androidx.compose.material3.SwitchDefaults.colors(
+    checkedThumbColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
+    checkedTrackColor = PrimaryLight,
+    uncheckedThumbColor = TextSecondary,
+    uncheckedTrackColor = SurfaceLevel2,
+    uncheckedBorderColor = DividerColor
+)
+
+/**
+ * Standard navigation drawer item colors for the "Lumina" selected state.
+ */
+@Composable
+fun luminaNavigationDrawerItemColors() = androidx.compose.material3.NavigationDrawerItemDefaults.colors(
+    selectedContainerColor = PrimaryLight,
+    selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
+    selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimaryContainer,
+    unselectedContainerColor = Color.Transparent,
+    unselectedIconColor = TextSecondary,
+    unselectedTextColor = TextSecondary
+)
+
+

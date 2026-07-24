@@ -59,10 +59,9 @@ Superior Chat is built to protect against a specific threat model. It is importa
 
 To maintain strict stealth, Superior Chat provides hidden entry points depending on the flavor you install. Currently, there are two primary methods to access the hidden chat interface:
 
-- 📞 **Secret Dialer Code**: Open the application privately by dialing a secret code (`*#*#9131#*#*`) directly into your phone's native dialer.
-- 🎛️ **Quick Settings Tile**: Access the chat app via a custom Quick Settings Tile. 
-  - **Access Sequence**: Tap the tile `ON`, then `OFF`, and finally `ON and HOLD` to enter the application. (This tile can be disabled from the Application Settings for extra security).
-
+- 📞 **Secret Dialer Code**: (CaptivePortal flavor only) See [CaptivePortal.md](flavors/CaptivePortal.md) for access instructions.
+- 🎛️ **Quick Settings Tile**: (CaptivePortal flavor only) See [CaptivePortal.md](flavors/CaptivePortal.md) for access instructions.
+- 🔍 **App Search Interception**: (Weather flavor only) See [FlavorWeather.md](flavors/FlavorWeather.md) for access instructions.
 > [!NOTE]
 > We have plans to introduce additional, highly discreet access methods in future updates.
 
@@ -76,14 +75,14 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 - **Stealth Level**: None.
 - **Description**: The standard application with a regular launcher icon and normal notifications. There are no hiding mechanisms. Best for testing or casual use.
 
-### 🔴 Captive Portal Flavor (Hidden)
-- **Stealth Level**: High.
-- **Description**: The app is completely hidden from the launcher. It is disguised as an **Android System** component (package name: `com.android.connectivity.stats`) and features a standard system Gear icon, making it incredibly hard for snoopers to detect in the app settings list.
-- **Notification Camouflage**: Incoming messages trigger harmless-looking system alerts based on the network state:
-  - **Idle**: `"[Carrier] - Standard rates apply"`
-  - **New Message**: `"[Carrier] - High data usage detected"`
-  - **Offline**: `"[Carrier] - Internet not connected"`
-  - **API Issues**: `"[Carrier] - Check your data plan"`
+### 🔵 Weather Flavor (Camouflaged)
+- **Stealth Level**: Advanced.
+- **Details**: Full details regarding this flavor's disguise, intercept mechanisms, and notification camouflage can be found in [FlavorWeather.md](flavors/FlavorWeather.md).
+
+### 🔴 Captive Portal Flavor (Hidden + Camouflaged)
+- **Stealth Level**: Maximum.
+- **Details**: Full details regarding this flavor's system decoy identity, Quick Settings tile access, and carrier notification camouflage can be found in [CaptivePortal.md](flavors/CaptivePortal.md).
+
 
 > [!NOTE]
 > We are planning to add more flavors with even stronger dynamic camouflage mechanisms in future releases.
@@ -94,18 +93,36 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 
 | # | Note | Workaround / Action |
 |:---:|:---|:---|
-| 1 | **Dialer Code Incompatibility** | On heavily customized OEM ROMs, the secret dialer code (`*#*#9131#*#*`) may fail to trigger due to system restrictions. Use the Quick Settings Tile (Captive Portal flavor) instead. |
+| 1 | **Dialer Code Incompatibility** | On heavily customized OEM ROMs, the secret dialer code (`*#*#9131#*#*`) may fail to trigger due to system restrictions. See [CaptivePortal.md](flavors/CaptivePortal.md) for fallback methods. |
 | 2 | **Battery Optimization Kills Polling** | Android's aggressive battery management may kill the background BotService, delaying incoming messages when the app is closed. | You must grant "Unrestricted" battery usage to the app in your device's App Settings. |
 | 3 | **Setup App Metadata Leakage** | Leaving the Setup App installed defeats the purpose of a camouflaged installation. | You **must uninstall** the Setup App immediately after the credentials have been successfully transferred to the Main App. |
+
+---
+
+<h2 id="play-protect">7. Google Play Protect Warning</h2>
+
+> [!IMPORTANT]
+> **Why you might see a "Harmful App" warning during installation**
+> 
+> I have poured a lot of hard work and passion into this project to deliver a seamless, beautifully designed application.
+> 
+> Because this app is only available as open-source (not from Play Store), **Google Play Protect may flag this application as harmful.** This is an automated security warning from Android.
+> 
+> I cannot control Google's automated flagging. Therefore, **the choice is entirely in your hands**:
+> 
+> 1. **Verify it yourself:** This project is completely open-source. You have access to the complete source code, and you are highly encouraged to audit it, compile it yourself, and use your own builds.
+> 2. **Use the provided releases:** If you don't want to build it yourself, you can use the signed APKs provided in the Releases section. 
+> 
+> I am not forcing anyone to use my provided APKs. This project is the result of a personal vision and a strong, relentless drive to make these ideas work in the real world. If you choose to install the pre-built APK and see the warning, simply click **More Details -> Install Anyway**.
 
 ---
 
 <h2 id="privacy">7. Privacy Statement</h2>
 
 Superior Chat communicates **exclusively** with the official Telegram Bot API (`api.telegram.org`) using the Bot Token you provide. 
-- No data is sent to any third-party servers, analytics platforms, or external endpoints. 
 - The developer has absolutely no access to your messages, tokens, or media. 
 - All chat history and transferred media remain strictly between your local device storage and the Telegram servers.
+- **Flavor Exceptions (Weather)**: See the data privacy and third-party API usage guarantees in [FlavorWeather.md](flavors/FlavorWeather.md).
 
 ---
 

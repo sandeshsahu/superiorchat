@@ -19,11 +19,18 @@ class DecoyActivity : ComponentActivity() {
 
         try {
             val settingsIntent = Intent(action).apply {
+                if (action.startsWith(packageName)) {
+                    setPackage(packageName)
+                }
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
-            startActivity(settingsIntent)
+            if (settingsIntent.resolveActivity(packageManager) != null) {
+                startActivity(settingsIntent)
+            } else {
+                throw Exception("Intent not resolvable on this flavor")
+            }
         } catch (e: Exception) {
-            // Fallback to main settings if the specific intent doesn't exist on this OEM
+            // Fallback to main settings if the specific intent doesn't exist on this OEM or flavor
             val fallbackIntent = Intent(Settings.ACTION_SETTINGS).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }

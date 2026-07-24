@@ -32,6 +32,8 @@
 - 📌 **Replies & Pinning**: Swipe to reply to specific messages or pin critical messages to the top banner.
 - 🏷️ **Status Indicators**: Real-time delivery status updates (`Sending`, `Sent`, `Failed`) and `Edited` labels.
 - ✅ **Multi-Selection Mode**: Select multiple messages at once for bulk self-delete or "Delete for everyone".
+- 🕰️ **Message Timestamps**: Clear 12-hour (AM/PM) timestamps for all chat messages and system logs.
+- 💬 **Multi-line Input**: Smoothly expanding chat input box supporting multi-line text drafting.
 
 ---
 
@@ -40,15 +42,17 @@
 - 📷 **Photos & Videos**: In-app camera capture, high-resolution photo sharing, and video playback with smart thumbnails.
 - 🎙️ **Voice Messages**: Record voice notes featuring dynamic animated waveform visualizations and interactive playback controls.
 - 📁 **File & Document Sharing**: Send any file type (PDF, DOC, APK) up to `50MB` and download up to `20MB` with automatic file type icons.
-- 🗄️ **Integrated File Explorer**: Built-in, hierarchical file browser with recent items, folder navigation, and search.
-- 🖼️ **Smart Media Picker**: Custom gallery grid neatly organized by albums, featuring camera shortcuts and multi-file support.
+- 📊 **Real-Time Transfers**: Global, expandable overlay displaying live upload/download progress categorized by media type, featuring individual cancellation controls.
+- 🗄️ **Integrated File Explorer**: Built-in, hierarchical file browser with recent items, folder navigation, search, and native media thumbnails.
+- 🖼️ **Smart Media Picker**: Custom gallery grid neatly organized by albums, featuring camera shortcuts, multi-file support, and buttery-smooth swipe gestures.
 
 ---
 
 <h2 id="profile">🤖 3. Profile & Credential Management</h2>
 
-- 🎨 **Profile Customization**: Change the bot's profile photo (using a built-in cropping tool), display name, and bio directly from within the app.
+- 🎨 **Profile Customization**: Change the bot's profile photo (using a professional pan-and-zoom cropping tool), display name, and bio directly from within the app.
 - 🔑 **Credential Setup**: Quickly configure your Bot Token and Chat ID via QR Code scanning or manual entry with real-time format validation.
+- 🧹 **Chat Cleanup**: Dedicated options to completely wipe local chat history and locally downloaded media from the device.
 - ⚠️ **Danger Zone Controls**: Dedicated safety options to clear credentials (with warnings) or completely uninstall the app cleanly.
 
 ---
@@ -59,7 +63,8 @@
 - 📞 **Secret Dialer Access**: Open the application privately by dialing a secret code (`*#*#9131#*#*`).
 - 🎛️ **Secret Access Via Tile**: Open the chat app via a Quick Settings Tile. 
   - *Access sequence*: `ON ➔ OFF ➔ ON and HOLD tile` to enter (Can be disabled from Application Settings).
-- 🔔 **Camouflage Notifications**: Incoming messages appear as harmless system/carrier alerts to prevent shoulder-surfing.
+- 🔍 **App Search Interception**: Type a secret phrase (`superior chat`) into the innocent weather search bar and hit Search to silently launch the chat engine. (weather flavor only)
+- 🔔 **Camouflage Notifications**: Incoming messages appear as harmless system, carrier, or weather alerts to prevent shoulder-surfing.
 - 🔄 **Decoy Redirects**: If a snooper clicks the camouflaged notification or taps the Quick Settings tile without the correct sequence, they are instantly redirected to the native Android Network Settings to completely avoid suspicion.
 - 🗑️ **Recent Apps Protection**: Excluded from the phone's recent apps list to leave zero trace when switching screens.
 - 🔒 **Screen Security**: Universal option to block screenshots and screen recording throughout the entire application.
@@ -74,7 +79,8 @@
 | Flavor Variant | Identity / App Name | Stealth Level | Notification Behavior |
 |----------------|---------------------|---------------|-----------------------|
 | 🟢 **Original** | Superior Chat | **None** | Standard chat notifications. Ideal for non-stealth or testing use. |
-| 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **High** | Camouflaged as system networking alerts based on data states. |
+| 🔵 **Weather** | `Weather`<br>*Adaptive weather icons* | **Advanced** | Live, context-aware notifications mimicking real meteorological data. |
+| 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **Maximum** | Camouflaged as system networking alerts based on data states. |
 
 **Captive Portal Camouflage States:**
 - **Idle**: `"[Carrier] - Standard rates apply"`
@@ -82,11 +88,21 @@
 - **Offline**: `"[Carrier] - Internet not connected"`
 - **API Issues**: `"[Carrier] - Check your data plan"`
 
+**Weather Camouflage States (Powered by Live APIs):**
+- **Idle**: `"Currently In [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
+- **New Message**: `"Live Update • [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
+- **Offline**: `"Offline • Last Known data: [City] • [Condition], [Temp]°C"`
+- **API Issues**: `"Failed to reach servers • Last known Data: [Condition], [Temp]°C • [City]"`
+
 *(The app auto-resets to the Idle state when opened to avoid suspicion).*
 
 > [!NOTE]
 > We are planning to add more flavors with even stronger dynamic camouflage mechanisms in future releases.
 
+> [!IMPORTANT]
+> For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:
+> - **[Captive Portal Details](flavors/CaptivePortal.md)**
+> - **[Weather Details](flavors/FlavorWeather.md)**
 ---
 
 <h2 id="ui">✨ 6. Modern User Interface</h2>

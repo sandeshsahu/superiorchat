@@ -36,6 +36,38 @@ data class MessageNode(
     val mediaFileSize: Long? = null,
     val replyToMessageId: Long? = null,
     val isEdited: Boolean = false,
-    // Comma-separated emoji reactions, e.g. "👍,❤️". Null means no reactions.
+    // JSON string representing ReactionData. Null means no reactions.
     val reactions: String? = null
 )
+
+@kotlinx.serialization.Serializable
+data class ReactionData(
+    val me: List<String> = emptyList(),
+    val peer: List<String> = emptyList()
+) {
+    fun allReactions(): Set<String> = (me + peer).toSet()
+
+    companion object {
+        private val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+        fun parse(jsonString: String?): ReactionData {
+            if (jsonString.isNullOrBlank()) return ReactionData()
+            return try {
+                if (jsonString.startsWith("{")) {
+                    json.decodeFromString(jsonString)
+                } else {
+                    // Legacy fallback: assuming old comma-separated emojis came from peer
+                    val emojis = jsonString.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    ReactionData(peer = emojis)
+                }
+            } catch (e: Exception) {
+                ReactionData()
+            }
+        }
+
+        fun toJson(data: ReactionData): String? {
+            if (data.me.isEmpty() && data.peer.isEmpty()) return null
+            return json.encodeToString(ReactionData.serializer(), data)
+        }
+    }
+}

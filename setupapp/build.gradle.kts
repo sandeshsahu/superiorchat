@@ -14,8 +14,8 @@ android {
         applicationId = "com.mobile.superiorsetup"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "v1.0.0"
+        versionCode = 2
+        versionName = "v1.0.1"
     }
 
     flavorDimensions += "camouflage"
@@ -30,6 +30,11 @@ android {
             dimension = "camouflage"
             buildConfigField("String", "TARGET_APP_ID", "\"com.android.connectivity.stats\"")
             manifestPlaceholders["targetAppId"] = "com.android.connectivity.stats"
+        }
+        create("weather") {
+            dimension = "camouflage"
+            buildConfigField("String", "TARGET_APP_ID", "\"com.android.weather.info\"")
+            manifestPlaceholders["targetAppId"] = "com.android.weather.info"
         }
     }
 

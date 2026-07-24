@@ -38,9 +38,7 @@ import com.mobile.superiorchat.ui.MainViewModel
 class MainActivity : ComponentActivity() {
     private var showSetupUninstallDialog by mutableStateOf(false)
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { _ -> }
+    // Removed old requestPermissionLauncher
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -66,12 +64,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Request POST_NOTIFICATIONS by default on Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
+        // POST_NOTIFICATIONS is now handled inside Compose via permissionHandler
 
         // Request Disable Battery Optimization by default
         val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
@@ -105,6 +98,14 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
+
+            LaunchedEffect(Unit) {
+                if (viewModel.appNotificationsEnabled) {
+                    permissionHandler.requestNotification(showDenial = false) {}
+                }
+            }
+
             SuperiorChatTheme(darkTheme = true) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -113,45 +114,46 @@ class MainActivity : ComponentActivity() {
                     AppScreen(
                         viewModel = viewModel,
                         requestPostNotifications = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                AppLog.log(LogCategory.SYSTEM, "Requesting POST_NOTIFICATIONS permission")
-                                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
+                            permissionHandler.requestNotification {}
                         }
                     )
                     
                     if (showSetupUninstallDialog) {
-                        AlertDialog(
-                            onDismissRequest = { },
-                            title = { Text("Uninstall Setup App") },
-                            text = { 
-                                Column {
-                                    Text("The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.")
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text("Important: The main app has no icon! You can always access it by dialing *#*#9131#*#* in your phone's dialer.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        val accessInstructions = when (BuildConfig.FLAVOR) {
+                            "weather" -> "Important: The main app has no icon! You can access it by searching for *superior chat* (or your custom word) in the weather app search bar."
+                            "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *Quick Settings tile*."
+                            else -> "Important: You can access the app from your launcher or via secret entry points."
+                        }
+                        
+                        com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                            title = "Uninstall Setup App",
+                            message = "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions",
+                            confirmText = "Uninstall",
+                            dismissText = "Keep",
+                            onConfirm = {
+                                showSetupUninstallDialog = false
+                                try {
+                                    val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
+                                    uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
+                                    startActivity(uninstallIntent)
+                                } catch (e: Exception) {
+                                    AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
                                 }
                             },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        showSetupUninstallDialog = false
-                                        try {
-                                            val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
-                                            uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
-                                            startActivity(uninstallIntent)
-                                        } catch (e: Exception) {
-                                            AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
-                                        }
-                                    }
-                                ) { Text("Uninstall") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showSetupUninstallDialog = false }) { Text("Keep") }
+                            onDismiss = {
+                                showSetupUninstallDialog = false
                             }
                         )
                     }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Broadcast that chat is opened so camo engine clears notifications
+        val intent = android.content.Intent("com.mobile.superiorchat.ACTION_CHAT_OPENED")
+        sendBroadcast(intent)
     }
 }

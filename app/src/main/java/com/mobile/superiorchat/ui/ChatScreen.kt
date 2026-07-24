@@ -41,10 +41,22 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.mobile.superiorchat.ui.components.ScrollEvent
-import com.mobile.superiorchat.ui.components.MessageContextMenu
-import com.mobile.superiorchat.ui.components.DeleteWarningDialog
-import com.mobile.superiorchat.ui.components.SelectionActionBar
+import com.mobile.superiorchat.ui.components.popups.MessageContextMenu
+import com.mobile.superiorchat.ui.components.popups.DeleteWarningDialog
+import com.mobile.superiorchat.ui.components.popups.SelectionActionBar
 import com.mobile.superiorchat.data.entity.MessageNode
 import com.mobile.superiorchat.data.repository.LocalMediaItem
 import com.mobile.superiorchat.data.repository.LocalFileItem
@@ -71,13 +83,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.AttachMenu
-import com.mobile.superiorchat.ui.components.MessageBubble
-import com.mobile.superiorchat.ui.components.MediaViewer
-import com.mobile.superiorchat.ui.components.MediaPicker
-import com.mobile.superiorchat.ui.components.PickerTab
-import com.mobile.superiorchat.ui.components.ErrorDialog
-import com.mobile.superiorchat.ui.components.ActionDialog
-import com.mobile.superiorchat.ui.components.TargetProfileDialog
+import com.mobile.superiorchat.ui.components.bubbles.MessageBubble
+import com.mobile.superiorchat.ui.components.media.MediaViewer
+import com.mobile.superiorchat.ui.components.media.MediaPicker
+import com.mobile.superiorchat.ui.components.media.PickerTab
+import com.mobile.superiorchat.ui.components.popups.ErrorDialog
+import com.mobile.superiorchat.ui.components.popups.ActionDialog
+import com.mobile.superiorchat.ui.components.profile.PartnerProfile
 import com.mobile.superiorchat.ui.components.bounceClick
 import com.mobile.superiorchat.ui.components.glow
 import java.io.File
@@ -98,6 +110,7 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val currentPinnedMessage by viewModel.currentPinnedMessage.collectAsState()
     val messageLimit by viewModel.messageLimit.collectAsState()
+    val isLoadingInitial by viewModel.isLoadingInitial.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -261,106 +274,7 @@ fun ChatScreen(
         }
     )
 
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            val uri = viewModel.createCameraUri(context)
-            cameraLauncher.launch(uri)
-        } else {
-            val activity = context as? android.app.Activity
-            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
-
-    val audioPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (isGranted) {
-            viewModel.startRecordingAudio(context)
-        } else {
-            val activity = context as? android.app.Activity
-            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
-
-    val storageLauncherRef = remember { androidx.compose.runtime.mutableStateOf<androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, Map<String, @JvmSuppressWildcards Boolean>>?>(null) }
-
-    val storagePermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        val imagesGranted = results[Manifest.permission.READ_MEDIA_IMAGES] == true
-        val videoGranted = results[Manifest.permission.READ_MEDIA_VIDEO] == true
-        val storageGranted = results[Manifest.permission.READ_EXTERNAL_STORAGE] == true
-        val partialGranted = results[Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED] == true
-
-        if (imagesGranted || storageGranted) {
-            viewModel.loadRecentImages(context)
-            showAttachmentMenu = true
-        } else if (partialGranted) {
-            viewModel.loadRecentImages(context)
-            val activity = context as? android.app.Activity
-            val fullPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                Manifest.permission.READ_MEDIA_IMAGES
-            } else {
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            }
-            if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
-                        onContinue = { /* Do nothing, just continue */ },
-                        onGoToSettings = {
-                            context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
-                        }
-                    )
-                )
-            } else {
-                onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess(
-                    onContinue = { /* Do nothing, just continue */ },
-                    onUpgrade = {
-                        val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-                        } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                            arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-                        } else {
-                            arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                        }
-                        storageLauncherRef.value?.launch(perms)
-                    }
-                ))
-            }
-        } else {
-            val activity = context as? android.app.Activity
-            val permsToCheck = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-            } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-            } else {
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
-            if (activity != null && !permsToCheck.any { perm -> androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, perm) }) {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied(
-                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-                    )
-                )
-            }
-        }
-    }
-    
-    storageLauncherRef.value = storagePermissionLauncher
+    val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
 
     val onMediaClickRemembered = remember {
         { path: String, type: String ->
@@ -394,53 +308,7 @@ fun ChatScreen(
     val onGalleryClickRemembered = remember(context) {
         {
             showAttachmentMenu = false
-            
-            val isExternalStorageManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                android.os.Environment.isExternalStorageManager()
-            } else false
-            
-            val hasFullAccess = isExternalStorageManager || if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            } else {
-                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            }
-            val hasPartialAccess = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                androidx.core.content.ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            } else {
-                false
-            }
-            
-            if (hasPartialAccess && !hasFullAccess) {
-                val fullPerm = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                    Manifest.permission.READ_MEDIA_IMAGES
-                } else {
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                }
-                val activity = context as? android.app.Activity
-                
-                if (activity != null && !androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, fullPerm)) {
-                    onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied(
-                        onContinue = { currentPickerMode = PickerMode.GALLERY },
-                        onGoToSettings = {
-                            context.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
-                        }
-                    ))
-                } else {
-                    onShowGlobalDialog(com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess(
-                        onContinue = { currentPickerMode = PickerMode.GALLERY },
-                        onUpgrade = {
-                            val perms = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-                            } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                                arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-                            } else {
-                                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                            }
-                            storageLauncherRef.value?.launch(perms)
-                        }
-                    ))
-                }
-            } else {
+            permissionHandler.requestStorageForMedia {
                 currentPickerMode = PickerMode.GALLERY
             }
         }
@@ -449,15 +317,8 @@ fun ChatScreen(
     val onCameraClickRemembered = remember(context) {
         {
             showAttachmentMenu = false
-            val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-            if (hasPermission) {
+            permissionHandler.requestCamera {
                 cameraLauncher.launch(viewModel.createCameraUri(context))
-            } else {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale(
-                        onConfirm = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
-                    )
-                )
             }
         }
     }
@@ -577,7 +438,11 @@ fun ChatScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     reverseLayout = true
                 ) {
-                    if (messages.isEmpty()) {
+                    if (isLoadingInitial) {
+                        items(7) { index ->
+                            com.mobile.superiorchat.ui.GhostMessageBubble(isFromMe = index % 2 != 0)
+                        }
+                    } else if (messages.isEmpty()) {
                         item {
                             Column(
                                 modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
@@ -587,14 +452,14 @@ fun ChatScreen(
                                     modifier = Modifier
                                         .size(72.dp)
                                         .glow(color = Primary, radius = 40f, dx = 0f, dy = 0f)
-                                        .background(Primary.copy(alpha = 0.1f), CircleShape)
-                                        .border(1.dp, Primary.copy(alpha = 0.3f), CircleShape),
+                                        .background(PrimaryLight, CircleShape)
+                                        .border(1.dp, PrimaryLight.copy(alpha = 0.5f), CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Lock,
                                         contentDescription = "Secure Chat",
-                                        tint = PrimaryLight,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }
@@ -665,72 +530,14 @@ fun ChatScreen(
                         }
                         
                         if (messages.size >= messageLimit) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(24.dp),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        strokeWidth = 2.dp
-                                    )
-                                }
+                            items(2) { index ->
+                                com.mobile.superiorchat.ui.GhostMessageBubble(isFromMe = index % 2 != 0)
                             }
                         }
                     }
                 }
                 
-                val syncState by com.mobile.superiorchat.core.StatusFlow.syncState.collectAsState()
-                val syncMessage by com.mobile.superiorchat.core.StatusFlow.syncMessage.collectAsState()
 
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = syncState != com.mobile.superiorchat.core.SyncState.IDLE,
-                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
-                ) {
-                    val pillBgColor = when (syncState) {
-                        com.mobile.superiorchat.core.SyncState.SUCCESS,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> PrimaryLight
-                        com.mobile.superiorchat.core.SyncState.ERROR,
-                        com.mobile.superiorchat.core.SyncState.OFFLINE,
-                        com.mobile.superiorchat.core.SyncState.AUTH_ERROR -> Color(0xFF690005) // Dark Red
-                        else -> SurfaceLevel1
-                    }
-                    val pillTextColor = when (syncState) {
-                        com.mobile.superiorchat.core.SyncState.SUCCESS,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE,
-                        com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES -> Color(0xFF1000A9) // Matches sent message text
-                        else -> Color.White
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(pillBgColor)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (syncState == com.mobile.superiorchat.core.SyncState.SYNCING_PROFILE || syncState == com.mobile.superiorchat.core.SyncState.SYNCING_MESSAGES) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                color = pillTextColor,
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text(
-                            text = syncMessage ?: "",
-                            color = pillTextColor,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
 
                 androidx.compose.animation.AnimatedVisibility(
                     visible = isScrolledUp || viewModel.hasUnreadMessages,
@@ -819,27 +626,17 @@ fun ChatScreen(
                         viewModel = viewModel,
                         showAttachmentMenu = showAttachmentMenu,
                         onAttachmentMenuChange = { showAttachmentMenu = it },
-                        onRequestStoragePermission = { _ ->
-                            onShowGlobalDialog(
-                                com.mobile.superiorchat.ui.GlobalDialogState.StoragePermissionRationale(
-                                    onConfirm = {
-                                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                            storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED))
-                                        } else if (android.os.Build.VERSION.SDK_INT == android.os.Build.VERSION_CODES.TIRAMISU) {
-                                            storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO))
-                                        } else {
-                                            storagePermissionLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
-                                        }
-                                    }
-                                )
-                            )
+                        onRequestStoragePermission = {
+                            permissionHandler.requestStorageForMedia {
+                                viewModel.loadRecentImages(context)
+                                viewModel.loadAllLocalMedia(context)
+                                showAttachmentMenu = true
+                            }
                         },
-                        onRequestAudioPermission = { perm ->
-                            onShowGlobalDialog(
-                                com.mobile.superiorchat.ui.GlobalDialogState.MicrophonePermissionRationale(
-                                    onConfirm = { audioPermissionLauncher.launch(perm) }
-                                )
-                            )
+                        onRequestAudioPermission = {
+                            permissionHandler.requestAudio {
+                                viewModel.startRecordingAudio(context)
+                            }
                         },
                         hasConnectionError = hasConnectionError,
                         isBotTokenInvalid = isBotTokenInvalid,
@@ -869,7 +666,7 @@ fun ChatScreen(
         }
 
         if (showUserInfoDialog) {
-            TargetProfileDialog(
+            PartnerProfile(
                 userProfile = userProfile,
                 onImageClick = { path ->
                     activeFullScreenMediaPath = path
@@ -917,6 +714,10 @@ fun ChatScreen(
         viewModel.exitSelectionMode()
     }
 
+    androidx.activity.compose.BackHandler(enabled = showAttachmentMenu) {
+        showAttachmentMenu = false
+    }
+
     MediaPicker(
         visible = currentPickerMode != PickerMode.NONE,
         initialTab = if (currentPickerMode == PickerMode.FILES) PickerTab.FILES else PickerTab.GALLERY,
@@ -941,15 +742,8 @@ fun ChatScreen(
             success
         },
         onCameraClick = {
-            val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-            if (hasPermission) {
+            permissionHandler.requestCamera {
                 cameraLauncher.launch(viewModel.createCameraUri(context))
-            } else {
-                onShowGlobalDialog(
-                    com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale(
-                        onConfirm = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }
-                    )
-                )
             }
         },
         onSystemPickerClick = {
@@ -966,4 +760,6 @@ fun ChatScreen(
 }
 
 enum class PickerMode { NONE, GALLERY, FILES }
+
+
 

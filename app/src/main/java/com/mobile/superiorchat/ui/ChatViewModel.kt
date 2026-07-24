@@ -150,22 +150,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val chatId = prefs.chatId
         if (token.isBlank() || chatId.isBlank()) return
 
-        // Parse current reactions
-        val currentList = message.reactions
-            ?.split(",")
-            ?.map { it.trim() }
-            ?.filter { it.isNotEmpty() }
-            ?.toMutableList() ?: mutableListOf()
+        // Parse current reactions using structured JSON model
+        val currentData = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions)
+        val myReactions = currentData.me.toMutableList()
 
-        val isToggleOff = currentList.contains(emoji)
+        val isToggleOff = myReactions.contains(emoji)
         if (isToggleOff) {
-            currentList.remove(emoji)
+            myReactions.remove(emoji)
         } else {
-            currentList.add(emoji)
+            // Usually, standard users have 1 reaction per message. Let's clear previous to mimic standard behavior
+            myReactions.clear()
+            myReactions.add(emoji)
             lastUsedEmoji = emoji
         }
+        
+        val newData = currentData.copy(me = myReactions)
+        val newJson = com.mobile.superiorchat.data.entity.ReactionData.toJson(newData)
 
-        val newReactions = currentList.joinToString(",").takeIf { it.isNotEmpty() }
         // Optimistic local update
         viewModelScope.launch(Dispatchers.IO) {
             if (!isToggleOff) {
@@ -173,10 +174,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val usages = repository.getEmojiUsage()
                 updateSortedEmojis(usages)
             }
-            repository.updateMessageReactions(message.messageId, newReactions)
+            repository.updateMessageReactions(message.messageId, newJson)
             if (NetState.isOnline.value) {
-                // Send only the last/most recent emoji to the API (Telegram allows one reaction per user)
-                val apiEmoji = if (isToggleOff) "" else emoji
+                // Send only the last/most recent emoji to the API
+                val apiEmoji = myReactions.lastOrNull() ?: ""
                 val success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
                 if (!success) {
                     // Telegram has strict rate limits for reactions (429 Too Many Requests).
@@ -349,6 +350,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     var hasUnreadMessages by mutableStateOf(false)
 
+    private val _isLoadingInitial = MutableStateFlow(true)
+    val isLoadingInitial: StateFlow<Boolean> = _isLoadingInitial.asStateFlow()
+
     fun requestJumpToBottom() {
         viewModelScope.launch {
             _scrollEvents.emit(ScrollEvent.JumpToBottomRequested)
@@ -389,13 +393,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val chatId = prefs.chatId
         if (chatId.isBlank()) {
             _messages.value = emptyList()
+            _isLoadingInitial.value = false
             return
         }
 
+        _isLoadingInitial.value = true
         messageCollectionJob?.cancel()
         messageCollectionJob = viewModelScope.launch(Dispatchers.IO) {
             // One-time startup sync scan for interrupted/queued messages globally
-            MediaSync.resumeInterruptedTransfers(getApplication(), repository)
+            launch {
+                MediaSync.resumeInterruptedTransfers(getApplication(), repository)
+            }
 
             launch {
                 repository.getProfile(chatId).collectLatest { profile ->
@@ -420,6 +428,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     val oldMsgs = previousMsgs
                     previousMsgs = msgs
                     _messages.value = msgs
+                    _isLoadingInitial.value = false
 
                     if (oldMsgs != null) {
                         val newestOld = oldMsgs.lastOrNull()
@@ -616,7 +625,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 repository.ensureConversationExists(chatId)
                 repository.insertMessage(newMsg)
 
-                val localFile = com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                val existingFile = LocalDirs.findLocalSourceMedia(context, mediaType, originalName, fileSize)
+                val localFile = existingFile ?: com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                
                 if (localFile == null) {
                     repository.updateMessageStatus(tempMessageId, MessageStatus.FAILED)
                     return@launch
@@ -689,7 +700,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val (tempMessageId, uri, mediaType) = validItems[i]
                 val newMsg = initialNodes[i]
                 try {
-                    val localFile = com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                    val originalName = com.mobile.superiorchat.utils.FileUtils.getFileName(context, uri)
+                    val fileSize = com.mobile.superiorchat.utils.FileUtils.getFileSize(context, uri)
+                    val existingFile = LocalDirs.findLocalSourceMedia(context, mediaType, originalName, fileSize)
+                    val localFile = existingFile ?: com.mobile.superiorchat.utils.FileUtils.copyUriToLocalFile(context, uri, mediaType, tempMessageId)
+                    
                     if (localFile == null) {
                         repository.updateMessageStatus(tempMessageId, MessageStatus.FAILED)
                         continue
@@ -794,6 +809,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadAllLocalMedia(context: Context) {
+        if (allLocalMedia != null) return // Already loaded
         viewModelScope.launch(Dispatchers.IO) {
             allLocalMedia = repository.getAllLocalMedia(context)
         }

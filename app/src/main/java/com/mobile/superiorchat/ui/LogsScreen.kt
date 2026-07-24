@@ -85,9 +85,23 @@ fun LogsScreen() {
                     .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                Text("Live Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text("Live Logs", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
                 Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                var showLogsInfo by remember { mutableStateOf(false) }
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "Info", 
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    modifier = Modifier.padding(4.dp).size(20.dp).clickable { showLogsInfo = true }
+                )
+                
+                if (showLogsInfo) {
+                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                        title = "Live Logs",
+                        message = "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly last 150 Logs will be displayed.",
+                        onDismiss = { showLogsInfo = false }
+                    )
+                }
             }
             Box(
                 modifier = Modifier
@@ -235,7 +249,7 @@ fun LogsScreen() {
 
 @Composable
 private fun LogEntryRow(entry: LogEntry) {
-    val sdf = remember { SimpleDateFormat("HH:mm:ss.SSS", Locale.getDefault()) }
+    val sdf = remember { SimpleDateFormat("hh:mm:ss.SSS a", Locale.getDefault()) }
     val timeStr = sdf.format(Date(entry.timestamp))
 
     val levelColor = when (entry.level) {

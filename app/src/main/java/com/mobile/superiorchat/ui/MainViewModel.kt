@@ -128,6 +128,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleAutoDownloadMedia(enabled: Boolean) {
         prefs.isAutoDownloadMediaEnabled = enabled
         autoDownloadMedia = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "Auto-Download Enabled" else "Auto-Download Disabled"
+        )
     }
 
     var tileAccessEnabled by mutableStateOf(prefs.isTileAccessEnabled)
@@ -138,12 +142,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         tileAccessEnabled = enabled
     }
 
+    var customAccessWord by mutableStateOf(prefs.customAccessWord)
+        private set
+
+    fun updateCustomAccessWord(word: String) {
+        prefs.customAccessWord = word
+        customAccessWord = word
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            "Custom Word Saved"
+        )
+    }
+
     var isScreenSecurityEnabled by mutableStateOf(prefs.isScreenSecurityEnabled)
         private set
 
     fun toggleScreenSecurity(enabled: Boolean) {
         prefs.isScreenSecurityEnabled = enabled
         isScreenSecurityEnabled = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "Screenshot blocking Enabled" else "Screenshot blocking Disabled"
+        )
+    }
+
+    var newMessageNotificationEnabled by mutableStateOf(prefs.isNewMessageNotificationEnabled)
+        private set
+
+    fun toggleNewMessageNotification(enabled: Boolean) {
+        prefs.isNewMessageNotificationEnabled = enabled
+        newMessageNotificationEnabled = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "New Message Notifications Enabled" else "New Message Notifications Disabled"
+        )
+    }
+
+    var appNotificationsEnabled by mutableStateOf(prefs.isAppNotificationsEnabled)
+        private set
+
+    fun updateAppNotificationsState(enabled: Boolean) {
+        prefs.isAppNotificationsEnabled = enabled
+        appNotificationsEnabled = enabled
     }
 
     // -- Permissions State --
@@ -219,7 +259,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 hasInstallPackages = hasInstallPackages,
                 hasManageStorage = hasManageStorage
             )
+            
+            // We ONLY want to sync from OS to Prefs if the OS is ENABLED. 
+            // If it's disabled, it might just be a fresh install (Android 13+ defaults to denied),
+            // so we don't want to blindly overwrite our default `true` to `false`, which would break the startup prompt!
+            if (hasPostNotifs && !prefs.isAppNotificationsEnabled) {
+                prefs.isAppNotificationsEnabled = true
+            }
+            appNotificationsEnabled = prefs.isAppNotificationsEnabled
         }
+    }
+
+    fun toggleAppNotificationsEnabled(enabled: Boolean) {
+        prefs.isAppNotificationsEnabled = enabled
+        appNotificationsEnabled = enabled
     }
 
     // -------------------------------------------------------------------------
@@ -238,6 +291,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (prefs.isConfigured) {
             ServiceCore.ensureRunning(getApplication<Application>())
+            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
+        } else {
+            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Cleared")
+        }
+    }
+
+    fun clearChat(deleteMedia: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AppGraph.database.messageDao().clearAllMessages()
+                if (deleteMedia) {
+                    LocalDirs.getBaseDir(getApplication()).deleteRecursively()
+                    com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Chat and media cleared")
+                } else {
+                    com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Chat history cleared")
+                }
+                AppLog.log(LogCategory.SYSTEM, "Chat history cleared from local database", LogLevel.DEBUG)
+            } catch (e: Exception) {
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.ERROR, "Failed to clear chat")
+                AppLog.log(LogCategory.SYSTEM, "Error clearing chat history: ${e.message}", LogLevel.ERROR)
+            }
         }
     }
 }

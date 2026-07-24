@@ -1,6 +1,7 @@
 package com.mobile.superiorchat.ui.components
 
 import android.net.Uri
+import com.mobile.superiorchat.ui.skeletonEffect
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -54,8 +55,8 @@ fun AttachMenu(
     val context = LocalContext.current
     AnimatedVisibility(
         visible = visible,
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        enter = slideInVertically(initialOffsetY = { it }) + androidx.compose.animation.expandVertically(expandFrom = Alignment.Bottom) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + androidx.compose.animation.shrinkVertically(shrinkTowards = Alignment.Bottom) + fadeOut()
     ) {
         Column(
             modifier = Modifier
@@ -138,19 +139,25 @@ fun AttachMenu(
 
                     // Recent Images thumbnails list
                     items(recentImages, key = { it.toString() }) { uri ->
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(uri)
-                                .size(168, 240) // Downsampled to match layout size
-                                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                                .build(),
-                            contentDescription = "Recent Photo",
+                        Box(
                             modifier = Modifier
                                 .size(width = 84.dp, height = 120.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .clickable { onRecentImageClick(uri) },
-                            contentScale = ContentScale.Crop
-                        )
+                                .skeletonEffect()
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(uri)
+                                    .size(168, 240) // Downsampled to match layout size
+                                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                                    .build(),
+                                contentDescription = "Recent Photo",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { onRecentImageClick(uri) },
+                                contentScale = ContentScale.Crop
+                            )
+                        }
                     }
                 }
             }

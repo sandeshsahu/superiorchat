@@ -1,0 +1,110 @@
+name: Build and Publish Release APKs
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers automatically when you push a release tag like v1.0.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # Grants GitHub permission to publish Releases
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Decode Keystore
+        run: |
+          mkdir -p app/keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/keystore/release.jks
+
+      - name: Grant Execute Permission for Gradle
+        run: chmod +x gradlew
+
+      # -------------------------------------------------------------
+      # 1. BUILD PRIMARY APP FLAVORS
+      # -------------------------------------------------------------
+      - name: Build Primary App Release Flavors
+        run: |
+          ./gradlew :app:assembleOriginalRelease \
+                    :app:assembleWeatherRelease \
+                    :app:assembleCaptivePortalRelease \
+                    -Pandroid.injected.signing.store.file=$(pwd)/app/keystore/release.jks \
+                    -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+                    -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+                    -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      # -------------------------------------------------------------
+      # 2. BUILD CAPTIVE PORTAL SETUP APP
+      # -------------------------------------------------------------
+      - name: Prepare & Build Captive Portal SetupApp
+        run: |
+          mkdir -p setupapp/src/main/assets
+          # 1. Copy Captive Portal APK
+          cp app/build/outputs/apk/captivePortal/release/app-captivePortal-release.apk setupapp/src/main/assets/superiorchat.apk
+          
+          # 2. Build Captive Portal SetupApp
+          ./gradlew :setupapp:assembleCaptivePortalRelease \
+                    -Pandroid.injected.signing.store.file=$(pwd)/app/keystore/release.jks \
+                    -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+                    -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+                    -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      # -------------------------------------------------------------
+      # 3. BUILD WEATHER SETUP APP
+      # -------------------------------------------------------------
+      - name: Prepare & Build Weather SetupApp
+        run: |
+          # 1. Overwrite asset with Weather APK
+          cp app/build/outputs/apk/weather/release/app-weather-release.apk setupapp/src/main/assets/superiorchat.apk
+          
+          # 2. Build Weather SetupApp
+          ./gradlew :setupapp:assembleWeatherRelease \
+                    -Pandroid.injected.signing.store.file=$(pwd)/app/keystore/release.jks \
+                    -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
+                    -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+                    -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      # -------------------------------------------------------------
+      # 4. GENERATE SHA-256 CHECKSUMS
+      # -------------------------------------------------------------
+      - name: Generate SHA-256 Checksums
+        run: |
+          mkdir -p release-artifacts
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release-artifacts/ \;
+          find setupapp/build/outputs/apk/ -name "*.apk" -exec cp {} release-artifacts/ \;
+          cd release-artifacts
+          sha256sum *.apk > checksums.txt
+          echo "--- GENERATED CHECKSUMS ---"
+          cat checksums.txt
+
+      # -------------------------------------------------------------
+      # 5. CREATE GITHUB RELEASE & UPLOAD ASSETS
+      # -------------------------------------------------------------
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: SuperiorChat Release ${{ github.ref_name }}
+          body: |
+            ## 📦 Automated Release ${{ github.ref_name }}
+            
+            This release was compiled directly from commit `${{ github.sha }}` in GitHub's isolated build runner.
+            
+            ### 🔒 Binary Checksums (SHA-256)
+            You can verify your downloaded APKs locally via `Get-FileHash <filename>.apk -Algorithm SHA256`.
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

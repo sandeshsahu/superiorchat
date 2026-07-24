@@ -51,6 +51,10 @@ Goal.md
 logcat*
 .agent
 do-not-delete-folder/
+setupapp/src/main/assets/superiorchat.apk
 .serena/
 .serena/cache/
 .serena/project.local.yml
+graphify-out/
+.graphify/
+*.log

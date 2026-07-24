@@ -87,11 +87,11 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
                     if (!perm.isGranted) {
                         Box(
                             modifier = Modifier
-                                .background(Primary.copy(alpha = 0.15f), RoundedCornerShape(10.dp))
+                                .background(PrimaryLight, RoundedCornerShape(10.dp))
                                 .bounceClick(scaleDown = 0.95f) { perm.onClick() }
                                 .padding(horizontal = 16.dp, vertical = 8.dp)
                         ) {
-                            Text(perm.buttonText, color = Primary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text(perm.buttonText, color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
                     } else {
                         Box(

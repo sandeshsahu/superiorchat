@@ -14,7 +14,7 @@
 ---
 
 > [!IMPORTANT]
-> **Superior Chat** is a stealth communication system for Android. It operates serverlessly by relaying encrypted messages through the official Telegram Bot API, leaving **zero personal server footprint** while remaining heavily **camouflaged** on the target device.
+> **Superior Chat** is a stealth communication system for Android. It operates serverlessly by relaying on official Telegram Bot API, leaving **zero personal server footprint** while remaining heavily **camouflaged** on the target device.
 
 ---
 
@@ -25,6 +25,7 @@
 - [🤔 How It Works](#how-it-works)
 - [🛠️ Instructions & Setup](#setup)
 - [📚 Documentation](#documentation)
+- [🙌 Acknowledgments](#acknowledgments)
 - [⚖️ License](#license)
 
 ---
@@ -33,7 +34,7 @@
 
 Superior Chat solves a unique privacy challenge: **How to chat securely without keeping a dedicated server or exposing a visible messaging app on your phone.**
 
-Instead of operating custom backend servers, Superior Chat uses the highly reliable Telegram Bot API as an encrypted message pipe:
+Instead of operating custom backend servers, Superior Chat uses the highly reliable Telegram Bot API for messaging:
 - 👤 **User A** chats directly inside their official Telegram application via a dedicated bot.
 - 👤 **User B** chats inside the custom, hidden Superior Chat app.
 - 🚫 **No Middleman Server**: Message histories are managed locally within the hidden app, while relying on Telegram's secure cloud for transport.
@@ -50,7 +51,7 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
   <img src="docs/images/app/nav_menu.jpg" width="30%" alt="Navigation Menu">
 </p>
 
-> 🖼️ Explore more screenshots in the [docs/images/app](docs/images/app) and [docs/images/setupapp](docs/images/setupapp) directories.
+> 🖼️ Explore more screenshots in the [Chat App](docs/images/app), [Setup App](docs/images/setupapp) and [Flavors](docs/flavors/images/) directories.
 
 ---
 
@@ -58,9 +59,9 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
 
 | Feature | Description | Benefit |
 |---------|-------------|---------|
-| 👻 **Stealth App Disguise** | No launcher icon in stealth flavors; heavily disguised as native system components. | Invisible to casual snoopers & shoulder-surfers. |
-| 🔑 **Secret Access Codes** | Unlocked exclusively via a secret dialer code (`*#*#9131#*#*`) or Quick Settings tile. | Cannot be opened normally from the app drawer. |
-| 🛡️ **Camouflaged Alerts** | Notifications appear as harmless carrier/network system messages based on data states. | Complete privacy even when receiving alerts. |
+| 👻 **Stealth App Disguise** | No launcher icon, or perfectly disguised as functional Weather/System applications. | Invisible to casual snoopers & shoulder-surfers. |
+| 🔑 **Secret Access Codes** | Unlocked exclusively via a secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search interception. | Cannot be opened normally from the app drawer. |
+| 🛡️ **Camouflaged Alerts** | Notifications appear as harmless carrier alerts or live weather updates based on data states. | Complete privacy even when receiving alerts. |
 | ⚡ **Serverless Transport** | Powered entirely by Telegram Bot API long-polling. | Zero hosting costs, 99.9% uptime, no third-party analytics. |
 
 👉 **[Click here to see Detailed Features](docs/Features.md)**
@@ -114,6 +115,16 @@ For detailed technical references, explore the dedicated documentation in this d
 - ✨ **[Features & Capabilities](docs/Features.md)** — Comprehensive user-facing capabilities, gestures, disguises, and UI interactions.
 - 📖 **[Installation Guide](docs/Instructions.md)** — Setup guide & building from source for developers.
 - ⚠️ **[Notes & Disclaimers](docs/Notes.md)** — Important known limitations, threat models, and legal disclaimers.
+---
+> [!IMPORTANT]
+> For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:
+> - **[Captive Portal Details](docs/flavors/CaptivePortal.md)**
+> - **[Weather Details](docs/flavors/FlavorWeather.md)**
+---
+
+<h2 id="acknowledgments">🙌 Acknowledgments</h2>
+
+- The UI design for the `weather` flavor is adapted from the open-source **[WeatherAppUI](https://github.com/rudram837/WeatherAppUI)** repository by @rudram837.
 
 ---
 

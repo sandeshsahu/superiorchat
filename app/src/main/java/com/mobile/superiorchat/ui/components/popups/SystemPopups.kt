@@ -1,0 +1,651 @@
+package com.mobile.superiorchat.ui.components.popups
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.runtime.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
+import com.mobile.superiorchat.theme.*
+
+@Composable
+fun BaseAppDialog(
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    Dialog(
+        onDismissRequest = {
+            isVisible = false
+            onDismiss()
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        val view = LocalView.current
+        val dialogWindow = (view.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.setDimAmount(0.65f)
+            dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = scaleIn(initialScale = 0.9f, animationSpec = tween(250)) + fadeIn(animationSpec = tween(250)),
+            exit = scaleOut(targetScale = 0.9f, animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .clip(RoundedCornerShape(24.dp)),
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.Start,
+                    content = content
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+fun parseAnnotatedMessage(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        val regex = "\\*\\*(.*?)\\*\\*|\\*(.*?)\\*".toRegex()
+        var lastIndex = 0
+        val results = regex.findAll(text)
+        
+        for (match in results) {
+            // Append text before the match
+            append(text.substring(lastIndex, match.range.first))
+            
+            // Append the highlighted text
+            withStyle(style = SpanStyle(
+                color = PrimaryLight,
+                fontWeight = FontWeight.Bold,
+                background = SurfaceLevel2
+            )) {
+                val matchedText = match.groups[1]?.value ?: match.groups[2]?.value ?: ""
+                append(" $matchedText ")
+            }
+            lastIndex = match.range.last + 1
+        }
+        // Append remaining text
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
+        }
+    }
+}
+
+@Composable
+fun ErrorDialog(
+    title: String = "Error",
+    message: String,
+    onDismiss: () -> Unit
+) {
+    BaseAppDialog(onDismiss = onDismiss) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = ErrorRed,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = parseAnnotatedMessage(message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            textAlign = TextAlign.Start,
+            lineHeight = 22.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(28.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ErrorRed.copy(alpha = 0.15f),
+                    contentColor = ErrorRed
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+            ) {
+                Text(text = "OK", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun InfoDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit
+) {
+    var isVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    Dialog(
+        onDismissRequest = {
+            isVisible = false
+            onDismiss()
+        },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        val view = LocalView.current
+        val dialogWindow = (view.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.setDimAmount(0.65f)
+            dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = scaleIn(initialScale = 0.9f, animationSpec = tween(250)) + fadeIn(animationSpec = tween(250)),
+            exit = scaleOut(targetScale = 0.9f, animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .clip(RoundedCornerShape(24.dp)),
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = PrimaryLight,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = parseAnnotatedMessage(message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Start,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(28.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = {
+                                isVisible = false
+                                onDismiss()
+                            },
+                            modifier = Modifier.height(40.dp),
+                            colors = com.mobile.superiorchat.ui.components.luminaButtonColors(),
+                            shape = RoundedCornerShape(24.dp),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text = "Got it",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ActionDialog(
+    title: String,
+    message: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconTint: Color = PrimaryLight,
+    confirmText: String,
+    dismissText: String = "Dismiss",
+    neutralText: String? = null,
+    onNeutral: (() -> Unit)? = null,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    BaseAppDialog(onDismiss = onDismiss) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+            }
+            
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = iconTint,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Text(
+            text = parseAnnotatedMessage(message),
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            textAlign = TextAlign.Start,
+            lineHeight = 22.sp,
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(28.dp))
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (neutralText != null && onNeutral != null) {
+                TextButton(
+                    onClick = onNeutral,
+                    modifier = Modifier.height(40.dp)
+                ) {
+                    Text(neutralText, color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                }
+                Spacer(modifier = Modifier.weight(1f))
+            }
+            
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.height(40.dp)
+            ) {
+                Text(dismissText, color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+            }
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Button(
+                onClick = {
+                    onConfirm()
+                    onDismiss()
+                },
+                modifier = Modifier.height(40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (iconTint == ErrorRed) ErrorRed.copy(alpha = 0.15f) else PrimaryLight,
+                    contentColor = if (iconTint == ErrorRed) ErrorRed else MaterialTheme.colorScheme.onPrimaryContainer
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+            ) {
+                Text(confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun GlobalDialogHandler(
+    dialogState: com.mobile.superiorchat.ui.GlobalDialogState?,
+    onDismiss: () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    when (dialogState) {
+        is com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied -> {
+            ActionDialog(
+                title = "Permission Permanently Denied",
+                message = "This permission has been permanently denied. Please enable it in the App Settings.",
+                icon = Icons.Filled.Warning,
+                iconTint = ErrorRed,
+                confirmText = "Go to Settings",
+                onConfirm = {
+                    context.startActivity(dialogState.intent)
+                    onDismiss()
+                },
+                onDismiss = onDismiss
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied -> {
+            ActionDialog(
+                title = "Media Access Denied",
+                message = "You have previously denied full access to your media. To allow full access or select more photos, please go to Settings.",
+                icon = Icons.Filled.Warning,
+                iconTint = ErrorRed,
+                confirmText = "Go to Settings",
+                dismissText = "Not Now",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onGoToSettings()
+                },
+                onDismiss = {
+                    onDismiss()
+                    dialogState.onContinue()
+                }
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.ManageStorageRequired -> {
+            ActionDialog(
+                title = "All Files Access Required",
+                message = "The file explorer requires full access to your device storage to view and attach documents.",
+                confirmText = "Open Settings",
+                onConfirm = {
+                    context.startActivity(dialogState.intent)
+                    onDismiss()
+                },
+                onDismiss = onDismiss
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess -> {
+            ActionDialog(
+                title = "Limited Access Granted",
+                message = "You have granted limited access to your media. Would you like to grant full access so you can easily select any photo?",
+                confirmText = "Grant Full Access",
+                dismissText = "Not Now",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onUpgrade()
+                },
+                onDismiss = {
+                    onDismiss()
+                    dialogState.onContinue()
+                }
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale -> {
+            ActionDialog(
+                title = "Camera Permission",
+                message = "We need access to your camera to take photos.",
+                confirmText = "Agree",
+                dismissText = "Cancel",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onConfirm()
+                },
+                onDismiss = onDismiss
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.MicrophonePermissionRationale -> {
+            ActionDialog(
+                title = "Microphone Permission",
+                message = "We need access to your microphone to record voice messages.",
+                confirmText = "Agree",
+                dismissText = "Cancel",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onConfirm()
+                },
+                onDismiss = onDismiss
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.StoragePermissionRationale -> {
+            ActionDialog(
+                title = "Storage Permission",
+                message = "We need access to your device storage to view and attach documents.",
+                confirmText = "Agree",
+                dismissText = "Cancel",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onConfirm()
+                },
+                onDismiss = onDismiss
+            )
+        }
+        null -> { /* No active dialog */ }
+    }
+}
+
+@Composable
+fun BlurredPopup(
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f)) // Standard scrim
+                .padding(24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, DividerColor)
+            ) {
+                Box(modifier = Modifier.padding(24.dp)) {
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CredentialsPopup(
+    initialToken: String = "",
+    initialChatId: String = "",
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit
+) {
+    var botToken by remember { mutableStateOf(initialToken) }
+    var chatId by remember { mutableStateOf(initialChatId) }
+    var tokenVisible by remember { mutableStateOf(false) }
+
+    val isTokenValid by remember(botToken) { derivedStateOf { botToken.isBlank() || com.mobile.superiorchat.utils.Validator.isValidBotToken(botToken.trim()) } }
+    val isChatIdValid by remember(chatId) { derivedStateOf { chatId.isBlank() || com.mobile.superiorchat.utils.Validator.isValidChatId(chatId.trim()) } }
+    val canSave by remember(botToken, chatId, isTokenValid, isChatIdValid) { derivedStateOf { botToken.isNotBlank() && chatId.isNotBlank() && isTokenValid && isChatIdValid } }
+
+    val title = if (initialToken.isNotBlank()) "Edit Credentials" else "Add Credentials"
+
+    BlurredPopup(onDismiss = onDismiss) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = title,
+                color = PrimaryLight,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (!isTokenValid) ErrorRed else DividerColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Bot Token", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = botToken,
+                        onValueChange = { botToken = it },
+                        placeholder = { Text("e.g. 1234567890:AAH...", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        isError = !isTokenValid,
+                        shape = RoundedCornerShape(10.dp),
+                        visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                Icon(if (tokenVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (!isChatIdValid) ErrorRed else DividerColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Chat ID", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = chatId,
+                        onValueChange = { chatId = it },
+                        placeholder = { Text("e.g. -1001234567890", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        isError = !isChatIdValid,
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = {
+                    if (canSave) {
+                        onSave(botToken.trim(), chatId.trim())
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (!isTokenValid || !isChatIdValid) ErrorRed else PrimaryLight,
+                    contentColor = if (!isTokenValid || !isChatIdValid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = PrimaryLight.copy(alpha = 0.3f),
+                    disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(16.dp),
+                enabled = botToken.isNotBlank() && chatId.isNotBlank()
+            ) {
+                Text(
+                    text = if (!isTokenValid || !isChatIdValid) "Credentials invalid" else "Save Credentials",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SurfaceLevel2,
+                    contentColor = TextSecondary
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
