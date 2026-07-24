@@ -36,6 +36,7 @@ object Manager {
                     CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_state_active, carrierName)
                     CamoState.NO_INTERNET -> context.getString(R.string.camo_state_no_internet, carrierName)
                     CamoState.API_UNREACHABLE -> context.getString(R.string.camo_state_api_unreachable, carrierName)
+                    CamoState.UNINITIALIZED -> context.getString(R.string.camo_state_uninitialized, carrierName)
                 }
                 
                 DecoyData(
@@ -52,6 +53,7 @@ object Manager {
                     CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_title_active, profile.location)
                     CamoState.NO_INTERNET -> context.getString(R.string.camo_title_no_internet)
                     CamoState.API_UNREACHABLE -> context.getString(R.string.camo_title_api_unreachable)
+                    CamoState.UNINITIALIZED -> context.getString(R.string.camo_title_uninitialized)
                 }
 
                 val text = when (profile.state) {
@@ -59,6 +61,7 @@ object Manager {
                     CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_state_active, profile.condition, profile.currentTemp, profile.humidity)
                     CamoState.NO_INTERNET -> context.getString(R.string.camo_state_no_internet, profile.location, profile.condition, profile.currentTemp)
                     CamoState.API_UNREACHABLE -> context.getString(R.string.camo_state_api_unreachable, profile.condition, profile.currentTemp, profile.location)
+                    CamoState.UNINITIALIZED -> context.getString(R.string.camo_state_uninitialized)
                 }
                 
                 DecoyData(

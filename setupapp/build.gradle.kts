@@ -31,6 +31,11 @@ android {
             buildConfigField("String", "TARGET_APP_ID", "\"com.android.connectivity.stats\"")
             manifestPlaceholders["targetAppId"] = "com.android.connectivity.stats"
         }
+        create("weather") {
+            dimension = "camouflage"
+            buildConfigField("String", "TARGET_APP_ID", "\"com.android.weather.info\"")
+            manifestPlaceholders["targetAppId"] = "com.android.weather.info"
+        }
     }
 
     signingConfigs {

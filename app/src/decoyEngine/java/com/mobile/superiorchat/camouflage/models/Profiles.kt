@@ -7,7 +7,8 @@ enum class CamoState {
     IDLE,
     ACTIVE_MESSAGE,
     NO_INTERNET,
-    API_UNREACHABLE
+    API_UNREACHABLE,
+    UNINITIALIZED
 }
 
 /**

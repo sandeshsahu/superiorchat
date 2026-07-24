@@ -372,7 +372,7 @@ fun ProfileSettingsSheet(
                         if (showSecurityInfo) {
                             com.mobile.superiorchat.ui.components.popups.InfoDialog(
                                 title = "Screen Security",
-                                message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\nScreenshots will appear pure black.",
+                                message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\n*Screenshots* will appear pure black.",
                                 onDismiss = { showSecurityInfo = false }
                             )
                         }
@@ -385,7 +385,7 @@ fun ProfileSettingsSheet(
     if (showClearConfirm) {
         ActionDialog(
             title = "Clear Credentials",
-            message = "This will disconnect the bot and stop the end-to-end chat. Both persons will lose access to the current chat session. Do you want to proceed?",
+            message = "This will disconnect the bot and stop the end-to-end chat. *Both persons* will lose access to the current *chat session*. Do you want to proceed?",
             icon = Icons.Filled.NoAccounts,
             iconTint = ErrorRed,
             confirmText = "Proceed",
@@ -412,7 +412,7 @@ fun ProfileSettingsSheet(
     if (showUninstallConfirm) {
         ActionDialog(
             title = "Uninstall App",
-            message = "This will permanently remove the application from your device. Do you want to proceed?",
+            message = "This will *permanently remove* the application from your device. Do you want to proceed?",
             icon = Icons.Filled.DeleteForever,
             iconTint = ErrorRed,
             confirmText = "Proceed",

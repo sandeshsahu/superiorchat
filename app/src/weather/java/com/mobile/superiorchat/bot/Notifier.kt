@@ -51,7 +51,8 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    private fun getCurrentCarrierState(): CamoState {
+    private fun getCurrentCarrierState(location: String): CamoState {
+        if (location == "Local") return CamoState.UNINITIALIZED
         if (!isActuallyOnline()) return CamoState.NO_INTERNET
         if (!isApiReachable) return CamoState.API_UNREACHABLE
         if (hasActiveMessage) return CamoState.ACTIVE_MESSAGE
@@ -66,7 +67,7 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         val location = prefs.getString("saved_city", "Local") ?: "Local"
         
         return Profile.CustomApp.WeatherApp(
-            state = getCurrentCarrierState(),
+            state = getCurrentCarrierState(location),
             currentTemp = temp,
             condition = condition,
             location = location,

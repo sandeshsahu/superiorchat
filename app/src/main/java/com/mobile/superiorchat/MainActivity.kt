@@ -117,32 +117,29 @@ class MainActivity : ComponentActivity() {
                     )
                     
                     if (showSetupUninstallDialog) {
-                        AlertDialog(
-                            onDismissRequest = { },
-                            title = { Text("Uninstall Setup App") },
-                            text = { 
-                                Column {
-                                    Text("The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.")
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text("Important: The main app has no icon! You can always access it by dialing *#*#9131#*#* in your phone's dialer.", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        val accessInstructions = when (BuildConfig.FLAVOR) {
+                            "weather" -> "Important: The main app has no icon! You can access it by searching for *superior chat* (or your custom word) in the weather app search bar."
+                            "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom Quick Settings tile."
+                            else -> "Important: You can access the app from your launcher or via secret entry points."
+                        }
+                        
+                        com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                            title = "Uninstall Setup App",
+                            message = "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions",
+                            confirmText = "Uninstall",
+                            dismissText = "Keep",
+                            onConfirm = {
+                                showSetupUninstallDialog = false
+                                try {
+                                    val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
+                                    uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
+                                    startActivity(uninstallIntent)
+                                } catch (e: Exception) {
+                                    AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
                                 }
                             },
-                            confirmButton = {
-                                Button(
-                                    onClick = {
-                                        showSetupUninstallDialog = false
-                                        try {
-                                            val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
-                                            uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
-                                            startActivity(uninstallIntent)
-                                        } catch (e: Exception) {
-                                            AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
-                                        }
-                                    }
-                                ) { Text("Uninstall") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showSetupUninstallDialog = false }) { Text("Keep") }
+                            onDismiss = {
+                                showSetupUninstallDialog = false
                             }
                         )
                     }

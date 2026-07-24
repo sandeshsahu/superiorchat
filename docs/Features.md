@@ -79,8 +79,8 @@
 | Flavor Variant | Identity / App Name | Stealth Level | Notification Behavior |
 |----------------|---------------------|---------------|-----------------------|
 | 🟢 **Original** | Superior Chat | **None** | Standard chat notifications. Ideal for non-stealth or testing use. |
-| 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **High** | Camouflaged as system networking alerts based on data states. |
 | 🔵 **Weather** | `Weather`<br>*Adaptive weather icons* | **Advanced** | Live, context-aware notifications mimicking real meteorological data. |
+| 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **Maximum** | Camouflaged as system networking alerts based on data states. |
 
 **Captive Portal Camouflage States:**
 - **Idle**: `"[Carrier] - Standard rates apply"`
@@ -99,6 +99,10 @@
 > [!NOTE]
 > We are planning to add more flavors with even stronger dynamic camouflage mechanisms in future releases.
 
+> [!IMPORTANT]
+> For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:
+> - **[Captive Portal Details](flavors/CaptivePortal.md)**
+> - **[Weather Details](flavors/FlavorWeather.md)**
 ---
 
 <h2 id="ui">✨ 6. Modern User Interface</h2>

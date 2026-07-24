@@ -31,6 +31,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import com.mobile.superiorchat.theme.*
 
 @Composable
@@ -86,6 +90,37 @@ fun BaseAppDialog(
     }
 }
 
+
+
+@Composable
+fun parseAnnotatedMessage(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        val regex = "\\*\\*(.*?)\\*\\*|\\*(.*?)\\*".toRegex()
+        var lastIndex = 0
+        val results = regex.findAll(text)
+        
+        for (match in results) {
+            // Append text before the match
+            append(text.substring(lastIndex, match.range.first))
+            
+            // Append the highlighted text
+            withStyle(style = SpanStyle(
+                color = PrimaryLight,
+                fontWeight = FontWeight.Bold,
+                background = SurfaceLevel2
+            )) {
+                val matchedText = match.groups[1]?.value ?: match.groups[2]?.value ?: ""
+                append(" $matchedText ")
+            }
+            lastIndex = match.range.last + 1
+        }
+        // Append remaining text
+        if (lastIndex < text.length) {
+            append(text.substring(lastIndex))
+        }
+    }
+}
+
 @Composable
 fun ErrorDialog(
     title: String = "Error",
@@ -105,7 +140,7 @@ fun ErrorDialog(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = message,
+            text = parseAnnotatedMessage(message),
             style = MaterialTheme.typography.bodyMedium,
             color = TextPrimary,
             textAlign = TextAlign.Start,
@@ -196,7 +231,7 @@ fun InfoDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = message,
+                        text = parseAnnotatedMessage(message),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextPrimary,
                         textAlign = TextAlign.Start,
@@ -275,7 +310,7 @@ fun ActionDialog(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = message,
+            text = parseAnnotatedMessage(message),
             style = MaterialTheme.typography.bodyMedium,
             color = TextPrimary,
             textAlign = TextAlign.Start,

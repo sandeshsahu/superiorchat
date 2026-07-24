@@ -26,17 +26,17 @@
 Before you begin, you must download the necessary APK files from our official GitLab repository.
 
 > [!IMPORTANT]
-> Currently 2 camouflaged flavors of the app are available for download, which are **Captive Portal** and **Weather**.
+> Currently 2 camouflaged flavors of the app are available for download, which are **[Captive Portal](flavors/CaptivePortal.md)** and **[Weather](flavors/FlavorWeather.md)**.
 
 **Naming of flavors**:
 - **Flavor** = Available Camoflouged Flavor (e.g. `CaptivePortal`)
-- `[Flavor]SetupApp_Release.apk` - flavor of the setup app
+- `[Flavor] App_Release.apk` - flavor of the setup app (`captiveportal`) and app (`weather`).
 - `[Original]App_Release.apk` - non-hidden, standard version of the app
 
 👉 **[Download Latest APKs from GitLab Releases](https://gitlab.com/sandeshsahu/superiorchat/-/releases)**
 
 **What to download:**
-- `[Flavor]SetupApp_Release.apk` (Needed by Person A to generate the QR code, and Person B to install the Camouflage app).
+- `[Flavor]SetupApp_Release.apk` (Needed by Person A to generate the QR code, and Person B to install the Camouflage app, only if person b uses `captive portal` flavor. If person b uses `weather` flavor no need of setup app).
 - `[Original]App_Release.apk` (Only needed if Person B wants the non-hidden, standard version).
 
 ---
@@ -73,9 +73,9 @@ Person A uses the Superior Setup App to safely pack these credentials into an en
 
 <h2 id="phase-2">📱 Phase 2: App Side (Person B)</h2>
 
-Person B will install the actual Superior Chat application. There are two different "Flavors" of the app you can choose from depending on your need for stealth.
+Person B will install the actual Superior Chat application. There are three different "Flavors" of the app you can choose from depending on your need for stealth.
 
-### Option A: Camouflage Flavor (Maximum Stealth)
+### Option A: Captive Portal Flavor (System Camouflage)
 This version hides itself entirely and requires the Setup App to install and configure.
 
 1. **Install Setup App**: Download and install the `Setup App` APK.
@@ -84,7 +84,7 @@ This version hides itself entirely and requires the Setup App to install and con
 4. **Scan Credentials**: Continue to Step 2. Scan the encrypted QR code provided by Person A (or manually type the credentials).
 5. **Wake Up & Bind**: Continue to Step 3. Tap the button to open the Main app from within the Setup App. This locks in your credentials.
 6. **Cover Your Tracks**: The main app will now ask you to uninstall the Setup App. Choose **Uninstall** to remove all traces of configuration.
-7. **Start Chatting**: Use your secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search Interception (for weather flavor) to access the app going forward!
+7. **Start Chatting**: Use your secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search Interception (for [weather flavor](flavors/FlavorWeather.md)) to access the app going forward!
 
 <br>
 <p align="center">
@@ -95,7 +95,25 @@ This version hides itself entirely and requires the Setup App to install and con
   <img src="images/setupapp/client_mode/clientmode_step3.jpg" width="30%" alt="Client Mode Step 3">
 </p>
 
-### Option B: Original Flavor (Non-Camouflage)
+### Option B: Weather Flavor (App Camouflage)
+This version perfectly mimics a functional weather application and does not require the Setup App.
+
+1. **Install Main App**: Download the latest "Weather" release APK and install it.
+2. **Access Hidden Engine**: Open the "Weather" app. Tap the search bar, type `superior chat` (or your custom access word), and hit the search/enter key on your keyboard.
+3. **Open Settings**: The hidden chat engine will launch. Go directly to App Settings.
+4. **Enter Credentials**: Fill in your Bot Token and Chat ID (the QR Code scanner is also available).
+5. **Start Chatting**: You are ready to go!
+
+<br>
+<p align="center">
+  <img src="flavors/images/flavor_weather/1.jpg" width="30%" alt="Weather UI Facade">
+  &nbsp;
+  <img src="flavors/images/flavor_weather/2.jpg" width="30%" alt="7-Day Forecast">
+  &nbsp;
+  <img src="flavors/images/flavor_weather/3.jpg" width="30%" alt="Search Interception">
+</p>
+
+### Option C: Original Flavor (Non-Camouflage)
 This version has a standard app icon and is simpler to set up (recommended for testing).
 
 1. **Install Main App**: Download the latest "Original" release APK and install it.
@@ -116,7 +134,7 @@ If you prefer to compile the application yourself instead of downloading the pre
 | **Original** | `./gradlew app:assembleOriginalDebug` | Builds the standard visible chat app. |
 | **Captive Portal** | `./gradlew app:assembleCaptivePortalDebug` | Builds the camouflaged invisible chat app (carrier alerts). |
 | **Weather** | `./gradlew app:assembleWeatherDebug` | Builds the disguised weather app (live context). |
-| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug`<br>`./gradlew setupapp:assembleWeatherDebug` | Builds the Setup wizard application with the respective hidden flavor. |
+| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug` | Builds the Setup wizard application with the respective hidden flavor. |
 
 > [!WARNING]
 > **Important Note for Setup App Compilation:**

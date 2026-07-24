@@ -64,9 +64,9 @@ graph TD
 | Flavor | Identity | Stealth Level |
 |--------|----------|---------------|
 | `original` | Standard app with launcher icon | None (dev/debug) |
-| `captivePortal` | Disguised as "Carrier Services" | Hidden icon, camouflaged notifications, QS tile access |
+| `captivePortal` | Disguised as "Carrier Services" | See [CaptivePortal.md](flavors/CaptivePortal.md) for details. |
 | `decoyEngine` | Impersonates installed system apps | Dynamic notification spoofing, DecoyActivity tap targets |
-| `weather` | Disguised as "Weather" App | Full stealth UI cover, context-aware live notifications, search-bar intercept |
+| `weather` | Disguised as "Weather" App | See [FlavorWeather.md](flavors/FlavorWeather.md) for details. |
 
 ---
 
@@ -303,8 +303,8 @@ The app has **no launcher icon** in stealth flavors. Access methods:
 | Method | Flavor | How |
 |--------|--------|-----|
 | **Dialer Code** | All (via decoyEngine) | Dial `*#*#9131#*#*` → `CodeReceiver` intercepts → launches `MainActivity` |
-| **QS Tile** | captivePortal | ON, OFF, ON and HOLD Quick Settings tile → `TileActivity` → `MainActivity` |
-| **App Search** | weather | Type `superior chat` into weather search bar → hit Search key → launches `MainActivity` |
+| **QS Tile** | captivePortal | See [CaptivePortal.md](flavors/CaptivePortal.md) for access sequence |
+| **App Search** | weather | See [FlavorWeather.md](flavors/FlavorWeather.md) for interception details |
 | **Boot** | All | `BootReceiver` starts `BotService` on `BOOT_COMPLETED` |
 | **Launcher** | original, weather | Standard app drawer icon (debug/dev or weather disguise) |
 

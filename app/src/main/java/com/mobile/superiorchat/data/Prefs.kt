@@ -122,6 +122,17 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _customAccessWord: String = sharedPreferences.getString("custom_access_word", "").orEmpty()
+    var customAccessWord: String
+        get() = _customAccessWord
+        set(value) {
+            if (_customAccessWord != value) {
+                _customAccessWord = value
+                sharedPreferences.edit().putString("custom_access_word", value).apply()
+            }
+        }
+
+
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()
 }

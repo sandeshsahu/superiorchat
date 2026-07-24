@@ -142,6 +142,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         tileAccessEnabled = enabled
     }
 
+    var customAccessWord by mutableStateOf(prefs.customAccessWord)
+        private set
+
+    fun updateCustomAccessWord(word: String) {
+        prefs.customAccessWord = word
+        customAccessWord = word
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            "Custom Word Saved"
+        )
+    }
+
     var isScreenSecurityEnabled by mutableStateOf(prefs.isScreenSecurityEnabled)
         private set
 

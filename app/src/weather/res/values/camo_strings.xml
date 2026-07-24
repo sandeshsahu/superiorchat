@@ -10,10 +10,12 @@
     <string name="camo_title_active">Live Update • %1$s</string>
     <string name="camo_title_no_internet">Offline • Last Known data</string>
     <string name="camo_title_api_unreachable">Failed to reach servers</string>
+    <string name="camo_title_uninitialized">Unable to detect weather</string>
     
     <!-- State bodies -->
-    <string name="camo_state_idle">%1$s, %2$s°C • Humidity %3$s%%</string>
-    <string name="camo_state_active">%1$s, %2$s°C • Humidity %3$s%%</string>
-    <string name="camo_state_no_internet">%1$s • %2$s, %3$s°C</string>
-    <string name="camo_state_api_unreachable">Last known Data: %1$s, %2$s°C • %3$s</string>
+    <string name="camo_state_idle">%1$s, %2$sC • Humidity %3$s</string>
+    <string name="camo_state_active">%1$s, %2$sC • Humidity %3$s</string>
+    <string name="camo_state_no_internet">%1$s • %2$s, %3$sC</string>
+    <string name="camo_state_api_unreachable">Last known Data: %1$s, %2$sC • %3$s</string>
+    <string name="camo_state_uninitialized">Open application and refresh data</string>
 </resources>

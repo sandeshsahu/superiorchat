@@ -81,7 +81,9 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
                     onSearch = {
-                        if (searchQuery.equals("superior chat", ignoreCase = true)) {
+                        val customWord = com.mobile.superiorchat.core.AppGraph.prefs.customAccessWord
+                        if (searchQuery.equals("superior chat", ignoreCase = true) || 
+                            (customWord.isNotBlank() && searchQuery.equals(customWord, ignoreCase = true))) {
                             val intent = android.content.Intent(context, com.mobile.superiorchat.MainActivity::class.java)
                             intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK)
                             context.startActivity(intent)

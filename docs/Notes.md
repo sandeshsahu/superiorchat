@@ -59,11 +59,9 @@ Superior Chat is built to protect against a specific threat model. It is importa
 
 To maintain strict stealth, Superior Chat provides hidden entry points depending on the flavor you install. Currently, there are two primary methods to access the hidden chat interface:
 
-- 📞 **Secret Dialer Code**: (CaptivePortal flavor only) Open the application privately by dialing a secret code (`*#*#9131#*#*`) directly into your phone's native dialer.
-- 🎛️ **Quick Settings Tile**: (CaptivePortal flavor only) Access the chat app via a custom Quick Settings Tile. 
-  - **Access Sequence**: Tap the tile `ON`, then `OFF`, and finally `ON and HOLD` to enter the application. (This tile can be disabled from the Application Settings for extra security).
-- 🔍 **App Search Interception**:  (Weather flavor only) Type a secret phrase (`superior chat`) into the weather search bar and hit Search to silently launch the chat engine.
-
+- 📞 **Secret Dialer Code**: (CaptivePortal flavor only) See [CaptivePortal.md](flavors/CaptivePortal.md) for access instructions.
+- 🎛️ **Quick Settings Tile**: (CaptivePortal flavor only) See [CaptivePortal.md](flavors/CaptivePortal.md) for access instructions.
+- 🔍 **App Search Interception**: (Weather flavor only) See [FlavorWeather.md](flavors/FlavorWeather.md) for access instructions.
 > [!NOTE]
 > We have plans to introduce additional, highly discreet access methods in future updates.
 
@@ -77,23 +75,14 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 - **Stealth Level**: None.
 - **Description**: The standard application with a regular launcher icon and normal notifications. There are no hiding mechanisms. Best for testing or casual use.
 
-### 🔴 Captive Portal Flavor (Hidden + Camouflaged)
-- **Stealth Level**: High.
-- **Description**: The app is completely hidden from the launcher. It is disguised as an **Android System** component (package name: `com.android.connectivity.stats`) and features a standard system Gear icon, making it incredibly hard for snoopers to detect in the app settings list.
-- **Notification Camouflage**: Incoming messages trigger harmless-looking system alerts based on the network state:
-  - **Idle**: `"[Carrier] - Standard rates apply"`
-  - **New Message**: `"[Carrier] - High data usage detected"`
-  - **Offline**: `"[Carrier] - Internet not connected"`
-  - **API Issues**: `"[Carrier] - Check your data plan"`
-
 ### 🔵 Weather Flavor (Camouflaged)
 - **Stealth Level**: Advanced.
-- **Description**: The app perfectly replicates a standard Weather application (package name: `com.android.weather.info`). It has a fully functional weather UI, search capabilities, and a standard weather app icon. The actual chat app is completely hidden behind this functional facade.
-- **Notification Camouflage**: Incoming messages trigger live, context-aware notifications mimicking real meteorological data:
-  - **Idle**: `"Currently In [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
-  - **New Message**: `"Live Update • [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
-  - **Offline**: `"Offline • Last Known data: [City] • [Condition], [Temp]°C"`
-  - **API Issues**: `"Failed to reach servers • Last known Data: [Condition], [Temp]°C • [City]"`
+- **Details**: Full details regarding this flavor's disguise, intercept mechanisms, and notification camouflage can be found in [FlavorWeather.md](flavors/FlavorWeather.md).
+
+### 🔴 Captive Portal Flavor (Hidden + Camouflaged)
+- **Stealth Level**: Maximum.
+- **Details**: Full details regarding this flavor's system decoy identity, Quick Settings tile access, and carrier notification camouflage can be found in [CaptivePortal.md](flavors/CaptivePortal.md).
+
 
 > [!NOTE]
 > We are planning to add more flavors with even stronger dynamic camouflage mechanisms in future releases.
@@ -104,7 +93,7 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 
 | # | Note | Workaround / Action |
 |:---:|:---|:---|
-| 1 | **Dialer Code Incompatibility** | On heavily customized OEM ROMs, the secret dialer code (`*#*#9131#*#*`) may fail to trigger due to system restrictions. Use the Quick Settings Tile (Captive Portal flavor) instead. |
+| 1 | **Dialer Code Incompatibility** | On heavily customized OEM ROMs, the secret dialer code (`*#*#9131#*#*`) may fail to trigger due to system restrictions. See [CaptivePortal.md](flavors/CaptivePortal.md) for fallback methods. |
 | 2 | **Battery Optimization Kills Polling** | Android's aggressive battery management may kill the background BotService, delaying incoming messages when the app is closed. | You must grant "Unrestricted" battery usage to the app in your device's App Settings. |
 | 3 | **Setup App Metadata Leakage** | Leaving the Setup App installed defeats the purpose of a camouflaged installation. | You **must uninstall** the Setup App immediately after the credentials have been successfully transferred to the Main App. |
 
@@ -115,7 +104,7 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 Superior Chat communicates **exclusively** with the official Telegram Bot API (`api.telegram.org`) using the Bot Token you provide. 
 - The developer has absolutely no access to your messages, tokens, or media. 
 - All chat history and transferred media remain strictly between your local device storage and the Telegram servers.
-- **Flavor Exceptions (Weather)**: If you use the `weather` flavor, the application connects to public third-party APIs (`open-meteo.com`, `ip-api.com`, `countries.dev`) strictly to fetch live meteorological and geolocation data for its camouflage facade. **No personal chat data, tokens, or messages are ever sent to these services.**
+- **Flavor Exceptions (Weather)**: See the data privacy and third-party API usage guarantees in [FlavorWeather.md](flavors/FlavorWeather.md).
 
 ---
 

@@ -353,9 +353,11 @@ fun AppScreen(
                             botToken = viewModel.botToken,
                             chatId = viewModel.chatId,
                             isTileAccessEnabled = viewModel.tileAccessEnabled,
+                            customAccessWord = viewModel.customAccessWord,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
                             onTileAccessChange = { viewModel.toggleTileAccess(it) },
+                            onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
                             onSave = {
                                 viewModel.saveCredentials()
                             },

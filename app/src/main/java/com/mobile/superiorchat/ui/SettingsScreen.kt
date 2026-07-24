@@ -31,9 +31,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.draw.scale
 import com.mobile.superiorchat.theme.*
@@ -51,9 +54,11 @@ fun SettingsScreen(
     botToken: String,
     chatId: String,
     isTileAccessEnabled: Boolean,
+    customAccessWord: String = "",
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
+    onCustomAccessWordChange: (String) -> Unit = {},
     onSave: () -> Unit,
     onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
 ) {
@@ -159,7 +164,7 @@ fun SettingsScreen(
                 if (showBotInfo) {
                     com.mobile.superiorchat.ui.components.popups.InfoDialog(
                         title = "Bot Credentials",
-                        message = "You can manually enter your Bot Token and Chat ID, or securely import them by scanning a configuration QR Code.",
+                        message = "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*.",
                         onDismiss = { showBotInfo = false }
                     )
                 }
@@ -234,7 +239,7 @@ fun SettingsScreen(
                         if (showAccessibilityInfo) {
                             com.mobile.superiorchat.ui.components.popups.InfoDialog(
                                 title = "Quick Settings Tile Access",
-                                message = "Open notification panel, click on the pencil icon, find 'Carrier Sync' and add it.\n\nThen when you want to open chat:\n1. Enable\n2. Disable\n3. Enable\n4. Hold Tile to open chat app",
+                                message = "Open notification panel, click on the pencil icon, find *Carrier Sync*' and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app",
                                 onDismiss = { showAccessibilityInfo = false }
                             )
                         }
@@ -270,6 +275,141 @@ fun SettingsScreen(
                         },
                         colors = com.mobile.superiorchat.ui.components.luminaSwitchColors()
                     )
+                }
+            }
+        }
+
+        if (BuildConfig.FLAVOR == "weather") {
+            // App Accessibility Card for Weather Flavor
+            GlassCard {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Set Custom Access Word", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                    var showAccessInfo by remember { mutableStateOf(false) }
+                    Icon(
+                        Icons.Default.Info, 
+                        contentDescription = "Info", 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                        modifier = Modifier.padding(4.dp).size(20.dp).clickable { showAccessInfo = true }
+                    )
+                    
+                    if (showAccessInfo) {
+                        com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                            title = "Custom Access Word",
+                            message = "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *superior chat* will always work as a fallback.",
+                            onDismiss = { showAccessInfo = false }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+                
+                var tempWord by remember { mutableStateOf("") }
+                val isValid = tempWord.trim().length >= 4
+                var showWarning by remember { mutableStateOf(false) }
+                var isSaved by remember { mutableStateOf(false) }
+                val scope = rememberCoroutineScope()
+                
+                LaunchedEffect(isSaved) {
+                    if (isSaved) {
+                        kotlinx.coroutines.delay(2000)
+                        isSaved = false
+                    }
+                }
+                
+                if (showWarning) {
+                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                        title = "Warning",
+                        message = "Are you sure you want to set your access word to *${tempWord.trim()}*? If you forget this word, you can always use the default *superior chat* fallback to regain access.",
+                        icon = Icons.Default.Warning,
+                        iconTint = PrimaryLight,
+                        confirmText = "Save",
+                        onConfirm = {
+                            onCustomAccessWordChange(tempWord.trim())
+                            tempWord = ""
+                            
+                            // Trigger save animation
+                            isSaved = true
+                        },
+                        onDismiss = { showWarning = false }
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedTextField(
+                        value = tempWord,
+                        onValueChange = { tempWord = it },
+                        placeholder = { Text("e.g. open door", color = TextSecondary, fontSize = 14.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true
+                    )
+                    
+                    if (customAccessWord.isNotEmpty()) {
+                        Text(
+                            text = "Current saved word: $customAccessWord",
+                            color = PrimaryLight,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .glow(color = if (isSaved) Success else if (isValid) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(if (isSaved) Success else if (isValid) PrimaryLight else SurfaceLevel2, RoundedCornerShape(12.dp))
+                            .bounceClick(scaleDown = 0.95f) {
+                                if (isValid && !isSaved) {
+                                    showWarning = true
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AnimatedContent(
+                            targetState = isSaved,
+                            transitionSpec = {
+                                (scaleIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn()) togetherWith 
+                                (scaleOut(targetScale = 0.8f, animationSpec = tween(150)) + fadeOut())
+                            },
+                            label = "save_animation"
+                        ) { saved ->
+                            if (saved) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Saved!", 
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer, 
+                                        fontSize = 14.sp, 
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = "Save Custom Word", 
+                                    color = if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary, 
+                                    fontSize = 14.sp, 
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
