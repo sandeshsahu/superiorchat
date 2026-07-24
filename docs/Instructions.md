@@ -33,7 +33,7 @@ Before you begin, you must download the necessary APK files from our official Gi
 - `[Flavor] App_Release.apk` - flavor of the setup app (`captiveportal`) and app (`weather`).
 - `[Original] App_Release.apk` - non-hidden, standard version of the app
 
-👉 **[Download Latest APKs from GitLab Releases](https://gitlab.com/sandeshsahu/superiorchat/-/releases)**
+👉 **[Download Latest APKs from GitHub Releases](https://github.com/sandeshsahu/superiorchat/releases)**
 
 > [!IMPORTANT]
 > **Why you might see a "Harmful App" warning during installation**
