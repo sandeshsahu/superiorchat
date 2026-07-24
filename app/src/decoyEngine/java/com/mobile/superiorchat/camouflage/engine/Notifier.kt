@@ -24,7 +24,8 @@ object Notifier {
     fun buildCamouflageNotification(context: Context, profile: Profile, isOngoing: Boolean = false): Notification {
         val data = Manager.resolveCamouflage(context, profile)
         
-        val channelId = "camo_channel_v3_${profile.javaClass.simpleName}"
+        val channelIdSuffix = if (data.isSilent) "silent" else "alert"
+        val channelId = "camo_channel_v4_${profile.javaClass.simpleName}_$channelIdSuffix"
         
         // 1. Create Spoofed Channel
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -58,11 +59,12 @@ object Notifier {
             .setSmallIcon(data.smallIconResId)
             .setContentTitle(data.title)
             .setContentText(data.text)
-            .setPriority(NotificationCompat.PRIORITY_MIN) // MIN priority to guarantee no sounds
+            .setPriority(if (data.isSilent) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_SERVICE) // Categorize as a background service
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setOngoing(isOngoing)
+            .setOnlyAlertOnce(true)
 
         return builder.build()
     }

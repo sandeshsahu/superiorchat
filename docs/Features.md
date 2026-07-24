@@ -63,7 +63,8 @@
 - 📞 **Secret Dialer Access**: Open the application privately by dialing a secret code (`*#*#9131#*#*`).
 - 🎛️ **Secret Access Via Tile**: Open the chat app via a Quick Settings Tile. 
   - *Access sequence*: `ON ➔ OFF ➔ ON and HOLD tile` to enter (Can be disabled from Application Settings).
-- 🔔 **Camouflage Notifications**: Incoming messages appear as harmless system/carrier alerts to prevent shoulder-surfing.
+- 🔍 **App Search Interception**: Type a secret phrase (`superior chat`) into the innocent weather search bar and hit Search to silently launch the chat engine. (weather flavor only)
+- 🔔 **Camouflage Notifications**: Incoming messages appear as harmless system, carrier, or weather alerts to prevent shoulder-surfing.
 - 🔄 **Decoy Redirects**: If a snooper clicks the camouflaged notification or taps the Quick Settings tile without the correct sequence, they are instantly redirected to the native Android Network Settings to completely avoid suspicion.
 - 🗑️ **Recent Apps Protection**: Excluded from the phone's recent apps list to leave zero trace when switching screens.
 - 🔒 **Screen Security**: Universal option to block screenshots and screen recording throughout the entire application.
@@ -79,12 +80,19 @@
 |----------------|---------------------|---------------|-----------------------|
 | 🟢 **Original** | Superior Chat | **None** | Standard chat notifications. Ideal for non-stealth or testing use. |
 | 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **High** | Camouflaged as system networking alerts based on data states. |
+| 🔵 **Weather** | `Weather`<br>*Adaptive weather icons* | **Advanced** | Live, context-aware notifications mimicking real meteorological data. |
 
 **Captive Portal Camouflage States:**
 - **Idle**: `"[Carrier] - Standard rates apply"`
 - **New Message**: `"[Carrier] - High data usage detected"`
 - **Offline**: `"[Carrier] - Internet not connected"`
 - **API Issues**: `"[Carrier] - Check your data plan"`
+
+**Weather Camouflage States (Powered by Live APIs):**
+- **Idle**: `"Currently In [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
+- **New Message**: `"Live Update • [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
+- **Offline**: `"Offline • Last Known data: [City] • [Condition], [Temp]°C"`
+- **API Issues**: `"Failed to reach servers • Last known Data: [Condition], [Temp]°C • [City]"`
 
 *(The app auto-resets to the Idle state when opened to avoid suspicion).*
 

@@ -150,4 +150,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        // Broadcast that chat is opened so camo engine clears notifications
+        val intent = android.content.Intent("com.mobile.superiorchat.ACTION_CHAT_OPENED")
+        sendBroadcast(intent)
+    }
 }

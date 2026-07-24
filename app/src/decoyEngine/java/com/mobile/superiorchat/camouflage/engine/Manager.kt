@@ -46,6 +46,30 @@ object Manager {
                     decoyIntentAction = context.getString(R.string.camo_intent_action)
                 )
             }
+            is Profile.CustomApp.WeatherApp -> {
+                val title = when (profile.state) {
+                    CamoState.IDLE -> context.getString(R.string.camo_title_idle, profile.location)
+                    CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_title_active, profile.location)
+                    CamoState.NO_INTERNET -> context.getString(R.string.camo_title_no_internet)
+                    CamoState.API_UNREACHABLE -> context.getString(R.string.camo_title_api_unreachable)
+                }
+
+                val text = when (profile.state) {
+                    CamoState.IDLE -> context.getString(R.string.camo_state_idle, profile.condition, profile.currentTemp, profile.humidity)
+                    CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_state_active, profile.condition, profile.currentTemp, profile.humidity)
+                    CamoState.NO_INTERNET -> context.getString(R.string.camo_state_no_internet, profile.location, profile.condition, profile.currentTemp)
+                    CamoState.API_UNREACHABLE -> context.getString(R.string.camo_state_api_unreachable, profile.condition, profile.currentTemp, profile.location)
+                }
+                
+                DecoyData(
+                    appNameSpoof = context.getString(R.string.camo_app_name),
+                    title = title,
+                    text = text,
+                    smallIconResId = R.drawable.ic_camo_notif,
+                    decoyIntentAction = context.getString(R.string.camo_intent_action),
+                    isSilent = profile.state != CamoState.ACTIVE_MESSAGE
+                )
+            }
         }
     }
 }

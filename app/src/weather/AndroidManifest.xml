@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:networkSecurityConfig="@xml/network_security_config">
+        <!-- Assign the Launcher intent to the Weather entry point -->
+        <!-- Use the fully qualified name to avoid conflict with the chat app's MainActivity -->
+        <activity 
+            android:name="com.android.weather.info.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.android.weather.info.action.OPEN_WEATHER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        
+        <!-- Add the DecoyActivity so the notification engine can route intents -->
+        <activity
+            android:name="com.mobile.superiorchat.camouflage.ui.DecoyActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.SuperiorChat" />
+
+        <!-- Override the Chat App's MainActivity for this flavor only -->
+        <!-- We use an innocent affinity name so even memory dumps look like a weather background process -->
+        <activity
+            android:name="com.mobile.superiorchat.MainActivity"
+            android:taskAffinity="${applicationId}.weather_sync" />
+    </application>
+</manifest>

@@ -19,7 +19,8 @@
 - [3. Media Transfer System (MediaSync)](#media)
 - [4. Background Execution](#background)
 - [5. Data Storage](#storage)
-- [6. Error Handling & Recovery](#error)
+- [6. Weather API Integration (weather Flavor)](#weather-api)
+- [7. Error Handling & Recovery](#error)
 
 ---
 
@@ -161,7 +162,32 @@ graph TD
 
 ---
 
-<h2 id="error">6. Error Handling & Recovery</h2>
+<h2 id="weather-api">6. Weather API Integration (weather Flavor)</h2>
+
+The `weather` flavor implements a standalone network and data layer to power its UI disguise, completely independent from the core `BotSync` engine.
+
+### Network Layer (Retrofit)
+- **Forecasting & Geocoding**: Uses `Retrofit` and `Gson` to query `api.open-meteo.com` (hourly/daily forecasts) and `geocoding-api.open-meteo.com` (city search).
+- **Nearby Cities**: Queries `countries.dev` to populate default suggestions when the search bar is empty.
+- **Location Fallback**: Integrates `ip-api.com` for initial IP-based geolocation. Because this endpoint requires HTTP, the flavor uses a custom `network_security_config.xml` to explicitly permit cleartext traffic exclusively for this domain.
+
+### Architecture & Caching
+- **State Management**: `WeatherViewModel` drives the UI using a sealed `WeatherUiState` via `StateFlow`. Network requests run on `Dispatchers.IO` and search inputs are debounced (300ms) with `Job` cancellation to prevent API spam.
+- **Offline Resilience**: `WeatherLocalStorage` saves the full JSON response of the last successful fetch. If the device goes offline, `WeatherRepository` silently falls back to the cached JSON.
+- **Decoy Feed**: Upon successful fetches, the repository independently saves primitive strings (`temperature`, `condition`, `humidity`) directly to `SharedPreferences`. This decoupled design allows the `decoyEngine` (via `Notifier.kt`) to instantly read live weather data for background notifications without ever needing to wake up or instantiate the heavy `WeatherViewModel`.
+
+<br>
+<p align="center">
+  <img src="images/flavor_weather/1.jpg" width="30%" alt="Weather UI">
+  &nbsp;
+  <img src="images/flavor_weather/2.jpg" width="30%" alt="Weather Weekly Forecast">
+  &nbsp;
+  <img src="images/flavor_weather/3.jpg" width="30%" alt="Weather Search">
+</p>
+
+---
+
+<h2 id="error">7. Error Handling & Recovery</h2>
 
 | Error | Detection | Response |
 |-------|-----------|----------|

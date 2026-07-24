@@ -8,4 +8,10 @@
     <string name="camo_state_no_internet">%1$s - Internet not connected</string>
     <string name="camo_state_api_unreachable">%1$s - You may be out of data, please check your plan</string>
     <string name="camo_intent_action">android.settings.WIRELESS_SETTINGS</string>
+
+    <!-- Unused strings to satisfy Manager.kt compilation for WeatherApp profile -->
+    <string name="camo_title_idle">Carrier Services</string>
+    <string name="camo_title_active">Carrier Services</string>
+    <string name="camo_title_no_internet">Carrier Services</string>
+    <string name="camo_title_api_unreachable">Carrier Services</string>
 </resources>

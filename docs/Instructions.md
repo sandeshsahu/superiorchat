@@ -26,7 +26,7 @@
 Before you begin, you must download the necessary APK files from our official GitLab repository.
 
 > [!IMPORTANT]
-> Currently only 1 camoflouged flavor of the app is available for download, which is **Captive Portal** flavor.
+> Currently 2 camouflaged flavors of the app are available for download, which are **Captive Portal** and **Weather**.
 
 **Naming of flavors**:
 - **Flavor** = Available Camoflouged Flavor (e.g. `CaptivePortal`)
@@ -84,7 +84,7 @@ This version hides itself entirely and requires the Setup App to install and con
 4. **Scan Credentials**: Continue to Step 2. Scan the encrypted QR code provided by Person A (or manually type the credentials).
 5. **Wake Up & Bind**: Continue to Step 3. Tap the button to open the Main app from within the Setup App. This locks in your credentials.
 6. **Cover Your Tracks**: The main app will now ask you to uninstall the Setup App. Choose **Uninstall** to remove all traces of configuration.
-7. **Start Chatting**: Use your secret dialer code (`*#*#9131#*#*`) or Quick Settings tile to access the app going forward!
+7. **Start Chatting**: Use your secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search Interception (for weather flavor) to access the app going forward!
 
 <br>
 <p align="center">
@@ -114,12 +114,13 @@ If you prefer to compile the application yourself instead of downloading the pre
 | App Flavor | Gradle Command | Description |
 |------------|----------------|-------------|
 | **Original** | `./gradlew app:assembleOriginalDebug` | Builds the standard visible chat app. |
-| **Captive Portal** | `./gradlew app:assembleCaptivePortalDebug` | Builds the camouflaged, invisible chat app. |
-| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug` | Builds the Setup wizard application with `CaptivePortal Flavor`. |
+| **Captive Portal** | `./gradlew app:assembleCaptivePortalDebug` | Builds the camouflaged invisible chat app (carrier alerts). |
+| **Weather** | `./gradlew app:assembleWeatherDebug` | Builds the disguised weather app (live context). |
+| **Setup App** | `./gradlew setupapp:assembleCaptivePortalDebug`<br>`./gradlew setupapp:assembleWeatherDebug` | Builds the Setup wizard application with the respective hidden flavor. |
 
 > [!WARNING]
 > **Important Note for Setup App Compilation:**
-> When building the Setup App for the Captive Portal flavor, you **must** first build the `app:assembleCaptivePortalDebug` APK. Once built, copy that resulting APK file into the `setupapp\src\main\assets` folder *before* running the `setupapp` build command. This bundles the hidden app inside the Setup wizard!
+> When building the Setup App for a camouflaged flavor, you **must** first build the `app:assemble<Flavor>Debug` APK. Once built, copy that resulting APK file into the `setupapp\src\main\assets` folder *before* running the `setupapp` build command. This bundles the hidden app inside the Setup wizard!
 ---
 
 <p align="center">
