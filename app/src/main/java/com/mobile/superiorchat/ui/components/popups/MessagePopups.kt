@@ -25,7 +25,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.foundation.clickable
@@ -46,7 +46,8 @@ fun MessageContextMenu(
     onSelectClick: () -> Unit,
     onDeleteClick: () -> Unit,
     isPinned: Boolean = false,
-    onPinClick: () -> Unit = {}
+    onPinClick: () -> Unit = {},
+    onSaveClick: (() -> Unit)? = null
 ) {
     val expanded = expandedProvider()
     val currentReactions = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions).me
@@ -140,6 +141,15 @@ fun MessageContextMenu(
                         onClick = { onCopyClick(); onDismiss() }
                     )
 
+                    // Save
+                    if (onSaveClick != null) {
+                        ContextMenuItem(
+                            text = "Save",
+                            icon = Icons.Filled.Download,
+                            onClick = { onSaveClick(); onDismiss() }
+                        )
+                    }
+
                     // Edit (Only for own text messages)
                     if (message.isFromMe && !message.text.isNullOrBlank()) {
                         ContextMenuItem(
@@ -221,14 +231,26 @@ fun DeleteWarningDialog(
     var deleteForEveryone by remember { mutableStateOf(false) }
     
     BaseAppDialog(onDismiss = onDismiss) {
-        Text(
-            text = "Delete message?",
-            style = MaterialTheme.typography.titleLarge,
-            color = ErrorRed,
-            fontWeight = FontWeight.Bold,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = "Delete",
+                tint = ErrorRed,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "Delete message?",
+                style = MaterialTheme.typography.titleLarge,
+                color = ErrorRed,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                modifier = Modifier.weight(1f)
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

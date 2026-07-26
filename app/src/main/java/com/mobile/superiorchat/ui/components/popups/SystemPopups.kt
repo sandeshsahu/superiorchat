@@ -128,14 +128,17 @@ fun ErrorDialog(
     onDismiss: () -> Unit
 ) {
     BaseAppDialog(onDismiss = onDismiss) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = ErrorRed,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Start,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Filled.Warning, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(32.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = ErrorRed,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Start
+            )
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -219,14 +222,17 @@ fun InfoDialog(
                         .padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = PrimaryLight,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Start,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Icon(Icons.Filled.Info, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(32.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = PrimaryLight,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Start
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -372,7 +378,7 @@ fun GlobalDialogHandler(
     when (dialogState) {
         is com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied -> {
             ActionDialog(
-                title = "Permission Permanently Denied",
+                title = "Permission Denied",
                 message = "This permission has been permanently denied. Please enable it in the App Settings.",
                 icon = Icons.Filled.Warning,
                 iconTint = ErrorRed,
@@ -406,6 +412,7 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "All Files Access Required",
                 message = "The file explorer requires full access to your device storage to view and attach documents.",
+                icon = Icons.Filled.Info,
                 confirmText = "Open Settings",
                 onConfirm = {
                     context.startActivity(dialogState.intent)
@@ -418,6 +425,7 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "Limited Access Granted",
                 message = "You have granted limited access to your media. Would you like to grant full access so you can easily select any photo?",
+                icon = Icons.Filled.Info,
                 confirmText = "Grant Full Access",
                 dismissText = "Not Now",
                 onConfirm = {
@@ -434,6 +442,7 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "Camera Permission",
                 message = "We need access to your camera to take photos.",
+                icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
                 onConfirm = {
@@ -447,6 +456,7 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "Microphone Permission",
                 message = "We need access to your microphone to record voice messages.",
+                icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
                 onConfirm = {
@@ -460,6 +470,7 @@ fun GlobalDialogHandler(
             ActionDialog(
                 title = "Storage Permission",
                 message = "We need access to your device storage to view and attach documents.",
+                icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
                 onConfirm = {

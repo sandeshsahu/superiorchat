@@ -285,4 +285,66 @@ object FileUtils {
             null
         }
     }
+
+    /**
+     * Exports a file directly to the system's public galleries (Pictures, Movies, etc.).
+     * Prevents usage of app name to maintain privacy.
+     */
+    fun exportMediaToGallery(context: Context, sourceFile: File, mediaType: String, originalName: String? = null): Boolean {
+        if (!sourceFile.exists()) return false
+        try {
+            val displayName = originalName ?: sourceFile.name
+            val extension = displayName.substringAfterLast('.', "").lowercase(Locale.ROOT)
+            val mimeType = android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                val contentValues = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, displayName)
+                    put(android.provider.MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                    
+                    val relativePath = when (mediaType) {
+                        "photo" -> android.os.Environment.DIRECTORY_PICTURES
+                        "video" -> android.os.Environment.DIRECTORY_MOVIES
+                        "audio", "voice" -> android.os.Environment.DIRECTORY_MUSIC
+                        else -> android.os.Environment.DIRECTORY_DOWNLOADS
+                    }
+                    put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                    put(android.provider.MediaStore.MediaColumns.IS_PENDING, 1)
+                }
+
+                val collection = when (mediaType) {
+                    "photo" -> android.provider.MediaStore.Images.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                    "video" -> android.provider.MediaStore.Video.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                    "audio", "voice" -> android.provider.MediaStore.Audio.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                    else -> android.provider.MediaStore.Downloads.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                }
+
+                val uri = context.contentResolver.insert(collection, contentValues) ?: return false
+
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    sourceFile.inputStream().use { inputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+
+                contentValues.clear()
+                contentValues.put(android.provider.MediaStore.MediaColumns.IS_PENDING, 0)
+                context.contentResolver.update(uri, contentValues, null, null)
+            } else {
+                val publicDir = when (mediaType) {
+                    "photo" -> android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES)
+                    "video" -> android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MOVIES)
+                    "audio", "voice" -> android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC)
+                    else -> android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                }
+                if (!publicDir.exists()) publicDir.mkdirs()
+                val targetFile = File(publicDir, displayName)
+                sourceFile.copyTo(targetFile, overwrite = true)
+            }
+            return true
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.ERROR, "FileUtils: Failed to export to gallery: ${e.message}")
+            return false
+        }
+    }
 }

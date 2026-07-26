@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.animateColorAsState
@@ -67,6 +69,7 @@ import com.mobile.superiorchat.ui.components.popups.MessageContextMenu
 import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.utils.LogCategory
 import com.mobile.superiorchat.utils.LogLevel
+import com.mobile.superiorchat.utils.FileUtils
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -165,6 +168,7 @@ fun MessageBubble(
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
     var showApkInstallDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showSaveDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
     val view = androidx.compose.ui.platform.LocalView.current
 
     if (message.mediaType == "system_pin") {
@@ -192,6 +196,7 @@ fun MessageBubble(
         ActionDialog(
             title = "Installation Permission Required",
             message = "To install this app, you need to allow SuperiorChat to install unknown apps.",
+            icon = Icons.Filled.Warning,
             confirmText = "Settings",
             onConfirm = {
                 showApkInstallDialog = false
@@ -201,6 +206,45 @@ fun MessageBubble(
                 context.startActivity(intent)
             },
             onDismiss = { showApkInstallDialog = false }
+        )
+    }
+
+    if (showSaveDialog) {
+        val typeName = when (message.mediaType) {
+            "photo" -> "photo"
+            "video" -> "video"
+            "voice", "audio" -> "audio"
+            else -> "file"
+        }
+        val storagetype = when (message.mediaType) {
+            "photo" -> "Pictures"
+            "video" -> "Movies"
+            "voice", "audio" -> "Music"
+            else -> "Downloads"
+        }
+        ActionDialog(
+            title = "Save Media",
+            message = "Do you want to save this *$typeName* to your device's *$storagetype folder*?",
+            icon = Icons.Filled.Download,
+            confirmText = "Save",
+            onConfirm = {
+                showSaveDialog = false
+                val fileToSave = com.mobile.superiorchat.media.LocalDirs.resolveFile(context, message.mediaLocalPath)
+                if (fileToSave != null && fileToSave.exists()) {
+                    val success = FileUtils.exportMediaToGallery(
+                        context,
+                        fileToSave,
+                        message.mediaType ?: "document",
+                        message.mediaFileName
+                    )
+                    if (success) {
+                        com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Saved successfully")
+                    } else {
+                        com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.ERROR, "Failed to save")
+                    }
+                }
+            },
+            onDismiss = { showSaveDialog = false }
         )
     }
 
@@ -481,7 +525,10 @@ fun MessageBubble(
                     isPinned = isPinned,
                     onPinClick = {
                         onPinClick(message)
-                    }
+                    },
+                    onSaveClick = if (message.mediaType in listOf("photo", "video", "voice", "audio", "document") && com.mobile.superiorchat.media.LocalDirs.resolveFile(context, message.mediaLocalPath)?.exists() == true) {
+                        { showSaveDialog = true }
+                    } else null
                 )
                 Column {
                     if (message.replyToMessageId != null) {

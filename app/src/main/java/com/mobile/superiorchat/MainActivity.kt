@@ -23,6 +23,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -128,6 +130,8 @@ class MainActivity : ComponentActivity() {
                         com.mobile.superiorchat.ui.components.popups.ActionDialog(
                             title = "Uninstall Setup App",
                             message = "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions",
+                            icon = Icons.Filled.Delete,
+                            iconTint = com.mobile.superiorchat.theme.ErrorRed,
                             confirmText = "Uninstall",
                             dismissText = "Keep",
                             onConfirm = {
