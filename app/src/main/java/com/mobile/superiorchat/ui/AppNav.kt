@@ -194,6 +194,8 @@ fun AppScreen(
         }
     }
 
+    val callState by CallManager.callState.collectAsState()
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         scrimColor = Background.copy(alpha = 0.6f),
@@ -260,38 +262,40 @@ fun AppScreen(
     ) {
         Scaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    },
-                    navigationIcon = {
-                        if (currentScreen == NavScreen.Settings) {
-                            IconButton(onClick = { currentScreen = NavScreen.Chat }) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
-                            }
-                        } else {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
-                            }
-                        }
-                    },
-                    actions = {
-                        if (currentScreen == NavScreen.Chat || currentScreen == NavScreen.Logs) {
-                            if (currentScreen == NavScreen.Chat) {
-                                IconButton(onClick = { showCallConfirmation = true }) {
-                                    Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                if (callState == CallState.IDLE || isCallMinimized) {
+                    CenterAlignedTopAppBar(
+                        title = {
+                            Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        },
+                        navigationIcon = {
+                            if (currentScreen == NavScreen.Settings) {
+                                IconButton(onClick = { currentScreen = NavScreen.Chat }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            } else {
+                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                    Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
-                            IconButton(onClick = { currentScreen = NavScreen.Settings }) {
-                                Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
+                        },
+                        actions = {
+                            if (currentScreen == NavScreen.Chat || currentScreen == NavScreen.Logs) {
+                                if (currentScreen == NavScreen.Chat) {
+                                    IconButton(onClick = { showCallConfirmation = true }) {
+                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                                IconButton(onClick = { currentScreen = NavScreen.Settings }) {
+                                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
+                                }
                             }
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Background,
-                        scrolledContainerColor = Background
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = Background,
+                            scrolledContainerColor = Background
+                        )
                     )
-                )
+                }
             },
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->

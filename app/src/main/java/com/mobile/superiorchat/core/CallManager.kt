@@ -2,6 +2,7 @@ package com.mobile.superiorchat.core
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.hardware.Sensor
@@ -22,6 +23,17 @@ import java.util.UUID
 
 enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING }
 
+/**
+ * Singleton managing the full call lifecycle: state machine, audio hardware,
+ * proximity sensor, and duration timer.
+ *
+ * State flow:  IDLE → CONNECTING → ACTIVE → ENDING → IDLE
+ *
+ * Usage:
+ *   val (vercelUrl, telegramUrl) = CallManager.initCall(context)
+ *   // ... WebView loads vercelUrl, JS bridge calls markConnected() ...
+ *   CallManager.endCall()
+ */
 object CallManager {
     private val _callState = MutableStateFlow(CallState.IDLE)
     val callState: StateFlow<CallState> = _callState
@@ -29,34 +41,46 @@ object CallManager {
     private val _callDuration = MutableStateFlow(0L)
     val callDuration: StateFlow<Long> = _callDuration
 
+    private val _isSpeakerphoneOn = MutableStateFlow(false)
+    val isSpeakerphoneOn: StateFlow<Boolean> = _isSpeakerphoneOn
+
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var sensorManager: SensorManager? = null
     private var proximitySensor: Sensor? = null
     private var wakeLock: PowerManager.WakeLock? = null
-    private var appContext: Context? = null
-    
-    private val _isSpeakerphoneOn = MutableStateFlow(false)
-    val isSpeakerphoneOn: StateFlow<Boolean> = _isSpeakerphoneOn
-    
+
     private var timerJob: Job? = null
     private var timeoutJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     var currentRoomId: String? = null
         private set
-        
+
     var currentSecret: String? = null
         private set
 
     // =========================================================================
-    // VERCEL DOMAIN
+    // VERCEL DOMAIN — The hosted WebRTC signaling page
     // =========================================================================
     const val VERCEL_APP_URL = "https://superiorchat-connect.vercel.app"
 
+    /** Timeout before auto-ending an unanswered call. */
+    private const val CALL_TIMEOUT_MS = 30_000L
+
+    /** Grace period for the ENDING state before resetting to IDLE. */
+    private const val ENDING_DELAY_MS = 1_500L
+
+    // ─────────────────────────────────────────────────────────
+    //  Call Lifecycle
+    // ─────────────────────────────────────────────────────────
+
+    /**
+     * Initiates a new call: generates room/secret, configures audio hardware,
+     * and returns a pair of (hostUrl, guestUrl).
+     */
     fun initCall(context: Context): Pair<String, String> {
-        appContext = context.applicationContext
-        setupHardware(context)
+        setupHardware(context.applicationContext)
         AudioPlayer.stop()
 
         _callState.value = CallState.CONNECTING
@@ -67,16 +91,15 @@ object CallManager {
         currentRoomId = roomId
         currentSecret = secret
 
-        // URL logic for Vercel WebRTC
         val vercelUrl = "$VERCEL_APP_URL/?host=$roomId&secret=$secret"
         val telegramUrl = "$VERCEL_APP_URL/?join=$roomId&secret=$secret"
-        
+
         AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")
 
-        // 30-second timeout if not answered
+        // Auto-timeout if not answered
         timeoutJob = scope.launch {
-            delay(30000)
+            delay(CALL_TIMEOUT_MS)
             if (_callState.value == CallState.CONNECTING) {
                 AppLog.log(LogCategory.SYSTEM, "Call timeout - no answer")
                 StatusFlow.reportStatus(SyncState.ERROR, "No answer")
@@ -87,17 +110,25 @@ object CallManager {
         return Pair(vercelUrl, telegramUrl)
     }
 
+    /**
+     * Called by the JavaScript bridge when the WebRTC peer connection
+     * is established. Starts the duration timer.
+     */
     fun markConnected() {
         timeoutJob?.cancel()
-        // Guard: If already ACTIVE, don't restart the timer (ICE reconnection fires this again)
+        // Guard: If already ACTIVE, this is an ICE re-connection — don't restart timer
         if (_callState.value == CallState.ACTIVE) {
             AppLog.log(LogCategory.SYSTEM, "Call re-confirmed connected (ICE recovered)")
             return
         }
         _callState.value = CallState.ACTIVE
+        
+        // Enforce audio route (Earpiece by default) right when WebRTC audio stream connects
+        setSpeakerphone(_isSpeakerphoneOn.value)
+
         StatusFlow.reportStatus(SyncState.SUCCESS, "Call Active")
         AppLog.log(LogCategory.SYSTEM, "Call Active - PeerJS Connected")
-        
+
         // Start duration timer (only once)
         timerJob?.cancel()
         timerJob = scope.launch {
@@ -108,23 +139,28 @@ object CallManager {
         }
     }
 
+    /**
+     * Ends the call gracefully. Transitions through ENDING → IDLE
+     * with a brief delay for the UI "Call Ended" label to display.
+     */
     fun endCall() {
         if (_callState.value == CallState.ENDING || _callState.value == CallState.IDLE) return
-        
+
         val wasActive = _callState.value == CallState.ACTIVE
         val finalDuration = _callDuration.value
         _callState.value = CallState.ENDING
         timeoutJob?.cancel()
         timerJob?.cancel()
         AppLog.log(LogCategory.SYSTEM, "Call Ended")
+
         if (wasActive) {
             StatusFlow.reportStatus(SyncState.IDLE, "Call Ended - ${finalDuration}s")
         } else {
             StatusFlow.reportStatus(SyncState.IDLE, "")
         }
-        
+
         scope.launch {
-            delay(1500)
+            delay(ENDING_DELAY_MS)
             _callState.value = CallState.IDLE
             _callDuration.value = 0
             currentRoomId = null
@@ -133,23 +169,62 @@ object CallManager {
         }
     }
 
+    // ─────────────────────────────────────────────────────────
+    //  Audio Controls
+    // ─────────────────────────────────────────────────────────
+
+    fun setSpeakerphone(enabled: Boolean) {
+        val am = audioManager ?: return
+        _isSpeakerphoneOn.value = enabled
+
+        // Enforce legacy audio manager flag
+        @Suppress("DEPRECATION")
+        am.isSpeakerphoneOn = enabled
+
+        // Enforce modern API 31+ communication device routing
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val devices = am.availableCommunicationDevices
+            val targetType = if (enabled) AudioDeviceInfo.TYPE_BUILTIN_SPEAKER else AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+            val targetDevice = devices.firstOrNull { it.type == targetType }
+            if (targetDevice != null) {
+                am.setCommunicationDevice(targetDevice)
+            }
+        }
+
+        // If Speakerphone is ON -> release proximity wake lock so screen stays ON
+        if (enabled && wakeLock?.isHeld == true) {
+            wakeLock?.release()
+        }
+    }
+
+    fun toggleSpeaker() {
+        setSpeakerphone(!_isSpeakerphoneOn.value)
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Hardware — Audio focus, proximity sensor, wake lock
+    // ─────────────────────────────────────────────────────────
+
     private fun setupHardware(context: Context) {
         audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
-        audioManager?.isSpeakerphoneOn = true
-        _isSpeakerphoneOn.value = true
 
-        // Proximity Sensor
+        // Default audio route to EARPIECE (ear mode by default)
+        setSpeakerphone(false)
+
+        // Proximity sensor → screen off when near ear
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         proximitySensor = sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY)
-        
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-        wakeLock = powerManager.newWakeLock(PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK, "SuperiorChat:ProximityCall")
-        
+        wakeLock = powerManager.newWakeLock(
+            PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK,
+            "SuperiorChat:ProximityCall"
+        )
         proximitySensor?.let {
             sensorManager?.registerListener(proximityListener, it, SensorManager.SENSOR_DELAY_NORMAL)
         }
 
+        // Request audio focus
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(
@@ -172,10 +247,14 @@ object CallManager {
     }
 
     private fun releaseHardware() {
-        audioManager?.mode = AudioManager.MODE_NORMAL
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            audioManager?.clearCommunicationDevice()
+        }
+        @Suppress("DEPRECATION")
         audioManager?.isSpeakerphoneOn = false
+        audioManager?.mode = AudioManager.MODE_NORMAL
         _isSpeakerphoneOn.value = false
-        
+
         sensorManager?.unregisterListener(proximityListener)
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
@@ -190,23 +269,26 @@ object CallManager {
         audioManager = null
     }
 
-    fun toggleSpeaker() {
-        audioManager?.let { am ->
-            val newState = !am.isSpeakerphoneOn
-            am.isSpeakerphoneOn = newState
-            _isSpeakerphoneOn.value = newState
-        }
-    }
+    // ─────────────────────────────────────────────────────────
+    //  Proximity Sensor Listener
+    // ─────────────────────────────────────────────────────────
 
     private val proximityListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
             event?.let {
+                // If Speakerphone is enabled, suppress proximity screen-off wake lock
+                if (_isSpeakerphoneOn.value) {
+                    if (wakeLock?.isHeld == true) wakeLock?.release()
+                    return
+                }
+
                 val distance = it.values[0]
-                if (distance < (proximitySensor?.maximumRange ?: 5f)) {
-                    // Close to ear
-                    if (wakeLock?.isHeld == false) wakeLock?.acquire(10 * 60 * 1000L /*10 minutes*/)
+                val threshold = proximitySensor?.maximumRange ?: 5f
+                if (distance < threshold) {
+                    // Close to ear → turn screen off (Earpiece mode only)
+                    if (wakeLock?.isHeld == false) wakeLock?.acquire(10 * 60 * 1000L)
                 } else {
-                    // Away from ear
+                    // Away from ear → turn screen on
                     if (wakeLock?.isHeld == true) wakeLock?.release()
                 }
             }

@@ -8,11 +8,14 @@ import android.webkit.WebView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -22,15 +25,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.zIndex
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.core.CallManager
 import com.mobile.superiorchat.core.CallState
@@ -39,11 +46,17 @@ import com.mobile.superiorchat.ui.components.popups.ActionDialog
 import com.mobile.superiorchat.theme.PrimaryLight
 import kotlinx.coroutines.delay
 
-private val Background = Color(0xFF0F172A)
-private val TextPrimary = Color.White
-private val TextSecondary = Color(0xFF94A3B8)
-private val ErrorRed = Color(0xFFEF4444)
-private val Success = Color(0xFF10B981)
+// ─────────────────────────────────────────────────────────────
+//  Design Tokens (matching WebRTC frontend)
+// ─────────────────────────────────────────────────────────────
+private val CallBackground = Color(0xFF0F172A)
+private val CallTextPrimary = Color.White
+private val CallTextSecondary = Color(0xFF94A3B8)
+private val CallDanger = Color(0xFFEF4444)
+private val CallSuccess = Color(0xFF10B981)
+private val CallAccent = Color(0xFF6366F1)
+private val CallSurface = Color(0xFF1E293B)
+private val CallGlass = Color(0x0DFFFFFF) // 5% white
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -61,14 +74,35 @@ fun CallScreen(
     var isMuted by remember { mutableStateOf(false) }
     var isVideoOn by remember { mutableStateOf(false) }
     var isRemoteVideoOn by remember { mutableStateOf(false) }
+    var isControlsVisible by remember { mutableStateOf(true) }
+    var isSwappedVideo by remember { mutableStateOf(false) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var showEndDialog by remember { mutableStateOf(false) }
+    var endCallSent by remember { mutableStateOf(false) }
 
-    // Intercept back button to prevent accidental hangs
-    androidx.activity.compose.BackHandler(enabled = callState == CallState.ACTIVE && !isVideoOn) {
-        showEndDialog = true
+    val isVideoActive = isVideoOn || isRemoteVideoOn
+
+    // ── Shared cleanup helper (DRY) ───────────────────────────
+    fun performEndCall() {
+        if (!endCallSent) {
+            endCallSent = true
+            webViewRef?.evaluateJavascript("window.androidEndCall();", null)
+        }
+        CallManager.endCall()
     }
 
+    // ── BackHandler: minimize on back during active call ──────
+    androidx.activity.compose.BackHandler(enabled = callState == CallState.ACTIVE && !isMinimized) {
+        onMinimize()
+    }
+
+    // ── BackHandler: end call on back during connecting ───────
+    androidx.activity.compose.BackHandler(enabled = callState == CallState.CONNECTING && !isMinimized) {
+        performEndCall()
+        onEndCall()
+    }
+
+    // ── Confirm dialog ───────────────────────────────────────
     if (showEndDialog) {
         ActionDialog(
             title = "Call in progress",
@@ -79,62 +113,58 @@ fun CallScreen(
             dismissText = "End Call",
             onConfirm = {
                 showEndDialog = false
-                onEndCall()
+                onMinimize()
             },
             onDismiss = {
                 showEndDialog = false
-                webViewRef?.evaluateJavascript("window.androidEndCall();", null)
-                CallManager.endCall()
+                performEndCall()
                 onEndCall()
             }
         )
     }
 
-    var endCallSent by remember { mutableStateOf(false) }
-
-    // Close screen when ending
+    // ── Auto-close when call transitions to ENDING/IDLE ──────
     LaunchedEffect(callState) {
         if (callState == CallState.ENDING || callState == CallState.IDLE) {
-            if (!endCallSent) {
-                endCallSent = true
-                webViewRef?.evaluateJavascript("window.androidEndCall();", null)
-            }
-            delay(1500)
+            performEndCall()
+            delay(600)
             webViewRef?.clearCache(true)
             onEndCall()
         }
     }
 
+    // ── Unified Full-Screen Call Surface ────────────────────────
     Box(
         modifier = modifier
             .then(
-                if (isMinimized) Modifier.size(1.dp).alpha(0f) 
+                if (isMinimized) Modifier.size(1.dp).alpha(0f)
                 else Modifier.fillMaxSize()
             )
+            .background(CallBackground)
     ) {
-        // ── Hidden WebView Layer ───────────────────────────────────────
-        // We load the WebRTC HTML logic here, but keep it hidden unless video is active.
-        val context = LocalContext.current
+        // 1. Fullscreen Video WebView Layer (hidden during ENDING state to reveal gradient)
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).also { wv ->
-                    wv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                    wv.setBackgroundColor(android.graphics.Color.parseColor("#0f172a"))
                     wv.layoutParams = android.view.ViewGroup.LayoutParams(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    
                     wv.settings.apply {
                         javaScriptEnabled = true
-                        domStorageEnabled = false // Disabled for stealth
-                        cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE // Prevent URL forensic traces
+                        domStorageEnabled = false
+                        cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
                         mediaPlaybackRequiresUserGesture = false
                     }
-
                     wv.clearCache(true)
 
+                    // Security: Block navigation to untrusted URLs
                     wv.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                        override fun shouldOverrideUrlLoading(
+                            view: WebView?,
+                            request: android.webkit.WebResourceRequest?
+                        ): Boolean {
                             val targetUrl = request?.url?.toString() ?: ""
                             if (!targetUrl.startsWith(CallManager.VERCEL_APP_URL)) {
                                 AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted URL: $targetUrl")
@@ -144,14 +174,17 @@ fun CallScreen(
                         }
                     }
 
+                    // Security: Only grant permissions for verified origin
                     wv.webChromeClient = object : WebChromeClient() {
                         override fun onPermissionRequest(request: PermissionRequest?) {
                             val origin = request?.origin?.toString()?.removeSuffix("/")
-                            val expectedOrigin = CallManager.VERCEL_APP_URL.removeSuffix("/")
-                            
-                            if (origin == expectedOrigin) {
+                            val expected = CallManager.VERCEL_APP_URL.removeSuffix("/")
+                            if (origin == expected) {
                                 AppLog.log(LogCategory.SYSTEM, "WebView granted permissions for verified origin: $origin")
-                                request?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE, PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+                                request?.grant(arrayOf(
+                                    PermissionRequest.RESOURCE_AUDIO_CAPTURE,
+                                    PermissionRequest.RESOURCE_VIDEO_CAPTURE
+                                ))
                             } else {
                                 AppLog.log(LogCategory.SYSTEM, "SECURITY: Denied WebView permissions for untrusted origin: $origin")
                                 request?.deny()
@@ -159,28 +192,23 @@ fun CallScreen(
                         }
                     }
 
-                    // Javascript Bridge
+                    // JavaScript Bridge
                     wv.addJavascriptInterface(object {
                         @JavascriptInterface
                         fun onWebRTCEvent(action: String, data: String) {
                             when (action) {
                                 "ready" -> AppLog.log(LogCategory.SYSTEM, "PeerJS Ready: $data")
                                 "connected" -> CallManager.markConnected()
-                                "reconnecting" -> {
-                                    AppLog.log(LogCategory.SYSTEM, "WebRTC reconnecting...")
-                                    // Don't end the call — ICE is trying to recover
-                                }
+                                "reconnecting" -> AppLog.log(LogCategory.SYSTEM, "WebRTC reconnecting...")
                                 "error" -> {
                                     AppLog.log(LogCategory.SYSTEM, "PeerJS Error: $data")
-                                    // Only end if we never established a call
                                     if (CallManager.callState.value != CallState.ACTIVE) {
                                         CallManager.endCall()
                                     }
                                 }
                                 "ended" -> CallManager.endCall()
-                                "remote_video" -> {
-                                    isRemoteVideoOn = (data == "on")
-                                }
+                                "remote_video" -> { isRemoteVideoOn = (data == "on") }
+                                "local_video" -> { isVideoOn = (data == "on") }
                             }
                         }
                     }, "Android")
@@ -189,221 +217,429 @@ fun CallScreen(
                     webViewRef = wv
                 }
             },
-            onRelease = { wv ->
-                wv.destroy()
-            },
+            onRelease = { wv -> wv.destroy() },
             modifier = Modifier
                 .fillMaxSize()
-                .graphicsLayer {
-                    alpha = if (isVideoOn || isRemoteVideoOn) 1f else 0f
-                }
+                .graphicsLayer { alpha = if (isVideoActive && callState == CallState.ACTIVE) 1f else 0f }
         )
-    }
 
-    if (!isMinimized) {
-        androidx.compose.ui.window.Dialog(
-            onDismissRequest = { /* Handle via BackHandler internally */ },
-            properties = androidx.compose.ui.window.DialogProperties(
-                usePlatformDefaultWidth = false,
-                dismissOnBackPress = false,
-                decorFitsSystemWindows = false
-            )
-        ) {
-            val view = androidx.compose.ui.platform.LocalView.current
-            val dialogWindow = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
-            LaunchedEffect(dialogWindow) {
-                dialogWindow?.setDimAmount(0f)
-                dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
-            }
-            
+        // 2. Native Compose UI Overlay Layer (only active when not minimized)
+        if (!isMinimized) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(if (isVideoOn || isRemoteVideoOn) Color.Transparent else Background)
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        isControlsVisible = !isControlsVisible
+                    }
+                    .systemBarsPadding()
             ) {
-                // ── Native Overlay UI ─────────────────────────────────────────
-                
-                // Header (Always Visible)
-                Column(
+                // ── Top Header ────────────────────────────────
+                CallHeader(
+                    callState = callState,
+                    callDuration = callDuration,
+                    isVideoActive = isVideoActive,
+                    isControlsVisible = isControlsVisible,
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.TopCenter)
-                        .padding(top = 60.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(if (isVideoOn || isRemoteVideoOn) Color.Black.copy(alpha = 0.4f) else Color.Transparent)
-                    .padding(horizontal = 24.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = "Encrypted Connection",
-                    color = TextSecondary,
-                    fontSize = 14.sp
+                        .padding(top = 16.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                CallStatusLabel(callState)
-                if (callState == CallState.ACTIVE) {
-                    Text(
-                        text = formatDuration(callDuration),
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        modifier = Modifier.padding(top = 8.dp)
+
+                // ── Center Avatar (visible during audio, connecting, or call ended) ──────
+                AnimatedVisibility(
+                    visible = (!isRemoteVideoOn && !isSwappedVideo) || callState == CallState.ENDING,
+                    enter = fadeIn(tween(300)) + scaleIn(initialScale = 0.9f, animationSpec = tween(300)),
+                    exit = fadeOut(tween(300)) + scaleOut(targetScale = 0.9f, animationSpec = tween(300)),
+                    modifier = Modifier.align(Alignment.Center)
+                ) {
+                    CallAvatar(
+                        isConnecting = callState == CallState.CONNECTING,
+                        modifier = Modifier.padding(bottom = 80.dp)
                     )
                 }
-            }
-        }
 
-        // Avatar (Hidden during video)
-        if (!isVideoOn && !isRemoteVideoOn) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = 180.dp),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Box(
-                    modifier = Modifier.size(160.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (callState == CallState.CONNECTING) {
-                        ConnectingPulse()
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF4F46E5)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(60.dp)
-                        )
-                    }
-                }
-            }
-        }
+                // ── Floating Local/Remote Camera Preview Box Container ────────────
+                LocalCameraBox(
+                    isVisible = (if (isSwappedVideo) isRemoteVideoOn else isVideoOn) && callState == CallState.ACTIVE,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 160.dp, end = 16.dp)
+                        .clickable {
+                            isSwappedVideo = !isSwappedVideo
+                            webViewRef?.evaluateJavascript("window.androidToggleSwapVideo();", null)
+                        }
+                )
 
-        // Controls
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            AnimatedVisibility(visible = callState == CallState.ACTIVE) {
-                Row(
+                // ── Bottom Controls ──────────────────────────
+                AnimatedVisibility(
+                    visible = isControlsVisible && callState != CallState.ENDING,
+                    enter = fadeIn(tween(300)) + slideInVertically(initialOffsetY = { it }),
+                    exit = fadeOut(tween(300)) + slideOutVertically(targetOffsetY = { it }),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(if (isVideoOn) Color.Black.copy(alpha = 0.4f) else Color.Transparent)
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
                 ) {
-                    ControlButton(
-                        icon = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                        isActive = isMuted,
-                        onClick = { 
+                    CallControls(
+                        callState = callState,
+                        isMuted = isMuted,
+                        isVideoOn = isVideoOn,
+                        isSpeakerphoneOn = isSpeakerphoneOn,
+                        isVideoActive = isVideoActive,
+                        onMuteToggle = {
                             isMuted = !isMuted
                             webViewRef?.evaluateJavascript("window.androidToggleMute();", null)
-                        }
-                    )
-
-                    ControlButton(
-                        icon = if (isVideoOn) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
-                        isActive = false,
-                        onClick = { 
+                        },
+                        onVideoToggle = {
                             isVideoOn = !isVideoOn
                             webViewRef?.evaluateJavascript("window.androidToggleVideo();", null)
-                        }
-                    )
-                    
-                    ControlButton(
-                        icon = if (isSpeakerphoneOn) Icons.Filled.VolumeUp else Icons.Filled.VolumeDown,
-                        isActive = isSpeakerphoneOn,
-                        onClick = { 
-                            CallManager.toggleSpeaker()
-                        }
+                        },
+                        onSpeakerToggle = { CallManager.toggleSpeaker() },
+                        onMinimize = onMinimize,
+                        onEndCall = { performEndCall() }
                     )
                 }
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(32.dp))
+// ─────────────────────────────────────────────────────────────
+//  Header — Encryption badge, status, duration
+// ─────────────────────────────────────────────────────────────
 
+@Composable
+private fun CallHeader(
+    callState: CallState,
+    callDuration: Long,
+    isVideoActive: Boolean,
+    isControlsVisible: Boolean = true,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (isVideoActive && isControlsVisible) Color.Black.copy(alpha = 0.45f) else Color.Transparent)
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { /* Consume tap */ }
+                .padding(horizontal = 24.dp, vertical = 12.dp)
+        ) {
+            // Encryption badge
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(CallSuccess.copy(alpha = 0.12f))
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = CallSuccess,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "END-TO-END ENCRYPTED",
+                    color = CallSuccess,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.5.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Call status label
+            CallStatusLabel(callState)
+
+            // Duration timer
+            AnimatedVisibility(
+                visible = callState == CallState.ACTIVE,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Text(
+                    text = formatDuration(callDuration),
+                    color = CallTextSecondary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Avatar — Centered circle with connecting pulse
+// ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun CallAvatar(
+    isConnecting: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier.size(160.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Outer pulse rings (when connecting)
+        if (isConnecting) {
+            repeat(2) { index ->
+                PulseRing(delayMs = index * 600)
+            }
+        }
+
+        // Avatar circle
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(CallAccent, Color(0xFF7C3AED))
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(56.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun PulseRing(delayMs: Int) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_$delayMs")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.6f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, delayMillis = delayMs, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulse_scale_$delayMs"
+    )
+    val alpha by infiniteTransition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800, delayMillis = delayMs, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulse_alpha_$delayMs"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(120.dp)
+            .scale(scale)
+            .clip(CircleShape)
+            .background(CallAccent.copy(alpha = alpha))
+    )
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Controls — Mute, Video, Speaker, Minimize, End
+// ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun CallControls(
+    callState: CallState,
+    isMuted: Boolean,
+    isVideoOn: Boolean,
+    isSpeakerphoneOn: Boolean,
+    isVideoActive: Boolean,
+    onMuteToggle: () -> Unit,
+    onVideoToggle: () -> Unit,
+    onSpeakerToggle: () -> Unit,
+    onMinimize: () -> Unit,
+    onEndCall: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.clickable(
+            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+            indication = null
+        ) { /* Consume tap */ },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        // ── Toggle controls (visible when call is active) ────
+        AnimatedVisibility(
+            visible = callState == CallState.ACTIVE,
+            enter = fadeIn(tween(300)) + slideInVertically(initialOffsetY = { it / 2 }),
+            exit = fadeOut(tween(200)) + slideOutVertically(targetOffsetY = { it / 2 })
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 32.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(
+                        if (isVideoActive) Color.Black.copy(alpha = 0.45f)
+                        else CallGlass
+                    )
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Minimize Button
+                ControlButton(
+                    icon = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                    label = if (isMuted) "Unmute" else "Mute",
+                    isActive = isMuted,
+                    onClick = onMuteToggle
+                )
+                ControlButton(
+                    icon = if (isVideoOn) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
+                    label = if (isVideoOn) "Camera On" else "Camera Off",
+                    isActive = isVideoOn,
+                    onClick = onVideoToggle
+                )
+                ControlButton(
+                    icon = if (isSpeakerphoneOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeDown,
+                    label = if (isSpeakerphoneOn) "Loudspeaker" else "Earpiece",
+                    isActive = isSpeakerphoneOn,
+                    onClick = onSpeakerToggle
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // ── Bottom action row: Minimize + End ────────────────
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Minimize button
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(52.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF334155))
-                        .clickable { onMinimize() }, // Minimize without unmounting
+                        .background(CallSurface)
+                        .clickable(onClick = onMinimize),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = "Minimize",
                         tint = Color.White,
-                        modifier = Modifier.size(28.dp)
+                        modifier = Modifier.size(26.dp)
                     )
                 }
-                
-                Spacer(modifier = Modifier.width(32.dp))
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Minimize",
+                    color = CallTextSecondary,
+                    fontSize = 11.sp
+                )
+            }
 
-                // End Call Button
+            Spacer(modifier = Modifier.width(48.dp))
+
+            // End call button
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(72.dp)
+                        .size(68.dp)
                         .clip(CircleShape)
-                        .background(ErrorRed)
-                        .clickable { 
-                            webViewRef?.evaluateJavascript("window.androidEndCall();", null)
-                            CallManager.endCall()
-                        },
+                        .background(CallDanger)
+                        .clickable(onClick = onEndCall),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Filled.CallEnd,
                         contentDescription = "End call",
                         tint = Color.White,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(30.dp)
                     )
                 }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "End",
+                    color = CallDanger.copy(alpha = 0.8f),
+                    fontSize = 11.sp
+                )
             }
-        } // Close Column (Controls)
-        } // Close Box (UI)
-        } // Close Dialog
-    } // End if (!isMinimized)
-} // Close CallScreen
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  Reusable Components
+// ─────────────────────────────────────────────────────────────
+
+@Composable
+private fun ControlButton(
+    icon: ImageVector,
+    label: String,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isActive) Color.White
+                    else Color.White.copy(alpha = 0.1f)
+                )
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = if (isActive) Color.Black else Color.White,
+                modifier = Modifier.size(26.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = label,
+            color = CallTextSecondary,
+            fontSize = 11.sp
+        )
+    }
+}
 
 @Composable
 private fun CallStatusLabel(callState: CallState) {
     when (callState) {
         CallState.CONNECTING -> {
-            val infiniteTransition = rememberInfiniteTransition()
+            val infiniteTransition = rememberInfiniteTransition(label = "connecting_pulse")
             val alpha by infiniteTransition.animateFloat(
-                initialValue = 0.3f,
+                initialValue = 0.4f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    animation = tween(1000, easing = LinearEasing),
+                    animation = tween(900, easing = LinearEasing),
                     repeatMode = RepeatMode.Reverse
-                )
+                ),
+                label = "connecting_alpha"
             )
             Text(
-                text = "Calling...",
-                color = TextPrimary.copy(alpha = alpha),
+                text = "Calling…",
+                color = CallTextPrimary.copy(alpha = alpha),
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -411,15 +647,15 @@ private fun CallStatusLabel(callState: CallState) {
         CallState.ACTIVE -> {
             Text(
                 text = "Connected",
-                color = Success,
+                color = CallSuccess,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold
             )
         }
         CallState.ENDING -> {
             Text(
-                text = "Call ended",
-                color = ErrorRed,
+                text = "Call Ended",
+                color = CallDanger,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Normal
             )
@@ -429,53 +665,22 @@ private fun CallStatusLabel(callState: CallState) {
 }
 
 @Composable
-private fun ConnectingPulse() {
-    val infiniteTransition = rememberInfiniteTransition()
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        )
-    )
-    val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        )
-    )
-    
-    Box(
-        modifier = Modifier
-            .size(120.dp)
-            .scale(scale)
-            .clip(CircleShape)
-            .background(Color(0xFF4F46E5).copy(alpha = alpha))
-    )
-}
-
-@Composable
-private fun ControlButton(
-    icon: ImageVector,
-    isActive: Boolean,
-    onClick: () -> Unit
+private fun LocalCameraBox(
+    isVisible: Boolean,
+    modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = Modifier
-            .size(60.dp)
-            .clip(CircleShape)
-            .background(if (isActive) Color.White else Color(0xFF1E293B))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(tween(250)) + scaleIn(initialScale = 0.85f, animationSpec = tween(250)),
+        exit = fadeOut(tween(200)) + scaleOut(targetScale = 0.85f, animationSpec = tween(200)),
+        modifier = modifier
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (isActive) Color.Black else Color.White,
-            modifier = Modifier.size(28.dp)
+        Box(
+            modifier = Modifier
+                .size(width = 108.dp, height = 148.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = 0.35f))
+                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
         )
     }
 }

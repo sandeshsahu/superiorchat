@@ -663,12 +663,12 @@ fun ChatScreen(
             visible = callState == CallState.ACTIVE || callState == CallState.CONNECTING,
             enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
             exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp)
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
         ) {
             Surface(
                 modifier = Modifier
                     .wrapContentSize()
-                    .clickable { onNavigateToCall() }, // need to make sure this prop exists, wait I need to add onNavigateToCall
+                    .clickable { onNavigateToCall() },
                 shape = RoundedCornerShape(24.dp),
                 color = Color(0xFF1E293B).copy(alpha = 0.95f),
                 shadowElevation = 8.dp
@@ -682,7 +682,10 @@ fun ChatScreen(
                         modifier = Modifier
                             .size(12.dp)
                             .clip(CircleShape)
-                            .background(if (callState == CallState.ACTIVE) Color.Green else Color.Yellow)
+                            .background(
+                                if (callState == CallState.ACTIVE) Color(0xFF10B981)
+                                else Color(0xFFEAB308)
+                            )
                     )
                     
                     val mins = (callDuration / 60).toString().padStart(2, '0')
@@ -696,7 +699,7 @@ fun ChatScreen(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(ErrorRed)
+                            .background(Color(0xFFEF4444))
                             .clickable { CallManager.endCall() },
                         contentAlignment = Alignment.Center
                     ) {
