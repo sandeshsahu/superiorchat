@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -48,6 +49,8 @@ private val Success = Color(0xFF10B981)
 @Composable
 fun CallScreen(
     url: String,
+    isMinimized: Boolean,
+    onMinimize: () -> Unit,
     onEndCall: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -87,28 +90,28 @@ fun CallScreen(
         )
     }
 
+    var endCallSent by remember { mutableStateOf(false) }
+
     // Close screen when ending
     LaunchedEffect(callState) {
         if (callState == CallState.ENDING || callState == CallState.IDLE) {
+            if (!endCallSent) {
+                endCallSent = true
+                webViewRef?.evaluateJavascript("window.androidEndCall();", null)
+            }
             delay(1500)
             webViewRef?.clearCache(true)
             onEndCall()
         }
     }
 
-    androidx.compose.ui.window.Dialog(
-        onDismissRequest = { /* Handle via BackHandler */ },
-        properties = androidx.compose.ui.window.DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnBackPress = false,
-            decorFitsSystemWindows = false
-        )
+    Box(
+        modifier = modifier
+            .then(
+                if (isMinimized) Modifier.size(1.dp).alpha(0f) 
+                else Modifier.fillMaxSize().background(Background).zIndex(100f)
+            )
     ) {
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(Background)
-        ) {
         // ── Hidden WebView Layer ───────────────────────────────────────
         // We load the WebRTC HTML logic here, but keep it hidden unless video is active.
         val context = LocalContext.current
@@ -128,11 +131,31 @@ fun CallScreen(
                         mediaPlaybackRequiresUserGesture = false
                     }
 
+                    wv.clearCache(true)
+
+                    wv.webViewClient = object : android.webkit.WebViewClient() {
+                        override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                            val targetUrl = request?.url?.toString() ?: ""
+                            if (!targetUrl.startsWith(CallManager.VERCEL_APP_URL)) {
+                                AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted URL: $targetUrl")
+                                return true
+                            }
+                            return false
+                        }
+                    }
+
                     wv.webChromeClient = object : WebChromeClient() {
                         override fun onPermissionRequest(request: PermissionRequest?) {
-                            AppLog.log(LogCategory.SYSTEM, "WebView requested permissions: ${request?.resources?.joinToString()}")
-                            // Explicitly grant both audio and video to bypass OS quirks
-                            request?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE, PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+                            val origin = request?.origin?.toString()?.removeSuffix("/")
+                            val expectedOrigin = CallManager.VERCEL_APP_URL.removeSuffix("/")
+                            
+                            if (origin == expectedOrigin) {
+                                AppLog.log(LogCategory.SYSTEM, "WebView granted permissions for verified origin: $origin")
+                                request?.grant(arrayOf(PermissionRequest.RESOURCE_AUDIO_CAPTURE, PermissionRequest.RESOURCE_VIDEO_CAPTURE))
+                            } else {
+                                AppLog.log(LogCategory.SYSTEM, "SECURITY: Denied WebView permissions for untrusted origin: $origin")
+                                request?.deny()
+                            }
                         }
                     }
 
@@ -166,6 +189,9 @@ fun CallScreen(
                     webViewRef = wv
                 }
             },
+            onRelease = { wv ->
+                wv.destroy()
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -173,6 +199,7 @@ fun CallScreen(
                 }
         )
 
+        if (!isMinimized) {
         // ── Native Overlay UI ─────────────────────────────────────────
         
         // Header (Always Visible)
@@ -301,7 +328,7 @@ fun CallScreen(
                         .size(56.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF334155))
-                        .clickable { onEndCall() }, // pops nav stack but keeps call alive
+                        .clickable { onMinimize() }, // Minimize without unmounting
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -335,7 +362,7 @@ fun CallScreen(
                 }
             }
         }
-    }
+        } // End if (!isMinimized)
     }
 }
 

@@ -385,13 +385,16 @@ fun AppScreen(
                 
                 val callState by CallManager.callState.collectAsState()
                 
-                // Show Call Screen Overlay
-                if (callState != CallState.IDLE && !isCallMinimized) {
+                // Show Call Screen Overlay (Kept in composition even when minimized)
+                if (callState != CallState.IDLE) {
                     val roomId = CallManager.currentRoomId
                     if (roomId != null) {
+                        val secret = CallManager.currentSecret
                         CallScreen(
-                            url = "${CallManager.VERCEL_APP_URL}/?host=$roomId",
-                            onEndCall = { isCallMinimized = true } // Minimize instead of end
+                            url = "${CallManager.VERCEL_APP_URL}/?host=$roomId&secret=$secret",
+                            isMinimized = isCallMinimized,
+                            onMinimize = { isCallMinimized = true },
+                            onEndCall = { isCallMinimized = false }
                         )
                     }
                 }

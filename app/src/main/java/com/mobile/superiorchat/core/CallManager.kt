@@ -45,6 +45,9 @@ object CallManager {
 
     var currentRoomId: String? = null
         private set
+        
+    var currentSecret: String? = null
+        private set
 
     // =========================================================================
     // VERCEL DOMAIN
@@ -60,11 +63,13 @@ object CallManager {
         _callDuration.value = 0L
 
         val roomId = UUID.randomUUID().toString()
+        val secret = UUID.randomUUID().toString()
         currentRoomId = roomId
+        currentSecret = secret
 
         // URL logic for Vercel WebRTC
-        val vercelUrl = "$VERCEL_APP_URL/?host=$roomId"
-        val telegramUrl = "$VERCEL_APP_URL/?join=$roomId"
+        val vercelUrl = "$VERCEL_APP_URL/?host=$roomId&secret=$secret"
+        val telegramUrl = "$VERCEL_APP_URL/?join=$roomId&secret=$secret"
         
         AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")
@@ -104,6 +109,8 @@ object CallManager {
     }
 
     fun endCall() {
+        if (_callState.value == CallState.ENDING || _callState.value == CallState.IDLE) return
+        
         val wasActive = _callState.value == CallState.ACTIVE
         val finalDuration = _callDuration.value
         _callState.value = CallState.ENDING
@@ -121,6 +128,7 @@ object CallManager {
             _callState.value = CallState.IDLE
             _callDuration.value = 0
             currentRoomId = null
+            currentSecret = null
             releaseHardware()
         }
     }
@@ -128,8 +136,8 @@ object CallManager {
     private fun setupHardware(context: Context) {
         audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
-        audioManager?.isSpeakerphoneOn = false
-        _isSpeakerphoneOn.value = false
+        audioManager?.isSpeakerphoneOn = true
+        _isSpeakerphoneOn.value = true
 
         // Proximity Sensor
         sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
