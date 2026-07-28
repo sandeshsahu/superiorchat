@@ -409,9 +409,10 @@ fun AppScreen(
                 if (showCallConfirmation) {
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
                         title = "Start Secure Call?",
-                        message = "A secure connection link will be sent to the chat.",
+                        message = "A secure peer-to-peer connection link will be generated and sent to the chat.",
+                        note = "This feature is *Experimental* and calls may be blocked by strict carrier networks, corporate firewalls, or hotel/public Wi-Fi. *Not guaranteed* to work on all devices.",
                         icon = Icons.Filled.Phone,
-                        iconTint = PrimaryLight,
+                        iconTint = ErrorRed,
                         confirmText = "Start Call",
                         dismissText = "Cancel",
                         onConfirm = {

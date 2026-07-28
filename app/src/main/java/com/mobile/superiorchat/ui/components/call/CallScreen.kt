@@ -109,7 +109,7 @@ fun CallScreen(
         modifier = modifier
             .then(
                 if (isMinimized) Modifier.size(1.dp).alpha(0f) 
-                else Modifier.fillMaxSize().background(Background).zIndex(100f)
+                else Modifier.fillMaxSize()
             )
     ) {
         // ── Hidden WebView Layer ───────────────────────────────────────
@@ -198,17 +198,38 @@ fun CallScreen(
                     alpha = if (isVideoOn || isRemoteVideoOn) 1f else 0f
                 }
         )
+    }
 
-        if (!isMinimized) {
-        // ── Native Overlay UI ─────────────────────────────────────────
-        
-        // Header (Always Visible)
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .padding(top = 60.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+    if (!isMinimized) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { /* Handle via BackHandler internally */ },
+            properties = androidx.compose.ui.window.DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            val view = androidx.compose.ui.platform.LocalView.current
+            val dialogWindow = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            LaunchedEffect(dialogWindow) {
+                dialogWindow?.setDimAmount(0f)
+                dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+            }
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(if (isVideoOn || isRemoteVideoOn) Color.Transparent else Background)
+            ) {
+                // ── Native Overlay UI ─────────────────────────────────────────
+                
+                // Header (Always Visible)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter)
+                        .padding(top = 60.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -361,10 +382,11 @@ fun CallScreen(
                     )
                 }
             }
-        }
-        } // End if (!isMinimized)
-    }
-}
+        } // Close Column (Controls)
+        } // Close Box (UI)
+        } // Close Dialog
+    } // End if (!isMinimized)
+} // Close CallScreen
 
 @Composable
 private fun CallStatusLabel(callState: CallState) {

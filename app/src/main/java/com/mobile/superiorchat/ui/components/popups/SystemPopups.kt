@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -35,6 +36,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import com.mobile.superiorchat.theme.*
 
 @Composable
@@ -93,7 +98,7 @@ fun BaseAppDialog(
 
 
 @Composable
-fun parseAnnotatedMessage(text: String): AnnotatedString {
+fun parseAnnotatedMessage(text: String, tint: Color = PrimaryLight): AnnotatedString {
     return buildAnnotatedString {
         val regex = "\\*\\*(.*?)\\*\\*|\\*(.*?)\\*".toRegex()
         var lastIndex = 0
@@ -105,9 +110,9 @@ fun parseAnnotatedMessage(text: String): AnnotatedString {
             
             // Append the highlighted text
             withStyle(style = SpanStyle(
-                color = PrimaryLight,
+                color = tint,
                 fontWeight = FontWeight.Bold,
-                background = SurfaceLevel2
+                background = if (tint == PrimaryLight) SurfaceLevel2 else tint.copy(alpha = 0.15f)
             )) {
                 val matchedText = match.groups[1]?.value ?: match.groups[2]?.value ?: ""
                 append(" $matchedText ")
@@ -279,6 +284,8 @@ fun InfoDialog(
 fun ActionDialog(
     title: String,
     message: String,
+    note: String? = null,
+    noteIcon: androidx.compose.ui.graphics.vector.ImageVector? = Icons.Filled.Warning,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     iconTint: Color = PrimaryLight,
     confirmText: String,
@@ -316,13 +323,46 @@ fun ActionDialog(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = parseAnnotatedMessage(message),
+            text = parseAnnotatedMessage(message, tint = iconTint),
             style = MaterialTheme.typography.bodyMedium,
             color = TextPrimary,
             textAlign = TextAlign.Start,
             lineHeight = 22.sp,
             modifier = Modifier.fillMaxWidth()
         )
+        
+        if (note != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = iconTint.copy(alpha = 0.12f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(modifier = Modifier.padding(14.dp)) {
+                    val annotatedNote = parseAnnotatedMessage(note, tint = iconTint)
+                    Text(
+                        text = buildAnnotatedString {
+                            if (noteIcon != null) {
+                                appendInlineContent("note_icon", "[icon]")
+                                append(" ")
+                            }
+                            append(annotatedNote)
+                        },
+                        inlineContent = if (noteIcon != null) mapOf(
+                            "note_icon" to InlineTextContent(
+                                Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
+                            ) {
+                                Icon(noteIcon, null, tint = iconTint, modifier = Modifier.fillMaxSize())
+                            }
+                        ) else emptyMap(),
+                        color = iconTint.copy(alpha = 0.95f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 18.sp,
+                    )
+                }
+            }
+        }
         
         Spacer(modifier = Modifier.height(28.dp))
         
@@ -357,8 +397,8 @@ fun ActionDialog(
                 },
                 modifier = Modifier.height(40.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (iconTint == ErrorRed) ErrorRed.copy(alpha = 0.15f) else PrimaryLight,
-                    contentColor = if (iconTint == ErrorRed) ErrorRed else MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = if (iconTint == PrimaryLight) PrimaryLight else iconTint.copy(alpha = 0.15f),
+                    contentColor = if (iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else iconTint
                 ),
                 shape = RoundedCornerShape(24.dp),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
@@ -674,3 +714,5 @@ fun CredentialsPopup(
         }
     }
 }
+
+
