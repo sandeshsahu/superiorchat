@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import com.mobile.superiorchat.core.CallManager
+import com.mobile.superiorchat.core.CallState
 
 object AudioPlayer {
     private var mediaPlayer: MediaPlayer? = null
@@ -43,6 +45,11 @@ object AudioPlayer {
             } else {
                 resume()
             }
+            return
+        }
+
+        // Prevent playing voice notes during a call
+        if (CallManager.callState.value != CallState.IDLE) {
             return
         }
 

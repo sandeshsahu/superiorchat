@@ -44,6 +44,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.profile.ProfileScreen
 import kotlinx.coroutines.launch
+import com.mobile.superiorchat.ui.components.call.CallScreen
+import com.mobile.superiorchat.core.CallManager
+import com.mobile.superiorchat.core.CallState
 
 fun Context.findActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
@@ -72,6 +75,9 @@ fun AppScreen(
 
     var currentScreen by remember { mutableStateOf(NavScreen.Chat) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    
+    var isCallMinimized by remember { mutableStateOf(false) }
+    var showCallConfirmation by remember { mutableStateOf(false) }
 
     val activity = context as? android.app.Activity
     LaunchedEffect(drawerState.isOpen) {
@@ -271,6 +277,11 @@ fun AppScreen(
                     },
                     actions = {
                         if (currentScreen == NavScreen.Chat || currentScreen == NavScreen.Logs) {
+                            if (currentScreen == NavScreen.Chat) {
+                                IconButton(onClick = { showCallConfirmation = true }) {
+                                    Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                             IconButton(onClick = { currentScreen = NavScreen.Settings }) {
                                 Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
                             }
@@ -320,7 +331,8 @@ fun AppScreen(
                     when (screen) {
                         NavScreen.Chat -> ChatScreen(
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                            onNavigateToSettings = { currentScreen = NavScreen.Settings }
+                            onNavigateToSettings = { currentScreen = NavScreen.Settings },
+                            onNavigateToCall = { isCallMinimized = false }
                         )
                         NavScreen.Profile -> ProfileScreen(
                             hasCredentials = viewModel.hasCredentials,
@@ -369,6 +381,50 @@ fun AppScreen(
                         )
                         }
                     }
+                }
+                
+                val callState by CallManager.callState.collectAsState()
+                
+                // Show Call Screen Overlay
+                if (callState != CallState.IDLE && !isCallMinimized) {
+                    val roomId = CallManager.currentRoomId
+                    if (roomId != null) {
+                        CallScreen(
+                            url = "${CallManager.VERCEL_APP_URL}/?host=$roomId",
+                            onEndCall = { isCallMinimized = true } // Minimize instead of end
+                        )
+                    }
+                }
+                
+                // Clear minimize state if call ends
+                LaunchedEffect(callState) {
+                    if (callState == CallState.IDLE) {
+                        isCallMinimized = false
+                    }
+                }
+                
+                if (showCallConfirmation) {
+                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                        title = "Start Secure Call?",
+                        message = "A secure connection link will be sent to the chat.",
+                        icon = Icons.Filled.Phone,
+                        iconTint = PrimaryLight,
+                        confirmText = "Start Call",
+                        dismissText = "Cancel",
+                        onConfirm = {
+                            showCallConfirmation = false
+                            val startCall = {
+                                viewModel.refreshPermissions()
+                                viewModel.initiateCall(context)
+                                isCallMinimized = false
+                            }
+                            // Request Audio AND Camera permissions unified flow
+                            permissionHandler.requestAudioAndCamera { startCall() }
+                        },
+                        onDismiss = {
+                            showCallConfirmation = false
+                        }
+                    )
                 }
             }
         }

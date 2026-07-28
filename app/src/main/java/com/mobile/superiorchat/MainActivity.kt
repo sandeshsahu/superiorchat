@@ -12,6 +12,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 
 import androidx.activity.result.contract.ActivityResultContracts
+import android.app.PictureInPictureParams
+import android.util.Rational
+import com.mobile.superiorchat.core.CallManager
+import com.mobile.superiorchat.core.CallState
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
@@ -159,5 +163,26 @@ class MainActivity : ComponentActivity() {
         // Broadcast that chat is opened so camo engine clears notifications
         val intent = android.content.Intent("com.mobile.superiorchat.ACTION_CHAT_OPENED")
         sendBroadcast(intent)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (CallManager.callState.value == CallState.ACTIVE) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    val params = PictureInPictureParams.Builder()
+                        .setAspectRatio(Rational(9, 16))
+                        .build()
+                    enterPictureInPictureMode(params)
+                } catch (e: Exception) {
+                    AppLog.log(LogCategory.ERROR, "Failed to enter PiP: ${e.message}")
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        CallManager.endCall()
     }
 }

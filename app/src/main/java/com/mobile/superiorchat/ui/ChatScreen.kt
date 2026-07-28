@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -92,6 +93,9 @@ import com.mobile.superiorchat.ui.components.popups.ActionDialog
 import com.mobile.superiorchat.ui.components.profile.PartnerProfile
 import com.mobile.superiorchat.ui.components.bounceClick
 import com.mobile.superiorchat.ui.components.glow
+import com.mobile.superiorchat.utils.FileUtils
+import com.mobile.superiorchat.core.CallManager
+import com.mobile.superiorchat.core.CallState
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.flow.first
@@ -105,7 +109,8 @@ private const val PAGE_SIZE = 50
 fun ChatScreen(
     viewModel: ChatViewModel = viewModel(),
     onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {},
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToCall: () -> Unit = {}
 ) {
     val messages by viewModel.messages.collectAsState()
     val currentPinnedMessage by viewModel.currentPinnedMessage.collectAsState()
@@ -118,6 +123,10 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     var activeFullScreenMediaPath by remember { mutableStateOf<String?>(null) }
     var activeFullScreenMediaType by remember { mutableStateOf<String?>(null) }
+    
+    val callState by CallManager.callState.collectAsState()
+    val callDuration by CallManager.callDuration.collectAsState()
+
     var currentPickerMode by remember { mutableStateOf(PickerMode.NONE) }
     var showAttachmentMenu by remember { mutableStateOf(false) }
     var showUserInfoDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -645,6 +654,59 @@ fun ChatScreen(
                         onRetryConnection = { viewModel.retryConnection(context) },
                         onNavigateToSettings = onNavigateToSettings
                     )
+                }
+            }
+        }
+
+        // Active Call Floating Bubble
+        androidx.compose.animation.AnimatedVisibility(
+            visible = callState == CallState.ACTIVE || callState == CallState.CONNECTING,
+            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
+            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 70.dp)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .wrapContentSize()
+                    .clickable { onNavigateToCall() }, // need to make sure this prop exists, wait I need to add onNavigateToCall
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF1E293B).copy(alpha = 0.95f),
+                shadowElevation = 8.dp
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(if (callState == CallState.ACTIVE) Color.Green else Color.Yellow)
+                    )
+                    
+                    val mins = (callDuration / 60).toString().padStart(2, '0')
+                    val secs = (callDuration % 60).toString().padStart(2, '0')
+                    val text = if (callState == CallState.CONNECTING) "Connecting..." else "$mins:$secs"
+                    
+                    Text(text, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    
+                    // End call button in bubble
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(ErrorRed)
+                            .clickable { CallManager.endCall() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CallEnd,
+                            contentDescription = "End Call",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
             }
         }

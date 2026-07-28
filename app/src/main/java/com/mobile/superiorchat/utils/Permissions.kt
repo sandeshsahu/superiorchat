@@ -53,9 +53,6 @@ class PermissionHandler(
         )
     }
 
-    /**
-     * Request audio permission and handle rationale/denial automatically.
-     */
     fun requestAudio(onGranted: () -> Unit) {
         val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         if (hasPerm) {
@@ -73,6 +70,38 @@ class PermissionHandler(
                         }
                     }
                     singleLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                }
+            )
+        )
+    }
+
+    /**
+     * Request both camera and audio permissions simultaneously (Unified WebRTC Call Flow).
+     */
+    fun requestAudioAndCamera(onGranted: () -> Unit) {
+        val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        val hasAudio = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        
+        if (hasCamera && hasAudio) {
+            onGranted()
+            return
+        }
+        
+        onShowGlobalDialog(
+            GlobalDialogState.CallPermissionRationale(
+                onConfirm = {
+                    currentMultipleCallback.value = { results ->
+                        val cameraGranted = results[Manifest.permission.CAMERA] == true
+                        val audioGranted = results[Manifest.permission.RECORD_AUDIO] == true
+                        
+                        if (cameraGranted && audioGranted) {
+                            onGranted()
+                        } else {
+                            if (!cameraGranted) showRationaleOrDenied(Manifest.permission.CAMERA)
+                            else if (!audioGranted) showRationaleOrDenied(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
+                    multipleLauncher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
                 }
             )
         )

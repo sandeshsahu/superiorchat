@@ -480,6 +480,20 @@ fun GlobalDialogHandler(
                 onDismiss = onDismiss
             )
         }
+        is com.mobile.superiorchat.ui.GlobalDialogState.CallPermissionRationale -> {
+            ActionDialog(
+                title = "Camera & Microphone Required",
+                message = "We need access to both your camera and microphone to initiate the secure WebRTC call.",
+                icon = Icons.Filled.Info,
+                confirmText = "Agree",
+                dismissText = "Cancel",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onConfirm()
+                },
+                onDismiss = onDismiss
+            )
+        }
         null -> { /* No active dialog */ }
     }
 }
