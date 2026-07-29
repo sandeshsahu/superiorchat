@@ -98,7 +98,7 @@ fun LogsScreen() {
                 if (showLogsInfo) {
                     com.mobile.superiorchat.ui.components.popups.InfoDialog(
                         title = "Live Logs",
-                        message = "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly last 150 Logs will be displayed.",
+                        message = "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly *Last 150 Logs* will be displayed.",
                         onDismiss = { showLogsInfo = false }
                     )
                 }

@@ -57,11 +57,11 @@ fun Context.findActivity(): ComponentActivity? = when (this) {
 }
 
 enum class NavScreen(val title: String, val icon: ImageVector) {
-    Chat("Chat", Icons.Filled.Dashboard),
-    Profile("Profile", Icons.Filled.SmartToy),
+    Chat("Chat", Icons.Filled.Chat),
+    Profile("Profile", Icons.Filled.Person),
     Permissions("Permissions", Icons.Filled.Lock),
     Logs("Logs", Icons.AutoMirrored.Filled.List),
-    Settings("Settings", Icons.Filled.Settings)
+    Settings("App Settings", Icons.Filled.Settings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -377,10 +377,12 @@ fun AppScreen(
                             chatId = viewModel.chatId,
                             isTileAccessEnabled = viewModel.tileAccessEnabled,
                             customAccessWord = viewModel.customAccessWord,
+                            webrtcBaseUrl = viewModel.webrtcBaseUrl,
                             onBotTokenChange = { viewModel.botToken = it },
                             onChatIdChange = { viewModel.chatId = it },
                             onTileAccessChange = { viewModel.toggleTileAccess(it) },
                             onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
+                            onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
                             onSave = {
                                 viewModel.saveCredentials()
                             },
@@ -398,7 +400,7 @@ fun AppScreen(
                     if (roomId != null) {
                         val secret = CallManager.currentSecret
                         CallScreen(
-                            url = "${CallManager.VERCEL_APP_URL}/?host=$roomId&secret=$secret",
+                            url = "${CallManager.currentBaseUrl}/?host=$roomId&secret=$secret",
                             isMinimized = isCallMinimized,
                             onMinimize = { isCallMinimized = true },
                             onEndCall = { isCallMinimized = false }
@@ -411,6 +413,26 @@ fun AppScreen(
                     if (callState == CallState.IDLE) {
                         isCallMinimized = false
                     }
+                }
+                
+                val callFailed by CallManager.lastCallFailedDueToError.collectAsState()
+                
+                if (callFailed) {
+                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                        title = "Call Failed",
+                        message = "The call failed to connect. This is often caused by an *Invalid Server URL*. Would you like to check your Settings and *Reset to Default*?",
+                        icon = androidx.compose.material.icons.Icons.Filled.Warning,
+                        iconTint = com.mobile.superiorchat.theme.ErrorRed,
+                        confirmText = "Go to Settings",
+                        dismissText = "Cancel",
+                        onConfirm = {
+                            CallManager.clearCallError()
+                            currentScreen = NavScreen.Settings
+                        },
+                        onDismiss = {
+                            CallManager.clearCallError()
+                        }
+                    )
                 }
                 
                 if (showCallConfirmation) {

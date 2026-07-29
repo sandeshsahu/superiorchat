@@ -55,10 +55,12 @@ fun SettingsScreen(
     chatId: String,
     isTileAccessEnabled: Boolean,
     customAccessWord: String = "",
+    webrtcBaseUrl: String,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
     onCustomAccessWordChange: (String) -> Unit = {},
+    onWebrtcBaseUrlChange: (String) -> Unit,
     onSave: () -> Unit,
     onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
 ) {
@@ -66,6 +68,8 @@ fun SettingsScreen(
 
     var showAddManuallyDialog by remember { mutableStateOf(false) }
     var showQrScanner by remember { mutableStateOf(false) }
+    var showDeveloperWarning by remember { mutableStateOf(false) }
+    var showWebRtcConfigPopup by remember { mutableStateOf(false) }
     var tempChatId by remember { mutableStateOf(chatId) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
@@ -105,6 +109,34 @@ fun SettingsScreen(
                 com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
             },
             onShowGlobalDialog = onShowGlobalDialog
+        )
+    }
+
+    if (showDeveloperWarning) {
+        com.mobile.superiorchat.ui.components.popups.ActionDialog(
+            title = "Developer Setting",
+            message = "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this.",
+            icon = Icons.Filled.Warning,
+            iconTint = ErrorRed,
+            confirmText = "I Understand",
+            dismissText = "Cancel",
+            onConfirm = {
+                showWebRtcConfigPopup = true
+            },
+            onDismiss = { showDeveloperWarning = false }
+        )
+    }
+
+    if (showWebRtcConfigPopup) {
+        com.mobile.superiorchat.ui.components.popups.WebRtcConfigPopup(
+            initialUrl = webrtcBaseUrl,
+            onDismiss = { showWebRtcConfigPopup = false },
+            onSave = { newUrl ->
+                onWebrtcBaseUrlChange(newUrl)
+                onSave()
+                showWebRtcConfigPopup = false
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "WebRTC URL Updated")
+            }
         )
     }
 
@@ -410,6 +442,62 @@ fun SettingsScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // WebRTC Configuration Card
+        GlassCard {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Call Configuration", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                }
+                
+                var showWebRtcInfo by remember { mutableStateOf(false) }
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "Info", 
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    modifier = Modifier.padding(4.dp).size(20.dp).clickable { showWebRtcInfo = true }
+                )
+                
+                if (showWebRtcInfo) {
+                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
+                        title = "Call Configuration",
+                        message = "You can configure your custom *WebRTC Server* URL for voice calls, or reset it to the default server if you experience connection issues.\n\nCheck developer's *Github Page* for more information",
+                        onDismiss = { showWebRtcInfo = false }
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .background(SurfaceLevel2, RoundedCornerShape(12.dp))
+                        .bounceClick(scaleDown = 0.95f) { showDeveloperWarning = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Change Server", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                        .background(PrimaryLight, RoundedCornerShape(12.dp))
+                        .bounceClick(scaleDown = 0.95f) {
+                            onWebrtcBaseUrlChange(com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL)
+                            onSave()
+                            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "WebRTC URL Reset")
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Reset to Default", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

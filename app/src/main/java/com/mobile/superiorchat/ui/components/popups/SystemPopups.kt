@@ -41,6 +41,7 @@ import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import com.mobile.superiorchat.theme.*
+import com.mobile.superiorchat.ui.components.bounceClick
 
 @Composable
 fun BaseAppDialog(
@@ -710,6 +711,124 @@ fun CredentialsPopup(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+fun WebRtcConfigPopup(
+    initialUrl: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var baseUrl by remember { 
+        mutableStateOf(if (initialUrl == com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL) "" else initialUrl) 
+    }
+    val isValid by remember(baseUrl) { 
+        derivedStateOf { 
+            val checkUrl = baseUrl.trim()
+            checkUrl.isEmpty() || checkUrl.startsWith("http://") || checkUrl.startsWith("https://") 
+        } 
+    }
+
+    BlurredPopup(onDismiss = onDismiss) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "WebRTC Server",
+                color = PrimaryLight,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (!isValid) ErrorRed else DividerColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Phone, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Base URL", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = baseUrl,
+                        onValueChange = { baseUrl = it },
+                        placeholder = { Text("https://yourdomain.com", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        isError = !isValid,
+                        shape = RoundedCornerShape(10.dp),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Current: $initialUrl",
+                        color = TextSecondary.copy(alpha = 0.7f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Instructions:\n• Enter only the Base URL (e.g., https://your-server.com)\n• Do NOT include /?join= or /?host=\n• Ensure your server is accessible publicly",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Save Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) {
+                        if (isValid) {
+                            val finalUrl = if (baseUrl.isBlank()) com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL else baseUrl.trim()
+                            onSave(finalUrl)
+                        }
+                    }
+                    .background(if (!isValid) ErrorRed else PrimaryLight, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (!isValid) "Invalid URL" else "Save Settings",
+                    color = if (!isValid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Cancel Button
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) {
+                        onDismiss()
+                    }
+                    .background(Color.Transparent, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Cancel", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
         }
     }

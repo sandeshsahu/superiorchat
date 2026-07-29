@@ -16,9 +16,13 @@ import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.utils.LogCategory
 import com.mobile.superiorchat.core.StatusFlow
 import com.mobile.superiorchat.core.SyncState
+import com.mobile.superiorchat.data.Prefs
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
 enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING }
@@ -40,6 +44,13 @@ object CallManager {
 
     private val _callDuration = MutableStateFlow(0L)
     val callDuration: StateFlow<Long> = _callDuration
+
+    private val _lastCallFailedDueToError = MutableStateFlow(false)
+    val lastCallFailedDueToError: StateFlow<Boolean> = _lastCallFailedDueToError.asStateFlow()
+        
+    fun clearCallError() {
+        _lastCallFailedDueToError.value = false
+    }
 
     fun formatDuration(seconds: Long): String {
         val mins = seconds / 60
@@ -80,10 +91,8 @@ object CallManager {
     var currentSecret: String? = null
         private set
 
-    // =========================================================================
-    // VERCEL DOMAIN — The hosted WebRTC signaling page
-    // =========================================================================
-    const val VERCEL_APP_URL = "https://superiorchat-connect.vercel.app"
+    var currentBaseUrl: String? = null
+        private set
 
     /** Timeout before auto-ending an unanswered call. */
     private const val CALL_TIMEOUT_MS = 30_000L
@@ -99,7 +108,39 @@ object CallManager {
      * Initiates a new call: generates room/secret, configures audio hardware,
      * and returns a pair of (hostUrl, guestUrl).
      */
-    fun initCall(context: Context): Pair<String, String> {
+    suspend fun initCall(context: Context): Pair<String, String>? {
+        val baseUrl = Prefs.getInstance(context).webrtcBaseUrl.removeSuffix("/")
+        currentBaseUrl = baseUrl
+
+        // DEVELOPER NOTICE: Pre-flight Validation
+        // If you change the WebRTC server's HTML structure or title, you MUST update this validation logic.
+        // It prevents the app from spamming Telegram with broken/invalid links if the URL is wrong.
+        val isValid = withContext(Dispatchers.IO) {
+            try {
+                val url = java.net.URL(baseUrl)
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
+                connection.requestMethod = "GET"
+                connection.connect()
+                
+                if (connection.responseCode == 200) {
+                    val html = connection.inputStream.bufferedReader().use { it.readText() }
+                    html.contains("<title>SuperiorChat Connect</title>") || html.contains("id=\"ui-layer\"")
+                } else {
+                    false
+                }
+            } catch (e: Exception) {
+                false
+            }
+        }
+        
+        if (!isValid) {
+            AppLog.log(LogCategory.SYSTEM, "WebRTC URL Validation Failed for: $baseUrl")
+            markFailed()
+            return null
+        }
+
         setupHardware(context.applicationContext)
         AudioPlayer.stop()
 
@@ -111,10 +152,10 @@ object CallManager {
         currentRoomId = roomId
         currentSecret = secret
 
-        val vercelUrl = "$VERCEL_APP_URL/?host=$roomId&secret=$secret"
-        val telegramUrl = "$VERCEL_APP_URL/?join=$roomId&secret=$secret"
+        val vercelUrl = "$baseUrl/?host=$roomId&secret=$secret"
+        val telegramUrl = "$baseUrl/?join=$roomId&secret=$secret"
 
-        AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId")
+        AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId on host $baseUrl")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")
 
         return Pair(vercelUrl, telegramUrl)
@@ -144,9 +185,10 @@ object CallManager {
         timeoutJob?.cancel()
         // Guard: If already ACTIVE, this is an ICE re-connection — don't restart timer
         if (_callState.value == CallState.ACTIVE) {
-            AppLog.log(LogCategory.SYSTEM, "Call re-confirmed connected (ICE recovered)")
+            com.mobile.superiorchat.utils.AppLog.log(LogCategory.SYSTEM, "Call re-confirmed connected (ICE recovered)")
             return
         }
+        
         _callState.value = CallState.ACTIVE
         
         // Enforce audio route (Earpiece by default) right when WebRTC audio stream connects
@@ -160,9 +202,19 @@ object CallManager {
         timerJob = scope.launch {
             while (isActive) {
                 delay(1000)
-                _callDuration.value += 1
+                _callDuration.value += 1L
             }
         }
+    }
+
+    /**
+     * Triggered by WebRTC error or timeout. End call but also signal failure for UI handling.
+     */
+    fun markFailed() {
+        timeoutJob?.cancel()
+        AppLog.log(LogCategory.SYSTEM, "Call Failed due to connection/URL issues.")
+        _lastCallFailedDueToError.value = true
+        endCall()
     }
 
     /**

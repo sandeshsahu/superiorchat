@@ -117,6 +117,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // -- Credential State --
     var botToken by mutableStateOf(prefs.botToken)
     var chatId by mutableStateOf(prefs.chatId)
+    var webrtcBaseUrl by mutableStateOf(prefs.webrtcBaseUrl)
 
     val hasCredentials: Boolean
         get() = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$")) && 
@@ -286,9 +287,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         prefs.botToken = token
         prefs.chatId = chat
+        prefs.webrtcBaseUrl = webrtcBaseUrl
         
         botToken = token
         chatId = chat
+
+        checkTelegramConnection()
 
         if (prefs.isConfigured) {
             ServiceCore.ensureRunning(getApplication<Application>())

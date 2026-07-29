@@ -21,7 +21,8 @@ class CallEngine(
     val webViewClient = object : WebViewClient() {
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val targetUrl = request?.url?.toString() ?: ""
-            if (!targetUrl.startsWith(CallManager.VERCEL_APP_URL)) {
+            val expectedBase = CallManager.currentBaseUrl ?: ""
+            if (!targetUrl.startsWith(expectedBase)) {
                 AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted URL: $targetUrl")
                 return true
             }
@@ -32,8 +33,8 @@ class CallEngine(
     val webChromeClient = object : WebChromeClient() {
         override fun onPermissionRequest(request: PermissionRequest?) {
             val origin = request?.origin?.toString()?.removeSuffix("/")
-            val expected = CallManager.VERCEL_APP_URL.removeSuffix("/")
-            if (origin == expected) {
+            val expected = CallManager.currentBaseUrl?.removeSuffix("/") ?: ""
+            if (origin == expected && expected.isNotEmpty()) {
                 AppLog.log(LogCategory.SYSTEM, "WebView granted permissions for verified origin: $origin")
                 request?.grant(arrayOf(
                     PermissionRequest.RESOURCE_AUDIO_CAPTURE,

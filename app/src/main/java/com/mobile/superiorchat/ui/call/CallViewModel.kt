@@ -48,7 +48,8 @@ class CallViewModel : ViewModel() {
 
     fun initiateCall(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
-            val (vercelUrl, telegramUrl) = CallManager.initCall(context)
+            val callUrls = CallManager.initCall(context) ?: return@launch
+            val (vercelUrl, telegramUrl) = callUrls
             val prefs = AppGraph.prefs
             val token = prefs.botToken
             val chat = prefs.chatId
