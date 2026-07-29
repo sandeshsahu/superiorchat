@@ -1,9 +1,6 @@
-package com.mobile.superiorchat.ui.components.call
+package com.mobile.superiorchat.ui.call
 
 import android.annotation.SuppressLint
-import android.webkit.JavascriptInterface
-import android.webkit.PermissionRequest
-import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -39,24 +36,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.mobile.superiorchat.utils.AppLog
-import com.mobile.superiorchat.core.CallManager
-import com.mobile.superiorchat.core.CallState
+import com.mobile.superiorchat.core.call.CallManager
+import com.mobile.superiorchat.core.call.CallState
 import com.mobile.superiorchat.utils.LogCategory
 import com.mobile.superiorchat.ui.components.popups.ActionDialog
-import com.mobile.superiorchat.theme.PrimaryLight
+import com.mobile.superiorchat.theme.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mobile.superiorchat.core.call.CallEngine
 import kotlinx.coroutines.delay
-
-// ─────────────────────────────────────────────────────────────
-//  Design Tokens (matching WebRTC frontend)
-// ─────────────────────────────────────────────────────────────
-private val CallBackground = Color(0xFF0F172A)
-private val CallTextPrimary = Color.White
-private val CallTextSecondary = Color(0xFF94A3B8)
-private val CallDanger = Color(0xFFEF4444)
-private val CallSuccess = Color(0xFF10B981)
-private val CallAccent = Color(0xFF6366F1)
-private val CallSurface = Color(0xFF1E293B)
-private val CallGlass = Color(0x0DFFFFFF) // 5% white
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -71,14 +58,23 @@ fun CallScreen(
     val callDuration by CallManager.callDuration.collectAsState()
     val isSpeakerphoneOn by CallManager.isSpeakerphoneOn.collectAsState()
 
-    var isMuted by remember { mutableStateOf(false) }
-    var isVideoOn by remember { mutableStateOf(false) }
-    var isRemoteVideoOn by remember { mutableStateOf(false) }
-    var isControlsVisible by remember { mutableStateOf(true) }
-    var isSwappedVideo by remember { mutableStateOf(false) }
+    val viewModel: CallViewModel = viewModel()
+    val isMuted by viewModel.isMuted.collectAsState()
+    val isVideoOn by viewModel.isVideoOn.collectAsState()
+    val isRemoteVideoOn by viewModel.isRemoteVideoOn.collectAsState()
+    val isControlsVisible by viewModel.isControlsVisible.collectAsState()
+    val isSwappedVideo by viewModel.isSwappedVideo.collectAsState()
+
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var showEndDialog by remember { mutableStateOf(false) }
     var endCallSent by remember { mutableStateOf(false) }
+
+    val callEngine = remember {
+        CallEngine(
+            onRemoteVideoStateChanged = { viewModel.setRemoteVideo(it) },
+            onLocalVideoStateChanged = { viewModel.setLocalVideo(it) }
+        )
+    }
 
     val isVideoActive = isVideoOn || isRemoteVideoOn
 
@@ -86,7 +82,7 @@ fun CallScreen(
     fun performEndCall() {
         if (!endCallSent) {
             endCallSent = true
-            webViewRef?.evaluateJavascript("window.androidEndCall();", null)
+            callEngine.triggerEndCall(webViewRef)
         }
         CallManager.endCall()
     }
@@ -159,59 +155,10 @@ fun CallScreen(
                     }
                     wv.clearCache(true)
 
-                    // Security: Block navigation to untrusted URLs
-                    wv.webViewClient = object : android.webkit.WebViewClient() {
-                        override fun shouldOverrideUrlLoading(
-                            view: WebView?,
-                            request: android.webkit.WebResourceRequest?
-                        ): Boolean {
-                            val targetUrl = request?.url?.toString() ?: ""
-                            if (!targetUrl.startsWith(CallManager.VERCEL_APP_URL)) {
-                                AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted URL: $targetUrl")
-                                return true
-                            }
-                            return false
-                        }
-                    }
+                    wv.webViewClient = callEngine.webViewClient
+                    wv.webChromeClient = callEngine.webChromeClient
 
-                    // Security: Only grant permissions for verified origin
-                    wv.webChromeClient = object : WebChromeClient() {
-                        override fun onPermissionRequest(request: PermissionRequest?) {
-                            val origin = request?.origin?.toString()?.removeSuffix("/")
-                            val expected = CallManager.VERCEL_APP_URL.removeSuffix("/")
-                            if (origin == expected) {
-                                AppLog.log(LogCategory.SYSTEM, "WebView granted permissions for verified origin: $origin")
-                                request?.grant(arrayOf(
-                                    PermissionRequest.RESOURCE_AUDIO_CAPTURE,
-                                    PermissionRequest.RESOURCE_VIDEO_CAPTURE
-                                ))
-                            } else {
-                                AppLog.log(LogCategory.SYSTEM, "SECURITY: Denied WebView permissions for untrusted origin: $origin")
-                                request?.deny()
-                            }
-                        }
-                    }
-
-                    // JavaScript Bridge
-                    wv.addJavascriptInterface(object {
-                        @JavascriptInterface
-                        fun onWebRTCEvent(action: String, data: String) {
-                            when (action) {
-                                "ready" -> AppLog.log(LogCategory.SYSTEM, "PeerJS Ready: $data")
-                                "connected" -> CallManager.markConnected()
-                                "reconnecting" -> AppLog.log(LogCategory.SYSTEM, "WebRTC reconnecting...")
-                                "error" -> {
-                                    AppLog.log(LogCategory.SYSTEM, "PeerJS Error: $data")
-                                    if (CallManager.callState.value != CallState.ACTIVE) {
-                                        CallManager.endCall()
-                                    }
-                                }
-                                "ended" -> CallManager.endCall()
-                                "remote_video" -> { isRemoteVideoOn = (data == "on") }
-                                "local_video" -> { isVideoOn = (data == "on") }
-                            }
-                        }
-                    }, "Android")
+                    wv.addJavascriptInterface(callEngine, "Android")
 
                     wv.loadUrl(url)
                     webViewRef = wv
@@ -232,7 +179,7 @@ fun CallScreen(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null
                     ) {
-                        isControlsVisible = !isControlsVisible
+                        viewModel.toggleControls()
                     }
                     .systemBarsPadding()
             ) {
@@ -268,8 +215,8 @@ fun CallScreen(
                         .align(Alignment.TopEnd)
                         .padding(top = 160.dp, end = 16.dp)
                         .clickable {
-                            isSwappedVideo = !isSwappedVideo
-                            webViewRef?.evaluateJavascript("window.androidToggleSwapVideo();", null)
+                            viewModel.toggleSwapVideo()
+                            callEngine.toggleSwapVideo(webViewRef)
                         }
                 )
 
@@ -290,12 +237,12 @@ fun CallScreen(
                         isSpeakerphoneOn = isSpeakerphoneOn,
                         isVideoActive = isVideoActive,
                         onMuteToggle = {
-                            isMuted = !isMuted
-                            webViewRef?.evaluateJavascript("window.androidToggleMute();", null)
+                            viewModel.toggleMute()
+                            callEngine.toggleMute(webViewRef)
                         },
                         onVideoToggle = {
-                            isVideoOn = !isVideoOn
-                            webViewRef?.evaluateJavascript("window.androidToggleVideo();", null)
+                            viewModel.toggleVideo()
+                            callEngine.toggleVideo(webViewRef)
                         },
                         onSpeakerToggle = { CallManager.toggleSpeaker() },
                         onMinimize = onMinimize,
@@ -371,7 +318,7 @@ private fun CallHeader(
                 exit = fadeOut() + shrinkVertically()
             ) {
                 Text(
-                    text = formatDuration(callDuration),
+                    text = CallManager.formatDuration(callDuration),
                     color = CallTextSecondary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Medium,
@@ -683,10 +630,4 @@ private fun LocalCameraBox(
                 .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
         )
     }
-}
-
-private fun formatDuration(seconds: Long): String {
-    val m = seconds / 60
-    val s = seconds % 60
-    return String.format("%02d:%02d", m, s)
 }

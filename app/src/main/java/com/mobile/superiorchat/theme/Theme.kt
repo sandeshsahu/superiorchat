@@ -43,6 +43,16 @@ val TextSecondary = Color(0xFFFFFFFF).copy(alpha = 0.60f)
 // ── Misc ────────────────────────────────────────────────
 val DividerColor = Color(0xFFFFFFFF).copy(alpha = 0.08f)
 
+// ── Call Specific Tokens ────────────────────────────────
+val CallBackground = Color(0xFF0F172A)
+val CallSurface = Color(0xFF1E293B)
+val CallTextPrimary = Color.White
+val CallTextSecondary = Color(0xFF94A3B8)
+val CallDanger = Color(0xFFEF4444)
+val CallSuccess = Color(0xFF10B981)
+val CallAccent = Color(0xFF6366F1)
+val CallGlass = Color(0x0DFFFFFF) // 5% white
+
 // ═══════════════════════════════════════════════════════════
 //  TYPOGRAPHY (Inter-based)
 // ═══════════════════════════════════════════════════════════

@@ -44,9 +44,11 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.profile.ProfileScreen
 import kotlinx.coroutines.launch
-import com.mobile.superiorchat.ui.components.call.CallScreen
-import com.mobile.superiorchat.core.CallManager
-import com.mobile.superiorchat.core.CallState
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.mobile.superiorchat.ui.call.CallScreen
+import com.mobile.superiorchat.ui.call.CallViewModel
+import com.mobile.superiorchat.core.call.CallManager
+import com.mobile.superiorchat.core.call.CallState
 
 fun Context.findActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
@@ -76,6 +78,7 @@ fun AppScreen(
     var currentScreen by remember { mutableStateOf(NavScreen.Chat) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
+    val callViewModel: CallViewModel = viewModel()
     var isCallMinimized by remember { mutableStateOf(false) }
     var showCallConfirmation by remember { mutableStateOf(false) }
 
@@ -423,7 +426,7 @@ fun AppScreen(
                             showCallConfirmation = false
                             val startCall = {
                                 viewModel.refreshPermissions()
-                                viewModel.initiateCall(context)
+                                callViewModel.initiateCall(context)
                                 isCallMinimized = false
                             }
                             // Request Audio AND Camera permissions unified flow

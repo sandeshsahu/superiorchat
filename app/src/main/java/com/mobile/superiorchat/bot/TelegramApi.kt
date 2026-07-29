@@ -32,22 +32,6 @@ import kotlin.coroutines.resumeWithException
 
 class RateLimitException(val retryAfterSeconds: Int, message: String) : Exception(message)
 class TelegramApiException(message: String) : Exception(message)
-@Serializable
-private data class LinkPreviewOptions(
-    @SerialName("is_disabled") val isDisabled: Boolean
-)
-
-@Serializable
-private data class SendMessageRequest(
-    @SerialName("chat_id") val chatId: String,
-    val text: String,
-    @SerialName("parse_mode") val parseMode: String? = null,
-    @SerialName("reply_markup") val replyMarkup: JsonElement? = null,
-    @SerialName("link_preview_options") val linkPreviewOptions: LinkPreviewOptions? = null,
-    @SerialName("reply_to_message_id") val replyToMessageId: Long? = null
-)
-
-data class UploadResult(val messageId: Long, val fileUniqueId: String?)
 
 /**
  * Centralized Telegram Bot API client.
@@ -535,13 +519,6 @@ object TelegramApi {
         messageId: Long
     ): Boolean {
         return try {
-            @Serializable
-            data class PinMessageRequest(
-                @SerialName("chat_id") val chatId: String,
-                @SerialName("message_id") val messageId: Long,
-                @SerialName("disable_notification") val disableNotification: Boolean = false
-            )
-            
             val req = PinMessageRequest(chatId, messageId, false)
             val jsonBody = json.encodeToString(req)
             val body = jsonBody.toRequestBody("application/json".toMediaType())
@@ -571,12 +548,6 @@ object TelegramApi {
         messageId: Long
     ): Boolean {
         return try {
-            @Serializable
-            data class UnpinMessageRequest(
-                @SerialName("chat_id") val chatId: String,
-                @SerialName("message_id") val messageId: Long
-            )
-            
             val req = UnpinMessageRequest(chatId, messageId)
             val jsonBody = json.encodeToString(req)
             val body = jsonBody.toRequestBody("application/json".toMediaType())
@@ -610,18 +581,12 @@ object TelegramApi {
         chatId: String,
         messageId: Long,
         text: String,
-        parseMode: String? = "Markdown"
+        parseMode: String? = "Markdown",
+        replyMarkup: String? = null
     ): Boolean {
         return try {
-            @Serializable
-            data class EditMessageRequest(
-                @SerialName("chat_id") val chatId: String,
-                @SerialName("message_id") val messageId: Long,
-                val text: String,
-                @SerialName("parse_mode") val parseMode: String? = null
-            )
-            
-            val req = EditMessageRequest(chatId, messageId, text, parseMode)
+            val markupJson = replyMarkup?.let { json.parseToJsonElement(it) }
+            val req = EditMessageRequest(chatId, messageId, text, parseMode, markupJson)
             val jsonBody = json.encodeToString(req)
             val body = jsonBody.toRequestBody("application/json".toMediaType())
 
@@ -652,12 +617,6 @@ object TelegramApi {
         messageId: Long
     ): Boolean {
         return try {
-            @Serializable
-            data class DeleteMessageRequest(
-                @SerialName("chat_id") val chatId: String,
-                @SerialName("message_id") val messageId: Long
-            )
-            
             val req = DeleteMessageRequest(chatId, messageId)
             val jsonBody = json.encodeToString(req)
             val body = jsonBody.toRequestBody("application/json".toMediaType())

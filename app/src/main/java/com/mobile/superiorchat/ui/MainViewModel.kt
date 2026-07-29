@@ -280,27 +280,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     //  ACTIONS
     // -------------------------------------------------------------------------
 
-    fun initiateCall(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val (vercelUrl, telegramUrl) = com.mobile.superiorchat.core.CallManager.initCall(context)
-            val token = prefs.botToken
-            val chat = prefs.chatId
-            if (token.isNotEmpty() && chat.isNotEmpty()) {
-                try {
-                    val replyText = "📞 *Incoming Call*\n\nClick the link below to join the call:\n[Join Call]($telegramUrl)"
-                    TelegramApi.sendMessage(
-                        token = token,
-                        chatId = chat,
-                        text = replyText,
-                        parseMode = "Markdown"
-                    )
-                } catch (e: Exception) {
-                    AppLog.log(LogCategory.ERROR, "Failed to send call link: ${e.message}")
-                }
-            }
-        }
-    }
-
     fun saveCredentials() {
         val token = botToken.trim()
         val chat = chatId.trim()

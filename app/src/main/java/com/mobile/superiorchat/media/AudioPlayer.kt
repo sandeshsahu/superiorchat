@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import com.mobile.superiorchat.core.CallManager
-import com.mobile.superiorchat.core.CallState
+import com.mobile.superiorchat.core.call.CallManager
+import com.mobile.superiorchat.core.call.CallState
 
 object AudioPlayer {
     private var mediaPlayer: MediaPlayer? = null

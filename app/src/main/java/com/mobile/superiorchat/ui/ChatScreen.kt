@@ -94,8 +94,8 @@ import com.mobile.superiorchat.ui.components.profile.PartnerProfile
 import com.mobile.superiorchat.ui.components.bounceClick
 import com.mobile.superiorchat.ui.components.glow
 import com.mobile.superiorchat.utils.FileUtils
-import com.mobile.superiorchat.core.CallManager
-import com.mobile.superiorchat.core.CallState
+import com.mobile.superiorchat.core.call.CallManager
+import com.mobile.superiorchat.core.call.CallState
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.flow.first

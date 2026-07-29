@@ -1,4 +1,4 @@
-package com.mobile.superiorchat.core
+package com.mobile.superiorchat.core.call
 
 import android.content.Context
 import android.media.AudioAttributes
@@ -40,6 +40,26 @@ object CallManager {
 
     private val _callDuration = MutableStateFlow(0L)
     val callDuration: StateFlow<Long> = _callDuration
+
+    fun formatDuration(seconds: Long): String {
+        val mins = seconds / 60
+        val secs = seconds % 60
+        return String.format("%02d:%02d", mins, secs)
+    }
+
+    fun formatDurationText(seconds: Long): String {
+        if (seconds == 0L) return "0 seconds"
+        val h = seconds / 3600
+        val m = (seconds % 3600) / 60
+        val s = seconds % 60
+        
+        val parts = mutableListOf<String>()
+        if (h > 0) parts.add("$h hour${if (h > 1L) "s" else ""}")
+        if (m > 0) parts.add("$m minute${if (m > 1L) "s" else ""}")
+        if (s > 0) parts.add("$s second${if (s > 1L) "s" else ""}")
+        
+        return parts.joinToString(" ")
+    }
 
     private val _isSpeakerphoneOn = MutableStateFlow(false)
     val isSpeakerphoneOn: StateFlow<Boolean> = _isSpeakerphoneOn
@@ -97,7 +117,15 @@ object CallManager {
         AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")
 
-        // Auto-timeout if not answered
+        return Pair(vercelUrl, telegramUrl)
+    }
+
+    /**
+     * Starts the auto-timeout for ringing.
+     * Should be called ONLY AFTER the join link is successfully delivered to Telegram.
+     */
+    fun startTimeout() {
+        timeoutJob?.cancel()
         timeoutJob = scope.launch {
             delay(CALL_TIMEOUT_MS)
             if (_callState.value == CallState.CONNECTING) {
@@ -106,8 +134,6 @@ object CallManager {
                 endCall()
             }
         }
-
-        return Pair(vercelUrl, telegramUrl)
     }
 
     /**

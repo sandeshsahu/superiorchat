@@ -14,8 +14,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.PictureInPictureParams
 import android.util.Rational
-import com.mobile.superiorchat.core.CallManager
-import com.mobile.superiorchat.core.CallState
+import com.mobile.superiorchat.core.call.CallManager
+import com.mobile.superiorchat.core.call.CallState
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column

@@ -152,3 +152,60 @@ data class PhotoSize(
     val height: Int,
     @SerialName("file_size") val fileSize: Long? = null
 )
+
+@Serializable
+data class InlineKeyboardButton(
+    val text: String,
+    val url: String? = null,
+    @SerialName("callback_data") val callbackData: String? = null
+)
+
+@Serializable
+data class InlineKeyboardMarkup(
+    val inline_keyboard: List<List<InlineKeyboardButton>>
+)
+
+@Serializable
+data class LinkPreviewOptions(
+    @SerialName("is_disabled") val isDisabled: Boolean
+)
+
+@Serializable
+data class SendMessageRequest(
+    @SerialName("chat_id") val chatId: String,
+    val text: String,
+    @SerialName("parse_mode") val parseMode: String? = null,
+    @SerialName("reply_markup") val replyMarkup: JsonElement? = null,
+    @SerialName("link_preview_options") val linkPreviewOptions: LinkPreviewOptions? = null,
+    @SerialName("reply_to_message_id") val replyToMessageId: Long? = null
+)
+
+data class UploadResult(val messageId: Long, val fileUniqueId: String?)
+
+@Serializable
+data class PinMessageRequest(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("message_id") val messageId: Long,
+    @SerialName("disable_notification") val disableNotification: Boolean = false
+)
+
+@Serializable
+data class UnpinMessageRequest(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("message_id") val messageId: Long
+)
+
+@Serializable
+data class EditMessageRequest(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("message_id") val messageId: Long,
+    val text: String,
+    @SerialName("parse_mode") val parseMode: String? = null,
+    @SerialName("reply_markup") val replyMarkup: kotlinx.serialization.json.JsonElement? = null
+)
+
+@Serializable
+data class DeleteMessageRequest(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("message_id") val messageId: Long
+)
