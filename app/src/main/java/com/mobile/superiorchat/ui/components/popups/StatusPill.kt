@@ -1,6 +1,7 @@
 package com.mobile.superiorchat.ui.components.popups
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +32,8 @@ import com.mobile.superiorchat.core.SyncState
 import com.mobile.superiorchat.media.MediaSync
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.SurfaceLevel1
+import com.mobile.superiorchat.core.call.CallManager
+import com.mobile.superiorchat.core.call.CallState
 import java.io.File
 
 /**
@@ -85,7 +88,9 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
 
 @Composable
 fun StatusPill(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCallMinimized: Boolean = false,
+    onRestoreCall: () -> Unit = {}
 ) {
     val syncState by StatusFlow.syncState.collectAsState()
     val syncMessage by StatusFlow.syncMessage.collectAsState()
@@ -93,85 +98,164 @@ fun StatusPill(
     val overallProgress by StatusFlow.overallProgress.collectAsState()
     var isExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    
+    val callState by CallManager.callState.collectAsState()
+    val callDuration by CallManager.callDuration.collectAsState()
+    
+    val isCallActive = callState == CallState.ACTIVE || callState == CallState.CONNECTING
+    val showCallUi = isCallActive && isCallMinimized
+    val showSyncUi = syncState != SyncState.IDLE && !showCallUi // Hide sync if call pill is showing
+    
+    val isVisible = showCallUi || showSyncUi
 
     AnimatedVisibility(
-        visible = syncState != SyncState.IDLE,
-        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(300)),
-        exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(animationSpec = tween(300)),
+        visible = isVisible,
+        enter = slideInVertically(initialOffsetY = { -it - 50 }) + fadeIn(animationSpec = tween(400, easing = LinearOutSlowInEasing)),
+        exit = slideOutVertically(targetOffsetY = { -it - 50 }) + fadeOut(animationSpec = tween(300, easing = FastOutLinearInEasing)),
         modifier = modifier
     ) {
-        val uiConfig = syncState.toUIConfig(hasUploads = activeTransfers.any { it.isUpload })
+        val uiConfig = if (showSyncUi) {
+            syncState.toUIConfig(hasUploads = activeTransfers.any { it.isUpload })
+        } else {
+            SyncState.IDLE.toUIConfig(false)
+        }
 
         Surface(
-            shape = RoundedCornerShape(16.dp),
-            color = uiConfig.bgColor,
+            shape = RoundedCornerShape(percent = 50),
+            color = if (showCallUi) Color.Black else uiConfig.bgColor,
             modifier = Modifier
                 .padding(horizontal = 16.dp)
                 .border(
                     width = 1.dp,
-                    color = if (uiConfig.isTransfer) PrimaryLight.copy(alpha = 0.4f) else Color.Transparent,
-                    shape = RoundedCornerShape(16.dp)
+                    color = if (showCallUi) Color.White.copy(alpha = 0.15f) 
+                            else if (showSyncUi && uiConfig.isTransfer) PrimaryLight.copy(alpha = 0.4f) 
+                            else Color.Transparent,
+                    shape = RoundedCornerShape(percent = 50)
                 )
-                .animateContentSize()
-                .clickable(enabled = uiConfig.canExpand) {
-                    isExpanded = !isExpanded
+                .animateContentSize(animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow))
+                .clickable(enabled = showCallUi || (showSyncUi && uiConfig.canExpand)) {
+                    if (showCallUi) onRestoreCall()
+                    else isExpanded = !isExpanded
                 },
-            shadowElevation = 6.dp
+            shadowElevation = 12.dp
         ) {
-            Column(
-                modifier = if (uiConfig.isTransfer) {
-                    Modifier
-                        .widthIn(min = 220.dp, max = 340.dp)
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                } else {
-                    Modifier
-                        .wrapContentWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                }
-            ) {
-                Row(
-                    modifier = if (uiConfig.isTransfer) Modifier.fillMaxWidth() else Modifier.wrapContentWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (uiConfig.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
-                            color = uiConfig.textColor,
-                            strokeWidth = 2.dp
+            AnimatedContent(
+                targetState = showCallUi,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+                },
+                label = "pill_content"
+            ) { isCall ->
+                if (isCall) {
+                    // Beautiful Call UI
+                    Row(
+                        modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        val infiniteTransition = rememberInfiniteTransition()
+                        val pulseAlpha by infiniteTransition.animateFloat(
+                            initialValue = 0.2f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(800, easing = FastOutSlowInEasing),
+                                repeatMode = RepeatMode.Reverse
+                            ), label = "pulse"
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    } else if (uiConfig.icon != null) {
+                        
                         Icon(
-                            imageVector = uiConfig.icon,
+                            imageVector = Icons.Filled.Call,
                             contentDescription = null,
-                            tint = if (uiConfig.isTransfer) PrimaryLight else uiConfig.textColor,
+                            tint = if (callState == CallState.ACTIVE) Color(0xFF34D399).copy(alpha = pulseAlpha) else Color(0xFFFBBF24).copy(alpha = pulseAlpha),
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
-                    Text(
-                        text = syncMessage ?: "",
-                        color = uiConfig.textColor,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = if (uiConfig.isTransfer) Modifier.weight(1f) else Modifier.wrapContentWidth()
-                    )
-
-                    if (uiConfig.canExpand) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Expand transfers",
-                            tint = PrimaryLight,
-                            modifier = Modifier.size(18.dp)
+                        
+                        val text = if (callState == CallState.CONNECTING) "Connecting" else {
+                            val mins = (callDuration / 60).toString().padStart(2, '0')
+                            val secs = (callDuration % 60).toString().padStart(2, '0')
+                            "$mins:$secs"
+                        }
+                        
+                        Text(
+                            text = text,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.widthIn(min = 42.dp)
                         )
+                        
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFF3B30)) // Apple-like red
+                                .clickable { CallManager.endCall() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CallEnd,
+                                contentDescription = "End Call",
+                                tint = Color.White,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
                     }
-                }
-
-                if (uiConfig.isTransfer) {
+                } else {
+                    // Sync UI
+                    Column(
+                        modifier = if (uiConfig.isTransfer) {
+                            Modifier
+                                .widthIn(min = 220.dp, max = 340.dp)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        } else {
+                            Modifier
+                                .wrapContentWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                        }
+                    ) {
+                        Row(
+                            modifier = if (uiConfig.isTransfer) Modifier.fillMaxWidth() else Modifier.wrapContentWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (uiConfig.isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    color = uiConfig.textColor,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            } else if (uiConfig.icon != null) {
+                                Icon(
+                                    imageVector = uiConfig.icon,
+                                    contentDescription = null,
+                                    tint = if (uiConfig.isTransfer) PrimaryLight else uiConfig.textColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+        
+                            Text(
+                                text = syncMessage ?: "",
+                                color = uiConfig.textColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = if (uiConfig.isTransfer) Modifier.weight(1f) else Modifier.wrapContentWidth()
+                            )
+        
+                            if (uiConfig.canExpand) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = "Expand transfers",
+                                    tint = PrimaryLight,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+        
+                        if (uiConfig.isTransfer) {
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(
                         progress = overallProgress,
@@ -220,6 +304,8 @@ fun StatusPill(
                 }
             }
         }
+    }
+}
     }
 }
 

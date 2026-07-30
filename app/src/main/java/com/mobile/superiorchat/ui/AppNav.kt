@@ -320,7 +320,9 @@ fun AppScreen(
                     .consumeWindowInsets(innerPadding)
             ) {
                 com.mobile.superiorchat.ui.components.popups.StatusPill(
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f)
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f),
+                    isCallMinimized = isCallMinimized,
+                    onRestoreCall = { isCallMinimized = false }
                 )
 
                 AnimatedContent(

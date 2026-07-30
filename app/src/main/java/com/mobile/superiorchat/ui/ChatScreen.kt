@@ -658,61 +658,7 @@ fun ChatScreen(
             }
         }
 
-        // Active Call Floating Bubble
-        androidx.compose.animation.AnimatedVisibility(
-            visible = callState == CallState.ACTIVE || callState == CallState.CONNECTING,
-            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it }) + androidx.compose.animation.fadeIn(),
-            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it }) + androidx.compose.animation.fadeOut(),
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 8.dp)
-        ) {
-            Surface(
-                modifier = Modifier
-                    .wrapContentSize()
-                    .clickable { onNavigateToCall() },
-                shape = RoundedCornerShape(24.dp),
-                color = Color(0xFF1E293B).copy(alpha = 0.95f),
-                shadowElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (callState == CallState.ACTIVE) Color(0xFF10B981)
-                                else Color(0xFFEAB308)
-                            )
-                    )
-                    
-                    val mins = (callDuration / 60).toString().padStart(2, '0')
-                    val secs = (callDuration % 60).toString().padStart(2, '0')
-                    val text = if (callState == CallState.CONNECTING) "Connecting..." else "$mins:$secs"
-                    
-                    Text(text, color = Color.White, style = MaterialTheme.typography.bodyMedium)
-                    
-                    // End call button in bubble
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFEF4444))
-                            .clickable { CallManager.endCall() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.CallEnd,
-                            contentDescription = "End Call",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                }
-            }
-        }
+
 
         MediaViewer(
             mediaPath = activeFullScreenMediaPath,

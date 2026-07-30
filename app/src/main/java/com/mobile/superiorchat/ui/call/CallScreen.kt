@@ -71,7 +71,7 @@ fun CallScreen(
     val profilePhotoPath by viewModel.profilePhotoPath.collectAsState()
 
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
-    var showEndDialog by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     var endCallSent by remember { mutableStateOf(false) }
 
     val callEngine = remember {
@@ -102,27 +102,6 @@ fun CallScreen(
     androidx.activity.compose.BackHandler(enabled = callState == CallState.CONNECTING && !isMinimized) {
         performEndCall()
         onEndCall()
-    }
-
-    // ── Confirm dialog ───────────────────────────────────────
-    if (showEndDialog) {
-        ActionDialog(
-            title = "Call in progress",
-            message = "Do you want to minimize the call or end it completely?",
-            icon = Icons.Filled.Warning,
-            iconTint = PrimaryLight,
-            confirmText = "Minimize",
-            dismissText = "End Call",
-            onConfirm = {
-                showEndDialog = false
-                onMinimize()
-            },
-            onDismiss = {
-                showEndDialog = false
-                performEndCall()
-                onEndCall()
-            }
-        )
     }
 
     // ── Auto-close when call transitions to ENDING/IDLE ──────
