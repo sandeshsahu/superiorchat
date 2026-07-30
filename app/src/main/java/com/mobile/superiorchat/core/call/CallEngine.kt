@@ -84,6 +84,10 @@ class CallEngine(
         webView?.evaluateJavascript("window.androidToggleSwapVideo();", null)
     }
 
+    fun flipCamera(webView: WebView?) {
+        webView?.evaluateJavascript("window.androidFlipCamera();", null)
+    }
+
     fun triggerEndCall(webView: WebView?) {
         webView?.evaluateJavascript("window.androidEndCall();", null)
     }

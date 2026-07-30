@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
@@ -44,9 +46,19 @@ import com.mobile.superiorchat.theme.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobile.superiorchat.core.call.CallEngine
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import coil.compose.AsyncImage
 import java.io.File
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import com.mobile.superiorchat.ui.components.bounceClick
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -61,6 +73,13 @@ fun CallScreen(
     val callState by CallManager.callState.collectAsState()
     val callDuration by CallManager.callDuration.collectAsState()
     val isSpeakerphoneOn by CallManager.isSpeakerphoneOn.collectAsState()
+    
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(Unit) {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }
 
     val viewModel: CallViewModel = viewModel()
     val isMuted by viewModel.isMuted.collectAsState()
@@ -124,23 +143,76 @@ fun CallScreen(
         }
     }
 
+    // ── PiP Animations & Gestures ────────────────────────────
+    val pipOffsetX = remember { Animatable(0f) }
+    val pipOffsetY = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    
+    val animatedCornerRadius by animateDpAsState(
+        targetValue = if (isMinimized && showPip) 16.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "pipRadius"
+    )
+
     // ── Unified Full-Screen Call Surface ────────────────────────
-    Box(
-        modifier = modifier
-            .then(
-                if (isMinimized) {
-                    if (showPip) {
-                        Modifier
-                            .padding(end = 16.dp, bottom = 100.dp)
-                            .imePadding()
-                            .size(110.dp, 160.dp)
-                    } else {
-                        Modifier.size(1.dp).alpha(0f)
-                    }
-                } else Modifier.fillMaxSize()
-            )
-            .background(CallBackground)
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
     ) {
+        val density = LocalDensity.current
+        val maxWidthPx = with(density) { maxWidth.toPx() }
+        val maxHeightPx = with(density) { maxHeight.toPx() }
+        val pipWidthPx = with(density) { 110.dp.toPx() }
+        val pipHeightPx = with(density) { 160.dp.toPx() }
+        val paddingEndPx = with(density) { 16.dp.toPx() }
+        val paddingBottomPx = with(density) { 100.dp.toPx() }
+        
+        // Since we align to BottomEnd, max negative offsets represent the top and left edges
+        val minOffsetX = -(maxWidthPx - pipWidthPx - paddingEndPx * 2)
+        val minOffsetY = -(maxHeightPx - pipHeightPx - paddingBottomPx * 2)
+
+        // We use a secondary Box to manage the PiP dragging and size
+        Box(
+            modifier = Modifier
+                .then(
+                    if (isMinimized) {
+                        if (showPip) {
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset { IntOffset(pipOffsetX.value.roundToInt(), pipOffsetY.value.roundToInt()) }
+                                .padding(end = 16.dp, bottom = 100.dp)
+                                .imePadding() // Keyboard only pushes up the PiP window, not the fullscreen video
+                                .size(110.dp, 160.dp)
+                                .pointerInput(Unit) {
+                                    detectDragGestures(
+                                        onDragEnd = {
+                                            coroutineScope.launch {
+                                                // Snap to nearest horizontal edge (left or right)
+                                                val targetX = if (pipOffsetX.value < minOffsetX / 2) minOffsetX else 0f
+                                                // Keep Y exactly where it was dragged, but coerce within safe bounds
+                                                val targetY = pipOffsetY.value.coerceIn(minOffsetY, 0f)
+                                                
+                                                launch { pipOffsetX.animateTo(targetX, spring(stiffness = Spring.StiffnessLow)) }
+                                                launch { pipOffsetY.animateTo(targetY, spring(stiffness = Spring.StiffnessLow)) }
+                                            }
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            coroutineScope.launch {
+                                                pipOffsetX.snapTo(pipOffsetX.value + dragAmount.x)
+                                                pipOffsetY.snapTo(pipOffsetY.value + dragAmount.y)
+                                            }
+                                        }
+                                    )
+                                }
+                        } else {
+                            Modifier.align(Alignment.BottomEnd).size(1.dp).alpha(0f)
+                        }
+                    } else Modifier.fillMaxSize()
+                )
+                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessLow))
+                .clip(RoundedCornerShape(animatedCornerRadius))
+                .background(CallBackground)
+        ) {
         // 1. Fullscreen Video WebView Layer (hidden during ENDING state to reveal gradient)
         AndroidView(
             factory = { ctx ->
@@ -277,6 +349,7 @@ fun CallScreen(
                             callEngine.toggleVideo(webViewRef)
                         },
                         onSpeakerToggle = { CallManager.toggleSpeaker() },
+                        onFlipCamera = { callEngine.flipCamera(webViewRef) },
                         onMinimize = onMinimize,
                         onEndCall = { performEndCall() }
                     )
@@ -284,6 +357,7 @@ fun CallScreen(
             }
         }
     }
+}
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -480,6 +554,7 @@ private fun CallControls(
     onMuteToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onSpeakerToggle: () -> Unit,
+    onFlipCamera: () -> Unit,
     onMinimize: () -> Unit,
     onEndCall: () -> Unit,
     modifier: Modifier = Modifier
@@ -522,6 +597,14 @@ private fun CallControls(
                     isActive = isVideoOn,
                     onClick = onVideoToggle
                 )
+                if (isVideoOn) {
+                    ControlButton(
+                        icon = Icons.Filled.FlipCameraAndroid,
+                        label = "Flip",
+                        isActive = false,
+                        onClick = onFlipCamera
+                    )
+                }
                 ControlButton(
                     icon = if (isSpeakerphoneOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeDown,
                     label = if (isSpeakerphoneOn) "Loudspeaker" else "Earpiece",
@@ -605,16 +688,29 @@ private fun ControlButton(
     isActive: Boolean,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "buttonScale"
+    )
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
+                .scale(scale)
                 .size(56.dp)
                 .clip(CircleShape)
                 .background(
                     if (isActive) Color.White
                     else Color.White.copy(alpha = 0.1f)
                 )
-                .clickable(onClick = onClick),
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null, // No ripple, just pure scale bounce
+                    onClick = onClick
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(

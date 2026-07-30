@@ -416,7 +416,7 @@ fun AppScreen(
                                 isCallMinimized = false 
                             },
                             onEndCall = { isCallMinimized = false },
-                            modifier = if (isCallPipActive) Modifier.align(Alignment.BottomEnd) else Modifier
+                            modifier = Modifier
                         )
                     }
                 }
