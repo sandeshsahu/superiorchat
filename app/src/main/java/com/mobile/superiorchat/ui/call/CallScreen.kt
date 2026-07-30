@@ -54,6 +54,7 @@ fun CallScreen(
     url: String,
     isMinimized: Boolean,
     onMinimize: () -> Unit,
+    onMaximize: () -> Unit,
     onEndCall: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -78,7 +79,8 @@ fun CallScreen(
         CallEngine(
             onRemoteVideoStateChanged = { viewModel.setRemoteVideo(it) },
             onLocalVideoStateChanged = { viewModel.setLocalVideo(it) },
-            onAudioLevelChanged = { viewModel.setRemoteAudioLevel(it) }
+            onAudioLevelChanged = { viewModel.setRemoteAudioLevel(it) },
+            onVideoSwapped = { viewModel.setSwappedVideo(it) }
         )
     }
 
@@ -93,15 +95,11 @@ fun CallScreen(
         CallManager.endCall()
     }
 
-    // ── BackHandler: minimize on back during active call ──────
-    androidx.activity.compose.BackHandler(enabled = callState == CallState.ACTIVE && !isMinimized) {
+    // ── BackHandler: minimize on back during active or connecting call ──────
+    androidx.activity.compose.BackHandler(
+        enabled = (callState == CallState.ACTIVE || callState == CallState.CONNECTING) && !isMinimized
+    ) {
         onMinimize()
-    }
-
-    // ── BackHandler: end call on back during connecting ───────
-    androidx.activity.compose.BackHandler(enabled = callState == CallState.CONNECTING && !isMinimized) {
-        performEndCall()
-        onEndCall()
     }
 
     // ── Auto-close when call transitions to ENDING/IDLE ──────
@@ -114,12 +112,32 @@ fun CallScreen(
         }
     }
 
+    // ── Picture in Picture Mode ──────────────────────────────
+    val showPip = isMinimized && (isVideoOn || isRemoteVideoOn) && callState == CallState.ACTIVE
+
+    LaunchedEffect(showPip, isVideoOn, isRemoteVideoOn, callState) {
+        val targetVideo = if (isRemoteVideoOn) "remote" else if (isVideoOn) "local" else "none"
+        if (showPip) {
+            callEngine.setPipMode(webViewRef, true, targetVideo)
+        } else {
+            callEngine.setPipMode(webViewRef, false, "none")
+        }
+    }
+
     // ── Unified Full-Screen Call Surface ────────────────────────
     Box(
         modifier = modifier
             .then(
-                if (isMinimized) Modifier.size(1.dp).alpha(0f)
-                else Modifier.fillMaxSize()
+                if (isMinimized) {
+                    if (showPip) {
+                        Modifier
+                            .padding(end = 16.dp, bottom = 100.dp)
+                            .imePadding()
+                            .size(110.dp, 160.dp)
+                    } else {
+                        Modifier.size(1.dp).alpha(0f)
+                    }
+                } else Modifier.fillMaxSize()
             )
             .background(CallBackground)
     ) {
@@ -127,7 +145,7 @@ fun CallScreen(
         AndroidView(
             factory = { ctx ->
                 WebView(ctx).also { wv ->
-                    wv.setBackgroundColor(android.graphics.Color.parseColor("#0f172a"))
+                    wv.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                     wv.layoutParams = android.view.ViewGroup.LayoutParams(
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                         android.view.ViewGroup.LayoutParams.MATCH_PARENT
@@ -149,11 +167,37 @@ fun CallScreen(
                     webViewRef = wv
                 }
             },
+            update = { wv ->
+                if (isMinimized && showPip) {
+                    wv.outlineProvider = object : android.view.ViewOutlineProvider() {
+                        override fun getOutline(view: android.view.View, outline: android.graphics.Outline) {
+                            val radius = 16f * view.context.resources.displayMetrics.density
+                            outline.setRoundRect(0, 0, view.width, view.height, radius)
+                        }
+                    }
+                    wv.clipToOutline = true
+                } else {
+                    wv.outlineProvider = null
+                    wv.clipToOutline = false
+                }
+            },
             onRelease = { wv -> wv.destroy() },
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = if (isVideoActive && callState == CallState.ACTIVE) 1f else 0f }
         )
+
+        // 1.5. PiP Touch Interceptor Layer
+        if (isMinimized && showPip) {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                        indication = null
+                    ) { onMaximize() }
+            )
+        }
 
         // 2. Native Compose UI Overlay Layer (only active when not minimized)
         if (!isMinimized) {

@@ -90,6 +90,7 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
 fun StatusPill(
     modifier: Modifier = Modifier,
     isCallMinimized: Boolean = false,
+    isCallPipActive: Boolean = false,
     onRestoreCall: () -> Unit = {}
 ) {
     val syncState by StatusFlow.syncState.collectAsState()

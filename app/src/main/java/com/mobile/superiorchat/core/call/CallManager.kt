@@ -75,6 +75,12 @@ object CallManager {
     private val _isSpeakerphoneOn = MutableStateFlow(false)
     val isSpeakerphoneOn: StateFlow<Boolean> = _isSpeakerphoneOn
 
+    private val _isVideoOn = MutableStateFlow(false)
+    val isVideoOn: StateFlow<Boolean> = _isVideoOn
+
+    private val _isRemoteVideoOn = MutableStateFlow(false)
+    val isRemoteVideoOn: StateFlow<Boolean> = _isRemoteVideoOn
+
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var sensorManager: SensorManager? = null
@@ -279,6 +285,14 @@ object CallManager {
         setSpeakerphone(!_isSpeakerphoneOn.value)
     }
 
+    fun setLocalVideoState(isOn: Boolean) {
+        _isVideoOn.value = isOn
+    }
+
+    fun setRemoteVideoState(isOn: Boolean) {
+        _isRemoteVideoOn.value = isOn
+    }
+
     // ─────────────────────────────────────────────────────────
     //  Hardware — Audio focus, proximity sensor, wake lock
     // ─────────────────────────────────────────────────────────
@@ -332,6 +346,8 @@ object CallManager {
         audioManager?.isSpeakerphoneOn = false
         audioManager?.mode = AudioManager.MODE_NORMAL
         _isSpeakerphoneOn.value = false
+        _isVideoOn.value = false
+        _isRemoteVideoOn.value = false
 
         sensorManager?.unregisterListener(proximityListener)
         if (wakeLock?.isHeld == true) {

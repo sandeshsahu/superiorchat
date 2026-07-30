@@ -45,18 +45,30 @@ class CallViewModel : ViewModel() {
     val profilePhotoPath: StateFlow<String?> = _profilePhotoPath.asStateFlow()
 
     fun toggleMute() { _isMuted.value = !_isMuted.value }
-    fun toggleVideo() { _isVideoOn.value = !_isVideoOn.value }
+    fun toggleVideo() { 
+        _isVideoOn.value = !_isVideoOn.value 
+        CallManager.setLocalVideoState(_isVideoOn.value)
+    }
     fun toggleControls() { _isControlsVisible.value = !_isControlsVisible.value }
     fun toggleSwapVideo() { _isSwappedVideo.value = !_isSwappedVideo.value }
+    fun setSwappedVideo(isSwapped: Boolean) { _isSwappedVideo.value = isSwapped }
     
-    fun setRemoteVideo(isOn: Boolean) { _isRemoteVideoOn.value = isOn }
-    fun setLocalVideo(isOn: Boolean) { _isVideoOn.value = isOn }
+    fun setRemoteVideo(isOn: Boolean) { 
+        _isRemoteVideoOn.value = isOn 
+        CallManager.setRemoteVideoState(isOn)
+    }
+    fun setLocalVideo(isOn: Boolean) { 
+        _isVideoOn.value = isOn 
+        CallManager.setLocalVideoState(isOn)
+    }
     fun setRemoteAudioLevel(level: Float) { _remoteAudioLevel.value = level }
 
     private fun resetState() {
         _isMuted.value = false
         _isVideoOn.value = false
         _isRemoteVideoOn.value = false
+        CallManager.setLocalVideoState(false)
+        CallManager.setRemoteVideoState(false)
         _isControlsVisible.value = true
         _isSwappedVideo.value = false
         _remoteAudioLevel.value = 0f

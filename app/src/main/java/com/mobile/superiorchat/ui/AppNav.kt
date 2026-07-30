@@ -108,6 +108,7 @@ fun AppScreen(
     )
 
     val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     DisposableEffect(currentScreen, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -319,9 +320,14 @@ fun AppScreen(
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
             ) {
+                val isGlobalVideoOn by CallManager.isVideoOn.collectAsState()
+                val isGlobalRemoteVideoOn by CallManager.isRemoteVideoOn.collectAsState()
+                val isCallPipActive = isCallMinimized && (isGlobalVideoOn || isGlobalRemoteVideoOn)
+
                 com.mobile.superiorchat.ui.components.popups.StatusPill(
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f),
                     isCallMinimized = isCallMinimized,
+                    isCallPipActive = isCallPipActive,
                     onRestoreCall = { isCallMinimized = false }
                 )
 
@@ -405,7 +411,12 @@ fun AppScreen(
                             url = "${CallManager.currentBaseUrl}/?host=$roomId&secret=$secret",
                             isMinimized = isCallMinimized,
                             onMinimize = { isCallMinimized = true },
-                            onEndCall = { isCallMinimized = false }
+                            onMaximize = { 
+                                keyboardController?.hide()
+                                isCallMinimized = false 
+                            },
+                            onEndCall = { isCallMinimized = false },
+                            modifier = if (isCallPipActive) Modifier.align(Alignment.BottomEnd) else Modifier
                         )
                     }
                 }

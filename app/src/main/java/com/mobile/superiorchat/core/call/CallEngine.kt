@@ -16,7 +16,8 @@ import com.mobile.superiorchat.utils.LogCategory
 class CallEngine(
     private val onRemoteVideoStateChanged: (Boolean) -> Unit,
     private val onLocalVideoStateChanged: (Boolean) -> Unit,
-    private val onAudioLevelChanged: ((Float) -> Unit)? = null
+    private val onAudioLevelChanged: ((Float) -> Unit)? = null,
+    private val onVideoSwapped: ((Boolean) -> Unit)? = null
 ) {
 
     val webViewClient = object : WebViewClient() {
@@ -64,6 +65,7 @@ class CallEngine(
             "remote_video" -> { onRemoteVideoStateChanged(data == "on") }
             "local_video" -> { onLocalVideoStateChanged(data == "on") }
             "audio_level" -> { onAudioLevelChanged?.invoke(data.toFloatOrNull() ?: 0f) }
+            "video_swapped" -> { onVideoSwapped?.invoke(data == "true") }
         }
     }
 
@@ -84,5 +86,9 @@ class CallEngine(
 
     fun triggerEndCall(webView: WebView?) {
         webView?.evaluateJavascript("window.androidEndCall();", null)
+    }
+
+    fun setPipMode(webView: WebView?, isEnabled: Boolean, targetVideo: String) {
+        webView?.evaluateJavascript("window.androidSetPipMode($isEnabled, '$targetVideo');", null)
     }
 }
