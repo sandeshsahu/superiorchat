@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -38,8 +39,8 @@ fun Modifier.skeletonEffect(): Modifier = composed {
         label = "skeletonTranslation"
     )
 
-    background(
-        brush = Brush.linearGradient(
+    this.drawBehind {
+        val brush = Brush.linearGradient(
             colors = listOf(
                 SurfaceLevel2,
                 SurfaceLevel1,
@@ -48,7 +49,8 @@ fun Modifier.skeletonEffect(): Modifier = composed {
             start = Offset(x = translateAnim, y = translateAnim),
             end = Offset(x = translateAnim + 300f, y = translateAnim + 300f)
         )
-    )
+        drawRect(brush)
+    }
 }
 
 // ---------------------------------------------------------------------------

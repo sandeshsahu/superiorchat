@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import com.mobile.superiorchat.theme.*
 
 // ══════════════════════════════════════════════════════════
@@ -92,7 +93,8 @@ fun Modifier.bounceClick(
     scaleDown: Float = 0.95f,
     onClick: () -> Unit = {}
 ): Modifier = composed {
-    var isPressed by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) scaleDown else 1f,
         label = "bounceClick_scale"
@@ -103,19 +105,8 @@ fun Modifier.bounceClick(
             scaleX = scale
             scaleY = scale
         }
-        .pointerInput(isPressed) {
-            awaitPointerEventScope {
-                isPressed = if (isPressed) {
-                    waitForUpOrCancellation()
-                    false
-                } else {
-                    awaitFirstDown(requireUnconsumed = false)
-                    true
-                }
-            }
-        }
         .clickable(
-            interactionSource = remember { MutableInteractionSource() },
+            interactionSource = interactionSource,
             indication = null,
             onClick = { onClick() }
         )

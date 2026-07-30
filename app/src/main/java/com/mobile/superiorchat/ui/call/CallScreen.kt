@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.mobile.superiorchat.ui.skeletonEffect
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -114,11 +115,26 @@ fun CallScreen(
         CallManager.endCall()
     }
 
+    val coroutineScope = rememberCoroutineScope()
+    var isMaximizing by remember { mutableStateOf(false) }
+    var isMinimizing by remember { mutableStateOf(false) }
+    
+    val handleMinimize = {
+        coroutineScope.launch {
+            isMinimizing = true
+            delay(50)
+            onMinimize()
+            delay(150)
+            isMinimizing = false
+        }
+    }
+
+
     // ── BackHandler: minimize on back during active or connecting call ──────
     androidx.activity.compose.BackHandler(
         enabled = (callState == CallState.ACTIVE || callState == CallState.CONNECTING) && !isMinimized
     ) {
-        onMinimize()
+        handleMinimize()
     }
 
     // ── Auto-close when call transitions to ENDING/IDLE ──────
@@ -146,7 +162,6 @@ fun CallScreen(
     // ── PiP Animations & Gestures ────────────────────────────
     val pipOffsetX = remember { Animatable(0f) }
     val pipOffsetY = remember { Animatable(0f) }
-    val coroutineScope = rememberCoroutineScope()
     
     val animatedCornerRadius by animateDpAsState(
         targetValue = if (isMinimized && showPip) 16.dp else 0.dp,
@@ -209,7 +224,7 @@ fun CallScreen(
                         }
                     } else Modifier.fillMaxSize()
                 )
-                .animateContentSize(animationSpec = spring(stiffness = Spring.StiffnessLow))
+                .animateContentSize(animationSpec = androidx.compose.animation.core.tween(150, easing = androidx.compose.animation.core.LinearOutSlowInEasing))
                 .clip(RoundedCornerShape(animatedCornerRadius))
                 .background(CallBackground)
         ) {
@@ -240,6 +255,7 @@ fun CallScreen(
                 }
             },
             update = { wv ->
+                wv.visibility = if (isMaximizing || isMinimizing) android.view.View.GONE else android.view.View.VISIBLE
                 if (isMinimized && showPip) {
                     wv.outlineProvider = object : android.view.ViewOutlineProvider() {
                         override fun getOutline(view: android.view.View, outline: android.graphics.Outline) {
@@ -259,6 +275,16 @@ fun CallScreen(
                 .graphicsLayer { alpha = if (isVideoActive && callState == CallState.ACTIVE) 1f else 0f }
         )
 
+        // 1.1. Background Video Loading Skeleton
+        AnimatedVisibility(
+            visible = (callState == CallState.CONNECTING && (isVideoOn || isRemoteVideoOn)) || isMaximizing || isMinimizing,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(150)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            com.mobile.superiorchat.ui.SkeletonGalleryItem(modifier = Modifier.fillMaxSize())
+        }
+
         // 1.5. PiP Touch Interceptor Layer
         if (isMinimized && showPip) {
             Spacer(
@@ -267,7 +293,19 @@ fun CallScreen(
                     .clickable(
                         interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                         indication = null
-                    ) { onMaximize() }
+                    ) { 
+                        coroutineScope.launch {
+                            isMaximizing = true
+                            // 1. Hide WebView FIRST while still small (prevents SurfaceFlinger glitch)
+                            delay(50)
+                            // 2. Trigger Compose layout expansion
+                            onMaximize()
+                            // 3. Wait for SurfaceFlinger to reallocate 1080x2400 buffer
+                            delay(150)
+                            // 4. Reveal perfectly sized WebView
+                            isMaximizing = false
+                        }
+                    }
             )
         }
 
@@ -350,7 +388,7 @@ fun CallScreen(
                         },
                         onSpeakerToggle = { CallManager.toggleSpeaker() },
                         onFlipCamera = { callEngine.flipCamera(webViewRef) },
-                        onMinimize = onMinimize,
+                        onMinimize = { handleMinimize() },
                         onEndCall = { performEndCall() }
                     )
                 }
@@ -417,20 +455,28 @@ private fun CallHeader(
             // Call status label
             CallStatusLabel(callState)
 
-            // Duration timer
+            // Duration timer or skeleton
             AnimatedVisibility(
-                visible = callState == CallState.ACTIVE,
+                visible = callState == CallState.ACTIVE || callState == CallState.CONNECTING,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                Text(
-                    text = CallManager.formatDuration(callDuration),
-                    color = CallTextSecondary,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 1.sp,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
+                if (callState == CallState.ACTIVE) {
+                    Text(
+                        text = CallManager.formatDuration(callDuration),
+                        color = CallTextSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                } else {
+                    com.mobile.superiorchat.ui.SkeletonTextLine(
+                        width = 48.dp,
+                        height = 14.dp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
         }
     }
@@ -472,9 +518,13 @@ private fun CallAvatar(
             Box(
                 modifier = Modifier
                     .size(120.dp)
-                    .scale(dynamicScale)
+                    .graphicsLayer {
+                        scaleX = dynamicScale
+                        scaleY = dynamicScale
+                        this.alpha = dynamicAlpha.coerceIn(0f, 1f)
+                    }
                     .clip(CircleShape)
-                    .background(CallAccent.copy(alpha = dynamicAlpha.coerceIn(0f, 1f)))
+                    .background(CallAccent)
             )
         }
 
@@ -483,10 +533,9 @@ private fun CallAvatar(
             modifier = Modifier
                 .size(120.dp)
                 .clip(CircleShape)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(CallAccent, Color(0xFF7C3AED))
-                    )
+                .then(
+                    if (isConnecting) Modifier.skeletonEffect()
+                    else Modifier.background(Brush.linearGradient(colors = listOf(CallAccent, Color(0xFF7C3AED))))
                 ),
             contentAlignment = Alignment.Center
         ) {
@@ -534,9 +583,13 @@ private fun PulseRing(delayMs: Int) {
     Box(
         modifier = Modifier
             .size(120.dp)
-            .scale(scale)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            }
             .clip(CircleShape)
-            .background(CallAccent.copy(alpha = alpha))
+            .background(CallAccent)
     )
 }
 
@@ -699,7 +752,10 @@ private fun ControlButton(
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             modifier = Modifier
-                .scale(scale)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
                 .size(56.dp)
                 .clip(CircleShape)
                 .background(
@@ -745,9 +801,10 @@ private fun CallStatusLabel(callState: CallState) {
             )
             Text(
                 text = "Calling…",
-                color = CallTextPrimary.copy(alpha = alpha),
+                color = CallTextPrimary,
                 fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.graphicsLayer { this.alpha = alpha }
             )
         }
         CallState.ACTIVE -> {
@@ -785,7 +842,7 @@ private fun LocalCameraBox(
             modifier = Modifier
                 .size(width = 108.dp, height = 148.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.Black.copy(alpha = 0.35f))
+                .background(Color.Transparent)
                 .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(16.dp))
         )
     }
