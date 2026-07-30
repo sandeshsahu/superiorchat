@@ -15,7 +15,8 @@ import com.mobile.superiorchat.utils.LogCategory
  */
 class CallEngine(
     private val onRemoteVideoStateChanged: (Boolean) -> Unit,
-    private val onLocalVideoStateChanged: (Boolean) -> Unit
+    private val onLocalVideoStateChanged: (Boolean) -> Unit,
+    private val onAudioLevelChanged: ((Float) -> Unit)? = null
 ) {
 
     val webViewClient = object : WebViewClient() {
@@ -62,6 +63,7 @@ class CallEngine(
             "ended" -> CallManager.endCall()
             "remote_video" -> { onRemoteVideoStateChanged(data == "on") }
             "local_video" -> { onLocalVideoStateChanged(data == "on") }
+            "audio_level" -> { onAudioLevelChanged?.invoke(data.toFloatOrNull() ?: 0f) }
         }
     }
 

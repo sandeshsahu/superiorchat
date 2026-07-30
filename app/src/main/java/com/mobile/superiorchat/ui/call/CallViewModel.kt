@@ -38,6 +38,12 @@ class CallViewModel : ViewModel() {
     private val _isSwappedVideo = MutableStateFlow(false)
     val isSwappedVideo: StateFlow<Boolean> = _isSwappedVideo.asStateFlow()
 
+    private val _remoteAudioLevel = MutableStateFlow(0f)
+    val remoteAudioLevel: StateFlow<Float> = _remoteAudioLevel.asStateFlow()
+
+    private val _profilePhotoPath = MutableStateFlow<String?>(null)
+    val profilePhotoPath: StateFlow<String?> = _profilePhotoPath.asStateFlow()
+
     fun toggleMute() { _isMuted.value = !_isMuted.value }
     fun toggleVideo() { _isVideoOn.value = !_isVideoOn.value }
     fun toggleControls() { _isControlsVisible.value = !_isControlsVisible.value }
@@ -45,14 +51,31 @@ class CallViewModel : ViewModel() {
     
     fun setRemoteVideo(isOn: Boolean) { _isRemoteVideoOn.value = isOn }
     fun setLocalVideo(isOn: Boolean) { _isVideoOn.value = isOn }
+    fun setRemoteAudioLevel(level: Float) { _remoteAudioLevel.value = level }
+
+    private fun resetState() {
+        _isMuted.value = false
+        _isVideoOn.value = false
+        _isRemoteVideoOn.value = false
+        _isControlsVisible.value = true
+        _isSwappedVideo.value = false
+        _remoteAudioLevel.value = 0f
+        _profilePhotoPath.value = null
+    }
 
     fun initiateCall(context: Context) {
+        resetState()
         viewModelScope.launch(Dispatchers.IO) {
+            val prefs = AppGraph.prefs
+            val chat = prefs.chatId
+            
+            // Fetch cached profile image for the UI avatar
+            val profile = AppGraph.database.profileDao().getProfileSync(chat)
+            _profilePhotoPath.value = profile?.profilePhotoPath
+
             val callUrls = CallManager.initCall(context) ?: return@launch
             val (vercelUrl, telegramUrl) = callUrls
-            val prefs = AppGraph.prefs
             val token = prefs.botToken
-            val chat = prefs.chatId
             if (token.isNotEmpty() && chat.isNotEmpty()) {
                 try {
                     val me = TelegramApi.getMe(token)

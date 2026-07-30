@@ -44,6 +44,9 @@ import com.mobile.superiorchat.theme.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobile.superiorchat.core.call.CallEngine
 import kotlinx.coroutines.delay
+import coil.compose.AsyncImage
+import java.io.File
+import androidx.compose.ui.layout.ContentScale
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -64,6 +67,8 @@ fun CallScreen(
     val isRemoteVideoOn by viewModel.isRemoteVideoOn.collectAsState()
     val isControlsVisible by viewModel.isControlsVisible.collectAsState()
     val isSwappedVideo by viewModel.isSwappedVideo.collectAsState()
+    val remoteAudioLevel by viewModel.remoteAudioLevel.collectAsState()
+    val profilePhotoPath by viewModel.profilePhotoPath.collectAsState()
 
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var showEndDialog by remember { mutableStateOf(false) }
@@ -72,7 +77,8 @@ fun CallScreen(
     val callEngine = remember {
         CallEngine(
             onRemoteVideoStateChanged = { viewModel.setRemoteVideo(it) },
-            onLocalVideoStateChanged = { viewModel.setLocalVideo(it) }
+            onLocalVideoStateChanged = { viewModel.setLocalVideo(it) },
+            onAudioLevelChanged = { viewModel.setRemoteAudioLevel(it) }
         )
     }
 
@@ -204,6 +210,9 @@ fun CallScreen(
                 ) {
                     CallAvatar(
                         isConnecting = callState == CallState.CONNECTING,
+                        isActive = callState == CallState.ACTIVE,
+                        profilePhotoPath = profilePhotoPath,
+                        audioLevel = remoteAudioLevel,
                         modifier = Modifier.padding(bottom = 80.dp)
                     )
                 }
@@ -337,6 +346,9 @@ private fun CallHeader(
 @Composable
 private fun CallAvatar(
     isConnecting: Boolean,
+    isActive: Boolean = false,
+    profilePhotoPath: String? = null,
+    audioLevel: Float = 0f,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -348,6 +360,25 @@ private fun CallAvatar(
             repeat(2) { index ->
                 PulseRing(delayMs = index * 600)
             }
+        }
+
+        // Dynamic pulse ring (when connected/active) based on volume
+        if (isActive && audioLevel > 0f) {
+            val dynamicScale by animateFloatAsState(
+                targetValue = 1f + (audioLevel * 0.8f),
+                animationSpec = tween(100, easing = LinearOutSlowInEasing)
+            )
+            val dynamicAlpha by animateFloatAsState(
+                targetValue = 0.5f * audioLevel,
+                animationSpec = tween(100, easing = LinearOutSlowInEasing)
+            )
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .scale(dynamicScale)
+                    .clip(CircleShape)
+                    .background(CallAccent.copy(alpha = dynamicAlpha.coerceIn(0f, 1f)))
+            )
         }
 
         // Avatar circle
@@ -362,12 +393,21 @@ private fun CallAvatar(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Filled.Person,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(56.dp)
-            )
+            if (profilePhotoPath != null && File(profilePhotoPath).exists()) {
+                AsyncImage(
+                    model = File(profilePhotoPath),
+                    contentDescription = "Profile Picture",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(56.dp)
+                )
+            }
         }
     }
 }
