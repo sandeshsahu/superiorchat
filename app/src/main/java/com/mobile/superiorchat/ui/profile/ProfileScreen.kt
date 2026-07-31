@@ -371,10 +371,10 @@ private fun ProfileHeroHeader(
                     modifier = Modifier
                         .size(32.dp)
                         .offset(x = (-2).dp, y = (-2).dp)
+                        .bounceClick(onClick = onEditPhotoClick)
                         .glow(color = PrimaryLight.copy(0.5f), radius = 14f, dy = 4f, cornerRadius = 16.dp)
                         .clip(CircleShape)
-                        .background(PrimaryLight)
-                        .bounceClick(onClick = onEditPhotoClick),
+                        .background(PrimaryLight),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Filled.Edit, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(15.dp))

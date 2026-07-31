@@ -93,8 +93,7 @@ fun Modifier.bounceClick(
     scaleDown: Float = 0.95f,
     onClick: () -> Unit = {}
 ): Modifier = composed {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (isPressed) scaleDown else 1f,
         label = "bounceClick_scale"
@@ -106,10 +105,20 @@ fun Modifier.bounceClick(
             scaleY = scale
         }
         .clickable(
-            interactionSource = interactionSource,
+            interactionSource = remember { MutableInteractionSource() },
             indication = null,
             onClick = { onClick() }
         )
+        .pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitFirstDown(requireUnconsumed = false)
+                    isPressed = true
+                    waitForUpOrCancellation()
+                    isPressed = false
+                }
+            }
+        }
 }
 
 // ══════════════════════════════════════════════════════════

@@ -106,8 +106,6 @@ fun LogsScreen() {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
-                    .border(1.dp, ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
                     .bounceClick(scaleDown = 0.95f) {
                         val currentCat = tabs[selectedIndex].category
                         if (currentCat != null) {
@@ -115,7 +113,9 @@ fun LogsScreen() {
                         } else {
                             AppLog.clearAllLogs()
                         }
-                    },
+                    }
+                    .background(ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                    .border(1.dp, ErrorRed.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Delete, contentDescription = "Clear", tint = ErrorRed)
@@ -163,12 +163,12 @@ fun LogsScreen() {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
-                        .background(animatedBgColor, RoundedCornerShape(20.dp))
-                        .border(1.dp, DividerColor, RoundedCornerShape(20.dp))
                         .bounceClick(scaleDown = 0.95f) { 
                             selectedIndex = index
                             coroutineScope.launch { pagerState.animateScrollToPage(index) }
                         }
+                        .background(animatedBgColor, RoundedCornerShape(20.dp))
+                        .border(1.dp, DividerColor, RoundedCornerShape(20.dp))
                         .padding(horizontal = 20.dp, vertical = 10.dp)
                 ) {
                     Icon(

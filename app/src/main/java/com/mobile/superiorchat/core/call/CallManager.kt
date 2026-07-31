@@ -27,6 +27,8 @@ import java.util.UUID
 
 enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING }
 
+enum class CallError { NONE, INVALID_URL, NETWORK_ERROR, NO_ANSWER }
+
 /**
  * Singleton managing the full call lifecycle: state machine, audio hardware,
  * proximity sensor, and duration timer.
@@ -45,11 +47,11 @@ object CallManager {
     private val _callDuration = MutableStateFlow(0L)
     val callDuration: StateFlow<Long> = _callDuration
 
-    private val _lastCallFailedDueToError = MutableStateFlow(false)
-    val lastCallFailedDueToError: StateFlow<Boolean> = _lastCallFailedDueToError.asStateFlow()
+    private val _lastCallFailedDueToError = MutableStateFlow(CallError.NONE)
+    val lastCallFailedDueToError: StateFlow<CallError> = _lastCallFailedDueToError.asStateFlow()
         
     fun clearCallError() {
-        _lastCallFailedDueToError.value = false
+        _lastCallFailedDueToError.value = CallError.NONE
     }
 
     fun formatDuration(seconds: Long): String {
@@ -118,6 +120,8 @@ object CallManager {
         val baseUrl = Prefs.getInstance(context).webrtcBaseUrl.removeSuffix("/")
         currentBaseUrl = baseUrl
 
+        var networkFailed = false
+
         // DEVELOPER NOTICE: Pre-flight Validation
         // If you change the WebRTC server's HTML structure or title, you MUST update this validation logic.
         // It prevents the app from spamming Telegram with broken/invalid links if the URL is wrong.
@@ -137,13 +141,14 @@ object CallManager {
                     false
                 }
             } catch (e: Exception) {
+                networkFailed = true
                 false
             }
         }
         
         if (!isValid) {
             AppLog.log(LogCategory.SYSTEM, "WebRTC URL Validation Failed for: $baseUrl")
-            markFailed()
+            markFailed(if (networkFailed) CallError.NETWORK_ERROR else CallError.INVALID_URL)
             return null
         }
 
@@ -178,6 +183,7 @@ object CallManager {
             if (_callState.value == CallState.CONNECTING) {
                 AppLog.log(LogCategory.SYSTEM, "Call timeout - no answer")
                 StatusFlow.reportStatus(SyncState.ERROR, "No answer")
+                _lastCallFailedDueToError.value = CallError.NO_ANSWER
                 endCall()
             }
         }
@@ -216,10 +222,10 @@ object CallManager {
     /**
      * Triggered by WebRTC error or timeout. End call but also signal failure for UI handling.
      */
-    fun markFailed() {
+    fun markFailed(error: CallError = CallError.INVALID_URL) {
         timeoutJob?.cancel()
-        AppLog.log(LogCategory.SYSTEM, "Call Failed due to connection/URL issues.")
-        _lastCallFailedDueToError.value = true
+        AppLog.log(LogCategory.SYSTEM, "Call Failed due to: $error")
+        _lastCallFailedDueToError.value = error
         endCall()
     }
 

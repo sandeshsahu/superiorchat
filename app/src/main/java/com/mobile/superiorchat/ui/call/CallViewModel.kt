@@ -75,9 +75,9 @@ class CallViewModel : ViewModel() {
         _profilePhotoPath.value = null
     }
 
-    fun initiateCall(context: Context) {
+    suspend fun initiateCall(context: Context): Boolean {
         resetState()
-        viewModelScope.launch(Dispatchers.IO) {
+        return kotlinx.coroutines.withContext(Dispatchers.IO) {
             val prefs = AppGraph.prefs
             val chat = prefs.chatId
             
@@ -85,7 +85,7 @@ class CallViewModel : ViewModel() {
             val profile = AppGraph.database.profileDao().getProfileSync(chat)
             _profilePhotoPath.value = profile?.profilePhotoPath
 
-            val callUrls = CallManager.initCall(context) ?: return@launch
+            val callUrls = CallManager.initCall(context) ?: return@withContext false
             val (vercelUrl, telegramUrl) = callUrls
             val token = prefs.botToken
             if (token.isNotEmpty() && chat.isNotEmpty()) {
@@ -118,16 +118,23 @@ class CallViewModel : ViewModel() {
                                 CallManager.startTimeout()
                             }
                             monitorCallTermination(token, chat, msgId, botName)
+                            true
                         } else {
                             AppLog.log(LogCategory.ERROR, "Failed to deliver call link to Telegram.")
                             StatusFlow.reportStatus(SyncState.ERROR, "Failed to send link")
                             CallManager.endCall()
+                            false
                         }
+                    } else {
+                        false
                     }
                 } catch (e: Exception) {
                     AppLog.log(LogCategory.ERROR, "Failed to send call link: ${e.message}")
                     CallManager.endCall()
+                    false
                 }
+            } else {
+                false
             }
         }
     }

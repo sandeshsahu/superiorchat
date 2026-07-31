@@ -23,6 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -293,6 +294,9 @@ fun ActionDialog(
     dismissText: String = "Dismiss",
     neutralText: String? = null,
     onNeutral: (() -> Unit)? = null,
+    autoDismiss: Boolean = true,
+    isLoading: Boolean = false,
+    isSuccess: Boolean = false,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -393,8 +397,12 @@ fun ActionDialog(
             
             Button(
                 onClick = {
-                    onConfirm()
-                    onDismiss()
+                    if (!isLoading && !isSuccess) {
+                        onConfirm()
+                        if (autoDismiss) {
+                            onDismiss()
+                        }
+                    }
                 },
                 modifier = Modifier.height(40.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -404,7 +412,21 @@ fun ActionDialog(
                 shape = RoundedCornerShape(24.dp),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
             ) {
-                Text(confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = if (iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else iconTint
+                    )
+                } else if (isSuccess) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = "Success",
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Text(confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
             }
         }
     }

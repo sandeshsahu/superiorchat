@@ -209,8 +209,8 @@ fun SettingsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
-                            .background(SurfaceLevel2, RoundedCornerShape(12.dp))
-                            .bounceClick(scaleDown = 0.95f) { showAddManuallyDialog = true },
+                            .bounceClick(scaleDown = 0.95f) { showAddManuallyDialog = true }
+                            .background(SurfaceLevel2, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(if (isConfigured) "Edit Manually" else "Add Manually", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -220,13 +220,13 @@ fun SettingsScreen(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
-                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
-                            .background(PrimaryLight, RoundedCornerShape(12.dp))
                             .bounceClick(scaleDown = 0.95f) {
                                 permissionHandler.requestCamera {
                                     showQrScanner = true
                                 }
-                            },
+                            }
+                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(PrimaryLight, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("Scan QR Code", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -404,13 +404,13 @@ fun SettingsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp)
-                            .glow(color = if (isSaved) Success else if (isValid) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
-                            .background(if (isSaved) Success else if (isValid) PrimaryLight else SurfaceLevel2, RoundedCornerShape(12.dp))
                             .bounceClick(scaleDown = 0.95f) {
                                 if (isValid && !isSaved) {
                                     showWarning = true
                                 }
-                            },
+                            }
+                            .glow(color = if (isSaved) Success else if (isValid) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                            .background(if (isSaved) Success else if (isValid) PrimaryLight else SurfaceLevel2, RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         AnimatedContent(
@@ -477,8 +477,8 @@ fun SettingsScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
-                        .background(SurfaceLevel2, RoundedCornerShape(12.dp))
-                        .bounceClick(scaleDown = 0.95f) { showDeveloperWarning = true },
+                        .bounceClick(scaleDown = 0.95f) { showDeveloperWarning = true }
+                        .background(SurfaceLevel2, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Change Server", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -488,13 +488,13 @@ fun SettingsScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
-                        .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
-                        .background(PrimaryLight, RoundedCornerShape(12.dp))
                         .bounceClick(scaleDown = 0.95f) {
                             onWebrtcBaseUrlChange(com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL)
                             onSave()
                             com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "WebRTC URL Reset")
-                        },
+                        }
+                        .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
+                        .background(PrimaryLight, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text("Reset to Default", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)

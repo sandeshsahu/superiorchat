@@ -64,6 +64,8 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
     Settings("App Settings", Icons.Filled.Settings)
 }
 
+enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, SUCCESS }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScreen(
@@ -80,7 +82,7 @@ fun AppScreen(
     
     val callViewModel: CallViewModel = viewModel()
     var isCallMinimized by remember { mutableStateOf(false) }
-    var showCallConfirmation by remember { mutableStateOf(false) }
+    var callConfirmationState by remember { mutableStateOf(CallInitiationState.IDLE) }
 
     val activity = context as? android.app.Activity
     LaunchedEffect(drawerState.isOpen) {
@@ -285,8 +287,11 @@ fun AppScreen(
                         actions = {
                             if (currentScreen == NavScreen.Chat || currentScreen == NavScreen.Logs) {
                                 if (currentScreen == NavScreen.Chat) {
-                                    IconButton(onClick = { showCallConfirmation = true }) {
-                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                                    val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
+                                    if (canCall) {
+                                        IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
+                                            Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                                        }
                                     }
                                 }
                                 IconButton(onClick = { currentScreen = NavScreen.Settings }) {
@@ -403,7 +408,7 @@ fun AppScreen(
                 val callState by CallManager.callState.collectAsState()
                 
                 // Show Call Screen Overlay (Kept in composition even when minimized)
-                if (callState != CallState.IDLE) {
+                if (callState != CallState.IDLE && callConfirmationState == CallInitiationState.IDLE) {
                     val roomId = CallManager.currentRoomId
                     if (roomId != null) {
                         val secret = CallManager.currentSecret
@@ -428,19 +433,27 @@ fun AppScreen(
                     }
                 }
                 
-                val callFailed by CallManager.lastCallFailedDueToError.collectAsState()
+                val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
                 
-                if (callFailed) {
+                if (callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && callState == CallState.IDLE) {
+                    val (title, message, confirm) = when (callFailedError) {
+                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call failed to connect. Please check your internet connection.", "Okay")
+                        com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was not answered.", "Okay")
+                        else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid Server URL*. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
+                    }
+                    
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                        title = "Call Failed",
-                        message = "The call failed to connect. This is often caused by an *Invalid Server URL*. Would you like to check your Settings and *Reset to Default*?",
+                        title = title,
+                        message = message,
                         icon = androidx.compose.material.icons.Icons.Filled.Warning,
                         iconTint = com.mobile.superiorchat.theme.ErrorRed,
-                        confirmText = "Go to Settings",
-                        dismissText = "Cancel",
+                        confirmText = confirm,
+                        dismissText = if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL) "Cancel" else "Dismiss",
                         onConfirm = {
                             CallManager.clearCallError()
-                            currentScreen = NavScreen.Settings
+                            if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL) {
+                                currentScreen = NavScreen.Settings
+                            }
                         },
                         onDismiss = {
                             CallManager.clearCallError()
@@ -448,27 +461,44 @@ fun AppScreen(
                     )
                 }
                 
-                if (showCallConfirmation) {
+                if (callConfirmationState != CallInitiationState.IDLE) {
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                        title = "Start Secure Call?",
+                        title = when (callConfirmationState) {
+                            CallInitiationState.VALIDATING -> "Validating Servers..."
+                            CallInitiationState.SUCCESS -> "Call Started"
+                            else -> "Start Secure Call"
+                        },
                         message = "A secure peer-to-peer connection link will be generated and sent to the chat.",
                         note = "This feature is *Experimental* and calls may be blocked by strict carrier networks, corporate firewalls, or hotel/public Wi-Fi. *Not guaranteed* to work on all devices.",
                         icon = Icons.Filled.Phone,
                         iconTint = ErrorRed,
                         confirmText = "Start Call",
                         dismissText = "Cancel",
+                        autoDismiss = false,
+                        isLoading = callConfirmationState == CallInitiationState.VALIDATING,
+                        isSuccess = callConfirmationState == CallInitiationState.SUCCESS,
                         onConfirm = {
-                            showCallConfirmation = false
-                            val startCall = {
-                                viewModel.refreshPermissions()
-                                callViewModel.initiateCall(context)
-                                isCallMinimized = false
+                            if (callConfirmationState == CallInitiationState.CONFIRMATION) {
+                                permissionHandler.requestAudioAndCamera {
+                                    callConfirmationState = CallInitiationState.VALIDATING
+                                    scope.launch {
+                                        val success = callViewModel.initiateCall(context)
+                                        if (success) {
+                                            callConfirmationState = CallInitiationState.SUCCESS
+                                            kotlinx.coroutines.delay(500)
+                                            callConfirmationState = CallInitiationState.IDLE
+                                            isCallMinimized = false
+                                        } else {
+                                            callConfirmationState = CallInitiationState.IDLE
+                                        }
+                                    }
+                                }
                             }
-                            // Request Audio AND Camera permissions unified flow
-                            permissionHandler.requestAudioAndCamera { startCall() }
                         },
                         onDismiss = {
-                            showCallConfirmation = false
+                            if (callConfirmationState == CallInitiationState.CONFIRMATION) {
+                                callConfirmationState = CallInitiationState.IDLE
+                            }
                         }
                     )
                 }
