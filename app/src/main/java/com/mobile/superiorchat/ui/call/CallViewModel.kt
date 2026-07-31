@@ -21,8 +21,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.asSharedFlow
 
-enum class CallInitiationResult { SUCCESS, VALIDATION_FAILED, TELEGRAM_FAILED }
+enum class CallInitiationResult { SUCCESS, VALIDATION_FAILED, TELEGRAM_FAILED, HARDWARE_INIT }
 
 class CallViewModel : ViewModel() {
 
@@ -36,6 +37,11 @@ class CallViewModel : ViewModel() {
     val isRemoteVideoOn: StateFlow<Boolean> = _isRemoteVideoOn.asStateFlow()
 
     private val _isControlsVisible = MutableStateFlow(true)
+    private val _hardwareReadyEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
+    val hardwareReadyEvent = _hardwareReadyEvent.asSharedFlow()
+
+    private var currentTelegramUrl: String? = null
+
     val isControlsVisible: StateFlow<Boolean> = _isControlsVisible.asStateFlow()
 
     private val _isSwappedVideo = MutableStateFlow(false)
@@ -78,7 +84,7 @@ class CallViewModel : ViewModel() {
         _profilePhotoPath.value = null
     }
 
-    suspend fun initiateCall(context: Context, onValidationSuccess: () -> Unit): CallInitiationResult {
+    suspend fun initiateCall(context: Context): CallInitiationResult {
         resetState()
         return kotlinx.coroutines.withContext(Dispatchers.IO) {
             val prefs = AppGraph.prefs
@@ -89,11 +95,28 @@ class CallViewModel : ViewModel() {
             _profilePhotoPath.value = profile?.profilePhotoPath
 
             val callUrls = CallManager.initCall(context) ?: return@withContext CallInitiationResult.VALIDATION_FAILED
-            onValidationSuccess()
             
-            val (vercelUrl, telegramUrl) = callUrls
+            val (_, telegramUrl) = callUrls
+            currentTelegramUrl = telegramUrl
+            
+            CallInitiationResult.HARDWARE_INIT
+        }
+    }
+    
+    fun onHardwareReady() {
+        viewModelScope.launch {
+            _hardwareReadyEvent.emit(Unit)
+        }
+    }
+
+    suspend fun sendTelegramLink(): CallInitiationResult {
+        return kotlinx.coroutines.withContext(Dispatchers.IO) {
+            val prefs = AppGraph.prefs
+            val chat = prefs.chatId
             val token = prefs.botToken
-            if (token.isNotEmpty() && chat.isNotEmpty()) {
+            val telegramUrl = currentTelegramUrl
+            
+            if (token.isNotEmpty() && chat.isNotEmpty() && telegramUrl != null) {
                 try {
                     val me = TelegramApi.getMe(token)
                     val botName = me?.result?.first_name ?: "SuperiorChat"

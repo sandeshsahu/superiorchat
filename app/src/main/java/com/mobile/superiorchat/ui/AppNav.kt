@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.profile.ProfileScreen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobile.superiorchat.ui.call.CallScreen
 import com.mobile.superiorchat.ui.call.CallViewModel
@@ -64,7 +65,7 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
     Settings("App Settings", Icons.Filled.Settings)
 }
 
-enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, SENDING_LINK, FAILED_SENDING, SUCCESS }
+enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, INITIALIZING_HARDWARE, SENDING_LINK, FAILED_SENDING, SUCCESS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -376,6 +377,10 @@ fun AppScreen(
                         NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
                         NavScreen.Logs -> LogsScreen()
                         NavScreen.Settings -> {
+                            LaunchedEffect(Unit) {
+                                viewModel.webrtcBaseUrl = com.mobile.superiorchat.core.AppGraph.prefs.webrtcBaseUrl
+                            }
+                            
                             val tokenStatusText = when {
                                 !viewModel.hasCredentials -> "Invalid"
                                 !isNetworkAvailable -> "Offline"
@@ -407,14 +412,14 @@ fun AppScreen(
                 
                 val callState by CallManager.callState.collectAsState()
                 
-                // Show Call Screen Overlay (Kept in composition even when minimized)
-                if (callState != CallState.IDLE && callConfirmationState == CallInitiationState.IDLE) {
+                // Show Call Screen Overlay (Kept in composition even when minimized or during popup)
+                if (callState != CallState.IDLE) {
                     val roomId = CallManager.currentRoomId
                     if (roomId != null) {
                         val secret = CallManager.currentSecret
                         CallScreen(
-                            url = "${CallManager.currentBaseUrl}/?host=$roomId&secret=$secret",
-                            isMinimized = isCallMinimized,
+                            url = "${CallManager.currentBaseUrl}/call.html?host=$roomId&secret=$secret",
+                            isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE,
                             onMinimize = { isCallMinimized = true },
                             onMaximize = { 
                                 keyboardController?.hide()
@@ -437,7 +442,7 @@ fun AppScreen(
                 
                 if (callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && callState == CallState.IDLE) {
                     val (title, message, confirm) = when (callFailedError) {
-                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call failed to *Connect*.\nYour connection is *Unstable* or device is *Offline*.\n\nPlease check your *Internet Connection*.", "Okay")
+                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call *Failed to Connect*.\nYour internet connection might be *Unstable* or device is completely *Offline*.\n\nPlease check your *Internet Connection*.", "Okay")
                         com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.", "Okay")
                         else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid Server URL*. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
                     }
@@ -463,17 +468,22 @@ fun AppScreen(
                 
                 if (callConfirmationState != CallInitiationState.IDLE) {
                     val isFailed = callConfirmationState == CallInitiationState.FAILED_SENDING
-                    val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.SENDING_LINK
+                    val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.SENDING_LINK
                     
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
                         title = when (callConfirmationState) {
                             CallInitiationState.VALIDATING -> "Validating Servers..."
+                            CallInitiationState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
                             CallInitiationState.SENDING_LINK -> "Sending Invite Link..."
                             CallInitiationState.FAILED_SENDING -> "Invite Link Failed"
                             CallInitiationState.SUCCESS -> "Call Started"
                             else -> "Start Secure Call"
                         },
-                        message = if (isFailed) "Failed to deliver the invite link to Telegram. Please check your connection and try again." else "A secure peer-to-peer connection link will be generated and sent to the chat.",
+                        message = when {
+                            isFailed -> "Failed to deliver the invite link to Telegram. Please check your connection and try again."
+                            callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone..."
+                            else -> "A secure peer-to-peer connection link will be generated and sent to the chat."
+                        },
                         note = if (isFailed) null else "This feature is **Experimental** and calls may be blocked by strict carrier networks, corporate firewalls, or hotel/public Wi-Fi. **Not guaranteed** to work on all devices.",
                         icon = if (isFailed) Icons.Filled.Warning else Icons.Filled.Phone,
                         iconTint = ErrorRed,
@@ -487,31 +497,45 @@ fun AppScreen(
                                 permissionHandler.requestAudioAndCamera {
                                     callConfirmationState = CallInitiationState.VALIDATING
                                     scope.launch {
-                                        val result = callViewModel.initiateCall(context) {
-                                            callConfirmationState = CallInitiationState.SENDING_LINK
-                                        }
+                                        val result = callViewModel.initiateCall(context)
                                         when (result) {
-                                            com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS -> {
-                                                callConfirmationState = CallInitiationState.SUCCESS
-                                                kotlinx.coroutines.delay(500)
-                                                callConfirmationState = CallInitiationState.IDLE
-                                                isCallMinimized = false
-                                            }
-                                            com.mobile.superiorchat.ui.call.CallInitiationResult.TELEGRAM_FAILED -> {
-                                                callConfirmationState = CallInitiationState.FAILED_SENDING
+                                            com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
+                                                callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
                                             }
                                             com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
                                                 callConfirmationState = CallInitiationState.IDLE
                                             }
+                                            else -> {} // SUCCESS and TELEGRAM_FAILED handled in sendTelegramLink
                                         }
                                     }
                                 }
                             }
                         },
                         onDismiss = {
+                            if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.VALIDATING) {
+                                CallManager.endCall()
+                            }
                             callConfirmationState = CallInitiationState.IDLE
                         }
                     )
+                }
+
+                // Handle Hardware Ready Callback from ViewModel
+                LaunchedEffect(Unit) {
+                    callViewModel.hardwareReadyEvent.collectLatest { 
+                        if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                            callConfirmationState = CallInitiationState.SENDING_LINK
+                            val result = callViewModel.sendTelegramLink()
+                            if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
+                                callConfirmationState = CallInitiationState.SUCCESS
+                                kotlinx.coroutines.delay(500)
+                                callConfirmationState = CallInitiationState.IDLE
+                                isCallMinimized = false
+                            } else {
+                                callConfirmationState = CallInitiationState.FAILED_SENDING
+                            }
+                        }
+                    }
                 }
             }
         }

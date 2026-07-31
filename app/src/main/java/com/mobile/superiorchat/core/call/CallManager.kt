@@ -103,7 +103,7 @@ object CallManager {
         private set
 
     /** Timeout before auto-ending an unanswered call. */
-    private const val CALL_TIMEOUT_MS = 30_000L
+    private const val CALL_TIMEOUT_MS = 45_000L
 
     /** Grace period for the ENDING state before resetting to IDLE. */
     private const val ENDING_DELAY_MS = 1_500L
@@ -112,66 +112,109 @@ object CallManager {
     //  Call Lifecycle
     // ─────────────────────────────────────────────────────────
 
+    data class ValidationResult(val url: String?, val networkFailed: Boolean)
+
+    suspend fun findWorkingFallbackUrl(context: Context, urlsToTry: List<String>, isCallValidation: Boolean = false): ValidationResult {
+        val roomId = UUID.randomUUID().toString()
+        val secret = UUID.randomUUID().toString()
+        var workingBaseUrl: String? = null
+        var networkFailed = false
+
+        for (baseUrl in urlsToTry) {
+            val isValid = withContext(Dispatchers.IO) {
+                try {
+                    val url = java.net.URL("$baseUrl/call.html?host=$roomId&secret=$secret")
+                    val connection = url.openConnection() as java.net.HttpURLConnection
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
+                    connection.connectTimeout = 3000
+                    connection.readTimeout = 3000
+                    connection.requestMethod = "GET"
+                    connection.connect()
+                    
+                    if (connection.responseCode == 200) {
+                        val html = connection.inputStream.bufferedReader().use { it.readText() }
+                        html.contains("<title>Superiorchat Connect</title>") || html.contains("id=\"ui-layer\"")
+                    } else {
+                        false
+                    }
+                } catch (e: Exception) {
+                    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                    val activeNetwork = cm.activeNetwork
+                    val capabilities = activeNetwork?.let { cm.getNetworkCapabilities(it) }
+                    val hasInternet = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                    
+                    if (!hasInternet) networkFailed = true
+                    false
+                }
+            }
+            
+            if (isValid) {
+                workingBaseUrl = baseUrl
+                break
+            }
+            
+            if (isCallValidation && (_callState.value == CallState.ENDING || _callState.value == CallState.IDLE)) {
+                AppLog.log(LogCategory.SYSTEM, "Call cancelled by user during URL validation")
+                return ValidationResult(null, false)
+            }
+        }
+
+        if (workingBaseUrl == null && isCallValidation) {
+            AppLog.log(LogCategory.SYSTEM, "WebRTC URL Validation Failed for all domains")
+            markFailed(if (networkFailed) CallError.NETWORK_ERROR else CallError.INVALID_URL)
+        }
+        
+        return ValidationResult(workingBaseUrl, networkFailed)
+    }
+
     /**
      * Initiates a new call: generates room/secret, configures audio hardware,
      * and returns a pair of (hostUrl, guestUrl).
      */
     suspend fun initCall(context: Context): Pair<String, String>? {
-        val baseUrl = Prefs.getInstance(context).webrtcBaseUrl.removeSuffix("/")
-        currentBaseUrl = baseUrl
-
-        var networkFailed = false
-
-        // DEVELOPER NOTICE: Pre-flight Validation
-        // If you change the WebRTC server's HTML structure or title, you MUST update this validation logic.
-        // It prevents the app from spamming Telegram with broken/invalid links if the URL is wrong.
-        val isValid = withContext(Dispatchers.IO) {
-            try {
-                val url = java.net.URL(baseUrl)
-                val connection = url.openConnection() as java.net.HttpURLConnection
-                connection.connectTimeout = 3000
-                connection.readTimeout = 3000
-                connection.requestMethod = "GET"
-                connection.connect()
-                
-                if (connection.responseCode == 200) {
-                    val html = connection.inputStream.bufferedReader().use { it.readText() }
-                    html.contains("<title>SuperiorChat Connect</title>") || html.contains("id=\"ui-layer\"")
-                } else {
-                    false
-                }
-            } catch (e: Exception) {
-                val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-                val activeNetwork = cm.activeNetwork
-                val capabilities = activeNetwork?.let { cm.getNetworkCapabilities(it) }
-                val hasInternet = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-                
-                networkFailed = !hasInternet
-                false
-            }
-        }
+        val prefs = Prefs.getInstance(context)
+        val currentSavedUrl = prefs.webrtcBaseUrl.removeSuffix("/")
+        val fallbackUrls = context.resources.getStringArray(com.mobile.superiorchat.R.array.webrtc_fallback_urls).map { it.removeSuffix("/") }.shuffled()
         
-        if (!isValid) {
-            AppLog.log(LogCategory.SYSTEM, "WebRTC URL Validation Failed for: $baseUrl")
-            markFailed(if (networkFailed) CallError.NETWORK_ERROR else CallError.INVALID_URL)
+        val urlsToTry = if (currentSavedUrl.isNotEmpty() && !fallbackUrls.contains(currentSavedUrl)) {
+            // Custom user-provided URL. Do not auto-fallback if it fails.
+            listOf(currentSavedUrl)
+        } else {
+            // Default URL. Prioritize current, then fallback to remaining random defaults if limits are hit.
+            (listOfNotNull(currentSavedUrl.takeIf { it.isNotEmpty() }) + fallbackUrls).distinct()
+        }
+
+        // Set state to CONNECTING before validation so the concurrency check works
+        _callState.value = CallState.CONNECTING
+        _callDuration.value = 0L
+
+        // Generate call credentials early so we can use them in the validation ping.
+        val roomId = UUID.randomUUID().toString()
+        val secret = UUID.randomUUID().toString()
+        
+        val result = findWorkingFallbackUrl(context, urlsToTry, isCallValidation = true)
+        val workingBaseUrl = result.url
+        
+        if (workingBaseUrl == null) {
             return null
         }
+        
+        // Save the working URL so it's prioritized next time
+        if (workingBaseUrl != currentSavedUrl) {
+            prefs.webrtcBaseUrl = workingBaseUrl
+        }
+        currentBaseUrl = workingBaseUrl
 
         setupHardware(context.applicationContext)
         AudioPlayer.stop()
 
-        _callState.value = CallState.CONNECTING
-        _callDuration.value = 0L
-
-        val roomId = UUID.randomUUID().toString()
-        val secret = UUID.randomUUID().toString()
         currentRoomId = roomId
         currentSecret = secret
 
-        val vercelUrl = "$baseUrl/?host=$roomId&secret=$secret"
-        val telegramUrl = "$baseUrl/?join=$roomId&secret=$secret"
+        val vercelUrl = "$workingBaseUrl/call.html?host=$roomId&secret=$secret"
+        val telegramUrl = "$workingBaseUrl/call.html?join=$roomId&secret=$secret"
 
-        AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId on host $baseUrl")
+        AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId on host $workingBaseUrl")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")
 
         return Pair(vercelUrl, telegramUrl)

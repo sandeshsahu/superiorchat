@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -70,8 +71,12 @@ fun SettingsScreen(
     var showQrScanner by remember { mutableStateOf(false) }
     var showDeveloperWarning by remember { mutableStateOf(false) }
     var showWebRtcConfigPopup by remember { mutableStateOf(false) }
+    var isResettingWebRtc by remember { mutableStateOf(false) }
+    var showAllServersUnavailable by remember { mutableStateOf(false) }
+    var showNetworkError by remember { mutableStateOf(false) }
     var tempChatId by remember { mutableStateOf(chatId) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     
     val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
     
@@ -124,6 +129,38 @@ fun SettingsScreen(
                 showWebRtcConfigPopup = true
             },
             onDismiss = { showDeveloperWarning = false }
+        )
+    }
+
+    if (showAllServersUnavailable) {
+        com.mobile.superiorchat.ui.components.popups.ActionDialog(
+            title = "Servers Unavailable",
+            message = "All working servers are currently *Unavailable*.\nPlease contact the *Developer* or check the GitHub page to learn how to deploy your own static *PeerJS signaling server*.",
+            icon = Icons.Filled.Warning,
+            iconTint = ErrorRed,
+            confirmText = "Okay",
+            dismissText = "",
+            onConfirm = { showAllServersUnavailable = false },
+            onDismiss = { showAllServersUnavailable = false },
+            isLoading = false,
+            isSuccess = false,
+            autoDismiss = true
+        )
+    }
+
+    if (showNetworkError) {
+        com.mobile.superiorchat.ui.components.popups.ActionDialog(
+            title = "No Internet Connection",
+            message = "Please check your network connection and try again.",
+            icon = Icons.Filled.Warning,
+            iconTint = ErrorRed,
+            confirmText = "Okay",
+            dismissText = "",
+            onConfirm = { showNetworkError = false },
+            onDismiss = { showNetworkError = false },
+            isLoading = false,
+            isSuccess = false,
+            autoDismiss = true
         )
     }
 
@@ -489,15 +526,38 @@ fun SettingsScreen(
                         .weight(1f)
                         .height(48.dp)
                         .bounceClick(scaleDown = 0.95f) {
-                            onWebrtcBaseUrlChange(com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL)
-                            onSave()
-                            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "WebRTC URL Reset")
+                            if (isResettingWebRtc) return@bounceClick
+                            
+                            scope.launch {
+                                isResettingWebRtc = true
+                                val fallbackUrls = context.resources.getStringArray(com.mobile.superiorchat.R.array.webrtc_fallback_urls).toList().shuffled()
+                                val result = com.mobile.superiorchat.core.call.CallManager.findWorkingFallbackUrl(context, fallbackUrls)
+                                
+                                if (result.url != null) {
+                                    onWebrtcBaseUrlChange(result.url)
+                                    onSave()
+                                    com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "WebRTC URL Reset")
+                                } else if (result.networkFailed) {
+                                    showNetworkError = true
+                                } else {
+                                    showAllServersUnavailable = true
+                                }
+                                isResettingWebRtc = false
+                            }
                         }
                         .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 12.dp)
                         .background(PrimaryLight, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Reset to Default", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    if (isResettingWebRtc) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    } else {
+                        Text("Reset to Default", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

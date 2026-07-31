@@ -33,6 +33,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -744,8 +746,11 @@ fun WebRtcConfigPopup(
     onDismiss: () -> Unit,
     onSave: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val fallbackUrls = remember { context.resources.getStringArray(com.mobile.superiorchat.R.array.webrtc_fallback_urls).toList() }
+    val defaultUrl = fallbackUrls.firstOrNull() ?: ""
     var baseUrl by remember { 
-        mutableStateOf(if (initialUrl == com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL) "" else initialUrl) 
+        mutableStateOf(if (fallbackUrls.contains(initialUrl) || initialUrl.isEmpty()) "" else initialUrl) 
     }
     val isValid by remember(baseUrl) { 
         derivedStateOf { 
@@ -822,7 +827,7 @@ fun WebRtcConfigPopup(
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) {
                         if (isValid) {
-                            val finalUrl = if (baseUrl.isBlank()) com.mobile.superiorchat.data.Prefs.DEFAULT_WEBRTC_URL else baseUrl.trim()
+                            val finalUrl = if (baseUrl.isBlank()) defaultUrl else baseUrl.trim()
                             onSave(finalUrl)
                         }
                     }

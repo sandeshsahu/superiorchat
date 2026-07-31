@@ -99,6 +99,7 @@ fun CallScreen(
         CallEngine(
             onRemoteVideoStateChanged = { viewModel.setRemoteVideo(it) },
             onLocalVideoStateChanged = { viewModel.setLocalVideo(it) },
+            onHardwareReady = { viewModel.onHardwareReady() },
             onAudioLevelChanged = { viewModel.setRemoteAudioLevel(it) },
             onVideoSwapped = { viewModel.setSwappedVideo(it) }
         )
@@ -391,7 +392,7 @@ fun CallScreen(
                                 )
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Text(
-                                    text = "The Invitation link has been sent to Telegram.\nThe call will end if not answered within 30s.",
+                                    text = "The Invitation link has been sent to Telegram.\nThe call will end if not answered within 45s.",
                                     color = CallTextSecondary,
                                     fontSize = 13.sp,
                                     lineHeight = 18.sp

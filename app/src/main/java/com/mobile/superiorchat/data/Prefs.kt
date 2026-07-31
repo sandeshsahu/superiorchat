@@ -8,8 +8,6 @@ import androidx.security.crypto.MasterKey
 class Prefs private constructor(context: Context) {
 
     companion object {
-        const val DEFAULT_WEBRTC_URL = "https://superiorchat-connect.vercel.app"
-
         @Volatile
         private var instance: Prefs? = null
 
@@ -64,7 +62,10 @@ class Prefs private constructor(context: Context) {
             }
         }
 
-    private var _webrtcBaseUrl: String = sharedPreferences.getString("webrtc_base_url", DEFAULT_WEBRTC_URL) ?: DEFAULT_WEBRTC_URL
+    private var _webrtcBaseUrl: String = sharedPreferences.getString(
+        "webrtc_base_url", 
+        null
+    ) ?: context.resources.getStringArray(com.mobile.superiorchat.R.array.webrtc_fallback_urls).firstOrNull() ?: ""
     var webrtcBaseUrl: String
         get() = _webrtcBaseUrl
         set(value) {
