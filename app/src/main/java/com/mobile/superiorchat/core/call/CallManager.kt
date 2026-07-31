@@ -141,7 +141,12 @@ object CallManager {
                     false
                 }
             } catch (e: Exception) {
-                networkFailed = true
+                val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                val activeNetwork = cm.activeNetwork
+                val capabilities = activeNetwork?.let { cm.getNetworkCapabilities(it) }
+                val hasInternet = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                
+                networkFailed = !hasInternet
                 false
             }
         }

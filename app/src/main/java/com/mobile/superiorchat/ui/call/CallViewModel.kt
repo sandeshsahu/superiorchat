@@ -9,6 +9,7 @@ import com.mobile.superiorchat.core.StatusFlow
 import com.mobile.superiorchat.core.SyncState
 import com.mobile.superiorchat.core.call.CallManager
 import com.mobile.superiorchat.core.call.CallState
+import com.mobile.superiorchat.core.call.CallError
 import com.mobile.superiorchat.bot.InlineKeyboardButton
 import com.mobile.superiorchat.bot.InlineKeyboardMarkup
 import com.mobile.superiorchat.utils.AppLog
@@ -20,6 +21,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+
+enum class CallInitiationResult { SUCCESS, VALIDATION_FAILED, TELEGRAM_FAILED }
 
 class CallViewModel : ViewModel() {
 
@@ -75,7 +78,7 @@ class CallViewModel : ViewModel() {
         _profilePhotoPath.value = null
     }
 
-    suspend fun initiateCall(context: Context): Boolean {
+    suspend fun initiateCall(context: Context, onValidationSuccess: () -> Unit): CallInitiationResult {
         resetState()
         return kotlinx.coroutines.withContext(Dispatchers.IO) {
             val prefs = AppGraph.prefs
@@ -85,7 +88,9 @@ class CallViewModel : ViewModel() {
             val profile = AppGraph.database.profileDao().getProfileSync(chat)
             _profilePhotoPath.value = profile?.profilePhotoPath
 
-            val callUrls = CallManager.initCall(context) ?: return@withContext false
+            val callUrls = CallManager.initCall(context) ?: return@withContext CallInitiationResult.VALIDATION_FAILED
+            onValidationSuccess()
+            
             val (vercelUrl, telegramUrl) = callUrls
             val token = prefs.botToken
             if (token.isNotEmpty() && chat.isNotEmpty()) {
@@ -118,23 +123,22 @@ class CallViewModel : ViewModel() {
                                 CallManager.startTimeout()
                             }
                             monitorCallTermination(token, chat, msgId, botName)
-                            true
+                            CallInitiationResult.SUCCESS
                         } else {
                             AppLog.log(LogCategory.ERROR, "Failed to deliver call link to Telegram.")
-                            StatusFlow.reportStatus(SyncState.ERROR, "Failed to send link")
                             CallManager.endCall()
-                            false
+                            CallInitiationResult.TELEGRAM_FAILED
                         }
                     } else {
-                        false
+                        CallInitiationResult.VALIDATION_FAILED
                     }
                 } catch (e: Exception) {
                     AppLog.log(LogCategory.ERROR, "Failed to send call link: ${e.message}")
                     CallManager.endCall()
-                    false
+                    CallInitiationResult.TELEGRAM_FAILED
                 }
             } else {
-                false
+                CallInitiationResult.VALIDATION_FAILED
             }
         }
     }

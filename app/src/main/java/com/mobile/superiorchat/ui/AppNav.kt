@@ -64,7 +64,7 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
     Settings("App Settings", Icons.Filled.Settings)
 }
 
-enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, SUCCESS }
+enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, SENDING_LINK, FAILED_SENDING, SUCCESS }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -437,8 +437,8 @@ fun AppScreen(
                 
                 if (callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && callState == CallState.IDLE) {
                     val (title, message, confirm) = when (callFailedError) {
-                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call failed to connect. Please check your internet connection.", "Okay")
-                        com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was not answered.", "Okay")
+                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call failed to *Connect*.\nYour connection is *Unstable* or device is *Offline*.\n\nPlease check your *Internet Connection*.", "Okay")
+                        com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.", "Okay")
                         else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid Server URL*. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
                     }
                     
@@ -462,43 +462,54 @@ fun AppScreen(
                 }
                 
                 if (callConfirmationState != CallInitiationState.IDLE) {
+                    val isFailed = callConfirmationState == CallInitiationState.FAILED_SENDING
+                    val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.SENDING_LINK
+                    
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
                         title = when (callConfirmationState) {
                             CallInitiationState.VALIDATING -> "Validating Servers..."
+                            CallInitiationState.SENDING_LINK -> "Sending Invite Link..."
+                            CallInitiationState.FAILED_SENDING -> "Invite Link Failed"
                             CallInitiationState.SUCCESS -> "Call Started"
                             else -> "Start Secure Call"
                         },
-                        message = "A secure peer-to-peer connection link will be generated and sent to the chat.",
-                        note = "This feature is *Experimental* and calls may be blocked by strict carrier networks, corporate firewalls, or hotel/public Wi-Fi. *Not guaranteed* to work on all devices.",
-                        icon = Icons.Filled.Phone,
+                        message = if (isFailed) "Failed to deliver the invite link to Telegram. Please check your connection and try again." else "A secure peer-to-peer connection link will be generated and sent to the chat.",
+                        note = if (isFailed) null else "This feature is **Experimental** and calls may be blocked by strict carrier networks, corporate firewalls, or hotel/public Wi-Fi. **Not guaranteed** to work on all devices.",
+                        icon = if (isFailed) Icons.Filled.Warning else Icons.Filled.Phone,
                         iconTint = ErrorRed,
-                        confirmText = "Start Call",
+                        confirmText = if (isFailed) "Retry" else "Start Call",
                         dismissText = "Cancel",
                         autoDismiss = false,
-                        isLoading = callConfirmationState == CallInitiationState.VALIDATING,
+                        isLoading = isLoading,
                         isSuccess = callConfirmationState == CallInitiationState.SUCCESS,
                         onConfirm = {
-                            if (callConfirmationState == CallInitiationState.CONFIRMATION) {
+                            if (callConfirmationState == CallInitiationState.CONFIRMATION || callConfirmationState == CallInitiationState.FAILED_SENDING) {
                                 permissionHandler.requestAudioAndCamera {
                                     callConfirmationState = CallInitiationState.VALIDATING
                                     scope.launch {
-                                        val success = callViewModel.initiateCall(context)
-                                        if (success) {
-                                            callConfirmationState = CallInitiationState.SUCCESS
-                                            kotlinx.coroutines.delay(500)
-                                            callConfirmationState = CallInitiationState.IDLE
-                                            isCallMinimized = false
-                                        } else {
-                                            callConfirmationState = CallInitiationState.IDLE
+                                        val result = callViewModel.initiateCall(context) {
+                                            callConfirmationState = CallInitiationState.SENDING_LINK
+                                        }
+                                        when (result) {
+                                            com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS -> {
+                                                callConfirmationState = CallInitiationState.SUCCESS
+                                                kotlinx.coroutines.delay(500)
+                                                callConfirmationState = CallInitiationState.IDLE
+                                                isCallMinimized = false
+                                            }
+                                            com.mobile.superiorchat.ui.call.CallInitiationResult.TELEGRAM_FAILED -> {
+                                                callConfirmationState = CallInitiationState.FAILED_SENDING
+                                            }
+                                            com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
+                                                callConfirmationState = CallInitiationState.IDLE
+                                            }
                                         }
                                     }
                                 }
                             }
                         },
                         onDismiss = {
-                            if (callConfirmationState == CallInitiationState.CONFIRMATION) {
-                                callConfirmationState = CallInitiationState.IDLE
-                            }
+                            callConfirmationState = CallInitiationState.IDLE
                         }
                     )
                 }

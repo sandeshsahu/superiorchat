@@ -372,7 +372,34 @@ fun CallScreen(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 32.dp)
                 ) {
-                    CallControls(
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        AnimatedVisibility(visible = callState == CallState.CONNECTING) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .padding(horizontal = 24.dp, vertical = 24.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(CallSurface.copy(alpha = 0.65f))
+                                    .border(1.dp, CallSurface.copy(alpha = 0.9f), RoundedCornerShape(16.dp))
+                                    .padding(horizontal = 16.dp, vertical = 14.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Info,
+                                    contentDescription = null,
+                                    tint = CallAccent,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "The Invitation link has been sent to Telegram.\nThe call will end if not answered within 30s.",
+                                    color = CallTextSecondary,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp
+                                )
+                            }
+                        }
+                        
+                        CallControls(
                         callState = callState,
                         isMuted = isMuted,
                         isVideoOn = isVideoOn,
@@ -391,6 +418,7 @@ fun CallScreen(
                         onMinimize = { handleMinimize() },
                         onEndCall = { performEndCall() }
                     )
+                    }
                 }
             }
         }
@@ -455,28 +483,20 @@ private fun CallHeader(
             // Call status label
             CallStatusLabel(callState)
 
-            // Duration timer or skeleton
+            // Duration timer
             AnimatedVisibility(
-                visible = callState == CallState.ACTIVE || callState == CallState.CONNECTING,
+                visible = callState == CallState.ACTIVE,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                if (callState == CallState.ACTIVE) {
-                    Text(
-                        text = CallManager.formatDuration(callDuration),
-                        color = CallTextSecondary,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 1.sp,
-                        modifier = Modifier.padding(top = 6.dp)
-                    )
-                } else {
-                    com.mobile.superiorchat.ui.SkeletonTextLine(
-                        width = 48.dp,
-                        height = 14.dp,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
+                Text(
+                    text = CallManager.formatDuration(callDuration),
+                    color = CallTextSecondary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
             }
         }
     }
@@ -800,7 +820,7 @@ private fun CallStatusLabel(callState: CallState) {
                 label = "connecting_alpha"
             )
             Text(
-                text = "Calling…",
+                text = "Waiting...",
                 color = CallTextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold,
