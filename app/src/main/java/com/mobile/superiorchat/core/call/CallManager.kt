@@ -315,18 +315,21 @@ object CallManager {
         val am = audioManager ?: return
         _isSpeakerphoneOn.value = enabled
 
-        // Enforce legacy audio manager flag
-        @Suppress("DEPRECATION")
-        am.isSpeakerphoneOn = enabled
-
-        // Enforce modern API 31+ communication device routing
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val devices = am.availableCommunicationDevices
-            val targetType = if (enabled) AudioDeviceInfo.TYPE_BUILTIN_SPEAKER else AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
-            val targetDevice = devices.firstOrNull { it.type == targetType }
-            if (targetDevice != null) {
-                am.setCommunicationDevice(targetDevice)
+            // Android 12+: Use modern routing ONLY. No legacy overrides.
+            if (enabled) {
+                val devices = am.availableCommunicationDevices
+                val targetDevice = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+                if (targetDevice != null) {
+                    am.setCommunicationDevice(targetDevice)
+                }
+            } else {
+                am.clearCommunicationDevice()
             }
+        } else {
+            // Android 11 and below: Use legacy flag
+            @Suppress("DEPRECATION")
+            am.isSpeakerphoneOn = enabled
         }
 
         // If Speakerphone is ON -> release proximity wake lock so screen stays ON
@@ -395,9 +398,10 @@ object CallManager {
     private fun releaseHardware() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             audioManager?.clearCommunicationDevice()
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager?.isSpeakerphoneOn = false
         }
-        @Suppress("DEPRECATION")
-        audioManager?.isSpeakerphoneOn = false
         audioManager?.mode = AudioManager.MODE_NORMAL
         _isSpeakerphoneOn.value = false
         _isVideoOn.value = false

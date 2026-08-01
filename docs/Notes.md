@@ -20,7 +20,9 @@
 - [4. App Access & Entry Methods](#access)
 - [5. Build Flavors & Camouflage](#flavors)
 - [6. Important Notes & Limitations](#notes)
-- [7. Privacy Statement](#privacy)
+- [7. Google Play Protect Warning](#play-protect)
+- [8. Call System & Security Notes](#call-notes)
+- [9. Privacy Statement](#privacy)
 
 ---
 
@@ -91,11 +93,14 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 
 <h2 id="notes">6. Important Notes & Limitations</h2>
 
-| # | Note | Workaround / Action |
-|:---:|:---|:---|
-| 1 | **Dialer Code Incompatibility** | On heavily customized OEM ROMs, the secret dialer code (`*#*#9131#*#*`) may fail to trigger due to system restrictions. See [CaptivePortal.md](flavors/CaptivePortal.md) for fallback methods. |
-| 2 | **Battery Optimization Kills Polling** | Android's aggressive battery management may kill the background BotService, delaying incoming messages when the app is closed. | You must grant "Unrestricted" battery usage to the app in your device's App Settings. |
-| 3 | **Setup App Metadata Leakage** | Leaving the Setup App installed defeats the purpose of a camouflaged installation. | You **must uninstall** the Setup App immediately after the credentials have been successfully transferred to the Main App. |
+| # | Note | Description | Action / Workaround |
+|:---:|:---|:---|:---|
+| 1 | **Dialer Code Incompatibility** | Secret dialer code (`*#*#9131#*#*`) may fail on customized OEM ROMs due to system restrictions. | See [CaptivePortal.md](flavors/CaptivePortal.md) for fallback entry methods. |
+| 2 | **Battery Optimization** | Android's aggressive battery management may kill background BotService polling. | Grant "Unrestricted" battery usage in device App Settings. |
+| 3 | **Setup App Metadata Leakage** | Leaving the Setup App installed on the device defeats the camouflage. | **Uninstall the Setup App** immediately after configuration. |
+| 4 | **Private Chat ID** | Adding the bot to group or public channels exposes message activity to group members. | Use a **private 1-on-1 Chat ID** with the bot to keep privacy 100% intact. |
+| 5 | **Call Prerequisites** | Calling requires active internet, verified credentials, and Camera/Microphone permissions. | Check status indicators in App Bar or App Settings. |
+| 6 | **Automatic Server Fallback** | If the primary call server fails, `CallManager` tests backup fallback servers automatically. | Reset to default or customize URLs in App Settings. |
 
 ---
 
@@ -117,12 +122,26 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 
 ---
 
-<h2 id="privacy">7. Privacy Statement</h2>
+<h2 id="call-notes">8. Call System & Security Notes</h2>
+
+For security boundaries, threat models, developer notes, and self-hosting instructions regarding the voice/video calling feature, refer to the calling documentation suite:
+
+- 🛡️ **[Calling Security & Privacy Audit](../webrtc/docs/Security.md)**
+- 📝 **[Calling Developer Notes & Limitations](../webrtc/docs/Notes.md)**
+- 📁 **[Full Calling Documentation Suite](../webrtc/docs/)**
+
+---
+
+<h2 id="privacy">9. Privacy Statement</h2>
 
 Superior Chat communicates **exclusively** with the official Telegram Bot API (`api.telegram.org`) using the Bot Token you provide. 
 - The developer has absolutely no access to your messages, tokens, or media. 
 - All chat history and transferred media remain strictly between your local device storage and the Telegram servers.
 - **Flavor Exceptions (Weather)**: See the data privacy and third-party API usage guarantees in [FlavorWeather.md](flavors/FlavorWeather.md).
+
+> [!TIP]
+> **Private Chat Privacy Recommendation**:
+> It is **strongly recommended** to use your own private 1-on-1 Chat ID with the bot. Avoid adding the bot to public or private group chats, as group members could see bot activity. Keeping communication strictly within a direct 1-on-1 private chat ensures the other person's privacy remains completely intact.
 
 ---
 

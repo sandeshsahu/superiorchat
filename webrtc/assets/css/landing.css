@@ -1,0 +1,1313 @@
+/**
+* Template Name: FolioOne
+* Template URL: https://bootstrapmade.com/folioone-bootstrap-portfolio-website-template/
+* Updated: Aug 23 2025 with Bootstrap v5.3.7
+* Author: BootstrapMade.com
+* License: https://bootstrapmade.com/license/
+*/
+
+/*--------------------------------------------------------------
+# Font & Color Variables
+# Help: https://bootstrapmade.com/color-system/
+--------------------------------------------------------------*/
+/* Fonts */
+:root {
+  --default-font: "Roboto", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --heading-font: "Raleway", sans-serif;
+  --nav-font: "Poppins", sans-serif;
+}
+
+/* Global Colors - The following color variables are used throughout the website. Updating them here will change the color scheme of the entire website */
+:root {
+  --background-color: #101a20;
+  /* Background color for the entire website, including individual sections */
+  --default-color: #e7f2f7;
+  /* Default color used for the majority of the text content across the entire website */
+  --heading-color: #ffffff;
+  /* Color for headings, subheadings and title throughout the website */
+  --accent-color: #1387c1;
+  /* Accent color that represents your brand on the website. It's used for buttons, links, and other elements that need to stand out */
+  --surface-color: #141f26;
+  /* The surface color is used as a background of boxed elements within sections, such as cards, icon boxes, or other elements that require a visual separation from the global background. */
+  --contrast-color: #ffffff;
+  /* Contrast color for text, ensuring readability against backgrounds of accent, heading, or default colors. */
+}
+
+/* Nav Menu Colors - The following color variables are used specifically for the navigation menu. They are separate from the global colors to allow for more customization options */
+:root {
+  --nav-color: #ffffff;
+  /* The default color of the main navmenu links */
+  --nav-hover-color: #1387c1;
+  /* Applied to main navmenu links when they are hovered over or active */
+  --nav-mobile-background-color: #213642;
+  /* Used as the background color for mobile navigation menu */
+  --nav-dropdown-background-color: #051117;
+  /* Used as the background color for dropdown items that appear when hovering over primary navigation items */
+  --nav-dropdown-color: #e7f2f7;
+  /* Used for navigation links of the dropdown items in the navigation menu. */
+  --nav-dropdown-hover-color: #1387c1;
+  /* Similar to --nav-hover-color, this color is applied to dropdown navigation links when they are hovered over. */
+}
+
+/* Color Presets - These classes override global colors when applied to any section or element, providing reuse of the sam color scheme. */
+
+.light-background {
+  --background-color: #142027;
+  --surface-color: #325264;
+}
+
+/* Smooth scroll */
+:root {
+  scroll-behavior: smooth;
+}
+
+/*--------------------------------------------------------------
+# General Styling & Shared Classes
+--------------------------------------------------------------*/
+body {
+  color: var(--default-color);
+  background-color: var(--background-color);
+  font-family: var(--default-font);
+}
+
+a {
+  color: var(--accent-color);
+  text-decoration: none;
+  transition: 0.3s;
+}
+
+a:hover {
+  color: color-mix(in srgb, var(--accent-color), transparent 25%);
+  text-decoration: none;
+}
+
+
+h2,
+h3,
+h4,
+h5 {
+  color: var(--heading-color);
+  font-family: var(--heading-font);
+}
+
+/* PHP Email Form Messages
+------------------------------*/
+
+@keyframes php-email-form-loading {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/*--------------------------------------------------------------
+# Global Header
+--------------------------------------------------------------*/
+.header {
+  --background-color: rgba(255, 255, 255, 0);
+  color: var(--default-color);
+  background-color: var(--background-color);
+  padding: 15px 0;
+  transition: all 0.5s;
+  z-index: 997;
+  border-bottom: 1px solid color-mix(in srgb, var(--default-color), transparent 92%);
+}
+
+.header .header-social-links {
+  padding-right: 15px;
+}
+
+.header .header-social-links a {
+  color: color-mix(in srgb, var(--default-color), transparent 40%);
+  padding-left: 6px;
+  display: inline-block;
+  transition: 0.3s;
+  font-size: 16px;
+}
+
+.header .header-social-links a:hover {
+  color: var(--default-color);
+}
+
+.header .header-social-links a i {
+  line-height: 0px;
+}
+
+@media (max-width: 1200px) {
+
+  .header .header-social-links {
+    order: 2;
+  }
+
+  .header .navmenu {
+    order: 3;
+  }
+}
+
+/* Global Header on Scroll
+------------------------------*/
+.scrolled .header {
+  --background-color: rgba(16, 26, 32, 0.9);
+}
+
+/*--------------------------------------------------------------
+# Navigation Menu
+--------------------------------------------------------------*/
+/* Desktop Navigation */
+@media (min-width: 1200px) {
+  .navmenu {
+    padding: 0;
+  }
+
+  .navmenu ul {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    list-style: none;
+    align-items: center;
+  }
+
+  .navmenu li {
+    position: relative;
+  }
+
+  .navmenu>ul>li {
+    white-space: nowrap;
+    padding: 15px 28px 15px 0;
+  }
+
+  .navmenu>ul>li:last-child {
+    padding-right: 0;
+  }
+
+  .navmenu a,
+  .navmenu a:focus {
+    color: var(--nav-color);
+    font-size: 15px;
+    padding: 0 2px;
+    font-family: var(--nav-font);
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    transition: 0.3s;
+    position: relative;
+  }
+
+  .navmenu a i,
+  .navmenu a:focus i {
+    font-size: 12px;
+    line-height: 0;
+    margin-left: 5px;
+    transition: 0.3s;
+  }
+
+  .navmenu>ul>li>a:before {
+    content: "";
+    position: absolute;
+    height: 2px;
+    bottom: -6px;
+    left: 0;
+    background-color: var(--nav-hover-color);
+    visibility: hidden;
+    width: 0px;
+    transition: all 0.3s ease-in-out 0s;
+  }
+
+  .navmenu a:hover:before,
+  .navmenu li:hover>a:before,
+  .navmenu .active:before {
+    visibility: visible;
+    width: 25px;
+  }
+
+  .navmenu li:hover>a,
+  .navmenu .active,
+  .navmenu .active:focus {
+    color: var(--nav-hover-color);
+  }
+}
+
+/* Mobile Navigation */
+@media (max-width: 1199px) {
+  .mobile-nav-toggle {
+    color: var(--nav-color);
+    font-size: 28px;
+    line-height: 0;
+    margin-right: 10px;
+    cursor: pointer;
+    transition: color 0.3s;
+  }
+
+  .navmenu {
+    padding: 0;
+    z-index: 9997;
+  }
+
+  .navmenu ul {
+    display: none;
+    list-style: none;
+    position: absolute;
+    inset: 60px 20px 20px 20px;
+    padding: 10px 0;
+    margin: 0;
+    border-radius: 6px;
+    background-color: var(--nav-mobile-background-color);
+    border: 1px solid color-mix(in srgb, var(--default-color), transparent 90%);
+    box-shadow: none;
+    overflow-y: auto;
+    transition: 0.3s;
+    z-index: 9998;
+  }
+
+  .navmenu a,
+  .navmenu a:focus {
+    color: var(--nav-dropdown-color);
+    padding: 10px 20px;
+    font-family: var(--nav-font);
+    font-size: 17px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    transition: 0.3s;
+  }
+
+  .navmenu a i,
+  .navmenu a:focus i {
+    font-size: 12px;
+    line-height: 0;
+    margin-left: 5px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: 0.3s;
+    background-color: color-mix(in srgb, var(--accent-color), transparent 90%);
+  }
+
+  .navmenu a i:hover,
+  .navmenu a:focus i:hover {
+    background-color: var(--accent-color);
+    color: var(--contrast-color);
+  }
+
+  .navmenu a:hover,
+  .navmenu .active,
+  .navmenu .active:focus {
+    color: var(--nav-dropdown-hover-color);
+  }
+
+  .navmenu .active i,
+  .navmenu .active:focus i {
+    background-color: var(--accent-color);
+    color: var(--contrast-color);
+    transform: rotate(180deg);
+  }
+
+  .mobile-nav-active {
+    overflow: hidden;
+  }
+
+  .mobile-nav-active .mobile-nav-toggle {
+    color: #fff;
+    position: absolute;
+    font-size: 32px;
+    top: 15px;
+    right: 15px;
+    margin-right: 0;
+    z-index: 9999;
+  }
+
+  .mobile-nav-active .navmenu {
+    position: fixed;
+    overflow: hidden;
+    inset: 0;
+    background: rgba(33, 37, 41, 0.8);
+    transition: 0.3s;
+  }
+
+  .mobile-nav-active .navmenu>ul {
+    display: block;
+  }
+}
+
+/*--------------------------------------------------------------
+# Global Footer
+--------------------------------------------------------------*/
+.footer {
+  color: var(--default-color);
+  background-color: var(--background-color);
+  font-size: 14px;
+  padding: 40px 0;
+  position: relative;
+  border-top: 1px solid color-mix(in srgb, var(--default-color), transparent 92%);
+}
+
+.footer .copyright p {
+  margin-bottom: 0;
+}
+
+.footer .social-links {
+  margin-top: 20px;
+}
+
+.footer .social-links a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--default-color), transparent 50%);
+  font-size: 16px;
+  color: color-mix(in srgb, var(--default-color), transparent 50%);
+  margin: 0 3px;
+  transition: 0.3s;
+}
+
+.footer .social-links a:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.footer .credits {
+  color: rgba(198, 198, 198, 0.744);
+  margin-top: 10px;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/*--------------------------------------------------------------
+# Preloader
+--------------------------------------------------------------*/
+
+@keyframes animate-preloader {
+  0% {
+    width: 10px;
+    height: 10px;
+    top: calc(50% - 5px);
+    left: calc(50% - 5px);
+    opacity: 1;
+  }
+
+  100% {
+    width: 72px;
+    height: 72px;
+    top: calc(50% - 36px);
+    left: calc(50% - 36px);
+    opacity: 0;
+  }
+}
+
+/*--------------------------------------------------------------
+# Disable aos animation delay on mobile devices
+--------------------------------------------------------------*/
+@media screen and (max-width: 768px) {
+  [data-aos-delay] {
+    transition-delay: 0 !important;
+  }
+}
+
+/*--------------------------------------------------------------
+# Global Page Titles & Breadcrumbs
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Global Sections
+--------------------------------------------------------------*/
+section,
+.section {
+  color: var(--default-color);
+  background-color: var(--background-color);
+  padding: 60px 0;
+  scroll-margin-top: 100px;
+  overflow: clip;
+}
+
+@media (max-width: 1199px) {
+
+  section,
+  .section {
+    scroll-margin-top: 66px;
+  }
+}
+
+/*--------------------------------------------------------------
+# Global Section Titles
+--------------------------------------------------------------*/
+.section-title {
+  text-align: center;
+  padding-bottom: 60px;
+  position: relative;
+}
+
+.section-title h2 {
+  font-size: 3.5rem;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--heading-color);
+  margin-bottom: 1.5rem;
+  letter-spacing: -1px;
+}
+
+@media (max-width: 768px) {
+  .section-title h2 {
+    font-size: 2.5rem;
+  }
+}
+
+.section-title p {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: color-mix(in srgb, var(--default-color), transparent 25%);
+  max-width: 900px;
+  margin: 0 auto;
+  text-wrap: balance;
+}
+
+/*--------------------------------------------------------------
+# Hero Section
+--------------------------------------------------------------*/
+
+/* Center buttons on iPads and smaller screens */
+
+/* existing mobile code stays exactly the same */
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/*--------------------------------------------------------------
+# About Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Skills Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Stats Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Testimonials Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Resume Section
+--------------------------------------------------------------*/
+
+
+/*--------------------------------------------------------------
+# Service Details Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Portfolio Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Contact Section
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Starter Section Section
+--------------------------------------------------------------*/
+.custom-credit {
+  color: rgba(198, 198, 198, 0.744);
+  font-size: 14px;
+  text-align: center;
+  margin-top: 3px;
+}
+
+/*--------------------------------------------------------------
+# Modern, Blurry Contact Modal
+--------------------------------------------------------------*/
+/* The Glass Container */
+#contactModal .modal-content {
+  background: rgba(17, 27, 34, 0.80) !important;
+  /* Slightly transparent dark background */
+  backdrop-filter: blur(16px);
+  /* The magic blur effect */
+  -webkit-backdrop-filter: blur(16px);
+  /* Safari support */
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 20px;
+  /* Matches your mobile nav radius */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* Softer Divider Line */
+#contactModal .modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+#contactModal .modal-title {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: #ffffff;
+}
+
+#contactModal .modal-body p {
+  color: rgba(255, 255, 255, 0.7);
+  /* Slightly muted text for better contrast */
+}
+
+/* Modern Primary Button */
+#contactModal .btn-primary {
+  background: rgba(19, 135, 193, 0.9);
+  border-color: rgba(19, 135, 193, 0.9);
+  border-radius: 12px;
+  /* Modern, slightly rounded corners */
+  transition: all 0.3s ease;
+}
+
+#contactModal .btn-primary:hover {
+  background: #1387c1;
+  border-color: #1387c1;
+  transform: translateY(-2px);
+  /* Subtle lift on hover */
+  box-shadow: 0 6px 15px rgba(19, 135, 193, 0.25);
+  /* Subtle blue glow */
+}
+
+/* Modern Outline/Copy Buttons */
+#contactModal .btn-outline-light {
+  background: rgba(255, 255, 255, 0.03);
+  /* Faint white fill */
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.3s ease;
+}
+
+#contactModal .btn-outline-light:hover {
+  background: rgba(19, 135, 193, 0.12);
+  border-color: rgba(19, 135, 193, 0.4);
+  color: #ffffff;
+  transform: translateY(-2px);
+  /* Subtle lift to match primary */
+}
+
+/* Ensure the success/copied state overrides the outline style */
+
+@media (max-width: 1199px) {
+  .navmenu ul {
+    inset: 72px 16px auto 16px;
+    width: auto;
+    max-width: calc(100% - 32px);
+    padding: 16px 14px;
+    border-radius: 20px;
+    background: rgba(17, 27, 34, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(14px);
+  }
+
+  .navmenu a,
+  .navmenu a:focus {
+    border-radius: 14px;
+    margin-bottom: 8px;
+    padding: 14px 16px;
+  }
+
+  .navmenu a:hover,
+  .navmenu .active,
+  .navmenu .active:focus {
+    background: rgba(19, 135, 193, 0.12);
+  }
+
+  .mobile-nav-active .navmenu {
+    background: rgba(5, 17, 23, 0.72);
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* 404 Page */
+
+/*--------------------------------------------------------------
+# Scroll Top Button
+--------------------------------------------------------------*/
+.scroll-top {
+  position: fixed;
+  visibility: hidden;
+  opacity: 0;
+  right: 15px;
+  bottom: -15px;
+  /* Default hidden state for normal pages */
+  z-index: 99999;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  width: 44px !important;
+  height: 44px !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+  border-radius: 50%;
+  transition: all 0.4s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.scroll-top i {
+  font-size: 20px;
+  line-height: 1;
+  margin: 0;
+}
+
+.scroll-top:hover {
+  background-color: var(--accent-color);
+  color: var(--contrast-color);
+  border-color: var(--accent-color);
+  transform: translateY(-3px);
+}
+
+/* Active state for normal pages (Resume, About, etc.) */
+.scroll-top.active {
+  visibility: visible;
+  opacity: 1;
+  bottom: 15px !important;
+}
+
+/* ---------------------------------------------------
+   Overrides SPECIFICALLY for the Tools Page 
+--------------------------------------------------- */
+
+/*--------------------------------------------------------------
+# Floating Navigation Buttons (Tools Page)
+--------------------------------------------------------------*/
+
+/*--------------------------------------------------------------
+# Tools Section (Masonry Grid Fix)
+--------------------------------------------------------------*/
+/* Creates the vertical columns */
+
+/*--------------------------------------------------------------
+# Exact Mobile Match (Bottom Navigation)
+--------------------------------------------------------------*/
+.bottom-menu-box {
+  max-width: 350px;
+  margin: 1.5rem auto 2rem auto;
+  /* Reduced top gap, kept bottom gap */
+  background: rgba(17, 27, 34, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  border-radius: 20px;
+  padding: 16px 14px;
+}
+
+.bottom-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Exact padding, radius, and margins from your mobile nav */
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border-radius: 14px;
+  color: var(--nav-dropdown-color);
+  font-family: var(--nav-font, sans-serif);
+  font-size: 17px;
+  font-weight: 500;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  width: 100%;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+/* Remove bottom margin from the last item so the box is perfectly symmetrical */
+.bottom-menu-box>.bottom-menu-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Exact hover and active states from your mobile nav */
+.bottom-menu-item:hover,
+.bottom-menu-item:focus {
+  background: rgba(19, 135, 193, 0.12);
+  color: var(--nav-dropdown-hover-color);
+  transform: translateY(-2px);
+}
+
+.bottom-menu-item.active {
+  background: rgba(19, 135, 193, 0.12);
+  color: var(--nav-dropdown-hover-color);
+}
+
+/* Smooth arrow rotation for the dropdown */
+.bottom-menu-item .bi-chevron-down {
+  transition: transform 0.3s ease;
+}
+
+.bottom-menu-item[aria-expanded="true"] .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* Exact inner-dropdown styling */
+.bottom-menu-box .collapse {
+  background-color: rgba(33, 37, 41, 0.1);
+  border-radius: 14px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.bottom-menu-box .collapse .bottom-menu-item {
+  margin-bottom: 0;
+  padding-left: 20px;
+  /* Slight indent to show it's a sub-menu */
+  border-radius: 0;
+  /* Let the container handle the radius */
+  font-size: 16px;
+}
+
+/*--------------------------------------------------------------
+# Modern Glass 404 Page
+--------------------------------------------------------------*/
+
+/* Subtle glowing orb behind the text */
+
+/* Smooth floating animation */
+@keyframes floatIcon {
+  0% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-12px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/*--------------------------------------------------------------
+# Familiarity Pill Menu (Shiny & Aesthetic)
+--------------------------------------------------------------*/
+
+/* Tab Content Visibility */
+
+@keyframes fadeInTab {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*--------------------------------------------------------------
+# Inner Cards: Selectable & Hover-to-Expand (Like Top Section)
+--------------------------------------------------------------*/
+/* 1. Highlight the card on hover (Selectable State) */
+
+/* 2. Natural Inline Expansion (Exactly like Top Section) */
+
+/* Ensure sub-boxes space out nicely */
+
+/* FIX: Bulletproof expand icon visibility */
+
+/*--------------------------------------------------------------
+# Pro Tools (Top Section) Hover Expand Animation
+--------------------------------------------------------------*/
+
+/* Only apply hover reveal on desktop devices with a mouse */
+
+@keyframes smoothReveal {
+  0% {
+    opacity: 0;
+    margin-top: 0;
+  }
+
+  100% {
+    opacity: 1;
+    margin-top: 10px;
+  }
+}
+
+/*--------------------------------------------------------------
+# Mobile Fix: Swipeable Pill Menu
+--------------------------------------------------------------*/
+@media (max-width: 768px) {
+
+  /* Hides the ugly native scrollbars for a clean look */
+}
+
+/*--------------------------------------------------------------
+# Superior Chat — Slider & Thumbnail Styles
+--------------------------------------------------------------*/
+
+/* --- Universal Reset for Swiper & Images --- */
+#superior-chat .portfolio-details-media .main-image .portfolio-details-slider,
+#superior-chat .portfolio-details-media .main-image .portfolio-details-slider .swiper-wrapper {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.project-image-wrapper,
+#superior-chat .portfolio-details-slider .swiper-slide,
+#superior-chat .portfolio-details-slider .swiper-slide a.glightbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+#superior-chat .portfolio-details-slider .swiper-slide img {
+  height: 100% !important;
+  width: 100% !important;
+  object-fit: contain !important;
+  border-radius: 16px;
+  padding: 0;
+}
+
+/* --- Desktop Layout --- */
+@media (min-width: 992px) {
+  #superior-chat .portfolio-details-media .d-flex.flex-row-reverse {
+    flex-direction: row-reverse !important;
+    gap: 30px !important;
+  }
+
+  #superior-chat .portfolio-details-slider {
+    height: 75vh !important;
+    min-height: 550px;
+    max-height: 800px;
+    background: transparent;
+  }
+
+  #superior-chat .thumbnail-sidebar {
+    height: 75vh !important;
+    min-height: 550px;
+    max-height: 800px;
+    width: 90px !important;
+  }
+
+  #superior-chat .thumbnail-sidebar .d-flex.flex-column {
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 8px;
+    gap: 12px !important;
+  }
+}
+
+/* --- Mobile Layout --- */
+@media (max-width: 991px) {
+  #superior-chat .portfolio-details-media .d-flex.flex-row-reverse {
+    flex-direction: column !important;
+    gap: 20px !important;
+  }
+
+  #superior-chat .portfolio-details-media .main-image .portfolio-details-slider {
+    height: auto !important;
+    aspect-ratio: 9 / 16;
+    max-height: 70vh;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto;
+    min-height: unset !important;
+  }
+
+  #superior-chat .thumbnail-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    min-height: unset !important;
+  }
+
+  #superior-chat .thumbnail-sidebar .d-flex.flex-column {
+    flex-direction: row !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none !important;
+    padding-bottom: 15px;
+    padding-top: 5px;
+    gap: 15px !important;
+  }
+
+  #superior-chat .thumbnail-sidebar .thumbnail-item {
+    width: 75px;
+    flex-shrink: 0;
+  }
+}
+
+/* --- Tactile Thumbnails --- */
+#superior-chat .thumbnail-sidebar .thumbnail-item {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-radius: 10px;
+}
+
+#superior-chat .thumbnail-sidebar .thumbnail-item img {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 9/16;
+  object-fit: cover;
+  border-radius: 10px;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+#superior-chat .thumbnail-sidebar .thumbnail-item:hover,
+#superior-chat .thumbnail-sidebar .thumbnail-item.active {
+  transform: scale(1.05);
+}
+
+#superior-chat .thumbnail-sidebar .thumbnail-item:hover img,
+#superior-chat .thumbnail-sidebar .thumbnail-item.active img {
+  opacity: 1;
+  border-color: var(--accent-color);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Scrollbar --- */
+#superior-chat .thumbnail-sidebar .d-flex::-webkit-scrollbar { width: 4px; height: 6px; }
+#superior-chat .thumbnail-sidebar .d-flex::-webkit-scrollbar-track { background: rgba(255,255,255,0.02); border-radius: 10px; }
+#superior-chat .thumbnail-sidebar .d-flex::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 10px; }
+#superior-chat .thumbnail-sidebar .d-flex::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
+
+/*--------------------------------------------------------------
+# Project Showcase Custom Styles (Premium UI Overhaul)
+--------------------------------------------------------------*/
+
+/* --- 1. Universal Reset for Swiper & Images --- */
+
+.project-image-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100% !important;
+  width: 100% !important;
+}
+
+/* --- 2. Desktop Layout (Side-by-Side) --- */
+
+/* --- 3. Mobile Layout (Unified & Optimized) --- */
+@media (max-width: 991px) {
+
+  /* Hugs the 9:16 portrait images perfectly */
+}
+
+/*--------------------------------------------------------------
+# High-Detail Visual Polish & Hover Effects
+--------------------------------------------------------------*/
+
+/* Main Image Device Mockup Effect */
+.portfolio-details .portfolio-details-media .main-image {
+  margin-bottom: 1rem;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(10, 10, 10, 0.4); /* Dark glass behind image */
+  /* Combines a soft drop shadow with a sharp inner bezel */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+/* Tactile Thumbnails */
+
+/* Sleek Scrollbar */
+
+/* Glassmorphism Tech Badges */
+.portfolio-details .portfolio-details-media .tech-stack-badges span {
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border-radius: 30px;
+  background-color: rgba(255, 255, 255, 0.03); /* Highly transparent */
+  border: 1px solid rgba(255, 255, 255, 0.08); /* Delicate rim */
+  backdrop-filter: blur(8px); /* Frost effect */
+  color: var(--heading-color);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.portfolio-details .portfolio-details-media .tech-stack-badges span:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+/* Typography Enhancements */
+.portfolio-details .portfolio-details-content .project-title {
+  font-size: 2.4rem;
+  letter-spacing: -0.5px; /* Tighter, more modern tracking */
+  font-weight: 800;
+}
+
+.portfolio-details .portfolio-details-content .project-meta .badge-wrapper .project-badge {
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+/* Clean up remaining styles */
+.portfolio-details { --section-spacing: 2.5rem; }
+.portfolio-details .portfolio-details-content { padding: 0 0 0 2rem; height: 100%; display: flex; flex-direction: column; }
+.portfolio-details .portfolio-details-content .project-meta { display: flex; flex-wrap: wrap; justify-content: space-between; margin-bottom: 1.5rem; }
+.portfolio-details .portfolio-details-content .project-overview { margin-bottom: var(--section-spacing); }
+.portfolio-details .portfolio-details-content .project-overview .lead { font-size: 1.1rem; line-height: 1.8; color: color-mix(in srgb, var(--default-color), transparent 15%); margin-bottom: 1.5rem; }
+
+/* Accordion Polish */
+
+/* Buttons & Responsive Adjustments */
+
+@media (max-width: 1199.98px) { .portfolio-details .portfolio-details-content { padding-left: 1rem; } }
+@media (max-width: 991.98px) { .portfolio-details .portfolio-details-content { padding: 2rem 0 0 0; } }
+@media (max-width: 767.98px) { .portfolio-details .project-meta { flex-direction: column; gap: 1rem; width: 100%; } }
+
+/*--------------------------------------------------------------
+# Project Details — Feature Cards (matches tool-card pattern)
+--------------------------------------------------------------*/
+.portfolio-details .feature-card {
+  display: flex;
+  background-color: var(--surface-color);
+  border-radius: 12px;
+  padding: 1.8rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.03);
+  transition: all 0.4s ease;
+  height: 100%;
+}
+
+.portfolio-details .feature-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background-color: var(--accent-color);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.portfolio-details .feature-card:hover {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  transform: translateY(-5px);
+}
+
+.portfolio-details .feature-card:hover::before {
+  transform: scaleY(1);
+}
+
+.portfolio-details .feature-card .feature-icon {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  background-color: color-mix(in srgb, var(--accent-color), transparent 90%);
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1.25rem;
+  transition: all 0.5s ease;
+}
+
+.portfolio-details .feature-card .feature-icon i {
+  font-size: 1.5rem;
+  transition: transform 0.5s ease;
+}
+
+.portfolio-details .feature-card:hover .feature-icon {
+  background-color: var(--accent-color);
+  color: var(--contrast-color);
+  transform: rotateY(180deg);
+}
+
+.portfolio-details .feature-card:hover .feature-icon i {
+  transform: rotateY(180deg);
+}
+
+.portfolio-details .feature-card .feature-body {
+  flex-grow: 1;
+}
+
+.portfolio-details .feature-card .feature-body h4 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+  color: var(--heading-color);
+}
+
+.portfolio-details .feature-card .feature-body p {
+  margin-bottom: 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--default-color), transparent 25%);
+}
+
+/*--------------------------------------------------------------
+# Project Details — Technical Documentation Tabs
+--------------------------------------------------------------*/
+/* Pill Navigation (hover-activated like skill-filters) */
+.tech-docs-pills {
+  padding: 6px;
+  margin: 0 auto 30px auto;
+  list-style: none;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 50px;
+}
+
+.tech-docs-pills .nav-link {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.3s ease;
+  border-radius: 50px;
+  background: transparent;
+  border: none;
+}
+
+.tech-docs-pills .nav-link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tech-docs-pills .nav-link.active {
+  color: #fff;
+  background: var(--accent-color);
+  box-shadow: 0 4px 15px color-mix(in srgb, var(--accent-color), transparent 60%);
+}
+
+/* Tab Content Container */
+.tech-docs-container {
+  background: var(--surface-color);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+/* Tab fade-in animation */
+.tech-docs-container .tab-pane {
+  animation: fadeInTab 0.4s ease forwards;
+}
+
+/* Section heading inside tabs */
+.tab-section-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--heading-color);
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.tab-section-title i {
+  color: var(--accent-color);
+  margin-right: 8px;
+}
+
+/* List items inside tabs */
+.doc-list li {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: color-mix(in srgb, var(--default-color), transparent 15%);
+  line-height: 1.7;
+}
+
+.doc-list li:last-child {
+  border-bottom: none;
+}
+
+.doc-list li strong {
+  color: var(--heading-color);
+}
+
+.doc-list li i {
+  color: var(--accent-color);
+  margin-right: 8px;
+  font-size: 0.9rem;
+}
+
+.doc-list li code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: var(--accent-color);
+}
+
+/* Intro lead inside tab */
+.tab-intro {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: color-mix(in srgb, var(--default-color), transparent 25%);
+  margin-bottom: 1.5rem;
+}
+
+/* Technical docs heading */
+.tech-docs-heading {
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--heading-color);
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+/* Mobile pill scrolling */
+@media (max-width: 768px) {
+  .tech-docs-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 6px 8px;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+  }
+
+  .tech-docs-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tech-docs-pills {
+    scrollbar-width: none;
+  }
+
+  .tech-docs-pills .nav-link {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .tech-docs-container {
+    padding: 1.25rem;
+  }
+}

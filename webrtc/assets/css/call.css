@@ -1,0 +1,745 @@
+/* ─────────────────────────────────────────────────────────────
+ *  Superiorchat Connect — Stylesheet
+ * ─────────────────────────────────────────────────────────────
+ *  Design system built with CSS custom properties for easy
+ *  theming. Matches the Android app's call screen tokens.
+ * ───────────────────────────────────────────────────────────── */
+
+/* ── Design Tokens ────────────────────────────────────────── */
+:root {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e1b4b;
+    --accent: #6366f1;
+    --accent-dark: #4f46e5;
+    --accent-light: #818cf8;
+    --accent-glow: rgba(99, 102, 241, 0.4);
+    --danger: #ef4444;
+    --danger-glow: rgba(239, 68, 68, 0.4);
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.12);
+    --success-border: rgba(16, 185, 129, 0.25);
+    --text-primary: #ffffff;
+    --text-secondary: #a5b4fc;
+    --text-muted: #94a3b8;
+    --glass-bg: rgba(15, 23, 42, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.15);
+    --glass-blur: 24px;
+    --glass-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --surface: #1e293b;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-full: 9999px;
+    --transition-fast: 0.2s ease;
+    --transition-base: 0.3s ease;
+    --transition-slow: 0.4s ease;
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* ── Reset & Base ─────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-family);
+    background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+    color: var(--text-primary);
+    overflow: hidden;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    height: 100vh;
+    height: 100dvh;
+    /* Safe area for notched/pill devices */
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* ── Glassmorphism ────────────────────────────────────────── */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+}
+
+/* ── Video Elements ───────────────────────────────────────── */
+#remoteVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    display: none;
+    transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+#localVideo {
+    width: 104px;
+    height: 144px;
+    object-fit: cover;
+    position: absolute;
+    bottom: calc(185px + env(safe-area-inset-bottom, 0px));
+    right: 16px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 40;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    display: none;
+    transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+/* Host Mode (Android App — position below native CallHeader) */
+body.is-host #localVideo {
+    top: calc(160px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+    right: 16px;
+    width: 108px;
+    height: 148px;
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.mirror {
+    transform: scaleX(-1) !important;
+}
+
+/* ── Feature 1: Controls Hidden (Immersive Mode) ─────────── */
+.controls-hidden .controls-area {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(24px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.controls-hidden .status-card {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* ── Feature 2: Video View Swap (PiP Tap to Swap) ───────── */
+body.video-swapped #localVideo {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    left: 0 !important;
+    bottom: auto !important;
+    right: auto !important;
+    border-radius: 0 !important;
+    border: none !important;
+    z-index: 10 !important;
+    box-shadow: none !important;
+}
+
+body.video-swapped #remoteVideo {
+    width: 104px !important;
+    height: 144px !important;
+    top: auto !important;
+    left: auto !important;
+    bottom: calc(185px + env(safe-area-inset-bottom, 0px)) !important;
+    right: 16px !important;
+    border-radius: var(--radius-lg) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    z-index: 40 !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+    transform: none !important;
+}
+
+body.is-host.video-swapped #remoteVideo {
+    top: calc(160px + env(safe-area-inset-top, 0px)) !important;
+    bottom: auto !important;
+    right: 16px !important;
+    width: 108px !important;
+    height: 148px !important;
+    border-radius: var(--radius-lg) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    z-index: 40 !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* ── UI Overlay Layer ─────────────────────────────────────── */
+#ui-layer {
+    position: relative;
+    z-index: 30;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* ── E2E Encryption Badge ─────────────────────────────────── */
+.encryption-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--success);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.encryption-badge i {
+    font-size: 0.6rem;
+}
+
+/* ── Status Area ──────────────────────────────────────────── */
+.status-area {
+    padding-top: calc(1.5rem + env(safe-area-inset-top, 0px));
+    padding-bottom: 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    padding: 12px 24px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: var(--glass-shadow);
+}
+
+#statusText {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    transition: color var(--transition-base);
+}
+
+#statusText.connected {
+    color: var(--success);
+}
+
+#statusText.ended {
+    color: var(--danger);
+}
+
+#durationText {
+    font-size: 0.875rem;
+    font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    display: none;
+    letter-spacing: 1px;
+}
+
+/* ── Avatar ───────────────────────────────────────────────── */
+.avatar-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity var(--transition-base);
+}
+
+.avatar-container {
+    position: relative;
+}
+
+.avatar-ring {
+    width: 8rem;
+    height: 8rem;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    box-shadow: 0 25px 50px -12px rgba(99, 102, 241, 0.35);
+    position: relative;
+    z-index: 10;
+}
+
+/* ── Pulse Animation ──────────────────────────────────────── */
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.85);
+        opacity: 0.45;
+    }
+
+    80% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+@keyframes pulse-ring-delayed {
+    0% {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+
+    33% {
+        transform: scale(0.85);
+        opacity: 0.45;
+    }
+
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
+.avatar-pulse::before,
+.avatar-pulse::after {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: -20px;
+    right: -20px;
+    bottom: -20px;
+    border-radius: var(--radius-full);
+    background: var(--accent-glow);
+    z-index: -1;
+}
+
+.avatar-pulse::before {
+    animation: pulse-ring 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+.avatar-pulse::after {
+    animation: pulse-ring-delayed 1.8s cubic-bezier(0.215, 0.61, 0.355, 1) 0.6s infinite;
+}
+
+/* ── Bottom Controls ──────────────────────────────────────── */
+.controls-area {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    padding-top: 2rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.controls-area>* {
+    pointer-events: auto;
+}
+
+/* Join Button */
+.btn-join {
+    width: 100%;
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--accent), #7c3aed);
+    color: var(--text-primary);
+    font-size: 1.125rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+}
+
+.btn-join:hover {
+    box-shadow: 0 15px 35px -5px rgba(99, 102, 241, 0.5);
+}
+
+.btn-join:active {
+    transform: scale(0.97);
+}
+
+.btn-join:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Active Controls Row */
+.controls-row {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: center;
+    padding: 1rem 0.5rem;
+    border-radius: var(--radius-xl);
+    gap: 0.5rem;
+}
+
+.controls-row.hidden {
+    display: none;
+}
+
+/* Control Buttons */
+.btn-control {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-full);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all var(--transition-fast);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-control::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.btn-control:active {
+    transform: scale(0.9);
+}
+
+.btn-control:active::after {
+    opacity: 1;
+}
+
+.btn-off {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+}
+
+.btn-on {
+    background: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+.btn-danger {
+    background: var(--danger);
+    color: var(--text-primary);
+    box-shadow: 0 0 20px var(--danger-glow);
+    width: 64px;
+    height: 64px;
+    font-size: 1.35rem;
+}
+
+/* ── Control Labels ───────────────────────────────────────── */
+.btn-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.btn-danger+.btn-label {
+    color: rgba(239, 68, 68, 0.7);
+}
+
+/* ── Toast Notifications ──────────────────────────────────── */
+#toastContainer {
+    position: fixed;
+    top: calc(4.5rem + env(safe-area-inset-top, 0px));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    padding: 8px 20px;
+    border-radius: var(--radius-full);
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity var(--transition-base), transform var(--transition-base);
+}
+
+/* ── Network Banner ───────────────────────────────────────── */
+#networkBanner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) 6px 6px;
+    background: var(--danger);
+    color: var(--text-primary);
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 200;
+    display: none;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+/* ── Landing View ───────────────────────────────────────── */
+.landing-view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    /* Changed from flex, ui.js will set to flex */
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    background: radial-gradient(circle at center, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 1) 100%);
+    overflow: hidden;
+}
+
+.landing-glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    animation: fadeUpIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.btn-control.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    color: white;
+}
+
+.btn-control.btn-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.flip-animate i {
+    animation: flipRotate 0.4s ease-in-out;
+}
+
+@keyframes flipRotate {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(180deg);
+    }
+}
+
+.landing-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 10px 15px rgba(124, 58, 237, 0.3));
+    animation: float 6s ease-in-out infinite;
+}
+
+.landing-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f8fafc;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.025em;
+}
+
+.landing-subtitle {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin-bottom: 2rem;
+    font-weight: 500;
+}
+
+.landing-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    margin: 1.5rem 0;
+}
+
+.landing-instructions {
+    font-size: 0.95rem;
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+/* Decorative Background Orbs */
+.orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    z-index: 1;
+    opacity: 0.4;
+    animation: floatOrb 15s ease-in-out infinite alternate;
+}
+
+.orb-1 {
+    width: 300px;
+    height: 300px;
+    background: #7c3aed;
+    top: -100px;
+    left: -100px;
+}
+
+.orb-2 {
+    width: 400px;
+    height: 400px;
+    background: #4f46e5;
+    bottom: -150px;
+    right: -100px;
+    animation-delay: -5s;
+}
+
+@keyframes fadeUpIn {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes floatOrb {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+
+    50% {
+        transform: translate(50px, 30px) scale(1.1);
+    }
+
+    100% {
+        transform: translate(-30px, 60px) scale(0.9);
+    }
+}
+
+.btn-exit {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 12px 24px;
+    border-radius: 99px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-exit:hover {
+    background: rgba(239, 68, 68, 0.25);
+    transform: translateY(-2px);
+}
+
+/* ── Picture in Picture Mode (Synchronized via Media Query) ── */
+@media (max-width: 250px) {
+    body.pip-mode {
+        background: transparent !important;
+    }
+
+    body.pip-mode #ui-layer,
+    body.pip-mode .status-area,
+    body.pip-mode .controls-area,
+    body.pip-mode .bg-layer {
+        display: none !important;
+    }
+
+    body.pip-mode.show-local-pip #localVideo {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: auto !important;
+        right: auto !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        z-index: 100 !important;
+        box-sizing: border-box !important;
+        object-fit: cover !important;
+    }
+
+    body.pip-mode.show-local-pip #remoteVideo {
+        display: none !important;
+    }
+
+    body.pip-mode.show-remote-pip #remoteVideo {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        top: 0 !important;
+        left: 0 !important;
+        z-index: 100 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-sizing: border-box !important;
+        object-fit: cover !important;
+    }
+
+    body.pip-mode.show-remote-pip #localVideo {
+        display: none !important;
+    }
+}

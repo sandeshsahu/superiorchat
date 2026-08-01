@@ -19,8 +19,9 @@
 - [3. Media Transfer System (MediaSync)](#media)
 - [4. Background Execution](#background)
 - [5. Data Storage](#storage)
-- [6. Weather API Integration (weather Flavor)](#weather-api)
-- [7. Error Handling & Recovery](#error)
+- [6. Call Mechanism (WebRTC)](#call-mechanism)
+- [7. Weather API Integration (weather Flavor)](#weather-api)
+- [8. Error Handling & Recovery](#error)
 
 ---
 
@@ -162,13 +163,23 @@ graph TD
 
 ---
 
-<h2 id="weather-api">6. Weather API Integration (weather Flavor)</h2>
+<h2 id="call-mechanism">6. Call Mechanism (WebRTC)</h2>
+
+The real-time audio and video call infrastructure is handled independently via WebRTC system. 
+
+To maintain separation of concerns, the backend mechanics for signaling, ICE negotiation, and PeerJS connection handling are fully documented in the dedicated WebRTC backend documentation.
+
+👉 **[View WebRTC Backend Mechanics](../webrtc/docs/Backend.md)**
+
+---
+
+<h2 id="weather-api">7. Weather API Integration (weather Flavor)</h2>
 
 The backend architecture, offline caching system, and Retrofit network layer for the weather flavor are fully documented in [FlavorWeather.md](flavors/FlavorWeather.md).
 
 ---
 
-<h2 id="error">7. Error Handling & Recovery</h2>
+<h2 id="error">8. Error Handling & Recovery</h2>
 
 | Error | Detection | Response |
 |-------|-----------|----------|

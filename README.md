@@ -115,6 +115,8 @@ For detailed technical references, explore the dedicated documentation in this d
 - ✨ **[Features & Capabilities](docs/Features.md)** — Comprehensive user-facing capabilities, gestures, disguises, and UI interactions.
 - 📖 **[Installation Guide](docs/Instructions.md)** — Setup guide & building from source for developers.
 - ⚠️ **[Notes & Disclaimers](docs/Notes.md)** — Important known limitations, threat models, and legal disclaimers.
+- 📋 **[Version Changelogs](docs/Changelogs.md)** — Detailed version history, release notes, and feature updates.
+- 📞 **[WebRTC Calling Engine](webrtc/README.md)** — Headless WebRTC calling architecture, JS bridge, security models, and self-hosting guides.
 ---
 > [!IMPORTANT]
 > For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:

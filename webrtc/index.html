@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Superiorchat Connect</title>
+  <meta name="description" content="A serverless, discreet messaging client for Android.">
+  <meta name="keywords" content="Android, Kotlin, Telegram Bot API, Jetpack Compose, Encryption, SuperiorChat">
+
+  <!-- Favicons -->
+  <link href="/assets/img/favicon.png" rel="icon">
+  <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link href="https://fonts.gstatic.com" rel="preconnect" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&family=Raleway:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900&display=swap"
+    rel="stylesheet">
+
+  <!-- Vendor CSS Files -->
+  <link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+  <link href="/assets/vendor/aos/aos.css" rel="stylesheet">
+  <link href="/assets/vendor/swiper/swiper-bundle.min.css" rel="stylesheet">
+  <link href="/assets/vendor/glightbox/css/glightbox.min.css" rel="stylesheet">
+
+  <!-- Main CSS File -->
+  <link href="/assets/css/landing.css" rel="stylesheet">
+
+
+</head>
+
+<body class="portfolio-details-page">
+
+  <!-- contact modal -->
+  <div class="modal fade" id="contactModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-light border-secondary">
+
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title">Get In Touch</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body">
+          <p class="mb-4">
+            If you would like to discuss about job opportunities or simply connect, feel free to reach out through the
+            contact information below
+          </p>
+
+          <div class="d-grid gap-2">
+
+            <div class="d-flex gap-2">
+              <a href="mailto:contact@sandesh-op.com"
+                class="btn btn-primary d-flex align-items-center justify-content-center" style="width: 80%;">
+                <i class="bi bi-envelope me-2"></i>Email Me
+              </a>
+              <button onclick="copyEmailToClipboard()"
+                class="btn btn-outline-light d-flex align-items-center justify-content-center" id="copyEmailBtn"
+                style="width: 20%;" aria-label="Copy Email">
+                <i class="bi bi-copy fs-5"></i>
+              </button>
+            </div>
+            <a href="https://www.linkedin.com/in/sandesh-sahu" target="_blank" class="btn btn-outline-light">
+              <i class="bi bi-linkedin me-2"></i>LinkedIn
+            </a>
+            <a href="https://gitlab.com/sandeshsahu" target="_blank" class="btn btn-outline-light">
+              <i class="bi bi-gitlab me-2"></i>GitLab
+            </a>
+            <a href="https://github.com/sandeshsahu" target="_blank" class="btn btn-outline-light">
+              <i class="bi bi-github me-2"></i>GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- contact modal-->
+
+  <header id="header" class="header d-flex align-items-center light-background sticky-top">
+    <div class="container position-relative d-flex align-items-center">
+      <a href="index.html" class="logo d-flex align-items-center me-auto text-decoration-none">
+        <h1 class="sitename mb-0"
+          style="font-family: var(--heading-font); font-size: 1.4rem; font-weight: 700; color: var(--heading-color); letter-spacing: 0.5px;">
+          Sandesh Sahu</h1>
+      </a>
+
+      <nav id="navmenu" class="navmenu">
+        <ul>
+          <li>
+            <a href="#" data-bs-toggle="modal" data-bs-target="#contactModal">Contact</a>
+          </li>
+        </ul>
+        <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
+      </nav>
+
+      <div class="header-social-links ms-4 text-nowrap">
+        <a href="https://www.linkedin.com/in/sandesh-sahu" target="_blank" aria-label="LinkedIn"><i
+            class="bi bi-linkedin"></i></a>
+        <a href="https://gitlab.com/sandeshsahu" target="_blank" aria-label="GitLab"><i class="bi bi-gitlab"></i></a>
+        <a href="https://github.com/sandeshsahu" target="_blank" aria-label="GitHub"><i class="bi bi-github"></i></a>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- =======================================================
+         PROJECT 1: SUPERIOR CHAT 
+    ======================================================== -->
+    <section id="superior-chat" class="portfolio-details section pb-0">
+      <!-- Section Title -->
+      <!-- <div class="container section-title" data-aos="fade-up">
+        <h2>Superior chat</h2>
+        <p>A discreet messaging client operating serverlessly via the Telegram Bot API.</p>
+      </div> -->
+
+      <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="row gy-4">
+
+          <div class="col-lg-5" data-aos="fade-right">
+            <div class="portfolio-details-media">
+              <div class="d-flex flex-row-reverse gap-3">
+                <!-- Main Image -->
+                <div class="main-image flex-grow-1" style="min-width: 0;">
+                  <div class="portfolio-details-slider swiper init-swiper" data-aos="zoom-in">
+                    <script type="application/json" class="swiper-config">
+                    {
+                      "loop": true,
+                      "speed": 800,
+                      "autoplay": { "delay": 3000, "disableOnInteraction": false },
+                      "slidesPerView": 1,
+                      "centeredSlides": true,
+                      "spaceBetween": 20,
+                      "navigation": {
+                        "nextEl": ".swiper-button-next",
+                        "prevEl": ".swiper-button-prev"
+                      },
+                      "pagination": {
+                        "el": ".swiper-pagination",
+                        "clickable": true,
+                        "type": "bullets"
+                      },
+                      "breakpoints": {
+                        "992": {
+                          "direction": "vertical",
+                          "mousewheel": true,
+                          "spaceBetween": 30
+                        }
+                      }
+                    }
+                  </script>
+                    <div class="swiper-wrapper">
+                      <!-- Images -->
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/chat_screen.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/chat_screen.jpg" alt="Chat Screen 1">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/chat_screen2.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/chat_screen2.jpg" alt="Chat Screen 2">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/chatscreen_withmediapicker.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/chatscreen_withmediapicker.jpg" alt="Chat Media Picker">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/chatscreen_withreactions.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/chatscreen_withreactions.jpg" alt="Chat Reactions">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/fileexplorer_screen.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/fileexplorer_screen.jpg" alt="File Explorer">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/gallerygrid_screen.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/gallerygrid_screen.jpg" alt="Gallery Grid">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/nav_menu.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/nav_menu.jpg" alt="Navigation Menu">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/profile_screen.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/profile_screen.jpg" alt="Profile Screen">
+                        </a>
+                      </div>
+                      <div class="swiper-slide project-image-wrapper">
+                        <a href="/assets/img/screenshots/settings_screen.jpg" class="glightbox"
+                          data-gallery="portfolio-gallery-chat">
+                          <img src="/assets/img/screenshots/settings_screen.jpg" alt="Settings Screen">
+                        </a>
+                      </div>
+                    </div>
+                    <div class="swiper-pagination mt-4 position-relative" style="bottom: 0;"></div>
+                    <div class="swiper-button-prev"
+                      style="color: var(--accent-color); background: rgba(0,0,0,0.5); border-radius: 50%; padding: 25px; transform: scale(0.6);">
+                    </div>
+                    <div class="swiper-button-next"
+                      style="color: var(--accent-color); background: rgba(0,0,0,0.5); border-radius: 50%; padding: 25px; transform: scale(0.6);">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Thumbnails Sidebar -->
+                <div class="thumbnail-sidebar" style="width: 85px; flex-shrink: 0;">
+                  <div class="d-flex flex-column gap-2" style="overflow-y: auto; max-height: 75vh; padding-right: 4px;">
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="0">
+                        <img src="/assets/img/screenshots/chat_screen.jpg" alt="Chat Screen 1"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="1">
+                        <img src="/assets/img/screenshots/chat_screen2.jpg" alt="Chat Screen 2"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="2">
+                        <img src="/assets/img/screenshots/chatscreen_withmediapicker.jpg" alt="Chat Media Picker"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="3">
+                        <img src="/assets/img/screenshots/chatscreen_withreactions.jpg" alt="Chat Reactions"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="4">
+                        <img src="/assets/img/screenshots/fileexplorer_screen.jpg" alt="File Explorer"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="5">
+                        <img src="/assets/img/screenshots/gallerygrid_screen.jpg" alt="Gallery Grid"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="6">
+                        <img src="/assets/img/screenshots/nav_menu.jpg" alt="Navigation Menu"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="7">
+                        <img src="/assets/img/screenshots/profile_screen.jpg" alt="Profile Screen"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                    <div class="thumbnail-item flex-shrink-0">
+                      <a href="javascript:void(0);" class="thumb-link" data-slide-index="8">
+                        <img src="/assets/img/screenshots/settings_screen.jpg" alt="Settings Screen"
+                          class="img-fluid shadow-sm w-100"
+                          style="aspect-ratio: 9/16; object-fit: cover; border-radius: 8px; cursor: pointer;">
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="tech-stack-badges mt-4" data-aos="fade-up" data-aos-delay="300">
+                <span>Android (Kotlin)</span>
+                <span>Telegram Bot API</span>
+                <span>Jetpack Compose</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-7" data-aos="fade-left">
+            <div class="portfolio-details-content">
+              <div class="project-meta">
+                <div class="badge-wrapper">
+                  <span class="project-badge">Android Messaging App</span>
+                </div>
+              </div>
+
+              <h2 class="project-title">Superior Chat</h2>
+
+              <div class="project-overview mt-4">
+                <p class="lead">
+                  Superior Chat solves a unique privacy challenge: chatting securely without maintaining a dedicated
+                  server or exposing a visible messaging app icon on your phone. It uses the Telegram Bot API as a
+                  serverless relay, leaving zero server footprint while incorporating advanced local camouflage options.
+                </p>
+
+                <!-- Feature Cards Grid -->
+                <div class="row g-4 mt-3">
+                  <div class="col-md-6" data-aos="fade-up">
+                    <div class="feature-card">
+                      <div class="feature-icon"><i class="bi bi-eye-slash"></i></div>
+                      <div class="feature-body">
+                        <h4>Launcher Discretion</h4>
+                        <p>Support for launcher icon concealment and camouflage as fully functional utility
+                          applications.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6" data-aos="fade-up" data-aos-delay="100">
+                    <div class="feature-card">
+                      <div class="feature-icon"><i class="bi bi-cloud-arrow-up"></i></div>
+                      <div class="feature-body">
+                        <h4>Serverless Transport</h4>
+                        <p>Powered entirely by Telegram Bot API long-polling. Zero hosting costs, 99.9% uptime, no
+                          third-party analytics.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6" data-aos="fade-up" data-aos-delay="200">
+                    <div class="feature-card">
+                      <div class="feature-icon"><i class="bi bi-images"></i></div>
+                      <div class="feature-body">
+                        <h4>Rich Media & Files</h4>
+                        <p>In-app camera, animated voice notes, smart media picker, and integrated hierarchical file
+                          explorer.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6" data-aos="fade-up" data-aos-delay="300">
+                    <div class="feature-card">
+                      <div class="feature-icon"><i class="bi bi-shield-lock"></i></div>
+                      <div class="feature-body">
+                        <h4>Security & Privacy</h4>
+                        <p>Discreet alerts, secure access codes, and Keystore-backed AES-256-GCM encryption for stored
+                          configuration credentials.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Full-Width Bottom Section -->
+        <div class="row mt-5">
+          <div class="col-12">
+            <div class="portfolio-details-content">
+              <!-- Technical Documentation Tabs -->
+              <div class="technical-documentation" data-aos="fade-up" data-aos-delay="400">
+                <h3 class="tech-docs-heading">Technical Documentation</h3>
+
+                <ul class="nav nav-pills tech-docs-pills mb-4" id="tech-docs-tab-chat" role="tablist">
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="features-tab-chat" data-bs-toggle="pill"
+                      data-bs-target="#features-content-chat" type="button" role="tab">
+                      <i class="bi bi-cpu me-1"></i> Features
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="architecture-tab-chat" data-bs-toggle="pill"
+                      data-bs-target="#architecture-content-chat" type="button" role="tab">
+                      <i class="bi bi-diagram-3 me-1"></i> Architecture
+                    </button>
+                  </li>
+                  <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="backend-tab-chat" data-bs-toggle="pill"
+                      data-bs-target="#backend-content-chat" type="button" role="tab">
+                      <i class="bi bi-gear-wide-connected me-1"></i> Backend Mechanics
+                    </button>
+                  </li>
+                </ul>
+
+                <div class="tab-content tech-docs-container" id="tech-docs-tabContent-chat">
+                  <!-- ═══════════ Features Tab ═══════════ -->
+                  <div class="tab-pane fade show active" id="features-content-chat" role="tabpanel" tabindex="0">
+                    <p class="tab-intro">Core messaging, media capabilities, profile management, and flavor disguises.
+                    </p>
+                    <div class="row g-4">
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-chat-dots"></i> Core Messaging</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Formatted Text:</strong> Send text with rich markdown styling.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Quick
+                              Reactions:</strong> Double-tap any message to instantly react with emojis.</li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Message Editing:</strong> Edit sent messages on the fly or bulk delete.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Status
+                              Indicators:</strong> Real-time delivery updates (Sending, Sent, Failed).</li>
+                        </ul>
+                      </div>
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-file-earmark-music"></i> Rich Media & Files</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Voice
+                              Messages:</strong> Record voice notes featuring dynamic waveform visualizations.</li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>File
+                              Sharing:</strong> Send any file type up to 50MB and download up to 20MB.</li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>File
+                              Explorer:</strong> Built-in hierarchical file browser with recent items.</li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Smart
+                              Media Picker:</strong> Custom gallery grid neatly organized by albums.</li>
+                        </ul>
+                      </div>
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-shield-lock"></i> Discreet Operation</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Custom
+                              Dialer Entry:</strong> Open the application interface via dialer code (*#*#9131#*#*).</li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Discreet Alerts:</strong> Configurable alerts that mimic standard system or carrier
+                            telemetry notifications.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Privacy Redirects:</strong> Redirects unauthorized attempts to open notifications
+                            directly to system settings.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Screen
+                              Protection:</strong> Enforce system flags to block screenshots and screen recordings.</li>
+                        </ul>
+                      </div>
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-brush"></i> App Flavors & UI</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Weather Camouflage:</strong> Optional design disguise as a fully functional weather
+                            application.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Network Camouflage:</strong> Disguise as standard captive portal system alerts.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i>
+                            <strong>Material Design 3:</strong> Modern dark theme tailored for low-light visual comfort.
+                          </li>
+                          <li><i class="bi bi-check-circle-fill" style="color: var(--accent-color);"></i> <strong>Fluid
+                              Animations:</strong> Smooth responsive transitions for message bubbles.</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- ═══════════ Architecture Tab ═══════════ -->
+                  <div class="tab-pane fade" id="architecture-content-chat" role="tabpanel" tabindex="0">
+                    <p class="tab-intro">Topology, Component layout, and Initialization flows.</p>
+                    <div class="row g-4">
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-diagram-2"></i> System Topology</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Serverless Relay:</strong> Both users chat via a shared Telegram bot. The bot is
+                            just a relay—it stores nothing.
+                          </li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Two-App Setup:</strong> `:setupapp` configures the device, passes encrypted
+                            credentials to `:app` via IPC, and asks to be uninstalled.
+                          </li>
+                        </ul>
+                      </div>
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-layers"></i> Component Architecture</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i> <strong>UI
+                              Layer:</strong> Built entirely with Jetpack Compose using MVVM and StateFlow.</li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Service Layer:</strong> BotService runs in the foreground, with WorkManager fallback
+                            for Android 12+.
+                          </li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i> <strong>Data
+                              Layer:</strong> Uses Room DB for storage and EncryptedSharedPreferences for credentials.
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- ═══════════ Backend Tab ═══════════ -->
+                  <div class="tab-pane fade" id="backend-content-chat" role="tabpanel" tabindex="0">
+                    <p class="tab-intro">Polling loops, concurrent media transfers, and resilience mechanisms.</p>
+                    <div class="row g-4">
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-arrow-repeat"></i> BotSync Engine</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Long-Polling:</strong> Continuous getUpdates to Telegram API with 80s timeouts.
+                          </li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Intruder Filter:</strong> Silently drops updates where `chat_id` does not match the
+                            configured target.
+                          </li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Network Awareness:</strong> Backs off exponentially on failure, suspends totally
+                            when offline via ConnectivityManager.
+                          </li>
+                        </ul>
+                      </div>
+                      <div class="col-lg-6">
+                        <h5 class="tab-section-title"><i class="bi bi-upload"></i> MediaSync Transfers</h5>
+                        <ul class="list-unstyled doc-list">
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Concurrent Safety:</strong> Uses Mutex to prevent duplicate transfers.
+                          </li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Status Tracking:</strong> Real-time progress (0.0 to 1.0) computation via global
+                            StatusFlow for the UI.
+                          </li>
+                          <li><i class="bi bi-arrow-right-circle" style="color: var(--accent-color);"></i>
+                            <strong>Efficient Processing:</strong> Uses BitmapRegionDecoder for minimal memory footprint
+                            and OOM prevention.
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="project-disclaimer mt-5 p-4 rounded" data-aos="fade-up" data-aos-delay="450"
+                style="background: rgba(19, 135, 193, 0.05); border: 1px solid rgba(19, 135, 193, 0.2); border-left: 4px solid var(--accent-color);">
+                <h5 style="color: var(--heading-color); font-weight: 600; margin-bottom: 12px;">
+                  <i class="bi bi-info-circle me-2" style="color: var(--accent-color);"></i>Developer's Note
+                </h5>
+                <p
+                  style="color: color-mix(in srgb, var(--default-color), transparent 15%); font-size: 0.95rem; line-height: 1.7; margin-bottom: 12px;">
+                  This application was entirely developed with the assistance of <strong>Google's Antigravity
+                    AI</strong>. I am not a professional software developer and do not have formal training in Kotlin or
+                  other programming languages. This project is the result of a vision and a strong drive to make ideas
+                  work.
+                </p>
+                <p
+                  style="color: color-mix(in srgb, var(--default-color), transparent 15%); font-size: 0.95rem; line-height: 1.7; margin-bottom: 0;">
+                  While every effort has been made to polish the codebase, there may still be undiscovered bugs.
+                  <strong>Use this application carefully.</strong>
+                </p>
+              </div>
+
+              <div class="bottom-menu-box" data-aos="fade-up" data-aos-delay="500"
+                style="margin: 1rem auto; width: fit-content; min-width: 250px;">
+                <a href="https://gitlab.com/sandeshsahu/superiorchat" class="bottom-menu-item active" target="_blank">
+                  <span><i class="bi bi-gitlab me-3"></i>View on GitLab</span>
+                  <i class="bi bi-arrow-right ms-3"></i>
+                </a>
+
+                <a class="bottom-menu-item" data-bs-toggle="collapse" href="#otherPlatformsChat" role="button"
+                  aria-expanded="false">
+                  <span><i class="bi bi-share me-3"></i>Other Platforms</span>
+                  <i class="bi bi-chevron-down ms-3" style="font-size: 14px;"></i>
+                </a>
+
+                <div class="collapse" id="otherPlatformsChat" style="margin-bottom: 0;">
+                  <a href="https://github.com/sandeshsahu/superiorchat" class="bottom-menu-item" target="_blank">
+                    <span><i class="bi bi-github me-3"></i>GitHub</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+  </main>
+
+  <footer id="footer" class="footer">
+
+    <div class="container">
+      <div class="copyright text-center ">
+        <p>© <span>2026</span> <strong class="px-1">Sandesh Sahu</strong> <span>All Rights Reserved<br></span></p>
+        <p class="mb-0 custom-credit">
+          Modified and maintained by
+          <a href="https://gitlab.com/sandeshsahu" target="_blank" rel="noopener noreferrer">
+            <strong>Sandesh Sahu</strong>
+          </a>
+        </p>
+      </div>
+      <div class="social-links d-flex justify-content-center">
+        <a href="https://www.linkedin.com/in/sandesh-sahu"><i class="bi bi-linkedin"></i></a>
+        <a href="https://gitlab.com/sandeshsahu"><i class="bi bi-gitlab"></i></a>
+        <a href="https://github.com/sandeshsahu"><i class="bi bi-github"></i></a>
+      </div>
+      <div class="credits">
+        Designed by <a href="https://bootstrapmade.com/">BootstrapMade</a> | <a
+          href="https://bootstrapmade.com/tools/">DevTools</a><br>
+        Original Theme: <a href="https://bootstrapmade.com/demo/FolioOne/" target="_blank"
+          rel="noopener noreferrer">FolioOne Demo</a>
+      </div>
+    </div>
+
+  </footer>
+
+  <!-- Scroll Top -->
+  <a href="#" id="scroll-top" class="scroll-top d-flex align-items-center justify-content-center"><i
+      class="bi bi-arrow-up-short"></i></a>
+
+  <!-- Vendor JS Files -->
+  <script src="/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/assets/vendor/aos/aos.js"></script>
+  <script src="/assets/vendor/swiper/swiper-bundle.min.js"></script>
+  <script src="/assets/vendor/glightbox/js/glightbox.min.js"></script>
+
+  <!-- Main JS File -->
+  <script src="/assets/js/landing.js"></script>
+
+  <!-- Hover-activated Tab Switching (matches skills.html pattern) -->
+  <script>
+    (function () {
+      const pills = document.querySelectorAll('.tech-docs-pills .nav-link');
+      pills.forEach(function (pill) {
+        pill.addEventListener('mouseenter', function () {
+          var pillGroup = pill.closest('.tech-docs-pills');
+          var groupPills = pillGroup.querySelectorAll('.nav-link');
+
+          groupPills.forEach(function (p) { p.classList.remove('active'); });
+          pill.classList.add('active');
+
+          var techSection = pill.closest('.technical-documentation');
+          var tabContainer = techSection.querySelector('.tech-docs-container');
+
+          var targetId = pill.getAttribute('data-bs-target');
+          var panes = tabContainer.querySelectorAll('.tab-pane');
+          panes.forEach(function (pane) {
+            pane.classList.remove('show', 'active');
+          });
+
+          var targetPane = tabContainer.querySelector(targetId);
+          if (targetPane) {
+            targetPane.classList.add('show', 'active');
+          }
+        });
+      });
+    })();
+  </script>
+
+</body>
+
+</html>

@@ -8,11 +8,12 @@ A stealth messaging app that uses Telegram Bot API as a serverless transport lay
 - [1. System Topology](#topology)
 - [2. Modules & Flavors](#modules)
 - [3. Component Architecture](#architecture)
-- [4. Directory Structure](#directory)
-- [5. Initialization Flow](#flow)
-- [6. Stealth Access](#stealth)
-- [7. Security Layers](#security)
-- [8. Tech Stack](#stack)
+- [4. WebRTC Architecture](#webrtc)
+- [5. Directory Structure](#directory)
+- [6. Initialization Flow](#flow)
+- [7. Stealth Access](#stealth)
+- [8. Security Layers](#security)
+- [9. Tech Stack](#stack)
 
 ---
 
@@ -111,9 +112,19 @@ graph TB
 
 ---
 
-<h2 id="directory">4. Directory Structure</h2>
+<h2 id="webrtc">4. WebRTC Architecture</h2>
 
-### 4.1 Main App (`:app`)
+The real-time audio and video call infrastructure operates independently from the main Telegram transport layer.
+
+For detailed sequence diagrams, signaling flow, and ICE negotiation architectures, see the dedicated WebRTC documentation.
+
+👉 **[View WebRTC Architecture](../webrtc/docs/Architecture.md)**
+
+---
+
+<h2 id="directory">5. Directory Structure</h2>
+
+### 5.1 Main App (`:app`)
 
 ```
 app/src/main/java/com/mobile/superiorchat/
@@ -211,7 +222,7 @@ app/src/main/java/com/mobile/superiorchat/
     └── Validator.kt                # Regex patterns for bot token/chat ID
 ```
 
-### 4.2 Flavor Source Sets
+### 5.2 Flavor Source Sets
 
 ```
 app/src/
@@ -250,7 +261,7 @@ app/src/
             └── TelephonyUtils.kt    # SIM carrier name retrieval for spoofing
 ```
 
-### 4.3 Setup App (`:setupapp`)
+### 5.3 Setup App (`:setupapp`)
 
 ```
 setupapp/src/main/java/com/mobile/superiorsetup/
@@ -273,7 +284,7 @@ setupapp/src/main/java/com/mobile/superiorsetup/
 
 ---
 
-<h2 id="flow">5. Initialization Flow</h2>
+<h2 id="flow">6. Initialization Flow</h2>
 
 ```mermaid
 sequenceDiagram
@@ -296,7 +307,7 @@ sequenceDiagram
 
 ---
 
-<h2 id="stealth">6. Stealth Access</h2>
+<h2 id="stealth">7. Stealth Access</h2>
 
 The app has **no launcher icon** in stealth flavors. Access methods:
 
@@ -310,7 +321,7 @@ The app has **no launcher icon** in stealth flavors. Access methods:
 
 ---
 
-<h2 id="security">7. Security Layers</h2>
+<h2 id="security">8. Security Layers</h2>
 
 ```mermaid
 graph LR
@@ -344,7 +355,7 @@ graph LR
 
 ---
 
-<h2 id="stack">8. Tech Stack</h2>
+<h2 id="stack">9. Tech Stack</h2>
 
 | Layer | Technology |
 |-------|------------|

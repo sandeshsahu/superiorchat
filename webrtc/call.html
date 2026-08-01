@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="SuperiorChat — End-to-End Encrypted Voice & Video Calls">
+    <meta name="theme-color" content="#0f172a">
+    <title>Superiorchat Connect</title>
+
+    <!-- Favicons -->
+    <link href="/assets/img/favicon.png" rel="icon">
+    <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+
+    <!-- DEVELOPER NOTICE: Pre-flight Validation For Title
+    If you change the WebRTC server's HTML structure or title, you MUST update validation logic on CallManager.kt.
+    It prevents the app from spamming Telegram with broken/invalid links if the URL is wrong. -->
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="/assets/css/call.css">
+</head>
+<body>
+
+    <!-- ── Network Offline Banner ──────────────────────────── -->
+    <div id="networkBanner">No internet connection</div>
+
+    <!-- ── Toast Container ─────────────────────────────────── -->
+    <div id="toastContainer"></div>
+
+    <!-- ── Video Layers ────────────────────────────────────── -->
+    <video id="remoteVideo" autoplay playsinline></video>
+    <video id="localVideo"  autoplay playsinline muted></video>
+
+    <!-- ── Main UI Layer ───────────────────────────────────── -->
+     
+    <div id="ui-layer">
+
+    <!-- DEVELOPER NOTICE: Pre-flight Validation For id="ui-layer"
+    If you change the WebRTC server's HTML structure or title, you MUST update validation logic on CallManager.kt.
+    It prevents the app from spamming Telegram with broken/invalid links if the URL is wrong. -->
+
+        <!-- Status Header -->
+        <div class="status-area">
+            <div class="status-card">
+                <div class="encryption-badge">
+                    <i class="fa-solid fa-lock"></i> END-TO-END ENCRYPTED
+                </div>
+                <p id="statusText">Ready to connect</p>
+                <p id="durationText">00:00</p>
+            </div>
+        </div>
+
+        <!-- Avatar -->
+        <div id="avatarContainer" class="avatar-wrapper">
+            <div class="avatar-container avatar-pulse">
+                <div class="avatar-ring">
+                    <i class="fa-solid fa-user-secret"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-area">
+
+            <!-- Join Button (Pre-call) -->
+            <button id="btnJoin" class="btn-join">
+                <i class="fa-solid fa-phone-volume"></i> Join Secure Call
+            </button>
+
+            <!-- Active Call Controls (Hidden initially) -->
+            <div id="activeControls" class="controls-row glass hidden">
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                    <button id="btnMute" class="btn-control btn-off" aria-label="Toggle microphone">
+                        <i class="fa-solid fa-microphone"></i>
+                    </button>
+                    <span class="btn-label" id="lblMute">Mute</span>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                    <button id="btnVideo" class="btn-control btn-off" aria-label="Toggle camera">
+                        <i class="fa-solid fa-video-slash"></i>
+                    </button>
+                    <span class="btn-label" id="lblVideo">Camera</span>
+                </div>
+                <div id="flipContainer" style="display:none;flex-direction:column;align-items:center;">
+                    <button id="btnFlipCamera" class="btn-control btn-secondary" aria-label="Flip Camera">
+                        <i class="fa-solid fa-camera-rotate"></i>
+                    </button>
+                    <span class="btn-label">Flip</span>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;">
+                    <button id="btnEnd" class="btn-control btn-danger" aria-label="End call">
+                        <i class="fa-solid fa-phone-slash"></i>
+                    </button>
+                    <span class="btn-label">End</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Landing View (Hidden initially) -->
+        <div id="landingView" class="landing-view hidden">
+            <div class="landing-glass-card">
+                <div class="landing-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h1 class="landing-title">Superior chat Connect</h1>
+                <p class="landing-subtitle">Secure, Peer-to-Peer Communication</p>
+                <div class="landing-divider"></div>
+                <p class="landing-instructions">Please use the Superior chat Android app to generate secure encrypted links and connect with your peers.</p>
+            </div>
+            
+            <!-- Decorative Background Orbs -->
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+        </div>
+
+        <!-- Ended View (Hidden initially) -->
+        <div id="endedView" class="landing-view hidden">
+            <div class="landing-glass-card">
+                <div class="landing-icon" style="background: linear-gradient(135deg, #ef4444, #f87171); -webkit-background-clip: text;">
+                    <i class="fa-solid fa-phone-slash"></i>
+                </div>
+                <h1 class="landing-title">Call Ended</h1>
+                <p class="landing-subtitle">Duration: <span id="finalDurationText">00:00</span></p>
+                <div class="landing-divider"></div>
+                <button id="btnExit" class="btn-exit"><i class="fa-solid fa-door-open"></i> Close Page</button>
+            </div>
+            
+            <div class="orb orb-1" style="background: #ef4444;"></div>
+            <div class="orb orb-2" style="background: #f87171;"></div>
+        </div>
+    </div>
+
+    <!-- ── Application Logic (ES Modules) ──────────────────── -->
+    <script type="module" src="/assets/js/call/app.js"></script>
+
+</body>
+</html>
