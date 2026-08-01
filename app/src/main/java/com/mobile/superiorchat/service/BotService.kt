@@ -51,6 +51,8 @@ class BotService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
+        // Ensure call hardware locks and connections are released on violent swipe-away
+        com.mobile.superiorchat.core.call.CallManager.endCall()
         // Re-start the service so polling survives app swipe-away
         ServiceCore.ensureRunning(this)
     }

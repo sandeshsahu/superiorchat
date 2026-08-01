@@ -148,6 +148,21 @@ fun CallScreen(
         }
     }
 
+    // ── Background Call Terminator (Stealth Mode) ──────────
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                // End the call immediately when the app goes to the background
+                if (callState == CallState.ACTIVE || callState == CallState.CONNECTING) {
+                    performEndCall()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     // ── Picture in Picture Mode ──────────────────────────────
     val showPip = isMinimized && (isVideoOn || isRemoteVideoOn) && callState == CallState.ACTIVE
 

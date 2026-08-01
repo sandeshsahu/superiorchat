@@ -165,24 +165,15 @@ class MainActivity : ComponentActivity() {
         sendBroadcast(intent)
     }
 
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        if (CallManager.callState.value == CallState.ACTIVE) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                try {
-                    val params = PictureInPictureParams.Builder()
-                        .setAspectRatio(Rational(9, 16))
-                        .build()
-                    enterPictureInPictureMode(params)
-                } catch (e: Exception) {
-                    AppLog.log(LogCategory.ERROR, "Failed to enter PiP: ${e.message}")
-                }
-            }
-        }
+    override fun onStop() {
+        super.onStop()
+        // Stealth requirement: audio must immediately silence if app goes to background
+        com.mobile.superiorchat.media.AudioPlayer.pause()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         CallManager.endCall()
+        com.mobile.superiorchat.media.AudioPlayer.stop()
     }
 }

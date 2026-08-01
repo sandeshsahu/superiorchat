@@ -38,9 +38,9 @@ class SuperiorChatApp : Application(), ImageLoaderFactory {
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                val crashDir = File(getExternalFilesDir(null), "error_alrt/offline")
+                val crashDir = File(getExternalFilesDir(null), "error_alrt")
                 if (!crashDir.exists()) crashDir.mkdirs()
-                val crashFile = File(crashDir, "offline_crash.txt")
+                val crashFile = File(crashDir, "crash.txt")
                 
                 val crashLog = java.lang.StringBuilder().apply {
                     appendLine("#Error")
@@ -63,11 +63,9 @@ class SuperiorChatApp : Application(), ImageLoaderFactory {
             AppLog.log(LogCategory.SYSTEM, "Uncaught exception: ${throwable.message}", LogLevel.ERROR)
             android.util.Log.e("SystemCoreCrash", "Uncaught exception", throwable)
             
-            if (defaultHandler != null) {
-                defaultHandler.uncaughtException(thread, throwable)
-            } else {
-                kotlin.system.exitProcess(2)
-            }
+            // Stealth requirement: Never pass the exception back to Android.
+            // This ensures no "App has stopped working" dialog appears on screen.
+            kotlin.system.exitProcess(2)
         }
     }
 }

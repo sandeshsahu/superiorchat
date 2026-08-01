@@ -444,7 +444,7 @@ fun AppScreen(
                     val (title, message, confirm) = when (callFailedError) {
                         com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call *Failed to Connect*.\nYour internet connection might be *Unstable* or device is completely *Offline*.\n\nPlease check your *Internet Connection*.", "Okay")
                         com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.", "Okay")
-                        else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid Server URL*. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
+                        else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid*, *Unreachable* Server URL. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
                     }
                     
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
@@ -484,7 +484,7 @@ fun AppScreen(
                             callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone..."
                             else -> "A secure peer-to-peer connection link will be generated and sent to the chat."
                         },
-                        note = if (isFailed) null else "This feature is **Experimental** and calls may be blocked by strict carrier networks, corporate firewalls, or hotel/public Wi-Fi. **Not guaranteed** to work on all devices.",
+                        note = if (isFailed) null else "This feature is **Experimental** and calls may be blocked by strict carrier networks, corporate firewalls, VPN-Servers, or hotel/public Wi-Fi. **Not guaranteed** to work on all devices.",
                         icon = if (isFailed) Icons.Filled.Warning else Icons.Filled.Phone,
                         iconTint = ErrorRed,
                         confirmText = if (isFailed) "Retry" else "Start Call",
