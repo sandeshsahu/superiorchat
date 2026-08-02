@@ -133,6 +133,12 @@ For security boundaries, threat models, developer notes, and self-hosting instru
 - 📝 **[Calling Developer Notes & Limitations](../webrtc/docs/Notes.md)**
 - 📁 **[Full Calling Documentation Suite](../webrtc/docs/)**
 
+> [!CAUTION]
+> **Third-Party Infrastructure Risk (WebRTC Calls)**
+> The default static webpages and signaling servers used for the WebRTC calling feature are provided **strictly as a convenience**. Using the maintainer's default servers (or any unknown third-party server) is **strictly not recommended** for privacy-critical use cases. A malicious host owner can easily inject code to steal your cryptographic call secrets, secretly log your activity, or severely compromise your privacy. The maintainer and developers assume **no responsibility** for privacy breaches caused by relying on third-party infrastructure. You **must** self-host your own static web pages and signaling server for guaranteed security. 
+> 
+> See the step-by-step self-hosting guide in **[Deployment.md](../webrtc/docs/Deployment.md)**.
+
 ---
 
 <h2 id="privacy">9. Privacy Statement</h2>

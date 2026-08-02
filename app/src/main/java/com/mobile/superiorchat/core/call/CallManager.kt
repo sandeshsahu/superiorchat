@@ -212,8 +212,8 @@ object CallManager {
         currentRoomId = roomId
         currentSecret = secret
 
-        val vercelUrl = "$workingBaseUrl/call.html?host=$roomId&secret=$secret"
-        val telegramUrl = "$workingBaseUrl/call.html?join=$roomId&secret=$secret"
+        val vercelUrl = "$workingBaseUrl/call.html#host=$roomId&secret=$secret"
+        val telegramUrl = "$workingBaseUrl/call.html#join=$roomId&secret=$secret"
 
         AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId on host $workingBaseUrl")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")

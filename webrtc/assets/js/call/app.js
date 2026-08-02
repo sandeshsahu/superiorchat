@@ -23,9 +23,10 @@ function notifyAndroid(action, data = '') {
 //  URL Routing
 // ─────────────────────────────────────────────────────────────
 
-const params = new URLSearchParams(window.location.search);
-const hostId = params.get('host');   // Android WebView: ?host=UUID
-const joinId = params.get('join');   // Telegram browser: ?join=UUID
+const hashString = window.location.hash.substring(1);
+const params = new URLSearchParams(hashString);
+const hostId = params.get('host');   // Android WebView: #host=UUID
+const joinId = params.get('join');   // Telegram browser: #join=UUID
 const secret = params.get('secret'); // Cryptographic call password
 
 // ─────────────────────────────────────────────────────────────

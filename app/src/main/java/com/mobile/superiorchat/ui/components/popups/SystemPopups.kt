@@ -808,7 +808,7 @@ fun WebRtcConfigPopup(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Instructions:\n• Enter only the Base URL (e.g., https://your-server.com)\n• Do NOT include /?join= or /?host=\n• Ensure your server is accessible publicly",
+                        text = "Instructions:\n• Enter only the Base URL (e.g., https://your-server.com)\n• Do NOT include /#join= or /#host=\n• Ensure your server is accessible publicly",
                         color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,

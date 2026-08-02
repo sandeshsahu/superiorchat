@@ -30,18 +30,20 @@ The web application serves two roles depending on the URL parameters:
 ```mermaid
 graph TD
     subgraph "Android Phone (Caller / Host)"
-        A["Native Compose UI<br/>(CallScreen.kt)"] <-->|"JS Bridge Protocol<br/>(window.Android)"| W1["call.html?host=UUID&secret=UUID<br/>(Hidden Background Engine)"]
+        A["Native Compose UI<br/>(CallScreen.kt)"] <-->|"JS Bridge Protocol<br/>(window.Android)"| W1["call.html#host=UUID&secret=UUID<br/>(Hidden Background Engine)"]
+        W1 <-->|"PeerJS<br/>(WebRTC DataChannel + MediaStream)"| W2
+        W2["call.html#join=UUID&secret=UUID<br/>(Full Standalone Web UI)"]
     end
     
-    subgraph "Telegram Client (Recipient / Guest)"
-        W2["call.html?join=UUID&secret=UUID<br/>(Full Standalone Web UI)"]
-    end
-    
-    W1 <-->|"Direct Peer-to-Peer Connection"| W2
+    T["Telegram User<br/>(Clicks inline button)"] -->|"Opens URL"| W2
 ```
 
-- 📱 **Host Mode (Android App)**: Loaded with `?host=UUID&secret=UUID`. The web UI buttons and headers are hidden (`display: none`). The native Android app draws all controls on screen, while the web engine runs silently in the background.
-- 💬 **Guest Mode (Telegram Browser)**: Loaded with `?join=UUID&secret=UUID`. Displays a complete web interface with call controls, avatars, and timers for the Telegram recipient.
+## How It Works
+
+Because the WebRTC environment is sandboxed inside a browser context, it allows SuperiorChat to securely inject a fully functional calling engine without deeply tying complex C++ libraries into the Android binary.
+
+- 📱 **Host Mode (Android App)**: Loaded with `#host=UUID&secret=UUID`. The web UI buttons and headers are hidden (`display: none`). The native Android app draws all controls on screen, while the web engine runs silently in the background.
+- 💬 **Guest Mode (Telegram Browser)**: Loaded with `#join=UUID&secret=UUID`. Displays a complete web interface with call controls, avatars, and timers for the Telegram recipient.
 
 ---
 

@@ -419,7 +419,7 @@ fun AppScreen(
                     if (roomId != null) {
                         val secret = CallManager.currentSecret
                         CallScreen(
-                            url = "${CallManager.currentBaseUrl}/call.html?host=$roomId&secret=$secret",
+                            url = "${CallManager.currentBaseUrl}/call.html#host=$roomId&secret=$secret",
                             isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE,
                             onMinimize = { isCallMinimized = true },
                             onMaximize = { 

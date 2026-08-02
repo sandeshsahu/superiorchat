@@ -80,15 +80,23 @@ WebRTC is fundamentally a Peer-to-Peer (P2P) technology. There is no central ser
 
 <h2 id="supply-chain">5. Infrastructure & Supply Chain Risks</h2>
 
-The default static pages are hosted on free-tier platforms (Vercel) and use free public signaling (PeerJS). 
+> [!CAUTION]
+> **Using the default hosted pages provided by the maintainer (or any unknown third party) is STRICTLY NOT RECOMMENDED for privacy-critical use cases.** 
 
-**Infrastructure Constraints**:
-- **Quota Exhaustion**: If the app experiences a massive spike in traffic, Vercel may suspend the static pages. Default calls across all users will fail until quotas reset.
-- **Maintainer Compromise**: If the project maintainer's GitHub or Vercel account is compromised, an attacker could theoretically push malicious JavaScript to all users relying on the default URL.
+The default static pages and signaling servers are provided **strictly as a convenience** for testing. While we prioritize your privacy, relying on third-party infrastructure always carries a non-zero risk. 
 
-This is why **Self-Hosting is heavily recommended for strict security requirements**. Deploying the static files to a personal hosting account eliminates these centralized supply chain risks entirely. 
+**Why you must self-host:**
+- 🕵️ **Malicious Code Injection**: The owner of the host (or a hacker who compromises their account) can secretly modify the JavaScript (`app.js`) to steal your cryptographic call secrets straight from your browser.
+- 📜 **Covert Logging**: They can quietly inject logging mechanisms to track when you call, how long you call, and who you connect with.
+- 🚫 **Quota Exhaustion**: Free-tier public servers (like Vercel or PeerJS Cloud) may crash or suspend service unexpectedly if traffic spikes.
 
-> 🚀 **Self-Hosting Instructions**: View [Deployment.md](Deployment.md) for step-by-step guides on deploying the engine and custom TURN servers.
+### Disclaimer of Liability
+The maintainer and developers of SuperiorChat are **NOT RESPONSIBLE** for any privacy breaches, data leaks, or service interruptions that occur if you choose to rely on the default or third-party infrastructure. You assume all risks associated with using someone else's server.
+
+> [!IMPORTANT]
+> To guarantee true privacy and eliminate supply-chain risks, **users must deploy their own static webpage and signaling server.**
+> 
+> 🚀 **Self-Hosting Instructions**: Read the step-by-step guide in [Deployment.md](Deployment.md) to set up your own secure infrastructure in minutes.
 
 ---
 
