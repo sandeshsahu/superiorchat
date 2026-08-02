@@ -14,7 +14,7 @@
 ---
 
 > [!IMPORTANT]
-> **Superior Chat** is a stealth communication system for Android. It operates serverlessly by relaying on official Telegram Bot API, leaving **zero personal server footprint** while remaining heavily **camouflaged** on the target device.
+> **Superior Chat** is an Android app designed for maximum privacy. It looks and acts like a normal app on the outside, keeping your conversations **Completely Hidden** and leaving no trace on your personal device.
 
 ---
 

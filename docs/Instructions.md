@@ -29,10 +29,21 @@ Before you begin, you must download the necessary APK files from our official Gi
 > [!IMPORTANT]
 > Currently 2 camouflaged flavors of the app are available for download, which are **[Captive Portal](flavors/CaptivePortal.md)** and **[Weather](flavors/FlavorWeather.md)**.
 
-**Naming of flavors**:
-- **Flavor** = Available Camoflouged Flavor (e.g. `CaptivePortal`)
-- `[Flavor] App_Release.apk` - flavor of the setup app (`captiveportal`) and app (`weather`).
-- `[Original] App_Release.apk` - non-hidden, standard version of the app
+**How to read the file names:**
+The installation files follow a simple pattern: `[Type]-[Flavor]-release.apk`
+
+* **Type**: `app` (the main chat app) or `setupapp` (Used only to install and wake up `captiveportal` flavor app and configure it. **setupapp** features an **Admin Mode** to easily generate connection QR codes, and a **Client Mode** to instantly scan them. `main` app asks to Uninstall `setupapp` once setup is complete.)
+* **Flavor**: The disguise used (e.g., `weather` or `captiveportal`).
+
+**Examples:**
+* `app-weather-release.apk` — The chat app disguised as a weather app.
+* `setupapp-captiveportal-release.apk` — CaptivePortal flavor chat app with temporary setup app.
+* `app-original-release.apk` — The standard chat app with no disguise (best for testing).
+
+
+**What to download:**
+- `setupapp-[flavor]-release.apk` (Needed by Person A to generate the QR code, and Person B to install the Camouflage app, only if person b uses `captive portal` flavor. If person b uses `weather` flavor no need of setup app for him/her).
+- `app-original-release.apk` (Only needed if Person B wants the non-hidden, standard version).
 
 👉 **[Download Latest APKs from GitHub Releases](https://github.com/sandeshsahu/superiorchat/releases)**
 
@@ -49,11 +60,6 @@ Before you begin, you must download the necessary APK files from our official Gi
 > 2. **Use the provided releases:** If you don't want to build it yourself, you can use the signed APKs provided in the Releases section. 
 > 
 > I am not forcing anyone to use my provided APKs. This project is the result of a personal vision and a strong, relentless drive to make these ideas work in the real world. If you choose to install the pre-built APK and see the warning, simply click **More Details -> Install Anyway**.
-
-
-**What to download:**
-- `[Flavor]SetupApp_Release.apk` (Needed by Person A to generate the QR code, and Person B to install the Camouflage app, only if person b uses `captive portal` flavor. If person b uses `weather` flavor no need of setup app for him/her).
-- `[Original]App_Release.apk` (Only needed if Person B wants the non-hidden, standard version).
 
 ---
 
@@ -100,7 +106,7 @@ This version hides itself entirely and requires the Setup App to install and con
 4. **Scan Credentials**: Continue to Step 2. Scan the encrypted QR code provided by Person A (or manually type the credentials).
 5. **Wake Up & Bind**: Continue to Step 3. Tap the button to open the Main app from within the Setup App. This locks in your credentials.
 6. **Cover Your Tracks**: The main app will now ask you to uninstall the Setup App. Choose **Uninstall** to remove all traces of configuration.
-7. **Start Chatting**: Use your secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search Interception (for [weather flavor](flavors/FlavorWeather.md)) to access the app going forward!
+7. **Start Chatting**: Use your secret dialer code (`*#*#9131#*#*`) or Quick Settings tile sequence (`On` -> `Off` -> `On` -> `Hold` within 3 sec) to access the app going forward!
 
 <br>
 <p align="center">
@@ -115,7 +121,7 @@ This version hides itself entirely and requires the Setup App to install and con
 This version perfectly mimics a functional weather application and does not require the Setup App.
 
 1. **Install Main App**: Download the latest "Weather" release APK and install it.
-2. **Access Hidden Engine**: Open the "Weather" app. Tap the search bar, type `superior chat` (or your custom access word), and hit the search/enter key on your keyboard.
+2. **Access Hidden Engine**: Open the [Weather](flavors/FlavorWeather.md) app. Tap the search bar, type `superior chat` (or your custom access word), and hit the search/enter key on your keyboard.
 3. **Open Settings**: The hidden chat engine will launch. Go directly to App Settings.
 4. **Enter Credentials**: Fill in your Bot Token and Chat ID (the QR Code scanner is also available).
 5. **Start Chatting**: You are ready to go!

@@ -40,13 +40,13 @@
 - 🖼️ **Picture-in-Picture**: Drag and move the floating video window during active calls.
 - 🎛️ **Smooth Video Minimizing**: The floating video window now shrinks smoothly without any flashing or lag.
 - 🎙️ **Live Audio Visualizers**: Avatars pulse in real-time based on voice volume.
-- 팝 **Smart Save Prompts**: The app now tells you exactly where your photo or video will be saved before you confirm.
 
 ---
 
 ### ⚡ Media & Storage
 - 🔄 **Instant Camera Swap**: Switch between front and rear cameras instantly without lag.
 - 🎧 **Smart Audio Routing**: Calls automatically switch between the earpiece, speakerphone, and Bluetooth.
+- 💾 **Save to device**: Added a "Save" option to the message long-press menu. The app now tells you exactly where your photo or video will be saved (Pictures, Movies, Music, Downloads).
 
 ---
 

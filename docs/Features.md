@@ -60,6 +60,7 @@
 - 📷 **Photos & Videos**: In-app camera capture, high-resolution photo sharing, and video playback with smart thumbnails.
 - 🎙️ **Voice Messages**: Record voice notes featuring dynamic animated waveform visualizations and interactive playback controls.
 - 📁 **File & Document Sharing**: Send any file type (PDF, DOC, APK) up to `50MB` and download up to `20MB` with automatic file type icons.
+- 💾 **Save to Device**: Securely export downloaded photos, videos, audio, and documents directly to your device's native public folders (`Pictures`, `Movies`, `Music`, `Downloads`) with zero trace of the app's identity.
 - 📊 **Real-Time Transfers**: Global, expandable overlay displaying live upload/download progress categorized by media type, featuring individual cancellation controls.
 - 🗄️ **Integrated File Explorer**: Built-in, hierarchical file browser with recent items, folder navigation, search, and native media thumbnails.
 - 🖼️ **Smart Media Picker**: Custom gallery grid neatly organized by albums, featuring camera shortcuts, multi-file support, and buttery-smooth swipe gestures.
