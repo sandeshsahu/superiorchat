@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
+import androidx.annotation.RequiresApi
 
 enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING }
 
@@ -316,23 +317,44 @@ object CallManager {
         _isSpeakerphoneOn.value = enabled
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            // Android 12+: Use modern routing ONLY. No legacy overrides.
+            // Android 12+: Use modern AudioManager routing exclusively.
             if (enabled) {
                 val devices = am.availableCommunicationDevices
                 val targetDevice = devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
                 if (targetDevice != null) {
                     am.setCommunicationDevice(targetDevice)
+                    AppLog.log(LogCategory.SYSTEM, "Audio routed → Speaker")
                 }
             } else {
-                am.clearCommunicationDevice()
+                // Do NOT call clearCommunicationDevice() — that defaults to earpiece and ignores Bluetooth.
+                // Instead, explicitly select the best available non-speaker device.
+                selectBestNonSpeakerDevice(am)
             }
         } else {
-            // Android 11 and below: Use legacy flag
-            @Suppress("DEPRECATION")
-            am.isSpeakerphoneOn = enabled
+            // Android 11 and below: Use legacy flags.
+            if (enabled) {
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = true
+                AppLog.log(LogCategory.SYSTEM, "Audio routed → Speaker (legacy)")
+            } else {
+                @Suppress("DEPRECATION")
+                am.isSpeakerphoneOn = false
+                // Activate Bluetooth SCO if a BT device is paired and available.
+                @Suppress("DEPRECATION")
+                if (am.isBluetoothScoAvailableOffCall || am.isBluetoothA2dpOn) {
+                    @Suppress("DEPRECATION")
+                    am.startBluetoothSco()
+                    @Suppress("DEPRECATION")
+                    am.isBluetoothScoOn = true
+                    AppLog.log(LogCategory.SYSTEM, "Audio routed → Bluetooth SCO (legacy)")
+                } else {
+                    AppLog.log(LogCategory.SYSTEM, "Audio routed → Earpiece (legacy)")
+                }
+            }
         }
 
-        // If Speakerphone is ON -> release proximity wake lock so screen stays ON
+        // If Speakerphone is ON → release proximity wake lock so screen stays ON.
+        // Proximity sensor suppression when speaker is active is handled in proximityListener.
         if (enabled && wakeLock?.isHeld == true) {
             wakeLock?.release()
         }
@@ -399,6 +421,11 @@ object CallManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             audioManager?.clearCommunicationDevice()
         } else {
+            // Stop any active Bluetooth SCO session before releasing hardware
+            @Suppress("DEPRECATION")
+            audioManager?.stopBluetoothSco()
+            @Suppress("DEPRECATION")
+            audioManager?.isBluetoothScoOn = false
             @Suppress("DEPRECATION")
             audioManager?.isSpeakerphoneOn = false
         }
@@ -419,6 +446,44 @@ object CallManager {
             audioManager?.abandonAudioFocus(null)
         }
         audioManager = null
+    }
+
+    /**
+     * Android 12+: Selects the best available non-speaker audio device.
+     * Priority: Bluetooth SCO → Bluetooth A2DP → Wired Headset → Earpiece → system default.
+     *
+     * This is called by setSpeakerphone(false) instead of clearCommunicationDevice(),
+     * which would silently ignore Bluetooth and default to earpiece.
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    private fun selectBestNonSpeakerDevice(am: AudioManager) {
+        val devices = am.availableCommunicationDevices
+
+        // AudioDeviceInfo type constants used as ints to avoid toolchain resolution issues:
+        // TYPE_BT_SCO = 7, TYPE_BT_A2DP = 8 (stable Android constants since API 23)
+        val btSco  = 7 // AudioDeviceInfo.TYPE_BT_SCO
+        val btA2dp = 8 // AudioDeviceInfo.TYPE_BT_A2DP
+
+        val selected = devices.firstOrNull { it.type == btSco }
+            ?: devices.firstOrNull { it.type == btA2dp }
+            ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_WIRED_HEADSET }
+            ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES }
+            ?: devices.firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
+
+        if (selected != null) {
+            am.setCommunicationDevice(selected)
+            val isBluetooth = selected.type == btSco || selected.type == btA2dp
+            val isWired = selected.type == AudioDeviceInfo.TYPE_WIRED_HEADSET
+                || selected.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES
+            val label = if (isBluetooth) "Bluetooth (${selected.productName})"
+                else if (isWired) "Wired Headset"
+                else "Earpiece"
+            AppLog.log(LogCategory.SYSTEM, "Audio routed → $label")
+        } else {
+            // No specific device found — let system decide
+            am.clearCommunicationDevice()
+            AppLog.log(LogCategory.SYSTEM, "Audio routed → system default")
+        }
     }
 
     // ─────────────────────────────────────────────────────────
