@@ -103,6 +103,7 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 | 6 | **Automatic Server Fallback** | If the primary call server fails, `CallManager` tests backup fallback servers automatically. | Reset to default or customize URLs in App Settings. |
 | 7 | **Background Call Termination** | To maintain strict camouflage, if the app is minimized or sent to the background during an active call, the call is instantly terminated. | Stay in the app during active calls. We deliberately avoid native OS Picture-in-Picture. |
 | 8 | **WebRTC IP Exposure** | Because the call system is Peer-to-Peer, both participants can theoretically discover each other's public IP address. | Host your own TURN server to proxy the connection if strict anonymity is required. |
+| 9 | **Fake Video Mute (UI-Level Hide)** | Muting video via the UI only hides the video player. The camera hardware remains active and streaming to prevent PeerJS SDP crashes and remote "frozen video" bugs. | We prioritize connection stability. We may find a safe hardware-level fix for this in upcoming updates. |
 
 ---
 

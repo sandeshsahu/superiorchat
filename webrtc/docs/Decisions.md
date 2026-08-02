@@ -54,7 +54,7 @@ Rather than relying on a single hardcoded server, `CallManager.kt` uses a dynami
 ### Why we made this decision:
 Free-tier WebRTC servers (like Vercel/PeerJS) are subject to rate-limiting and regional blocking. To guarantee connection reliability:
 1. The app shuffles an array of backup domains from `webrtc_urls.xml`.
-2. It executes an asynchronous `HttpURLConnection` GET request (`?host=UUID&secret=UUID`).
+2. It executes an asynchronous `HttpURLConnection` GET request (`call.html`).
 3. It actively parses the HTTP payload for `<title>Superiorchat Connect</title>` or `id="ui-layer"`.
 4. The first server to respond with the correct payload wins the "Race to Connect" and is saved to `Prefs.webrtcBaseUrl`.
 

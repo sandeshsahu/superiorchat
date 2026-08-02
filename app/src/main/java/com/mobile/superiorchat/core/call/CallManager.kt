@@ -28,7 +28,7 @@ import androidx.annotation.RequiresApi
 
 enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING }
 
-enum class CallError { NONE, INVALID_URL, NETWORK_ERROR, NO_ANSWER }
+enum class CallError { NONE, INVALID_URL, NETWORK_ERROR, NO_ANSWER, HARDWARE_ERROR }
 
 /**
  * Singleton managing the full call lifecycle: state machine, audio hardware,
@@ -124,7 +124,7 @@ object CallManager {
         for (baseUrl in urlsToTry) {
             val isValid = withContext(Dispatchers.IO) {
                 try {
-                    val url = java.net.URL("$baseUrl/call.html?host=$roomId&secret=$secret")
+                    val url = java.net.URL("$baseUrl/call.html")
                     val connection = url.openConnection() as java.net.HttpURLConnection
                     connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
                     connection.connectTimeout = 3000

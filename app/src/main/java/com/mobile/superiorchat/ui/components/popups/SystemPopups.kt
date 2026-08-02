@@ -754,8 +754,7 @@ fun WebRtcConfigPopup(
     }
     val isValid by remember(baseUrl) { 
         derivedStateOf { 
-            val checkUrl = baseUrl.trim()
-            checkUrl.isEmpty() || checkUrl.startsWith("http://") || checkUrl.startsWith("https://") 
+            com.mobile.superiorchat.utils.Validator.isValidWebRtcUrl(baseUrl)
         } 
     }
 

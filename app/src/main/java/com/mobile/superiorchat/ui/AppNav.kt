@@ -84,6 +84,7 @@ fun AppScreen(
     val callViewModel: CallViewModel = viewModel()
     var isCallMinimized by remember { mutableStateOf(false) }
     var callConfirmationState by remember { mutableStateOf(CallInitiationState.IDLE) }
+    var hardwareInitTimer by remember { mutableIntStateOf(0) }
 
     val activity = context as? android.app.Activity
     LaunchedEffect(drawerState.isOpen) {
@@ -444,6 +445,7 @@ fun AppScreen(
                     val (title, message, confirm) = when (callFailedError) {
                         com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call *Failed to Connect*.\nYour internet connection might be *Unstable* or device is completely *Offline*.\n\nPlease check your *Internet Connection*.", "Okay")
                         com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.", "Okay")
+                        com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR -> Triple("Hardware Initialization Failed", "The secure WebRTC environment failed to load properly.\nThis is usually caused by an *Invalid Server Path* blocking necessary Javascript files, or a camera/microphone hardware lock.\n\nPlease check application permissions or would you like to *Reset to Default*?", "Go to Settings")
                         else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid*, *Unreachable* Server URL. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
                     }
                     
@@ -453,10 +455,10 @@ fun AppScreen(
                         icon = androidx.compose.material.icons.Icons.Filled.Warning,
                         iconTint = com.mobile.superiorchat.theme.ErrorRed,
                         confirmText = confirm,
-                        dismissText = if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL) "Cancel" else "Dismiss",
+                        dismissText = if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL || callFailedError == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) "Cancel" else "Dismiss",
                         onConfirm = {
                             CallManager.clearCallError()
-                            if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL) {
+                            if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL || callFailedError == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
                                 currentScreen = NavScreen.Settings
                             }
                         },
@@ -481,7 +483,7 @@ fun AppScreen(
                         },
                         message = when {
                             isFailed -> "Failed to deliver the invite link to Telegram. Please check your connection and try again."
-                            callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone..."
+                            callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $hardwareInitTimer / 30 seconds"
                             else -> "A secure peer-to-peer connection link will be generated and sent to the chat."
                         },
                         note = if (isFailed) null else "This feature is **Experimental** and calls may be blocked by strict carrier networks, corporate firewalls, VPN-Servers, or hotel/public Wi-Fi. **Not guaranteed** to work on all devices.",
@@ -501,6 +503,20 @@ fun AppScreen(
                                         when (result) {
                                             com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
                                                 callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
+                                                hardwareInitTimer = 0
+                                                
+                                                scope.launch {
+                                                    while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                                        kotlinx.coroutines.delay(1000)
+                                                        hardwareInitTimer++
+                                                    }
+                                                    if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                                        com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                                        CallManager.endCall()
+                                                        CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                                        callConfirmationState = CallInitiationState.IDLE
+                                                    }
+                                                }
                                             }
                                             com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
                                                 callConfirmationState = CallInitiationState.IDLE

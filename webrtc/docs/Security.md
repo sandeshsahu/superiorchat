@@ -60,6 +60,10 @@ The following outlines theoretical attacks that apply to WebRTC systems, and how
 - **The Vulnerability**: A Telegram user forwards the "Join Call" link to a public group, allowing unauthorized users to click the link hours after the call ended.
 - **The Defense**: `CallViewModel.kt` uses the Telegram Bot API (`editMessageText`) to surgically delete the inline keyboard button the second the call drops. Furthermore, `webrtc.js` executes a pre-join DataChannel ping (`checkHostActive`)—if the host is inactive, the web UI refuses to render the call screen.
 
+### Threat E: The "Fake Video Mute" Privacy Leak
+- **The Vulnerability**: When a user taps "Disable Video", the app currently only hides the video player on the screen. It does **not** physically stop the camera hardware. The camera continues to capture and send live video over the network to the other person on the call. The person on the other end could theoretically inspect their browser's hidden network data to view your "muted" video feed without your knowledge.
+- **The Defense (Currently Pending)**: We temporarily rely on this "visual-only" mute due to a strict limitation in our connection engine (PeerJS). If a call is started in "Audio Only" mode (without initially turning on the camera), PeerJS configures an audio-only connection. If the user later decides to turn on their camera mid-call, PeerJS struggles to dynamically add a new video stream to the active call and usually crashes. Therefore, the app is forced to turn on the camera from the very first second to keep the video connection open, even if the user has their video muted. I am currently researching a way to implement a safe hardware-level fix for this issue in future updates without breaking the connection.
+
 ---
 
 <h2 id="ip-privacy">4. IP Exposure & P2P Characteristics</h2>

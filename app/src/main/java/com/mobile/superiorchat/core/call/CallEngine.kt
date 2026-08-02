@@ -25,11 +25,41 @@ class CallEngine(
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val targetUrl = request?.url?.toString() ?: ""
             val expectedBase = CallManager.currentBaseUrl ?: ""
-            if (!targetUrl.startsWith(expectedBase)) {
-                AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted URL: $targetUrl")
-                return true
+
+            if (expectedBase.isEmpty()) return true
+
+            try {
+                val targetUri = android.net.Uri.parse(targetUrl)
+                val expectedUri = android.net.Uri.parse(expectedBase)
+                
+                val targetHost = targetUri.host?.lowercase()
+                val expectedHost = expectedUri.host?.lowercase()
+                
+                // 1. Strictly compare the domain host (case-insensitive)
+                if (targetHost != expectedHost) {
+                    AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted origin: $targetHost")
+                    return true // BLOCKED
+                }
+                
+                // 2. Prevent port-shifting bypasses (e.g., from :3000 to :8080)
+                if (targetUri.port != expectedUri.port) {
+                    AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation to untrusted port: ${targetUri.port}")
+                    return true // BLOCKED
+                }
+                
+                // 3. Prevent protocol downgrade attacks (e.g., https -> http)
+                if (targetUri.scheme != expectedUri.scheme) {
+                    AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation due to protocol mismatch: ${targetUri.scheme}")
+                    return true // BLOCKED
+                }
+                
+            } catch (e: Exception) {
+                // If the URL is malformed and cannot be parsed, block it for safety
+                AppLog.log(LogCategory.SYSTEM, "SECURITY: Blocked navigation due to malformed URL")
+                return true // BLOCKED
             }
-            return false
+            
+            return false // ALLOWED
         }
     }
 

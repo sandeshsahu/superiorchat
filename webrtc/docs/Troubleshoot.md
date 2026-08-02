@@ -12,7 +12,7 @@
 
 ## 📑 Quick Navigation
 
-- [1. Immediate "Invalid URL" or "Network Error" Popups](#network-error)
+- [1. "Invalid URL", "Hardware Error", or "Network Error" Popups](#network-error)
 - [2. Call Stuck on "Waiting..."](#stuck-waiting)
 - [3. Connected, But No Audio or Video](#media-missing)
 - [4. Camera Preview Misaligned or Distorted](#ui-alignment)
@@ -20,17 +20,18 @@
 
 ---
 
-<h2 id="network-error">1. Immediate "Invalid URL" or "Network Error" Popups</h2>
+<h2 id="network-error">1. "Invalid URL", "Hardware Error", or "Network Error" Popups</h2>
 
 ### What is happening?
-An error popup appears immediately when you tap the Call button, and the call fails before connecting.
+An error popup appears when you tap the Call button, or the app aborts with a "Hardware Initialization Failed" popup after a 30-second countdown, failing before the call connects.
 
 ### Real-World Causes & Blind Spots:
 1. **Free-Tier Quota Exhaustion**: The default static WebRTC pages hosted on free services (Vercel/Cloudflare Pages) have reached their monthly bandwidth or request limits, causing the host to temporarily disable the deployment.
-2. **Maintainer Account / Domain Suspension**: The maintainer's hosting account or domain was suspended, updated, or decommissioned.
-3. **ISP / Regional Blocking**: Your network operator, Wi-Fi firewall, or country ISP is blocking the default domain.
-4. **No Internet**: Your Android device has no active internet connection.
-5. **Custom URL Typo**: You entered an invalid or Non-Functional `URL` in **Settings → Call Configuration**.
+2. **Invalid Server Path (Hardware Timeout)**: You entered a sub-folder path (e.g., `https://domain.com/abc`) in **Settings → Call Configuration**. Modern web servers fake a successful ping via "catch-all" routes, but the WebRTC Javascript fails to load (404 Not Found), triggering a 30-second hardware initialization timeout.
+3. **Maintainer Account / Domain Suspension**: The maintainer's hosting account or domain was suspended, updated, or decommissioned.
+4. **ISP / Regional Blocking**: Your network operator, Wi-Fi firewall, or country ISP is blocking the default domain.
+5. **No Internet**: Your Android device has no active internet connection.
+6. **Custom URL Typo**: You entered an invalid or Non-Functional `URL` in **Settings → Call Configuration**.
 
 ### How to Fix It:
 - **Automatic Fallback Validation**: `CallManager` automatically pings candidate fallback servers if the saved URL is unreachable. If all servers fail, the app presents a diagnostic popup with an option to jump directly to Settings and reset to default.

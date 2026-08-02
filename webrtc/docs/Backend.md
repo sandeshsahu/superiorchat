@@ -85,7 +85,7 @@ Switching between front and back cameras updates the active video stream instant
 
 <h2 id="resilience">6. Network Resilience & Auto-Recovery</h2>
 
-- **Pre-Flight Server Validation (`CallManager.kt`)**: Before opening the call interface, `CallManager` executes pre-flight HTTP GET checks (`call.html?host=UUID&secret=UUID`) with a 3000ms timeout against candidate servers. It verifies an HTTP 200 response and validates HTML contents (`<title>Superiorchat Connect</title>` or `id="ui-layer"`). If a fallback server succeeds, `CallManager` automatically persists it as the active base URL in preferences.
+- **Pre-Flight Server Validation (`CallManager.kt`)**: Before opening the call interface, `CallManager` executes pre-flight HTTP GET checks (`call.html`) with a 3000ms timeout against candidate servers. It verifies an HTTP 200 response and validates HTML contents (`<title>Superiorchat Connect</title>` or `id="ui-layer"`). If a fallback server succeeds, `CallManager` automatically persists it as the active base URL in preferences.
 - **Pre-Flight Host Check**: Before rendering the guest call screen, the browser silently checks if the host is online and ready. If the host disconnected, the guest sees a clean "Call Ended" message immediately.
 - **Offline Warning Banner**: If your internet drops during a call, a red notification banner alerts you immediately while the app attempts to restore the connection.
 
