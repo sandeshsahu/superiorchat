@@ -1,7 +1,5 @@
 <div align="center">
   
-  <img src="https://raw.githubusercontent.com/tandpfun/skill-icons/main/icons/WebRTC.svg" width="80" alt="WebRTC Logo"/>
-  
   <h1>Superiorchat Connect</h1>
   <p><strong>The Headless WebRTC Calling Engine for SuperiorChat</strong></p>
   
