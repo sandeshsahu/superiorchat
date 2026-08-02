@@ -20,7 +20,6 @@
 - [7. Hardware & Lifecycle Sync](#hardware)
 - [8. Strict Code Boundaries](#ownership)
 - [9. Camera Layout Alignment](#css-coupling)
-- [10. Related Documentation](#related-docs)
 
 ---
 
@@ -103,9 +102,10 @@ sequenceDiagram
     participant Broker as Signaling Server
 
     App->>Web: Load call URL with host ID and Secret
-    Web->>Broker: Connect host to signaling server
     Web->>Web: Request camera & microphone permissions
+    Web->>Broker: Connect host to signaling server
     Web-->>App: Notify "hardware_ready"
+    App->>TG: Send "Join Call" button via Telegram Bot API
     
     TG->>Broker: Open guest link with Secret
     TG->>Web: Send connection request (includes Secret)
@@ -164,16 +164,21 @@ When a recipient opens the call link on Telegram (`call.html`), the interface us
 | Tap Swap Video | `window.androidToggleSwapVideo()` | Swaps local and remote video views |
 | Tap Camera Flip | `window.androidFlipCamera()` | Switches between front and rear camera |
 | Tap End Call | `window.androidEndCall()` | Disconnects the call cleanly |
+| Minimize App | `window.androidSetPipMode(isEnabled, target)` | Adjusts WebView CSS classes for floating PiP video modes |
 
 ### B. JavaScript → Android (Events Sent to Native App)
 
 | Event Name | Data | Meaning |
 |---|---|---|
+| `"hardware_ready"` | `""` | Camera/Mic permissions acquired, safe to send Telegram link |
 | `"ready"` | `peerId` | Connected to signaling server |
 | `"connected"` | `""` | Call established, media is active |
 | `"reconnecting"` | `""` | Connection recovering after network drop |
 | `"remote_video"` | `"on" / "off"` | Recipient turned camera on or off |
+| `"local_video"` | `"on" / "off"` | Confirms caller turned camera on or off |
+| `"video_swapped"`| `"true" / "false"` | Guest toggled large/small video swap |
 | `"audio_level"` | `0.0 - 1.0` | Real-time mic volume for avatar pulse effect |
+| `"error"` | `Error String` | Media block or fatal connection failure |
 | `"ended"` | `""` | Call ended |
 
 ---
@@ -237,7 +242,6 @@ For troubleshooting, security details, or deployment steps, refer to our other g
 
 ---
 
-<br>
 <p align="center">
-  <sub>SuperiorChat WebRTC Calling Architecture</sub>
+  <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
 </p>

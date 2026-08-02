@@ -18,7 +18,6 @@
 - [4. Real-Time DataChannel Sync](#datachannel)
 - [5. Media Stream Quality & Processing](#media)
 - [6. Network Resilience & Auto-Recovery](#resilience)
-- [7. Related Documentation](#related-docs)
 
 ---
 
@@ -94,22 +93,6 @@ Switching between front and back cameras updates the active video stream instant
 
 ---
 
-<h2 id="related-docs">7. Related Documentation</h2>
-
-For complete architecture details, deployment options, and troubleshooting steps, refer to our other guides:
-
-| Document | Purpose |
-|---|---|
-| 🏗️ **[Architecture.md](Architecture.md)** | WebRTC engine structure, JavaScript bridge, and DOM layout layers |
-| 🛡️ **[Security.md](Security.md)** | WebView sandbox boundaries, secret verification, and privacy protection |
-| 🚀 **[Deployment.md](Deployment.md)** | How to deploy your own signaling engine on Vercel, Cloudflare, or VPS |
-| 🛠️ **[Troubleshoot.md](Troubleshoot.md)** | Step-by-step solutions for call timeouts, network errors, and missing video |
-| 📐 **[Decisions.md](Decisions.md)** | Architectural Decision Records (ADR) detailing design choices and stealth rules |
-| 📝 **[Notes.md](Notes.md)** | Essential developer notes, hardware gotchas, and stealth constraints |
-
----
-
-<br>
 <p align="center">
-  <sub>SuperiorChat WebRTC Calling Architecture</sub>
+  <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
 </p>

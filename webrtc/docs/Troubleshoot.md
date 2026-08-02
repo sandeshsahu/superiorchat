@@ -17,7 +17,6 @@
 - [3. Connected, But No Audio or Video](#media-missing)
 - [4. Camera Preview Misaligned or Distorted](#ui-alignment)
 - [5. Complete Blind-Spots & Real-World Risks](#real-world-risks)
-- [6. Related Documentation](#related-docs)
 
 ---
 
@@ -103,20 +102,6 @@ If modifying source code:
 
 ---
 
-<h2 id="related-docs">6. Related Documentation</h2>
-
-| Document | Purpose |
-|---|---|
-| 🚀 **[Deployment.md](Deployment.md)** | Step-by-step guide to hosting your own static WebRTC engine |
-| 🛡️ **[Security.md](Security.md)** | WebView sandbox limits, secret verification, and privacy threat models |
-| ⚡ **[Backend.md](Backend.md)** | PeerJS signaling, ICE candidate exchange, and DataChannel protocol |
-| 🏗️ **[Architecture.md](Architecture.md)** | Technical breakdown of Android WebView layering and JS bridge |
-| 📐 **[Decisions.md](Decisions.md)** | Architectural Decision Records (ADR) detailing design choices and stealth rules |
-| 📝 **[Notes.md](Notes.md)** | Essential developer notes, hardware gotchas, and stealth constraints |
-
----
-
-<br>
 <p align="center">
-  <sub>SuperiorChat WebRTC Calling Architecture</sub>
+  <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
 </p>

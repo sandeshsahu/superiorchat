@@ -101,6 +101,8 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 | 4 | **Private Chat ID** | Adding the bot to group or public channels exposes message activity to group members. | Use a **private 1-on-1 Chat ID** with the bot to keep privacy 100% intact. |
 | 5 | **Call Prerequisites** | Calling requires active internet, verified credentials, and Camera/Microphone permissions. | Check status indicators in App Bar or App Settings. |
 | 6 | **Automatic Server Fallback** | If the primary call server fails, `CallManager` tests backup fallback servers automatically. | Reset to default or customize URLs in App Settings. |
+| 7 | **Background Call Termination** | To maintain strict camouflage, if the app is minimized or sent to the background during an active call, the call is instantly terminated. | Stay in the app during active calls. We deliberately avoid native OS Picture-in-Picture. |
+| 8 | **WebRTC IP Exposure** | Because the call system is Peer-to-Peer, both participants can theoretically discover each other's public IP address. | Host your own TURN server to proxy the connection if strict anonymity is required. |
 
 ---
 

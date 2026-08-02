@@ -63,6 +63,7 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
 | 🔑 **Secret Access Codes** | Unlocked exclusively via a secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search interception. | Cannot be opened normally from the app drawer. |
 | 🛡️ **Camouflaged Alerts** | Notifications appear as harmless carrier alerts or live weather updates based on data states. | Complete privacy even when receiving alerts. |
 | ⚡ **Serverless Transport** | Powered entirely by Telegram Bot API long-polling. | Zero hosting costs, 99.9% uptime, no third-party analytics. |
+| 📞 **Secure P2P Calling** | Peer-to-Peer WebRTC Voice & Video calling built into the chat interface. | Zero-auth cryptographic rooms with true supply-chain independence. |
 
 👉 **[Click here to see Detailed Features](docs/Features.md)**
 

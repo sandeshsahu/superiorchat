@@ -15,11 +15,12 @@
 
 ## Table of Contents
 - [1. Core Messaging & Chat](#core)
-- [2. Rich Media & Files](#media)
-- [3. Profile & Credential Management](#profile)
-- [4. Stealth & Privacy Protection](#stealth)
-- [5. App Flavors & Disguises](#flavors)
-- [6. Modern User Interface](#ui)
+- [2. Secure Voice & Video Calling](#calling)
+- [3. Rich Media & Files](#media)
+- [4. Profile & Credential Management](#profile)
+- [5. Stealth & Privacy Protection](#stealth)
+- [6. App Flavors & Disguises](#flavors)
+- [7. Modern User Interface](#ui)
 
 ---
 
@@ -37,7 +38,24 @@
 
 ---
 
-<h2 id="media">📸 2. Rich Media & Files</h2>
+<h2 id="calling">📞 2. Secure Voice & Video Calling</h2>
+
+- 🎙️ **P2P Voice & Video Calls**: Instant, zero-auth peer-to-peer WebRTC calling directly within the chat interface.
+- 🔄 **Instant Camera Swapping & PiP**: Seamlessly swap between front/rear cameras or minimize the active call into a floating Picture-in-Picture window without dropping connection.
+- 🎧 **Smart Audio Routing**: Native integration with Android's sensors seamlessly switches audio between earpiece, speakerphone, and Bluetooth devices.
+- 📱 **Telegram Bot Integration**: Calls trigger an instant "Join Call" inline button via the Telegram Bot, allowing the recipient to join from any browser.
+- 🔒 **Cryptographic Call Rooms**: Generates random UUID rooms with secret cryptographic parameters to prevent zero-click mass-surveillance and link scraping.
+- ⚡ **Auto-Fallback Engine**: Employs a "Race to Connect" algorithm that dynamically shuffles and tests backup signaling server URLs to ensure calls always connect even if the primary server goes offline.
+
+> [!WARNING]
+> **Network Limitations**: Because this relies on P2P WebRTC, it may not connect reliably out-of-the-box on strict VPNs, certain public WiFi, or symmetric NAT carriers without a dedicated TURN server.
+
+> [!TIP]
+> **For Developers**: To understand the call mechanics, host your own engine, or add custom STUN/TURN servers, explore the comprehensive **[WebRTC Documentation Suite](../webrtc/docs/)**. For an in-depth understanding of our privacy & security threat models, refer directly to the **[WebRTC Security Audit](../webrtc/docs/Security.md)**.
+
+---
+
+<h2 id="media">📸 3. Rich Media & Files</h2>
 
 - 📷 **Photos & Videos**: In-app camera capture, high-resolution photo sharing, and video playback with smart thumbnails.
 - 🎙️ **Voice Messages**: Record voice notes featuring dynamic animated waveform visualizations and interactive playback controls.
@@ -48,7 +66,7 @@
 
 ---
 
-<h2 id="profile">🤖 3. Profile & Credential Management</h2>
+<h2 id="profile">🤖 4. Profile & Credential Management</h2>
 
 - 🎨 **Profile Customization**: Change the bot's profile photo (using a professional pan-and-zoom cropping tool), display name, and bio directly from within the app.
 - 🔑 **Credential Setup**: Quickly configure your Bot Token and Chat ID via QR Code scanning or manual entry with real-time format validation.
@@ -57,7 +75,7 @@
 
 ---
 
-<h2 id="stealth">🛡️ 4. Stealth & Privacy Protection (`Flavor Specific`)</h2>
+<h2 id="stealth">🛡️ 5. Stealth & Privacy Protection (`Flavor Specific`)</h2>
 
 - 👻 **Icon Concealment**: Completely `Hides` the main application icon from the Android app drawer.
 - 📞 **Secret Dialer Access**: Open the application privately by dialing a secret code (`*#*#9131#*#*`).
@@ -74,7 +92,7 @@
 
 ---
 
-<h2 id="flavors">🎭 5. App Flavors & Disguises</h2>
+<h2 id="flavors">🎭 6. App Flavors & Disguises</h2>
 
 | Flavor Variant | Identity / App Name | Stealth Level | Notification Behavior |
 |----------------|---------------------|---------------|-----------------------|
@@ -105,7 +123,7 @@
 > - **[Weather Details](flavors/FlavorWeather.md)**
 ---
 
-<h2 id="ui">✨ 6. Modern User Interface</h2>
+<h2 id="ui">✨ 7. Modern User Interface</h2>
 
 - 🎨 **Material Design 3**: Modern, highly polished dark theme tailored for low-light visual comfort.
 - 🌊 **Fluid Animations**: Smooth, responsive transitions for message bubbles, media viewports, profile sheets, and screen navigation.

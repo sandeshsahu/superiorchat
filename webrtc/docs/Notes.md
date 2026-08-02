@@ -6,94 +6,63 @@
 ---
 
 > [!IMPORTANT]
-> This document collects essential operational notes, hardware gotchas, stealth constraints, and developer rules learned during the development of SuperiorChat WebRTC.
+> This document collects essential operational notes, hardware gotchas, stealth constraints, and developer rules strictly derived from the actual SuperiorChat WebRTC and Android implementation.
 
 ---
 
 ## 📑 Quick Navigation
 
-- [1. Stealth & Camouflage Constraints](#stealth-notes)
-- [2. Hardware & Audio Routing Gotchas](#hardware-notes)
-- [3. Web & Rendering Gotchas](#web-notes)
-- [4. Configuration & Server Fallback Notes](#config-notes)
-- [5. Telegram Bot Limitations & Call Flow Notes](#telegram-notes)
-- [6. Related Documentation](#related-docs)
+- [1. Stealth & Security Constraints](#stealth)
+- [2. Hardware & Audio Routing Gotchas](#hardware)
+- [3. WebRTC & PeerJS Constraints (webrtc.js)](#webrtc)
+- [4. Telegram Link Lifecycle](#telegram)
+- [5. WebView Sandbox Rules (CallEngine.kt)](#webview)
 
 ---
 
-<h2 id="stealth-notes">1. Stealth & Camouflage Constraints</h2>
+<h2 id="stealth">1. Stealth & Security Constraints</h2>
 
-- 🚫 **No OS-Level Picture-in-Picture (PiP)**: Android's native `enterPictureInPictureMode()` must **never** be used for calls. Doing so creates a floating window on the home screen when minimized, exposing the secret app. All PiP is handled in-app within the Compose layout.
-- ⏹️ **Auto-Hangup on App Minimize**: When the app reaches the `ON_STOP` state (minimized), calls are immediately terminated (`endCall()`). Running calls in a background service triggers Android's green camera/microphone privacy dots in the status bar, which compromises stealth.
-- 🛡️ **Quiet Crash-Proofing**: Fatal exceptions during calls trigger a quiet process exit (`exitProcess(2)`) rather than an Android system crash dialog, keeping the secret app unexposed.
-
-> 📐 **Design Rationale**: Read more about stealth architectural choices in [Decisions.md](Decisions.md#stealth-pip).
+- 🚫 **No OS-Level Picture-in-Picture (PiP)**: Android's native `enterPictureInPictureMode()` must **never** be used for calls. Doing so creates a floating window on the home screen when minimized, exposing the secret app. All PiP is handled strictly within the Jetpack Compose layout using dynamic Drag Physics (`CallScreen.kt`).
+- ⏹️ **Auto-Hangup on App Minimize**: When the app reaches the `ON_STOP` state (minimized), calls must immediately be terminated. Running calls in a background service triggers Android's green camera/microphone privacy dots in the system status bar, completely compromising stealth.
+- 🔒 **Cryptographic Call Validation**: `webrtc.js` rigorously guards both `call` and `connection` events. If a connecting peer's `metadata.secret` does not perfectly match the host's expected 128-bit UUID secret, the connection is instantly closed. This mathematically prevents third-party attackers from scraping PeerJS to hijack active host WebRTC engines.
 
 ---
 
-<h2 id="hardware-notes">2. Hardware & Audio Routing Gotchas</h2>
+<h2 id="hardware">2. Hardware & Audio Routing Gotchas</h2>
 
-- 🎧 **VoIP Audio Mode (`MODE_IN_COMMUNICATION`)**: `CallManager.kt` sets `AudioManager.mode` to `MODE_IN_COMMUNICATION`.
-- 👂 **Default Earpiece & Proximity Suppression**: Calls default to the phone earpiece (`setSpeakerphone(false)`). The proximity sensor automatically turns off the screen when held to the ear, but is suppressed when Loudspeaker is activated so users can interact with controls.
-- 📱 **Android 12+ Audio Routing (API 31+)**: `CallManager` uses modern `setCommunicationDevice` for Loudspeaker and `clearCommunicationDevice()` for Earpiece/Bluetooth default routing. Legacy `am.isSpeakerphoneOn` is strictly isolated to API < 31 to prevent Bluetooth SCO blockages.
-- 🔇 **Media Playback Auto-Stop**: Initiating a call triggers `AudioPlayer.stop()` to immediately halt active voice notes or media playback before setting up call audio focus.
-
-> 🛠️ **Troubleshooting**: Solutions for missing audio or camera locks are available in [Troubleshoot.md](Troubleshoot.md#media-missing).
+- 🎧 **VoIP Audio Mode (`MODE_IN_COMMUNICATION`)**: `CallManager.kt` enforces `AudioManager.mode = MODE_IN_COMMUNICATION`. If left in `MODE_NORMAL`, audio routing breaks entirely and WebRTC audio suffers severe dropouts.
+- 👂 **Proximity Sensor vs Speakerphone**: The proximity sensor natively acquires `PROXIMITY_SCREEN_OFF_WAKE_LOCK` to turn off the screen when near the ear. However, `CallManager` actively suppresses this wakelock the moment Loudspeaker (`isSpeakerphoneOn`) is toggled, ensuring users can interact with the screen freely.
+- 📱 **Android 12+ Audio Routing (API 31+)**: Legacy `AudioManager.isSpeakerphoneOn` fails to route Bluetooth audio correctly on API 31+. Therefore, Android 12+ strictly relies on `setCommunicationDevice()`, prioritizing `TYPE_BT_SCO (7)` and `TYPE_BT_A2DP (8)` using raw integer literals to bypass known Kotlin toolchain compilation issues.
 
 ---
 
-<h2 id="web-notes">3. Web & Rendering Gotchas</h2>
+<h2 id="webrtc">3. WebRTC & PeerJS Constraints (webrtc.js)</h2>
 
-- 📐 **CSS Layout Synchronization**: Compose renders the WebView as a background layer. The camera preview position in `assets/css/call.css` (`body.is-host #localVideo`) **must** mathematically match the padding of `LocalCameraBox` in `CallScreen.kt` (`top = 160.dp, end = 16.dp`).
-- ⚡ **Zero-Lag Camera Flip**: Flipping cameras uses `RTCRtpSender.replaceTrack()` to swap video tracks on the fly. Dropping and renegotiating the WebRTC connection creates severe latency and network drops.
-- 🔗 **Zombie Link Prevention**: The Telegram web client performs a silent pre-flight DataChannel ping (`checkHostActive`) before rendering the "Join Call" button. If the host is offline, the dead link is safely marked as expired.
-
-> 🏗️ **Architecture Details**: View the full bridge event protocol in [Architecture.md](Architecture.md#bridge).
+- ⚡ **Zero-Lag Camera Flips**: `flipCamera()` executes `RTCRtpSender.replaceTrack()` to instantly swap video tracks at the hardware level. We do not tear down or renegotiate the WebRTC SDP connection, preventing dropped frames and connection lag.
+- ⏱️ **ICE Zombie Watchdog**: If a guest's internet drops hard, WebRTC fires an ICE `disconnected` state. `webrtc.js` begins a strict 15-second watchdog timer. If the network does not recover (`connected` or `completed`), the Android host is forced to drop the call to prevent permanent battery-draining zombie wakelocks.
+- 🔊 **Audio Visualizer**: The real-time volume indicator calculates sensitivity by reading frequencies from an `AnalyserNode` and transmitting the `audio_level` JSON event over the JS Bridge. The Android UI (`CallScreen.kt`) binds this float value to the avatar glow ring.
 
 ---
 
-<h2 id="config-notes">4. Configuration & Server Fallback Notes</h2>
+<h2 id="telegram">4. Telegram Link Lifecycle</h2>
 
-- 🌐 **Dynamic Domain Overrides**: Custom URLs configured in **App Settings → Call Configuration** override default fallback domains until **Reset to Default** is tapped.
-- 🔒 **Pre-Flight Validation**: Pre-flight HTTP GET checks test candidate domains (`?host=UUID&secret=UUID`), verifying an HTTP 200 response and inspecting the HTML payload for `<title>Superiorchat Connect</title>` or `id="ui-layer"` to ensure a valid engine before connecting.
-- 🔄 **Persistent Fallback Updating**: If a fallback URL succeeds during validation while the primary saved URL fails, `CallManager` saves the working domain to `Prefs.webrtcBaseUrl` so future calls directly prioritize the active server.
-- 🛑 **Mid-Validation Cancellation Guard**: If the user cancels the call dialog during pre-flight checks, `CallManager` intercepts the state change (`CallState.ENDING`/`IDLE`) and aborts background HTTP validation.
-- 📄 **Source Code Fallbacks**: Default server fallback lists are stored in `app/src/main/res/values/webrtc_urls.xml`. Developers compiling custom builds should update this array with their own domains.
-
-> 🚀 **Self-Hosting**: Step-by-step guides for deploying custom servers are available in [Deployment.md](Deployment.md).
+- 📲 **One-Way Initiation**: Telegram Bot API accounts cannot place MTProto VoIP calls. Calling is strictly one-way (Android → Telegram).
+- 🔗 **Link Expiration & Dead Links**: To prevent "zombie links", `webrtc.js` fires a silent DataChannel ping (`checkHostActive`) to ensure the host is alive before rendering the Join button on the web. 
+- 🧹 **Telegram Message Cleanup**: `CallViewModel.kt` listens for the `ENDING` state. Once a call drops, it dynamically calls `TelegramApi.editMessageText` to wipe the Inline Keyboard (`replyMarkup`) from the target's Telegram chat, physically deleting the "Join Call" button and updating the text to "Call Ended" with the exact formatted duration.
 
 ---
 
-<h2 id="telegram-notes">5. Telegram Bot Limitations & Call Flow Notes</h2>
+<h2 id="webview">5. WebView Sandbox & UI Rendering Rules</h2>
 
-- 🤖 **No Native Telegram Bot Calling**: Telegram Bot API accounts cannot place or receive native 1-on-1 MTProto VoIP calls.
-- 📲 **One-Way Call Initiation**: Calling is strictly **one-way**. Only the SuperiorChat Android app user can start a call. The Telegram user **cannot** call the Android app.
-- 🚦 **UI Initiation State Pipeline (`AppNav.kt`)**: Call initiation moves through explicit UI states: `CONFIRMATION` → `VALIDATING` → `INITIALIZING_HARDWARE` → `SENDING_LINK` → `SUCCESS`/`FAILED_SENDING`.
-- 🔗 **WebRTC Invitation Link Workaround**: When calling, the Android app generates a secure 128-bit encrypted join link (`call.html?join=UUID&secret=UUID`), uses public PeerJS signaling, and sends it as an inline keyboard button ("Join Call") to the Telegram user.
-- ⏱️ **Join vs Timeout Lifecycles**:
-  - **If the recipient joins**: Both sides connect via WebRTC and direct peer-to-peer audio/video flows.
-  - **If the recipient ignores or doesn't join**: The 45-second watchdog timer in the app expires, the call auto-hangs up (`NO_ANSWER`), and the Telegram message is updated to remove/disable the Join button so dead links cannot be reused.
-- 🔄 **ICE Recovery Guard**: `markConnected()` checks `_callState`. If the call is already `ACTIVE`, it treats subsequent bridge triggers as ICE network recoveries rather than restarting duration timers.
-- 📌 **Minimization & StatusPill**: Minimizing an active call retains the `CallScreen` composition layer in `AppNav.kt` while surfacing a top-center `StatusPill` overlay for single-tap call restoration.
+- 🌍 **Strict Origin Whitelisting**: `CallEngine.kt` uses `WebChromeClient` to explicitly verify that `request.origin` matches the exact URL validated in `Prefs.webrtcBaseUrl`. Any origin mismatches result in an instant `request.deny()` for camera and microphone permissions.
+- ✅ **Pre-Flight Validation**: Before launching a call, `CallManager` tests candidate URLs with an HTTP GET. It specifically parses the HTML payload, looking for `<title>Superiorchat Connect</title>` or `id="ui-layer"`. If missing, the app assumes the server is hijacked/offline and falls back to a backup domain from `webrtc_urls.xml`.
+
+> [!IMPORTANT]
+> **📐 CSS Layout Synchronization**
+> Jetpack Compose renders the WebView as a full-screen background layer. To perfectly align the native `LocalCameraBox` border with the underlying WebRTC video, the CSS rules (`style.css` `.show-local-pip`) **must** mathematically match the Compose padding in `CallScreen.kt` (`top = 160.dp, end = 16.dp`). Any desync will cause the native border to float away from the actual video stream.
 
 ---
 
-<h2 id="related-docs">6. Related Documentation</h2>
-
-Explore our complete documentation suite:
-
-| Document | Purpose |
-|---|---|
-| 🏗️ **[Architecture.md](Architecture.md)** | WebRTC engine structure, JavaScript bridge, and DOM layout layers |
-| ⚡ **[Backend.md](Backend.md)** | PeerJS signaling, ICE candidate exchange, and DataChannel protocol |
-| 🛡️ **[Security.md](Security.md)** | WebView sandbox limits, secret verification, and privacy threat models |
-| 🚀 **[Deployment.md](Deployment.md)** | How to deploy your own WebRTC engine on Vercel, Cloudflare Pages, or VPS |
-| 🛠️ **[Troubleshoot.md](Troubleshoot.md)** | Solutions for connection timeouts, permission denials, and server popups |
-| 📐 **[Decisions.md](Decisions.md)** | Architectural Decision Records (ADR) detailing design choices and stealth rules |
-
----
-
-<br>
 <p align="center">
-  <sub>SuperiorChat WebRTC Calling Architecture</sub>
+  <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
 </p>

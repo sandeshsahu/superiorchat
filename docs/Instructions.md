@@ -17,7 +17,8 @@
 - [Download: Pre-built APKs](#download)
 - [Phase 1: Telegram Side (Person A)](#phase-1)
 - [Phase 2: App Side (Person B)](#phase-2)
-- [Phase 3: Building From Source (Developers)](#phase-3)
+- [Phase 3: Voice & Video Calls (Optional)](#phase-3)
+- [Phase 4: Building From Source (Developers)](#phase-4)
 
 ---
 
@@ -136,9 +137,22 @@ This version has a standard app icon and is simpler to set up (recommended for t
 3. **Enter Credentials**: Fill in your Bot Token and Chat ID or Scan the QR Code.
 4. **Start Chatting**: You are ready to go!
 
+<h2 id="phase-3">📞 Phase 3: Configuring Voice & Video Calls (Optional)</h2>
+
+Superior Chat features a secure, peer-to-peer WebRTC calling engine. By default, it connects through public infrastructure, but you can configure it for maximum privacy.
+
+1. **Test Default Calls**: Open a chat and press the **Call** button. If it connects successfully, you are ready to go!
+2. **Configure Custom Server (Recommended)**: For true security and privacy, you should not rely on the default public servers.
+   - Go to **Settings → Call Configuration**.
+   - Enter your self-hosted WebRTC domain (e.g., `https://call.yourdomain.com`).
+   - Need help hosting? Read the **[WebRTC Deployment Guide](../webrtc/docs/Deployment.md)**.
+
+> [!NOTE]
+> The **Call** button is dynamically hidden from the chat screen if your device is currently offline or if you have not configured your Bot Token and Chat ID yet.
+
 ---
 
-<h2 id="phase-3">🛠️ Phase 3: Building From Source (Developers)</h2>
+<h2 id="phase-4">🛠️ Phase 4: Building From Source (Developers)</h2>
 
 If you prefer to compile the application yourself instead of downloading the pre-built APKs, you can use the following Gradle commands in Android Studio or your terminal.
 

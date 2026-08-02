@@ -1,110 +1,93 @@
 <div align="center">
-  <h1>🛡️ Security, Privacy & Blind-Spot Audit</h1>
-  <p><strong>Transparent breakdown of security boundaries, threat models, and real-world vulnerabilities</strong></p>
+  <h1>🛡️ Security, Privacy & Threat Models</h1>
+  <p><strong>Breakdown of sandbox boundaries, known vulnerabilities, and architectural defenses</strong></p>
 </div>
 
 ---
 
 > [!WARNING]
-> **No System is 100% Secure**: While SuperiorChat is built on a Zero-Trust sandbox design, relying on default public infrastructure or maintainer-hosted static pages carries real-world risks. This document transparently discloses all security boundaries, blind spots, and threat scenarios so you can make informed privacy choices.
+> **No System is 100% Secure**: We do not market this engine as impenetrable. Relying on default public infrastructure carries inherent risks (downtime, supply-chain tampering, metadata logging). This document details the WebRTC implementation's known vulnerabilities and the exact code defenses in place to mitigate them.
 
 ---
 
 ## 📑 Quick Navigation
 
-- [1. Security Sandbox (What is Protected)](#sandbox)
-- [2. Known Blind Spots & Real-World Risks](#blind-spots)
-- [3. Threat Scenarios & Defenses](#threat-models)
-- [4. IP Addresses & Network Tracking](#ip-privacy)
-- [5. Why Self-Hosting is Strongly Urged](#self-hosting)
-- [6. Related Documentation](#related-docs)
+- [1. Android Sandbox Boundaries (The JS Bridge)](#sandbox)
+- [2. The Open Source Security Model](#open-source)
+- [3. Threat Scenarios & Engine Defenses](#threat-models)
+- [4. IP Exposure & P2P Characteristics](#ip-privacy)
+- [5. Infrastructure & Supply Chain Risks](#supply-chain)
 
 ---
 
-<h2 id="sandbox">1. Security Sandbox (What is Protected)</h2>
+<h2 id="sandbox">1. Android Sandbox Boundaries (The JS Bridge)</h2>
 
-SuperiorChat runs voice and video calls inside an isolated web environment (WebView) within Android.
+Because the WebRTC engine runs in JavaScript, it is completely isolated from the Android operating system via a WebView sandbox (`CallEngine.kt`).
 
-### What the Sandbox Guarantees:
-- 🔒 **Zero Native File Access**: The web calling engine **cannot** read your Telegram bot token, chat history, SQLite database, photos, or files.
-- 🛑 **Strict Bridge Restrictions**: The web engine can only send predefined event strings to Android (`"connected"`, `"ended"`, `"audio_level"`). It cannot execute arbitrary Android native code or shell commands.
-- 🌐 **Domain-Level Permission Lock**: Camera and microphone access are granted **exclusively** to your configured domain. If the WebView is redirected to an untrusted domain, Android automatically denies hardware permissions.
-
----
-
-<h2 id="blind-spots">2. Known Blind Spots & Real-World Risks</h2>
-
-We refuse to market this system as "impenetrable." Here are the actual blind spots and risks when using default configurations:
-
-### ⚠️ Blind Spot A: Free-Tier Hosting Quota Exhaustion
-The default static WebRTC pages (`call.html`) provided with the app are hosted on free-tier platforms (Vercel, Cloudflare Pages, Netlify).
-- **The Risk**: Free hosting accounts have strict bandwidth, build, and request limits. If traffic spikes or quotas are hit, the hosting provider will shut down or suspend the static pages.
-- **The Impact**: Default calls across all app installs will instantly fail with "Invalid URL" or server error popups until the next billing cycle or until users switch to self-hosted URLs.
-
-### ⚠️ Blind Spot B: Maintainer Account or Domain Compromise
-If the project maintainer's hosting account, GitHub repository, or custom domain is ever compromised, expired, or abandoned:
-- **The Risk**: An attacker gaining access to the static hosting account could modify `webrtc.js` or `app.js` to serve tampered JavaScript.
-- **What is NOT compromised**: The Android sandbox still prevents the attacker from reading your phone files, messages, or Telegram tokens.
-- **What IS at risk**: Because the Android app trusts the verified domain for camera/mic access, a tampered script could theoretically open secondary WebRTC data channels or stream camera feeds to an unauthorized third party during an active call.
-
-### ⚠️ Blind Spot C: Public Signaling Server Outages & Rate Limits
-By default, the app uses the free public PeerJS broker (`0.peerjs.com`) to coordinate call setup.
-- **The Risk**: Public signaling brokers can crash, experience WebSocket drops, or enforce IP rate limits without notice, causing calls to get stuck on "Waiting...".
+### Operational Reality:
+- 🛑 **No Filesystem Access**: The web engine **cannot** read the Android SQLite database, Telegram bot tokens, app preferences, or photo gallery. It is completely blind to the rest of the application.
+- 🚧 **Strict Bridge Enforcement**: The `JavascriptInterface` (`app.js` → `CallEngine.kt`) only accepts predefined string actions (e.g., `"connected"`, `"audio_level"`). It cannot execute arbitrary Android system commands.
+- 🌍 **Origin Lock**: Camera and microphone access (`WebChromeClient`) is strictly hardcoded to the verified URL saved in `Prefs.webrtcBaseUrl`. If the WebView navigates away to an unverified site, Android instantly severs hardware access.
 
 ---
 
-<h2 id="threat-models">3. Threat Scenarios & Defenses</h2>
+<h2 id="open-source">2. The Open Source Security Model</h2>
 
-### Scenario A: Call Hijacking & Eavesdropping
-- **Threat**: An attacker guesses a call Room ID and attempts to join the call stream to listen in.
-- **Defense**: Every call uses a 128-bit cryptographically random Room ID and Secret key (`?host=UUID&secret=UUID`). The host verifies the secret before accepting connections. Once connected, all subsequent incoming join attempts are locked out and disconnected immediately.
+SuperiorChat is 100% open-source across both the Android application and the WebRTC signaling engine. This architectural transparency provides critical security advantages:
 
-### Scenario B: Supply Chain Tampering
-- **Threat**: Default static hosting assets are altered or intercepted.
-- **Defense**: Users can completely eliminate this risk by deploying their own copy of the open-source `webrtc/` folder to their personal free hosting account and entering their custom domain in **Settings → Call Configuration**.
+- 🔍 **Auditability (No Security by Obscurity)**: Security researchers can independently verify that there are no hidden backdoors, undocumented APIs, or obfuscated telemetry being sent to third parties. The 128-bit cryptographic secret generation (`CallManager.kt`) and the connection rejection logic (`webrtc.js`) are fully visible and verifiable.
+- 🏗️ **True Supply Chain Independence**: Open source enables true self-hosting. Users are not simply changing a URL in the app; they have the ability to compile the Android app from source and deploy the exact same WebRTC static engine to their own private infrastructure. This completely severs any reliance on proprietary servers or the maintainer's default infrastructure.
 
 ---
 
-<h2 id="ip-privacy">4. IP Addresses & Network</h2>
+<h2 id="threat-models">3. Threat Scenarios & Engine Defenses</h2>
 
-### Peer-to-Peer IP Exposure
-WebRTC connects audio and video directly between your phone and the Telegram guest.
-- 📍 **Public IP Reveal**: Both participants can see each other's public IP address using basic network tools.
-- 📡 **STUN Server Logging**: The web engine uses Google's public STUN servers (`stun.l.google.com:19302`) for NAT lookup. Google can log the IP addresses that query its STUN server.
-- 🔌 **Signaling Metadata**: The public PeerJS broker sees the IP addresses of both devices during the initial handshake (though it cannot view call media).
+The following outlines theoretical attacks that apply to WebRTC systems, and how the codebase defends against them.
 
-### How to Fix IP Exposure:
-- Deploy your own private PeerJS signaling server (`peerjs --port 9000`).
-- Configure a private **TURN Relay Server** in `config.js` to route all media through a proxy and hide IP addresses entirely.
+### Threat A: Zero-Click WebRTC Hijacking & Scraping
+- **The Vulnerability**: Free PeerJS signaling servers are public. Attackers can write scrapers to listen for active PeerIDs and attempt to force a WebRTC call to an Android device, attempting to turn on the camera and microphone without consent (Zero-Click).
+- **The Defense**: `CallManager.kt` generates a 128-bit cryptographic `secret` UUID alongside the Room ID. `webrtc.js` intercepts all incoming `call` and `connection` events. If the incoming payload does not contain a `metadata.secret` that perfectly matches the host's expected secret, the connection is instantly closed before media tracks are requested.
 
----
+### Threat B: Origin Spoofing & Malicious Hosts
+- **The Vulnerability**: If a user is tricked into pointing the app to a malicious server in **Settings → Call Configuration**, an attacker could serve a modified `webrtc.js` designed to silently stream the camera to a third-party server.
+- **The Defense**: The Android app performs a strict HTTP GET pre-flight check before launching the WebView. It parses the HTML payload for `<title>Superiorchat Connect</title>` or `id="ui-layer"`. If the server returns an unexpected payload (like a phishing page or a raw directory), the app instantly blocks the connection.
 
-<h2 id="self-hosting">5. Why Self-Hosting is Strongly Urged</h2>
+### Threat C: DataChannel Payload Injection (XSS)
+- **The Vulnerability**: An attacker sends malicious payloads through the WebRTC `DataChannel` (used for video sync) to crash the host or execute XSS.
+- **The Defense**: The `dataConn.on('data')` listener rigidly parses incoming JSON. It only acts on predefined `MSG.VIDEO_STATE` and `MSG.FACING_MODE` types. Malformed JSON or injected JavaScript is swallowed in an empty `catch` block and ignored.
 
-The default public static pages exist **strictly for convenience and quick testing**. 
-
-Relying on default maintainer infrastructure carries ongoing risks of bandwidth exhaustion, domain changes, or third-party outages.
-
-**We strongly urge all users to deploy the static `webrtc/` folder to their own free account on Vercel, Cloudflare Pages, or Netlify.** It takes under 2 minutes, costs nothing, and gives you 100% control over your uptime, privacy, and security.
-
-> 🚀 **Self-Hosting Instructions**: Step-by-step setup guides for Vercel, Cloudflare Pages, Netlify, and VPS are available in [Deployment.md](Deployment.md).
+### Threat D: "Zombie" Link Re-use
+- **The Vulnerability**: A Telegram user forwards the "Join Call" link to a public group, allowing unauthorized users to click the link hours after the call ended.
+- **The Defense**: `CallViewModel.kt` uses the Telegram Bot API (`editMessageText`) to surgically delete the inline keyboard button the second the call drops. Furthermore, `webrtc.js` executes a pre-join DataChannel ping (`checkHostActive`)—if the host is inactive, the web UI refuses to render the call screen.
 
 ---
 
-<h2 id="related-docs">6. Related Documentation</h2>
+<h2 id="ip-privacy">4. IP Exposure & P2P Characteristics</h2>
 
-| Document | Purpose |
-|---|---|
-| 🚀 **[Deployment.md](Deployment.md)** | Step-by-step guide to hosting your own static WebRTC engine |
-| 🛠️ **[Troubleshoot.md](Troubleshoot.md)** | Solutions for quota limits, server failures, and permission blocks |
-| ⚡ **[Backend.md](Backend.md)** | Explanation of PeerJS signaling, ICE candidate exchange, and DataChannel |
-| 🏗️ **[Architecture.md](Architecture.md)** | Technical breakdown of Android WebView layering and JS bridge |
-| 📐 **[Decisions.md](Decisions.md)** | Architectural Decision Records (ADR) detailing design choices and stealth rules |
-| 📝 **[Notes.md](Notes.md)** | Essential developer notes, hardware gotchas, and stealth constraints |
+WebRTC is fundamentally a Peer-to-Peer (P2P) technology. There is no central server proxying the audio/video by default.
+
+- 📍 **Public IP Reveal**: Both participants (the Android host and the Telegram guest) **can see each other's public IP address**. A guest can inspect network traffic in their browser console to find the host's location.
+- 📡 **Google STUN Logging**: The engine relies on Google's public STUN (`stun.l.google.com:19302`) to punch through routers. Google can log the IP addresses of devices using this service.
+- 🔌 **Signaling Metadata**: The public PeerJS signaling broker sees the IP addresses of both devices during the initial handshake (though it cannot decrypt the media streams).
+
+**The Mitigation**: To achieve anonymity, users **must** self-host a TURN server (Coturn) to act as a proxy relay, preventing peers from seeing each other's direct IPs.
 
 ---
 
-<br>
+<h2 id="supply-chain">5. Infrastructure & Supply Chain Risks</h2>
+
+The default static pages are hosted on free-tier platforms (Vercel) and use free public signaling (PeerJS). 
+
+**Infrastructure Constraints**:
+- **Quota Exhaustion**: If the app experiences a massive spike in traffic, Vercel may suspend the static pages. Default calls across all users will fail until quotas reset.
+- **Maintainer Compromise**: If the project maintainer's GitHub or Vercel account is compromised, an attacker could theoretically push malicious JavaScript to all users relying on the default URL.
+
+This is why **Self-Hosting is heavily recommended for strict security requirements**. Deploying the static files to a personal hosting account eliminates these centralized supply chain risks entirely. 
+
+> 🚀 **Self-Hosting Instructions**: View [Deployment.md](Deployment.md) for step-by-step guides on deploying the engine and custom TURN servers.
+
+---
+
 <p align="center">
-  <sub>SuperiorChat WebRTC Security & Privacy Audit</sub>
+  <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
 </p>
