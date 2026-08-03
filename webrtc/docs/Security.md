@@ -49,7 +49,7 @@ The following outlines theoretical attacks that apply to WebRTC systems, and how
 - **The Defense**: `CallManager.kt` generates a 128-bit cryptographic `secret` UUID alongside the Room ID. `webrtc.js` intercepts all incoming `call` and `connection` events. If the incoming payload does not contain a `metadata.secret` that perfectly matches the host's expected secret, the connection is instantly closed before media tracks are requested.
 
 ### Threat B: Origin Spoofing & Malicious Hosts
-- **The Vulnerability**: If a user is tricked into pointing the app to a malicious server in **Settings → Call Configuration**, an attacker could serve a modified `webrtc.js` designed to silently stream the camera to a third-party server.
+- **The Vulnerability**: If a user is tricked into pointing the app to a malicious server in **Application page $\rightarrow$ App Settings $\rightarrow$ Call Configuration**, an attacker could serve a modified `webrtc.js` designed to silently stream the camera to a third-party server.
 - **The Defense**: The Android app performs a strict HTTP GET pre-flight check before launching the WebView. It parses the HTML payload for `<title>Superiorchat Connect</title>` or `id="ui-layer"`. If the server returns an unexpected payload (like a phishing page or a raw directory), the app instantly blocks the connection.
 
 ### Threat C: DataChannel Payload Injection (XSS)

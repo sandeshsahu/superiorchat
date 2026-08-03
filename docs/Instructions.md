@@ -122,7 +122,7 @@ This version perfectly mimics a functional weather application and does not requ
 
 1. **Install Main App**: Download the latest "Weather" release APK and install it.
 2. **Access Hidden Engine**: Open the [Weather](flavors/FlavorWeather.md) app. Tap the search bar, type `superior chat` (or your custom access word), and hit the search/enter key on your keyboard.
-3. **Open Settings**: The hidden chat engine will launch. Go directly to App Settings.
+3. **Open Settings**: The hidden chat engine will launch. Go directly to **Application page $\rightarrow$ App Settings**.
 4. **Enter Credentials**: Fill in your Bot Token and Chat ID (the QR Code scanner is also available).
 5. **Start Chatting**: You are ready to go!
 
@@ -139,7 +139,7 @@ This version perfectly mimics a functional weather application and does not requ
 This version has a standard app icon and is simpler to set up (recommended for testing).
 
 1. **Install Main App**: Download the latest "Original" release APK and install it.
-2. **Open Settings**: Launch the app from your app drawer and go directly to App Settings.
+2. **Open Settings**: Launch the app from your app drawer and go directly to **Application page $\rightarrow$ App Settings**.
 3. **Enter Credentials**: Fill in your Bot Token and Chat ID or Scan the QR Code.
 4. **Start Chatting**: You are ready to go!
 
@@ -149,7 +149,7 @@ Superior Chat features a secure, peer-to-peer WebRTC calling engine. By default,
 
 1. **Test Default Calls**: Open a chat and press the **Call** button. If it connects successfully, you are ready to go!
 2. **Configure Custom Server (Recommended)**: For true security and privacy, you should not rely on the default public servers.
-   - Go to **Settings → Call Configuration**.
+   - Go to **Application page $\rightarrow$ App Settings $\rightarrow$ Call Configuration**.
    - Enter your self-hosted WebRTC domain (e.g., `https://call.yourdomain.com`).
    - Need help hosting? Read the **[WebRTC Deployment Guide](../webrtc/docs/Deployment.md)**.
 

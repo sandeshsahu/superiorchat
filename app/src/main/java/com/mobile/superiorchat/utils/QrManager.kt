@@ -19,6 +19,15 @@ import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import org.json.JSONObject
 
+data class QrConfigData(
+    val token: String,
+    val chatId: String,
+    val autoDownloadMedia: Boolean? = null,
+    val screenSecurity: Boolean? = null,
+    val newMessageNotification: Boolean? = null,
+    val callServer: String? = null
+)
+
 object QrManager {
     fun generateQrCode(text: String, size: Int = 512): Bitmap? {
         if (text.isBlank()) return null
@@ -41,7 +50,7 @@ object QrManager {
     }
 
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
-    fun processImageProxy(imageProxy: ImageProxy, onSuccess: (String, String) -> Unit) {
+    fun processImageProxy(imageProxy: ImageProxy, onSuccess: (QrConfigData) -> Unit) {
         val image = imageProxy.image
         if (image != null) {
             val buffer = image.planes[0].buffer
@@ -69,9 +78,15 @@ object QrManager {
                         val json = JSONObject(decrypted)
                         val token = json.getString("token")
                         val chat = json.getString("chatId")
+                        
+                        val autoDownloadMedia = if (json.has("autoDownloadMedia")) json.getBoolean("autoDownloadMedia") else null
+                        val screenSecurity = if (json.has("screenSecurity")) json.getBoolean("screenSecurity") else null
+                        val newMessageNotification = if (json.has("newMessageNotification")) json.getBoolean("newMessageNotification") else null
+                        val callServer = if (json.has("callServer")) json.getString("callServer") else null
+                        
                         if (Validator.isValidBotToken(token) && Validator.isValidChatId(chat)) {
                             Handler(Looper.getMainLooper()).post {
-                                onSuccess(token, chat)
+                                onSuccess(QrConfigData(token, chat, autoDownloadMedia, screenSecurity, newMessageNotification, callServer))
                             }
                         }
                     } catch (e: Exception) {
@@ -88,7 +103,7 @@ object QrManager {
         }
     }
 
-    fun processUri(uri: Uri, context: Context, onSuccess: (String, String) -> Unit) {
+    fun processUri(uri: Uri, context: Context, onSuccess: (QrConfigData) -> Unit) {
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
             val bitmap = BitmapFactory.decodeStream(inputStream)
@@ -108,8 +123,13 @@ object QrManager {
                 val token = json.getString("token")
                 val chat = json.getString("chatId")
                 
+                val autoDownloadMedia = if (json.has("autoDownloadMedia")) json.getBoolean("autoDownloadMedia") else null
+                val screenSecurity = if (json.has("screenSecurity")) json.getBoolean("screenSecurity") else null
+                val newMessageNotification = if (json.has("newMessageNotification")) json.getBoolean("newMessageNotification") else null
+                val callServer = if (json.has("callServer")) json.getString("callServer") else null
+                
                 if (Validator.isValidBotToken(token) && Validator.isValidChatId(chat)) {
-                    onSuccess(token, chat)
+                    onSuccess(QrConfigData(token, chat, autoDownloadMedia, screenSecurity, newMessageNotification, callServer))
                     return
                 } else {
                     Toast.makeText(context, "QR code contains invalid credentials format", Toast.LENGTH_SHORT).show()

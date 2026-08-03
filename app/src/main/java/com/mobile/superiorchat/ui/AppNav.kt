@@ -22,9 +22,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,9 +58,10 @@ fun Context.findActivity(): ComponentActivity? = when (this) {
 enum class NavScreen(val title: String, val icon: ImageVector) {
     Chat("Chat", Icons.Filled.Chat),
     Profile("Profile", Icons.Filled.Person),
+    AppInformation("Application", Icons.Filled.Apps),
     Permissions("Permissions", Icons.Filled.Lock),
-    Logs("Logs", Icons.AutoMirrored.Filled.List),
-    Settings("App Settings", Icons.Filled.Settings)
+    Logs("App Logs", Icons.Filled.Terminal),
+    AppSettings("App Settings", Icons.Filled.Settings)
 }
 
 enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, INITIALIZING_HARDWARE, SENDING_LINK, FAILED_SENDING, SUCCESS }
@@ -85,6 +84,7 @@ fun AppScreen(
     var isCallMinimized by remember { mutableStateOf(false) }
     var callConfirmationState by remember { mutableStateOf(CallInitiationState.IDLE) }
     var hardwareInitTimer by remember { mutableIntStateOf(0) }
+    var showScanPrompt by remember { mutableStateOf(false) }
 
     val activity = context as? android.app.Activity
     LaunchedEffect(drawerState.isOpen) {
@@ -198,7 +198,11 @@ fun AppScreen(
 
     if (currentScreen != NavScreen.Chat) {
         BackHandler {
-            currentScreen = NavScreen.Chat
+            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings)) {
+                currentScreen = NavScreen.AppInformation
+            } else {
+                currentScreen = NavScreen.Chat
+            }
         }
     }
 
@@ -206,6 +210,7 @@ fun AppScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
         scrimColor = Background.copy(alpha = 0.6f),
         drawerContent = {
             ModalDrawerSheet(
@@ -228,8 +233,8 @@ fun AppScreen(
                         Text("Author Sandesh", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
-                    // Navigation Items (excluding Settings — accessed via gear icon)
-                    NavScreen.entries.filter { it != NavScreen.Settings }.forEach { screen ->
+                    // Navigation Items — only top level entries shown
+                    listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation).forEach { screen ->
                         val isSelected = currentScreen == screen
                         val bgColor = if (isSelected) PrimaryLight else Color.Transparent
                         val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -276,8 +281,8 @@ fun AppScreen(
                             Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         },
                         navigationIcon = {
-                            if (currentScreen == NavScreen.Settings) {
-                                IconButton(onClick = { currentScreen = NavScreen.Chat }) {
+                            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings)) {
+                                IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             } else {
@@ -287,17 +292,22 @@ fun AppScreen(
                             }
                         },
                         actions = {
-                            if (currentScreen == NavScreen.Chat || currentScreen == NavScreen.Logs) {
-                                if (currentScreen == NavScreen.Chat) {
-                                    val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
-                                    if (canCall) {
-                                        IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
-                                            Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
-                                        }
+                            if (currentScreen == NavScreen.Chat) {
+                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
+                                
+                                if (canCall) {
+                                    IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
+                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
-                                IconButton(onClick = { currentScreen = NavScreen.Settings }) {
-                                    Icon(Icons.Outlined.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurface)
+
+                                // QR scanner button
+                                IconButton(onClick = { 
+                                    permissionHandler.requestCamera {
+                                        showScanPrompt = true
+                                    }
+                                }) {
+                                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan QR", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         },
@@ -341,25 +351,35 @@ fun AppScreen(
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
-                        (slideInHorizontally(animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessLow)) { width -> width / 4 } + 
-                            fadeIn(animationSpec = tween(300)) + 
-                            scaleIn(initialScale = 0.95f, animationSpec = tween(300))) togetherWith
-                        (slideOutHorizontally(animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessLow)) { width -> -width / 4 } + 
-                            fadeOut(animationSpec = tween(250)) + 
-                            scaleOut(targetScale = 0.95f, animationSpec = tween(250)))
+                        val isSubScreenTarget = targetState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings)
+                        val isReturningToInfo = initialState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings) && targetState == NavScreen.AppInformation
+                        
+                        val isForward = isSubScreenTarget || (!isReturningToInfo && targetState.ordinal > initialState.ordinal)
+
+                        if (isForward) {
+                            (slideInHorizontally(animationSpec = tween(300)) { width -> width } + 
+                                fadeIn(animationSpec = tween(300))) togetherWith
+                            (slideOutHorizontally(animationSpec = tween(300)) { width -> -width / 3 } + 
+                                fadeOut(animationSpec = tween(250)))
+                        } else {
+                            (slideInHorizontally(animationSpec = tween(300)) { width -> -width / 3 } + 
+                                fadeIn(animationSpec = tween(300))) togetherWith
+                            (slideOutHorizontally(animationSpec = tween(300)) { width -> width } + 
+                                fadeOut(animationSpec = tween(250)))
+                        }
                     },
                     label = "screen_transition"
                 ) { screen ->
                     when (screen) {
                         NavScreen.Chat -> ChatScreen(
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                            onNavigateToSettings = { currentScreen = NavScreen.Settings },
+                            onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
                             onNavigateToCall = { isCallMinimized = false }
                         )
                         NavScreen.Profile -> ProfileScreen(
                             hasCredentials = viewModel.hasCredentials,
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                            onNavigateToSettings = { currentScreen = NavScreen.Settings },
+                            onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
                             onClearCredentials = { 
                                 viewModel.botToken = ""
                                 viewModel.chatId = ""
@@ -375,9 +395,27 @@ fun AppScreen(
                             onAppNotificationsChange = { viewModel.toggleAppNotificationsEnabled(it) },
                             onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) }
                         )
-                        NavScreen.Permissions -> PermissionsScreen(permissions = permissionStates)
-                        NavScreen.Logs -> LogsScreen()
-                        NavScreen.Settings -> {
+                        NavScreen.AppInformation -> {
+                            val tokenStatusText = when {
+                                !viewModel.hasCredentials -> "Invalid"
+                                !isNetworkAvailable -> "Offline"
+                                !isTelegramApiReachable -> "Invalid"
+                                else -> "Online"
+                            }
+
+                            AppScreenPage(
+                                isInternetConnected = isNetworkAvailable,
+                                tokenStatus = tokenStatusText,
+                                onNavigate = { currentScreen = it }
+                            )
+                        }
+                        NavScreen.Permissions -> {
+                            PermissionsScreen(permissions = permissionStates)
+                        }
+                        NavScreen.Logs -> {
+                            LogsScreen()
+                        }
+                        NavScreen.AppSettings -> {
                             LaunchedEffect(Unit) {
                                 viewModel.webrtcBaseUrl = com.mobile.superiorchat.core.AppGraph.prefs.webrtcBaseUrl
                             }
@@ -388,27 +426,71 @@ fun AppScreen(
                                 !isTelegramApiReachable -> "Invalid"
                                 else -> "Online"
                             }
-                            
-                            SettingsScreen(
+
+                            AppSettingsPage(
                                 isInternetConnected = isNetworkAvailable,
                                 tokenStatus = tokenStatusText,
-                            botToken = viewModel.botToken,
-                            chatId = viewModel.chatId,
-                            isTileAccessEnabled = viewModel.tileAccessEnabled,
-                            customAccessWord = viewModel.customAccessWord,
-                            webrtcBaseUrl = viewModel.webrtcBaseUrl,
-                            onBotTokenChange = { viewModel.botToken = it },
-                            onChatIdChange = { viewModel.chatId = it },
-                            onTileAccessChange = { viewModel.toggleTileAccess(it) },
-                            onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
-                            onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
-                            onSave = {
-                                viewModel.saveCredentials()
-                            },
-                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
-                        )
+                                hasCredentials = viewModel.hasCredentials,
+                                botToken = viewModel.botToken,
+                                chatId = viewModel.chatId,
+                                webrtcBaseUrl = viewModel.webrtcBaseUrl,
+                                isTileAccessEnabled = viewModel.tileAccessEnabled,
+                                customAccessWord = viewModel.customAccessWord,
+                                onBotTokenChange = { viewModel.botToken = it },
+                                onChatIdChange = { viewModel.chatId = it },
+                                onTileAccessChange = { viewModel.toggleTileAccess(it) },
+                                onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
+                                onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
+                                onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
+                                onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
+                                onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
+                                onSave = { viewModel.saveCredentials() },
+                                onClearCredentials = {
+                                    viewModel.botToken = ""
+                                    viewModel.chatId = ""
+                                    viewModel.saveCredentials()
+                                },
+                                onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) },
+                                onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+                            )
                         }
                     }
+                }
+                
+                if (showScanPrompt) {
+                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                        title = "Scan Configuration",
+                        message = "Scan a QR code to *Quickly Configure* application settings.",
+                        icon = Icons.Filled.QrCodeScanner,
+                        iconTint = PrimaryLight,
+                        confirmText = "Scan",
+                        onConfirm = {
+                            showScanPrompt = false
+                            viewModel.showAppLevelQrScanner = true
+                        },
+                        onDismiss = { showScanPrompt = false }
+                    )
+                }
+                
+                if (viewModel.showAppLevelQrScanner) {
+                    com.mobile.superiorchat.ui.components.QrScanner(
+                        onDismiss = { viewModel.showAppLevelQrScanner = false },
+                        onSuccess = { data ->
+                            viewModel.botToken = data.token
+                            viewModel.chatId = data.chatId
+                            data.autoDownloadMedia?.let { viewModel.toggleAutoDownloadMedia(it) }
+                            data.newMessageNotification?.let { viewModel.toggleNewMessageNotification(it) }
+                            data.screenSecurity?.let { viewModel.toggleScreenSecurity(it) }
+                            data.callServer?.let { 
+                                viewModel.webrtcBaseUrl = it
+                            }
+                            
+                            viewModel.saveCredentials()
+                            viewModel.showAppLevelQrScanner = false
+                            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
+                        },
+                        onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+                    )
                 }
                 
                 val callState by CallManager.callState.collectAsState()
@@ -459,7 +541,7 @@ fun AppScreen(
                         onConfirm = {
                             CallManager.clearCallError()
                             if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL || callFailedError == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
-                                currentScreen = NavScreen.Settings
+                                currentScreen = NavScreen.AppSettings
                             }
                         },
                         onDismiss = {

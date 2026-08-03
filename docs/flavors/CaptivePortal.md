@@ -80,8 +80,8 @@ The notification engine is deeply integrated with the device's telephony and net
 <h2 id="features">3. Features</h2>
 
 - 📞 **Secret Dialer Access**: Open the application privately by dialing the secret code `*#*#9131#*#*` directly into your phone's native dialer.
-- 🎛️ **Quick Settings Tile**: Access the chat app via a custom Quick Settings Tile. 
-  - **Access Sequence**: Tap the tile `ON`, then `OFF`, and finally `ON and HOLD` to enter the application. (This tile can be disabled from the Application Settings for extra security).
+- 🎛️ **Secret Access Via Tile**: Open the chat app via the disguised **Carrier Sync** Quick Settings Tile. 
+  - **Access Sequence**: Tap the tile `ON`, then `OFF`, and finally `ON and HOLD` to enter the application. (This tile can be safely disabled from Application Settings, which includes a lockout warning prompt).
 - 🔄 **Decoy Redirects**: If a snooper clicks the camouflaged notification or taps the Quick Settings tile without executing the correct sequence, they are instantly redirected to the native Android Network Settings.
 - 🔔 **Carrier Notification Camouflage**: Incoming messages trigger harmless-looking system alerts based on data states:
   - **Idle**: `"[Carrier] - Standard rates apply"`

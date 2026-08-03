@@ -454,8 +454,9 @@ fun ChatScreen(
                     } else if (messages.isEmpty()) {
                         item {
                             Column(
-                                modifier = Modifier.fillMaxWidth().padding(top = 100.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                                modifier = Modifier.fillParentMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
                             ) {
                                 Box(
                                     modifier = Modifier

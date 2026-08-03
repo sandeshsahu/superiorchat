@@ -247,9 +247,7 @@ fun ProfileScreen(
             onNewMessageNotificationChange = onNewMessageNotificationChange,
             onAppNotificationsChange = onAppNotificationsChange,
             onDismiss = { currentOverlay = ProfileOverlay.None },
-            onClearCredentials = onClearCredentials,
-            onNavigateToAppSettings = onNavigateToSettings,
-            onClearChat = onClearChat
+            onNavigateToAppSettings = onNavigateToSettings
         )
     }
 
@@ -478,21 +476,12 @@ private fun ProfileActionButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.93f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "btn_scale"
-    )
-
     Column(
         modifier = modifier
-            .scale(scale)
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceLevel1.copy(alpha = if (isLoading) 0.5f else 1f))
             .border(1.dp, DividerColor, RoundedCornerShape(16.dp))
-            .clickable(interactionSource = interactionSource, indication = null, enabled = !isLoading) { onClick() }
+            .bounceClick(scaleDown = 0.95f) { if (!isLoading) onClick() }
             .padding(vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)

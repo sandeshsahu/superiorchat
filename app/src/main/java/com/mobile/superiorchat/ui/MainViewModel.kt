@@ -146,6 +146,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var customAccessWord by mutableStateOf(prefs.customAccessWord)
         private set
+    var showAppLevelQrScanner by mutableStateOf(false)
 
     fun updateCustomAccessWord(word: String) {
         prefs.customAccessWord = word

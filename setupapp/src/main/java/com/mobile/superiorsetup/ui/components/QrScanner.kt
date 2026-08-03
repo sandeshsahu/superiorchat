@@ -47,13 +47,14 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import com.mobile.superiorsetup.theme.Primary
 import com.mobile.superiorsetup.core.QrManager
+import com.mobile.superiorsetup.core.QrConfigData
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun QrScanner(
     onDismiss: () -> Unit,
-    onSuccess: (botToken: String, chatId: String) -> Unit
+    onSuccess: (QrConfigData) -> Unit
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -62,6 +63,7 @@ fun QrScanner(
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) 
     }
     
+    var showCameraRationaleDialog by remember { mutableStateOf(!hasCameraPermission) }
     var showCameraSettingsDialog by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -79,10 +81,21 @@ fun QrScanner(
         }
     }
     
-    LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+    if (showCameraRationaleDialog) {
+        ActionDialog(
+            title = "Camera Permission",
+            message = "Superior Setup needs access to your camera to scan the configuration QR code.",
+            confirmText = "Continue",
+            dismissText = "Cancel",
+            onConfirm = {
+                showCameraRationaleDialog = false
+                permissionLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onDismiss = {
+                showCameraRationaleDialog = false
+                onDismiss()
+            }
+        )
     }
     
     var showCustomGallery by remember { mutableStateOf(false) }
@@ -102,6 +115,7 @@ fun QrScanner(
         )
     }
 
+    var showStorageRationaleDialog by remember { mutableStateOf(false) }
     var showStorageSettingsDialog by remember { mutableStateOf(false) }
 
     val storagePermissionLauncher = rememberLauncherForActivityResult(
@@ -117,6 +131,23 @@ fun QrScanner(
                 showCustomGallery = false
             }
         }
+    }
+
+    if (showStorageRationaleDialog) {
+        ActionDialog(
+            title = "Storage Permission",
+            message = "Superior Setup needs access to your storage to read QR code images from your gallery.",
+            confirmText = "Continue",
+            dismissText = "Cancel",
+            onConfirm = {
+                showStorageRationaleDialog = false
+                storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            },
+            onDismiss = {
+                showStorageRationaleDialog = false
+                showCustomGallery = false
+            }
+        )
     }
 
     if (showCameraSettingsDialog) {
@@ -179,7 +210,7 @@ fun QrScanner(
                 )
             } else {
                 LaunchedEffect(Unit) {
-                    storagePermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                    showStorageRationaleDialog = true
                 }
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))

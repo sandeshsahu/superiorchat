@@ -43,7 +43,7 @@ fun PermissionsScreen(permissions: List<PermissionState>) {
             .background(Background)
             .padding(horizontal = 20.dp)
             .padding(top = 24.dp, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
             Text(

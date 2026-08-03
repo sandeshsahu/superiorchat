@@ -129,7 +129,7 @@ The decoy engine features a robust, multi-tier data fetching pipeline using `Ret
 <h2 id="features">3. Features</h2>
 
 - 🔍 **App Search Interception (The Secret Handshake)**: Type a secret access phrase into the decoy weather search bar and press Search to silently launch the chat engine. 
-- 🔐 **Custom Access Word**: You can define your own Custom Access Word (e.g., `open sesame`) from within the Chat App settings. The default `superior chat` phrase will always remain active as a fallback lock-out prevention.
+- 🔐 **Custom Access Word**: You can define your own Custom Access Word (e.g., `open door`) from within the **Application page $\rightarrow$ App Settings**. The default `superior chat` phrase will always remain active as a fallback lock-out prevention.
 - 🔔 **Camouflage Notifications**: Incoming chat messages appear as harmless meteorological status updates.
   - *Idle*: `Currently In London` • `London, 22°C • Humidity 65%`
   - *Active Message*: `Live Update • London`
@@ -150,7 +150,7 @@ The decoy engine features a robust, multi-tier data fetching pipeline using `Ret
 
 ### How to Set a Custom Access Word
 1. Access the main chat app using the default `superior chat` search query.
-2. Navigate to **Superior Chat** $\rightarrow$ **Settings** $\rightarrow$ **Set Custom Access Word**.
+2. Navigate to **Application page** $\rightarrow$ **App Settings** $\rightarrow$ **Set Custom Access Word**.
 3. Type your desired custom phrase (must be at least 4 characters).
 4. Click **Save Custom Word** and confirm the action in the warning dialog.
 5. The field will clear and display a green **Saved!** animation upon success.

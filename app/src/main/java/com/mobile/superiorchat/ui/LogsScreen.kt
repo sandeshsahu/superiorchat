@@ -145,14 +145,21 @@ fun LogsScreen() {
         )
 
         // Filter Tags
-        Row(
+        val tagListState = androidx.compose.foundation.lazy.rememberLazyListState()
+        
+        LaunchedEffect(selectedIndex) {
+            tagListState.animateScrollToItem(selectedIndex)
+        }
+
+        androidx.compose.foundation.lazy.LazyRow(
+            state = tagListState,
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            tabs.forEachIndexed { index, tab ->
+            items(tabs.size) { index ->
+                val tab = tabs[index]
                 val isSelected = index == selectedIndex
                 val bgColor = if (isSelected) PrimaryLight else SurfaceLevel2
                 val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant

@@ -39,4 +39,20 @@ object Config {
     var adminChatId: String
         get() = prefs?.getString("admin_chat_id", "") ?: ""
         set(value) { prefs?.edit()?.putString("admin_chat_id", value)?.apply() }
+
+    var adminAutoDownloadMedia: Boolean
+        get() = prefs?.getBoolean("admin_auto_download_media", false) ?: false
+        set(value) { prefs?.edit()?.putBoolean("admin_auto_download_media", value)?.apply() }
+
+    var adminNewMessageNotification: Boolean
+        get() = prefs?.getBoolean("admin_new_message_notification", true) ?: true
+        set(value) { prefs?.edit()?.putBoolean("admin_new_message_notification", value)?.apply() }
+
+    var adminBlockScreenshots: Boolean
+        get() = prefs?.getBoolean("admin_block_screenshots", true) ?: true
+        set(value) { prefs?.edit()?.putBoolean("admin_block_screenshots", value)?.apply() }
+
+    var adminCallServer: String
+        get() = prefs?.getString("admin_call_server", "") ?: ""
+        set(value) { prefs?.edit()?.putString("admin_call_server", value)?.apply() }
 }

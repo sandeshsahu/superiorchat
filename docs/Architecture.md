@@ -143,7 +143,10 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── KeyProvider.kt              # ContentProvider exposing RSA public key for setup IPC
 │   ├── NetState.kt                 # Connectivity monitoring via StateFlow
 │   ├── ServiceCore.kt              # Foreground service lifecycle & WorkManager fallback
-│   └── StatusFlow.kt               # Global sync & active media transfer state management
+│   ├── StatusFlow.kt               # Global sync & active media transfer state management
+│   └── call/                       # WebRTC engine & signaling
+│       ├── CallEngine.kt           # PeerJS WebRTC orchestration
+│       └── CallManager.kt          # Signaling server routing & fallback
 │
 ├── data/                           # Persistence
 │   ├── Prefs.kt                    # EncryptedSharedPreferences (AES-256-GCM)
@@ -177,40 +180,45 @@ app/src/main/java/com/mobile/superiorchat/
 │
 ├── ui/                             # Jetpack Compose screens
 │   ├── AppNav.kt                   # Navigation drawer & screen routing
+│   ├── AppScreen.kt                # App information and overview hub
 │   ├── ChatScreen.kt               # Chat interface with message bubbles
 │   ├── ChatViewModel.kt            # Chat state management
+│   ├── GhostSkeleton.kt            # Skeleton loading animation
 │   ├── LogsScreen.kt               # Diagnostic logs viewer
 │   ├── MainViewModel.kt            # Global app state
 │   ├── PermissionsScreen.kt        # Runtime permission handler
-│   ├── SettingsScreen.kt           # Credential config & toggles
-│   ├── profile/                    # Profile feature package
-│   │   ├── ProfileScreen.kt        # Bot's own profile display (separated from receiver's profile)
-│   │   └── ProfileViewModel.kt     # Profile editing & photo state
-│   └── components/                 # Reusable UI components
-│       ├── AttachMenu.kt           # Attachment bottom sheet
-│       ├── ChatInputBox.kt         # Text input with recording & attachments
-│       ├── QrScanner.kt            # QR code scanner
-│       ├── ScrollEvent.kt          # Scroll state utility
-│       ├── UIModifiers.kt          # Custom modifiers (glow, bounce, etc.)
-│       ├── bubbles/                # Message rendering components
-│       │   ├── AudioBubble.kt      # Waveform visualization & playback
-│       │   ├── DocumentBubble.kt   # Document attachment rendering
-│       │   ├── MediaBubble.kt      # Photo/Video visualization
-│       │   └── MessageBubble.kt    # Standard text wrapper & orchestration
-│       ├── media/                  # Media handling UI
-│       │   ├── FileExplorer.kt     # Hierarchical file browser
-│       │   ├── GalleryGrid.kt      # Media grid with album filtering
-│       │   ├── ImageCropper.kt     # Photo cropping utility
-│       │   ├── MediaPicker.kt      # Media selection orchestrator
-│       │   └── MediaViewer.kt      # Full-screen media viewer
-│       ├── popups/                 # Modals and Dialogs
-│       │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
-│       │   ├── StatusPill.kt       # Future-proof global sync & transfer state pill
-│       │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
-│       └── profile/                # Profile UI fragments
-│           ├── EditInfoSheet.kt    # Modal sheet for editing profile details
-│           ├── PartnerProfile.kt   # Reusable profile header card
-│           └── ProfileSettings.kt  # Danger zone & profile settings
+│   ├── SettingsScreen.kt           # Credential config & advanced toggles
+│   ├── call/                       # WebRTC Call UI
+│   │   ├── CallScreen.kt           # Immersive calling interface
+│   │   └── CallViewModel.kt        # Call state management
+│   ├── components/                 # Reusable UI components
+│   │   ├── AttachMenu.kt           # Attachment bottom sheet
+│   │   ├── ChatInputBox.kt         # Text input with recording & attachments
+│   │   ├── QrScanner.kt            # QR code scanner
+│   │   ├── ScrollEvent.kt          # Scroll state utility
+│   │   ├── UIModifiers.kt          # Custom modifiers (glow, bounce, etc.)
+│   │   ├── bubbles/                # Message rendering components
+│   │   │   ├── AudioBubble.kt      # Waveform visualization & playback
+│   │   │   ├── DocumentBubble.kt   # Document attachment rendering
+│   │   │   ├── MediaBubble.kt      # Photo/Video visualization
+│   │   │   └── MessageBubble.kt    # Standard text wrapper & orchestration
+│   │   ├── media/                  # Media handling UI
+│   │   │   ├── FileExplorer.kt     # Hierarchical file browser
+│   │   │   ├── GalleryGrid.kt      # Media grid with album filtering
+│   │   │   ├── ImageCropper.kt     # Photo cropping utility
+│   │   │   ├── MediaPicker.kt      # Media selection orchestrator
+│   │   │   └── MediaViewer.kt      # Full-screen media viewer
+│   │   ├── popups/                 # Modals and Dialogs
+│   │   │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
+│   │   │   ├── StatusPill.kt       # Future-proof global sync & transfer state pill
+│   │   │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
+│   │   └── profile/                # Profile UI fragments
+│   │       ├── EditInfoSheet.kt    # Modal sheet for editing profile details
+│   │       ├── PartnerProfile.kt   # Reusable profile header card
+│   │       └── ProfileSettings.kt  # Profile settings toggles
+│   └── profile/                    # Profile feature package
+│       ├── ProfileScreen.kt        # Bot's own profile display
+│       └── ProfileViewModel.kt     # Profile editing & photo state
 │
 └── utils/                          # Cross-cutting utilities
     ├── AppLog.kt                   # Thread-safe diagnostic logger
@@ -279,7 +287,8 @@ setupapp/src/main/java/com/mobile/superiorsetup/
     └── components/
         ├── GalleryGrid.kt           # Media gallery for QR import
         ├── Popups.kt                # Setup dialogs
-        └── QrScanner.kt             # Camera-based QR scanner
+        ├── QrScanner.kt             # Camera-based QR scanner
+        └── UIModifiers.kt           # Custom modifiers (glow, bounce, etc.)
 ```
 
 ---

@@ -55,6 +55,11 @@ class MainActivity : ComponentActivity() {
         // 1. Silent Handshake from Burner Setup App
         val setupBotTokenEncrypted = intent.getStringExtra("SETUP_BOT_TOKEN")
         val setupChatIdEncrypted = intent.getStringExtra("SETUP_CHAT_ID")
+        val autoDownloadEnc = intent.getStringExtra("SETUP_AUTO_DOWNLOAD")
+        val screenSecurityEnc = intent.getStringExtra("SETUP_BLOCK_SCREENSHOTS")
+        val notificationsEnc = intent.getStringExtra("SETUP_NOTIFICATIONS")
+        val callServerEnc = intent.getStringExtra("SETUP_CALL_SERVER")
+
         if (!setupBotTokenEncrypted.isNullOrEmpty() && !setupChatIdEncrypted.isNullOrEmpty()) {
             val setupBotToken = com.mobile.superiorchat.utils.Security.decrypt(setupBotTokenEncrypted)
             val setupChatId = com.mobile.superiorchat.utils.Security.decrypt(setupChatIdEncrypted)
@@ -63,6 +68,21 @@ class MainActivity : ComponentActivity() {
                 val prefs = com.mobile.superiorchat.core.AppGraph.prefs
                 prefs.botToken = setupBotToken
                 prefs.chatId = setupChatId
+
+                if (!autoDownloadEnc.isNullOrEmpty()) {
+                    prefs.isAutoDownloadMediaEnabled = com.mobile.superiorchat.utils.Security.decrypt(autoDownloadEnc).toBoolean()
+                }
+                if (!screenSecurityEnc.isNullOrEmpty()) {
+                    prefs.isScreenSecurityEnabled = com.mobile.superiorchat.utils.Security.decrypt(screenSecurityEnc).toBoolean()
+                }
+                if (!notificationsEnc.isNullOrEmpty()) {
+                    prefs.isNewMessageNotificationEnabled = com.mobile.superiorchat.utils.Security.decrypt(notificationsEnc).toBoolean()
+                }
+                if (!callServerEnc.isNullOrEmpty()) {
+                    val server = com.mobile.superiorchat.utils.Security.decrypt(callServerEnc)
+                    if (server.isNotEmpty()) prefs.webrtcBaseUrl = server
+                }
+
                 com.mobile.superiorchat.core.ServiceCore.ensureRunning(this)
                 AppLog.log(LogCategory.SYSTEM, "Setup completed via intent. Prompting uninstall of setup app via UI.")
                 

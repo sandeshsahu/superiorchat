@@ -54,7 +54,7 @@ import java.util.concurrent.Executors
 @Composable
 fun QrScanner(
     onDismiss: () -> Unit,
-    onSuccess: (botToken: String, chatId: String) -> Unit,
+    onSuccess: (com.mobile.superiorchat.utils.QrConfigData) -> Unit,
     onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
 ) {
     val context = LocalContext.current

@@ -33,9 +33,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -46,6 +49,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorsetup.theme.*
+import com.mobile.superiorsetup.ui.components.bounceClick
+import com.mobile.superiorsetup.ui.components.glow
+import kotlinx.coroutines.launch
 
 enum class SetupMode { CLIENT, ADMIN }
 
@@ -83,7 +89,7 @@ fun SetupUI() {
                         modifier = Modifier.padding(end = 16.dp)
                     ) {
                         Text(
-                            text = if (currentMode == SetupMode.CLIENT) "Step $currentStep of 3" else "Step $currentStep of 2",
+                            text = if (currentMode == SetupMode.CLIENT) "Step $currentStep of 3" else "Step $currentStep of 3",
                             color = TextSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -110,8 +116,8 @@ fun SetupUI() {
             ) { (step, mode) ->
                 when (step) {
                     1 -> Step1Screen(mode = mode, onNext = { currentStep = 2 })
-                    2 -> if (mode == SetupMode.CLIENT) Step2Screen(onNext = { currentStep = 3 }) else AdminStep2Screen()
-                    3 -> Step3Screen()
+                    2 -> if (mode == SetupMode.CLIENT) Step2Screen(onNext = { currentStep = 3 }) else AdminStep2Screen(onNext = { currentStep = 3 })
+                    3 -> if (mode == SetupMode.CLIENT) Step3Screen() else AdminStep3Screen()
                 }
             }
             
@@ -141,9 +147,9 @@ fun SetupUI() {
                     ) {
                         Column(modifier = Modifier.padding(8.dp).width(160.dp)) {
                             Surface(
-                                color = if (currentMode == SetupMode.CLIENT) Primary.copy(alpha = 0.15f) else SurfaceLevel2,
+                                color = if (currentMode == SetupMode.CLIENT) PrimaryLight.copy(alpha = 0.15f) else SurfaceLevel2,
                                 shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, if (currentMode == SetupMode.CLIENT) Primary.copy(alpha = 0.5f) else DividerColor),
+                                border = BorderStroke(1.dp, if (currentMode == SetupMode.CLIENT) PrimaryLight.copy(alpha = 0.5f) else DividerColor),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { 
@@ -155,18 +161,18 @@ fun SetupUI() {
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Filled.Person, contentDescription = null, tint = if (currentMode == SetupMode.CLIENT) Primary else TextSecondary, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Filled.Person, contentDescription = null, tint = if (currentMode == SetupMode.CLIENT) PrimaryLight else TextSecondary, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Client Mode", color = if (currentMode == SetupMode.CLIENT) Primary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    Text("Client Mode", color = if (currentMode == SetupMode.CLIENT) PrimaryLight else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Surface(
-                                color = if (currentMode == SetupMode.ADMIN) Primary.copy(alpha = 0.15f) else SurfaceLevel2,
+                                color = if (currentMode == SetupMode.ADMIN) PrimaryLight.copy(alpha = 0.15f) else SurfaceLevel2,
                                 shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, if (currentMode == SetupMode.ADMIN) Primary.copy(alpha = 0.5f) else DividerColor),
+                                border = BorderStroke(1.dp, if (currentMode == SetupMode.ADMIN) PrimaryLight.copy(alpha = 0.5f) else DividerColor),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { 
@@ -178,9 +184,9 @@ fun SetupUI() {
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = if (currentMode == SetupMode.ADMIN) Primary else TextSecondary, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Filled.AdminPanelSettings, contentDescription = null, tint = if (currentMode == SetupMode.ADMIN) PrimaryLight else TextSecondary, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text("Admin Mode", color = if (currentMode == SetupMode.ADMIN) Primary else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                    Text("Admin Mode", color = if (currentMode == SetupMode.ADMIN) PrimaryLight else TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                                 }
                             }
                         }
@@ -240,10 +246,10 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.ChatBubble, contentDescription = null, tint = Primary, modifier = Modifier.size(64.dp))
+            Icon(Icons.Filled.Chat, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
             Text("Welcome to", fontSize = 24.sp, color = TextPrimary)
-            Text("Superior Chat", fontSize = 24.sp, color = Primary, fontWeight = FontWeight.Bold)
+            Text("Superior Chat", fontSize = 24.sp, color = PrimaryLight, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 "A hidden and secure chat experience powered by Telegram Bot API.",
@@ -271,48 +277,63 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
         ) { currentModeState ->
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 if (currentModeState == SetupMode.ADMIN) {
-                    Button(
-                        onClick = { onNext() },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                        shape = RoundedCornerShape(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .bounceClick(scaleDown = 0.95f) { onNext() }
+                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                            .background(PrimaryLight, RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Continue", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Continue", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                        }
                     }
                 } else if (isInstalled) {
-                    Button(
-                        onClick = { onNext() },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Success),
-                        shape = RoundedCornerShape(16.dp)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .bounceClick(scaleDown = 0.95f) { onNext() }
+                            .glow(color = Success, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                            .background(Success, RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("App Installed - Continue", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("App Installed - Continue", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 } else {
-                    Button(
-                        onClick = {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
-                                showInstallDialog = true
-                            } else {
-                                AppManager.installApp(context) { intent -> installLauncher.launch(intent) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .bounceClick(scaleDown = 0.95f) {
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                                    showInstallDialog = true
+                                } else {
+                                    AppManager.installApp(context) { intent -> installLauncher.launch(intent) }
+                                }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth().height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                        shape = RoundedCornerShape(16.dp)
+                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                            .background(PrimaryLight, RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.Download, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Install Main Application", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Install Main Application", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Lock, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Filled.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Private • Encrypted • Hidden", color = TextSecondary, fontSize = 11.sp)
                 }
@@ -331,11 +352,15 @@ fun Step2Screen(onNext: () -> Unit) {
     if (showScanner) {
         com.mobile.superiorsetup.ui.components.QrScanner(
             onDismiss = { showScanner = false },
-            onSuccess = { token, chat ->
-                Config.botToken = token
-                Config.chatId = chat
-                botToken = token
-                chatId = chat
+            onSuccess = { qrData ->
+                Config.botToken = qrData.token
+                Config.chatId = qrData.chatId
+                Config.adminAutoDownloadMedia = qrData.autoDownloadMedia
+                Config.adminBlockScreenshots = qrData.screenSecurity
+                Config.adminNewMessageNotification = qrData.newMessageNotification
+                Config.adminCallServer = qrData.callServer
+                botToken = qrData.token
+                chatId = qrData.chatId
                 showScanner = false
             }
         )
@@ -358,16 +383,21 @@ fun Step2Screen(onNext: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(rememberScrollState()),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.VpnKey, contentDescription = null, tint = Primary, modifier = Modifier.size(64.dp))
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(Icons.Filled.VpnKey, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
             Text("Enter Credentials", fontSize = 24.sp, color = TextPrimary)
-            Text("Bot Token & Chat ID", fontSize = 24.sp, color = Primary, fontWeight = FontWeight.Bold)
+            Text("Bot Token & Chat ID", fontSize = 24.sp, color = PrimaryLight, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 "Connect your Telegram bot to enable secure messaging.",
@@ -378,34 +408,66 @@ fun Step2Screen(onNext: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            FeatureRow(Icons.Filled.QrCodeScanner, "Scan Configuration", "Use the built-in scanner to import credentials.")
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = { showAddManuallyPopup = true },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (botToken.isNotEmpty()) SurfaceLevel1 else Primary),
-                shape = RoundedCornerShape(16.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(SurfaceLevel1)
+                    .padding(16.dp)
             ) {
-                Icon(if (botToken.isNotEmpty()) Icons.Filled.Edit else Icons.Filled.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (botToken.isNotEmpty()) "Edit Manually" else "Add Manually", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Button(
-                onClick = { showScanner = true },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Success),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(androidx.compose.material.icons.Icons.Filled.QrCodeScanner, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Scan QR Code", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.SettingsSuggest, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Import Configuration", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SurfaceLevel2)
+                        .clickable { showAddManuallyPopup = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (botToken.isNotEmpty()) Icons.Filled.Edit else Icons.Filled.Add, contentDescription = null, tint = if (botToken.isNotEmpty()) TextSecondary else PrimaryLight)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(if (botToken.isNotEmpty()) "Edit Manually" else "Add Manually", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                            Text("Type credentials by hand", color = TextSecondary, fontSize = 12.sp)
+                        }
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SurfaceLevel2)
+                        .clickable { showScanner = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = PrimaryLight)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text("Scan QR Code", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                            Text("Fastest & recommended", color = TextSecondary, fontSize = 12.sp)
+                        }
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
+                }
             }
         }
-        
         Spacer(modifier = Modifier.height(24.dp))
         
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
@@ -431,89 +493,60 @@ fun Step2Screen(onNext: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
             }
             
-            Button(
-                onClick = { onNext() },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Primary,
-                    disabledContainerColor = Primary.copy(alpha = 0.3f),
-                    disabledContentColor = Color.White.copy(alpha = 0.5f)
-                ),
-                shape = RoundedCornerShape(16.dp),
-                enabled = botToken.isNotBlank() && chatId.isNotBlank()
+            val isReady = botToken.isNotBlank() && chatId.isNotBlank()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) { if (isReady) onNext() }
+                    .glow(color = if (isReady) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                    .background(if (isReady) PrimaryLight else SurfaceLevel2, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Continue", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("Continue", color = if (isReady) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceLevel1)
-                    .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
+            Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.Shield, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Credentials are stored securely on device", color = TextSecondary, fontSize = 11.sp)
+                Text("Credentials are stored securely on device.", color = TextSecondary, fontSize = 11.sp)
             }
         }
+        
+        Spacer(modifier = Modifier.height(30.dp))
     }
 }
 
 @Composable
-fun AdminStep2Screen() {
+fun AdminStep2Screen(onNext: () -> Unit) {
     var botToken by remember { mutableStateOf(Config.adminBotToken) }
     var chatId by remember { mutableStateOf(Config.adminChatId) }
-    
-    var showAddDialog by remember { mutableStateOf(false) }
-    var showQrDialog by remember { mutableStateOf(false) }
+    var tokenVisible by remember { mutableStateOf(false) }
 
-    if (showAddDialog) {
-        com.mobile.superiorsetup.ui.components.AddCredentialsPopup(
-            initialToken = botToken,
-            initialChatId = chatId,
-            isReplace = botToken.isNotEmpty() && chatId.isNotEmpty(),
-            onDismiss = { showAddDialog = false },
-            onGenerate = { token, chat ->
-                botToken = token
-                chatId = chat
-                Config.adminBotToken = token
-                Config.adminChatId = chat
-                showAddDialog = false
-                showQrDialog = true // Flow directly into QR display after generating
-            }
-        )
-    }
+    val isTokenValid by remember(botToken) { derivedStateOf { botToken.isBlank() || com.mobile.superiorsetup.core.Validator.isValidBotToken(botToken.trim()) } }
+    val isChatIdValid by remember(chatId) { derivedStateOf { chatId.isBlank() || com.mobile.superiorsetup.core.Validator.isValidChatId(chatId.trim()) } }
     
-    // Show QR Dialog
-    if (showQrDialog) {
-        com.mobile.superiorsetup.ui.components.DisplayQrPopup(
-            botToken = botToken,
-            chatId = chatId,
-            onDismiss = { showQrDialog = false }
-        )
-    }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.QrCode, contentDescription = null, tint = Primary, modifier = Modifier.size(64.dp))
+            Icon(Icons.Filled.VpnKey, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
-            Text("QR Generation", fontSize = 24.sp, color = TextPrimary)
-            Text("Encrypted Payload", fontSize = 24.sp, color = Primary, fontWeight = FontWeight.Bold)
+            Text("Admin Credentials", fontSize = 24.sp, color = TextPrimary)
+            Text("Bot Token & Chat ID", fontSize = 24.sp, color = PrimaryLight, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Generate an encrypted configuration QR code for the host device to scan seamlessly.",
+                "Enter the Bot Token and Chat ID to configure the host device securely.",
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
                 fontSize = 13.sp
@@ -521,54 +554,529 @@ fun AdminStep2Screen() {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            FeatureRow(Icons.Filled.SmartToy, "Bot Token", "Get this from @BotFather on Telegram by sending the /newbot command.")
-            Spacer(modifier = Modifier.height(12.dp))
-            FeatureRow(Icons.Filled.PersonSearch, "Chat ID", "Get this from @MissRose_bot by sending the /id command.")
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Button(
-                onClick = { showAddDialog = true },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (botToken.isNotEmpty()) SurfaceLevel1 else Primary),
-                shape = RoundedCornerShape(16.dp)
+            // Bot Token Field
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (!isTokenValid) ErrorRed else DividerColor),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(if (botToken.isNotEmpty()) Icons.Filled.Edit else Icons.Filled.Add, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (botToken.isNotEmpty()) "Replace Credentials" else "Add Credentials", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Bot Token", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = botToken,
+                        onValueChange = { botToken = it },
+                        placeholder = { Text("e.g. 1234567890:AAH...", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        isError = !isTokenValid,
+                        shape = RoundedCornerShape(10.dp),
+                        visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { tokenVisible = !tokenVisible }) {
+                                Icon(if (tokenVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    )
+                }
             }
             
-            if (botToken.isNotEmpty() && chatId.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { showQrDialog = true },
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Success),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Icon(Icons.Filled.QrCodeScanner, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Display QR", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Chat ID Field
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, if (!isChatIdValid) ErrorRed else DividerColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Chat, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Chat ID", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = chatId,
+                        onValueChange = { chatId = it },
+                        placeholder = { Text("e.g. 1234567890", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        isError = !isChatIdValid,
+                        shape = RoundedCornerShape(10.dp)
+                    )
                 }
             }
         }
         
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        FeatureRow(Icons.Filled.Info, "How to get these?", "• Bot Token: Chat with @BotFather on Telegram\n• Chat ID: Chat with @userinfobot to get your ID")
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Row(
+            val isReady = botToken.isNotBlank() && chatId.isNotBlank()
+            val isValid = isReady && isTokenValid && isChatIdValid
+            val isError = isReady && !isValid
+            
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceLevel1)
-                    .border(1.dp, DividerColor, RoundedCornerShape(12.dp))
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+                    .height(52.dp)
+                    .bounceClick(scaleDown = if (isValid) 0.95f else 1f) {
+                        if (isValid) {
+                            Config.adminBotToken = botToken.trim()
+                            Config.adminChatId = chatId.trim()
+                            onNext()
+                        }
+                    }
+                    .glow(color = if (isValid) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                    .background(if (isError) ErrorRed else if (isValid) PrimaryLight else SurfaceLevel2, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
             ) {
+                Text(
+                    text = if (isError) "Invalid Credentials" else if (isValid) "Save & Continue" else "Continue",
+                    color = if (isError) Color.White else if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Private • Encrypted • Hidden", color = TextSecondary, fontSize = 11.sp)
+                }
+        }
+        
+        Spacer(modifier = Modifier.height(30.dp))
+    }
+}
+
+@Composable
+fun AdminStep3Screen() {
+    val context = LocalContext.current
+    
+    var autoDownloadMedia by remember { mutableStateOf(Config.adminAutoDownloadMedia) }
+    var newMessageNotification by remember { mutableStateOf(Config.adminNewMessageNotification) }
+    var blockScreenshots by remember { mutableStateOf(Config.adminBlockScreenshots) }
+    var webrtcBaseUrl by remember { mutableStateOf(Config.adminCallServer) }
+    
+    var showWebRtcConfigPopup by remember { mutableStateOf(false) }
+    var showDeveloperWarning by remember { mutableStateOf(false) }
+    
+    var showQrDialog by remember { mutableStateOf(false) }
+    var currentQrPayload by remember { mutableStateOf("") }
+    var lastGeneratedState by remember { mutableStateOf("") }
+
+    var isCheckingUrl by remember { mutableStateOf(false) }
+    var showNetworkError by remember { mutableStateOf(false) }
+    var showWebRtcInfo by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    val currentStateHash = "${Config.adminBotToken}:${Config.adminChatId}:$autoDownloadMedia:$newMessageNotification:$blockScreenshots:$webrtcBaseUrl"
+    
+    if (showNetworkError) {
+        com.mobile.superiorsetup.ui.components.ActionDialog(
+            title = "Server Unreachable",
+            message = "Could not verify *call.html* on the provided server. Please check the URL and ensure the server is accessible.",
+            icon = Icons.Filled.Warning,
+            iconTint = ErrorRed,
+            confirmText = "Okay",
+            dismissText = "",
+            onConfirm = { showNetworkError = false },
+            onDismiss = { showNetworkError = false }
+        )
+    }
+    
+    if (showQrDialog) {
+        com.mobile.superiorsetup.ui.components.DisplayQrPopup(
+            payloadJson = currentQrPayload,
+            onDismiss = { showQrDialog = false }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(Icons.Filled.Settings, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(64.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Admin Settings", fontSize = 24.sp, color = TextPrimary)
+            Text("Configuration", fontSize = 24.sp, color = PrimaryLight, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Customize settings and generate the encrypted QR code for the host device.",
+                color = TextSecondary,
+                textAlign = TextAlign.Center,
+                fontSize = 13.sp
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(SurfaceLevel1)
+                    .padding(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Tune, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Chat Preferences", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                SettingsSwitchRow(
+                    title = "Auto Download Media",
+                    subtitle = "Automatically download media and files",
+                    icon = Icons.Default.Download,
+                    iconTint = PrimaryLight,
+                    isChecked = autoDownloadMedia,
+                    onCheckedChange = { 
+                        autoDownloadMedia = it 
+                        Config.adminAutoDownloadMedia = it
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                SettingsSwitchRow(
+                    title = "New Message Notification",
+                    subtitle = "Show notifications for new messages",
+                    icon = Icons.Default.Notifications,
+                    iconTint = PrimaryLight,
+                    isChecked = newMessageNotification,
+                    onCheckedChange = { 
+                        newMessageNotification = it
+                        Config.adminNewMessageNotification = it
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                SettingsSwitchRow(
+                    title = "Block Screenshots",
+                    subtitle = "Prevent taking screenshots in chat",
+                    icon = Icons.Default.VisibilityOff,
+                    iconTint = PrimaryLight,
+                    isChecked = blockScreenshots,
+                    onCheckedChange = { 
+                        blockScreenshots = it
+                        Config.adminBlockScreenshots = it
+                    }
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(SurfaceLevel1)
+                    .padding(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.SettingsInputAntenna, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Call Configuration", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    }
+                    Icon(
+                        Icons.Filled.Info, 
+                        contentDescription = "Info", 
+                        tint = TextSecondary, 
+                        modifier = Modifier.padding(4.dp).size(20.dp).clickable { showWebRtcInfo = true }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                val isDefault = webrtcBaseUrl.isEmpty()
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SurfaceLevel2)
+                        .clickable { showDeveloperWarning = true }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Change Server", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                        Text(if (isDefault) "Default Server" else "Custom Server", color = TextSecondary, fontSize = 12.sp)
+                    }
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SurfaceLevel2)
+                        .clickable(enabled = !isDefault) { 
+                            if (!isDefault) {
+                                webrtcBaseUrl = ""
+                                Config.adminCallServer = ""
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Use Default", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                        Text("Reset to default server", color = TextSecondary, fontSize = 12.sp)
+                    }
+                    val scale by androidx.compose.animation.core.animateFloatAsState(
+                        targetValue = if (isDefault) 1.05f else 1f,
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+                        label = "switch_scale"
+                    )
+                    
+                    Switch(
+                        modifier = Modifier.scale(scale),
+                        checked = isDefault,
+                        onCheckedChange = { 
+                            if (it && !isDefault) {
+                                webrtcBaseUrl = ""
+                                Config.adminCallServer = ""
+                            }
+                        },
+                        thumbContent = if (isDefault) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    tint = PrimaryLight
+                                )
+                            }
+                        } else {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    tint = Background
+                                )
+                            }
+                        },
+                        colors = com.mobile.superiorsetup.ui.components.luminaSwitchColors()
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        
+        if (showDeveloperWarning) {
+            com.mobile.superiorsetup.ui.components.ActionDialog(
+                title = "Developer Setting",
+                message = "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this.",
+                icon = Icons.Filled.Warning,
+                iconTint = ErrorRed,
+                confirmText = "I Understand",
+                dismissText = "Cancel",
+                onConfirm = { showDeveloperWarning = false; showWebRtcConfigPopup = true },
+                onDismiss = { showDeveloperWarning = false }
+            )
+        }
+        
+        if (showWebRtcInfo) {
+            com.mobile.superiorsetup.ui.components.ActionDialog(
+                title = "Call Configuration",
+                message = "You can configure your custom *WebRTC Server* URL for voice calls, or reset it to the default server if you experience connection issues.\n\nCheck developer's *Github Page* for more information",
+                icon = Icons.Filled.Info,
+                iconTint = PrimaryLight,
+                confirmText = "Okay",
+                dismissText = "",
+                onConfirm = { showWebRtcInfo = false },
+                onDismiss = { showWebRtcInfo = false }
+            )
+        }
+        
+        if (showWebRtcConfigPopup) {
+            com.mobile.superiorsetup.ui.components.WebRtcConfigPopup(
+                initialUrl = webrtcBaseUrl,
+                onDismiss = { showWebRtcConfigPopup = false },
+                onSave = { newUrl ->
+                    webrtcBaseUrl = newUrl
+                    Config.adminCallServer = newUrl
+                    showWebRtcConfigPopup = false
+                }
+            )
+        }
+        
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+            val isButtonReady = lastGeneratedState.isNotEmpty() && lastGeneratedState == currentStateHash
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) {
+                        val json = """
+                            {
+                                "token":"${Config.adminBotToken}",
+                                "chatId":"${Config.adminChatId}",
+                                "autoDownloadMedia":$autoDownloadMedia,
+                                "screenSecurity":$blockScreenshots,
+                                "newMessageNotification":$newMessageNotification,
+                                "callServer":"$webrtcBaseUrl"
+                            }
+                        """.trimIndent().replace("\\n", "").replace(" ", "")
+                        
+                        currentQrPayload = json
+                        lastGeneratedState = currentStateHash
+                        showQrDialog = true
+                    }
+                    .glow(color = if (isButtonReady) Success else PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                    .background(if (isButtonReady) Success else PrimaryLight, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.QrCode, contentDescription = null, tint = if (isButtonReady) Color.White else MaterialTheme.colorScheme.onPrimaryContainer)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    val btnText = if (lastGeneratedState.isEmpty()) "Generate QR" 
+                                  else if (lastGeneratedState == currentStateHash) "Display QR" 
+                                  else "Regenerate QR"
+                    Text(btnText, color = if (isButtonReady) Color.White else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Filled.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("QR payload will be securely encrypted with AES-GCM.", color = TextSecondary, fontSize = 11.sp)
             }
         }
+        
+        Spacer(modifier = Modifier.height(30.dp))
+    }
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconTint: androidx.compose.ui.graphics.Color = TextPrimary,
+    title: String,
+    subtitle: String,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onInfoClick: (() -> Unit)? = null
+) {
+    val scale by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (isChecked) 1.05f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy),
+        label = "switch_scale"
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(SurfaceLevel2)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(iconTint.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                }
+                Spacer(modifier = Modifier.width(14.dp))
+            }
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(title, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    if (onInfoClick != null) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = "Info",
+                            tint = TextSecondary,
+                            modifier = Modifier
+                                .padding(4.dp)
+                                .size(18.dp)
+                                .clickable { onInfoClick() }
+                        )
+                    }
+                }
+                Text(subtitle, color = TextSecondary, fontSize = 11.sp)
+            }
+        }
+        
+        Switch(
+            modifier = Modifier.scale(scale),
+            checked = isChecked,
+            onCheckedChange = onCheckedChange,
+            thumbContent = if (isChecked) {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                        tint = PrimaryLight
+                    )
+                }
+            } else {
+                {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                        tint = Background
+                    )
+                }
+            },
+            colors = com.mobile.superiorsetup.ui.components.luminaSwitchColors()
+        )
     }
 }
 
@@ -584,7 +1092,7 @@ fun Step3Screen() {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Primary, modifier = Modifier.size(64.dp))
+            Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(64.dp))
             Spacer(modifier = Modifier.height(16.dp))
             Text("You're All Set!", fontSize = 24.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
@@ -612,17 +1120,30 @@ fun Step3Screen() {
         }
         
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    AppManager.wakeUpMainApp(context, Config.botToken, Config.chatId)
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Primary),
-                shape = RoundedCornerShape(16.dp)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) {
+                        AppManager.wakeUpMainApp(
+                            context, 
+                            Config.botToken, 
+                            Config.chatId,
+                            Config.adminAutoDownloadMedia,
+                            Config.adminBlockScreenshots,
+                            Config.adminNewMessageNotification,
+                            Config.adminCallServer
+                        )
+                    }
+                    .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                    .background(PrimaryLight, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Text("Open Main Application", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Open Main Application", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -650,7 +1171,7 @@ fun FeatureRow(icon: ImageVector, title: String, desc: String) {
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(title, color = Primary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(title, color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 15.sp)
             Spacer(modifier = Modifier.height(2.dp))
             Text(desc, color = TextSecondary, fontSize = 13.sp)
         }
@@ -668,7 +1189,7 @@ fun StatusRow(icon: ImageVector, title: String, status: String) {
         Icon(icon, contentDescription = null, tint = Primary, modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
         Column {
-            Text(title, color = Primary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(title, color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(2.dp))
             Text(status, color = TextSecondary, fontSize = 13.sp)
         }

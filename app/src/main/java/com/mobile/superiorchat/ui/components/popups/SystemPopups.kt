@@ -681,7 +681,7 @@ fun CredentialsPopup(
                     OutlinedTextField(
                         value = chatId,
                         onValueChange = { chatId = it },
-                        placeholder = { Text("e.g. -1001234567890", color = TextSecondary, fontSize = 13.sp) },
+                        placeholder = { Text("e.g. 1234567890", color = TextSecondary, fontSize = 13.sp) },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = SurfaceLevel2,

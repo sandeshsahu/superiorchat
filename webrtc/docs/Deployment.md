@@ -116,7 +116,7 @@ const customConfig = {
 After deploying your frontend, point the Android app to your custom domain:
 
 1. Open **SuperiorChat App**.
-2. Go to **Settings → Call Configuration**.
+2. Go to **Application page $\rightarrow$ App Settings $\rightarrow$ Call Configuration**.
 3. Enter your custom server URL (e.g., `https://call.yourdomain.com`).
    - *Note: Provide only the base domain. Do not include `/call.html`.*
 4. Tap **Save**. The app will validate your server URL automatically.

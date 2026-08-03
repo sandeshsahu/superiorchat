@@ -1,7 +1,6 @@
 package com.mobile.superiorchat.ui.components.profile
 
 import android.content.Intent
-import android.net.Uri
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -63,14 +62,13 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Message
 
-enum class ProfileSheetState { MAIN, DANGER_ZONE, CHAT_SETTINGS, NOTIFICATIONS, PRIVACY_SECURITY }
+enum class ProfileSheetState { MAIN, CHAT_SETTINGS, NOTIFICATIONS, PRIVACY_SECURITY }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSettingsSheet(
     hasCredentials: Boolean,
     onDismiss: () -> Unit,
-    onClearCredentials: () -> Unit,
     onNavigateToAppSettings: (() -> Unit)?,
     isAutoDownloadMediaEnabled: Boolean,
     isScreenSecurityEnabled: Boolean,
@@ -79,15 +77,11 @@ fun ProfileSettingsSheet(
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
     onNewMessageNotificationChange: (Boolean) -> Unit,
-    onAppNotificationsChange: (Boolean) -> Unit,
-    onClearChat: (Boolean) -> Unit
+    onAppNotificationsChange: (Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val context = LocalContext.current
     var currentSheetState by remember { mutableStateOf(ProfileSheetState.MAIN) }
-    var showClearConfirm by remember { mutableStateOf(false) }
-    var showUninstallConfirm by remember { mutableStateOf(false) }
-    var showClearChatConfirm by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -161,157 +155,7 @@ fun ProfileSettingsSheet(
                         subtitle = "Screen security and privacy",
                         onClick = { currentSheetState = ProfileSheetState.PRIVACY_SECURITY }
                     )
-
-                    // Danger Zone — always visible, styled as red card
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    // Danger zone header
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.2f))
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("Danger Zone", color = ErrorRed.copy(0.6f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.2f))
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Danger Zone card
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ErrorRed.copy(alpha = 0.07f))
-                            .border(1.dp, ErrorRed.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
-                            .padding(4.dp)
-                    ) {
-                        SettingsSheetRow(
-                            icon = Icons.Filled.Warning,
-                            iconTint = ErrorRed,
-                            title = "Danger Zone",
-                            subtitle = "Sensitive actions located here",
-                            titleColor = ErrorRed,
-                            onClick = { currentSheetState = ProfileSheetState.DANGER_ZONE }
-                        )
-                    }
                 }
-                }
-                
-                ProfileSheetState.DANGER_ZONE -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 24.dp)
-                ) {
-                    // Back button and Danger Zone header
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(SurfaceLevel2)
-                                .bounceClick { currentSheetState = ProfileSheetState.MAIN },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = TextPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text("Danger Zone", color = ErrorRed, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("Sensitive actions", color = TextSecondary, fontSize = 12.sp)
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    if (hasCredentials) {
-                        // Clear Chat Button
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(ErrorRed.copy(alpha = 0.07f))
-                                .border(1.dp, ErrorRed.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
-                                .padding(4.dp)
-                        ) {
-                            SettingsSheetRow(
-                                icon = Icons.Filled.Delete,
-                                iconTint = ErrorRed,
-                                title = "Clear Chat",
-                                subtitle = "Permanently delete all messages",
-                                titleColor = ErrorRed,
-                                onClick = { showClearChatConfirm = true }
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-
-                    // Clear Credentials Button
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ErrorRed.copy(alpha = 0.07f))
-                            .border(1.dp, ErrorRed.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
-                            .padding(4.dp)
-                    ) {
-                        if (!hasCredentials) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Icon(Icons.Filled.NoAccounts, null, tint = ErrorRed.copy(0.5f), modifier = Modifier.size(16.dp))
-                                Text(
-                                    "Credentials Empty",
-                                    color = ErrorRed.copy(0.5f),
-                                    fontSize = 13.sp
-                                )
-                            }
-                        } else {
-                            SettingsSheetRow(
-                                icon = Icons.Filled.NoAccounts,
-                                iconTint = ErrorRed,
-                                title = "Clear Credentials",
-                                subtitle = "Disconnect the bot and stop chatting",
-                                titleColor = ErrorRed,
-                                onClick = { showClearConfirm = true }
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    // Uninstall App Button
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ErrorRed.copy(alpha = 0.07f))
-                            .border(1.dp, ErrorRed.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
-                            .padding(4.dp)
-                    ) {
-                        SettingsSheetRow(
-                            icon = Icons.Filled.DeleteForever,
-                            iconTint = ErrorRed,
-                            title = "Uninstall App",
-                            subtitle = "Remove this application entirely",
-                            titleColor = ErrorRed,
-                            onClick = { showUninstallConfirm = true }
-                        )
-                    }
-                    }
                 }
                 
                 ProfileSheetState.CHAT_SETTINGS -> {
@@ -541,49 +385,6 @@ fun ProfileSettingsSheet(
         }
     }
 
-    if (showClearConfirm) {
-        ActionDialog(
-            title = "Clear Credentials",
-            message = "This will disconnect the bot and stop the end-to-end chat. *Both persons* will lose access to the current *chat session*. Do you want to proceed?",
-            icon = Icons.Filled.NoAccounts,
-            iconTint = ErrorRed,
-            confirmText = "Proceed",
-            dismissText = "Cancel",
-            onConfirm = {
-                onClearCredentials()
-                showClearConfirm = false
-                onDismiss()
-            },
-            onDismiss = { showClearConfirm = false }
-        )
-    }
-
-    if (showClearChatConfirm) {
-        com.mobile.superiorchat.ui.components.popups.ClearChatWarningDialog(
-            onDismiss = { showClearChatConfirm = false },
-            onConfirmClear = { deleteMedia ->
-                onClearChat(deleteMedia)
-                showClearChatConfirm = false
-            }
-        )
-    }
-
-    if (showUninstallConfirm) {
-        ActionDialog(
-            title = "Uninstall App",
-            message = "This will *permanently remove* the application from your device. Do you want to proceed?",
-            icon = Icons.Filled.DeleteForever,
-            iconTint = ErrorRed,
-            confirmText = "Proceed",
-            dismissText = "Cancel",
-            onConfirm = {
-                context.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${context.packageName}")))
-                showUninstallConfirm = false
-                onDismiss()
-            },
-            onDismiss = { showUninstallConfirm = false }
-        )
-    }
 }
 
 @Composable
