@@ -361,6 +361,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private var messageCollectionJob: kotlinx.coroutines.Job? = null
 
+    private val _messageLimit = MutableStateFlow(50)
+    val messageLimit: StateFlow<Int> = _messageLimit.asStateFlow()
+
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "bot_token" || key == "chat_id") {
             isCredentialsEmpty = prefs.botToken.isBlank() || prefs.chatId.isBlank()
@@ -380,8 +383,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         prefs.sharedPreferences.unregisterOnSharedPreferenceChangeListener(prefListener)
     }
 
-    private val _messageLimit = MutableStateFlow(50)
-    val messageLimit: StateFlow<Int> = _messageLimit.asStateFlow()
+
     
     fun loadMoreMessages() {
         if (_messages.value.size >= _messageLimit.value) {

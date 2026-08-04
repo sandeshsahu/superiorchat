@@ -25,6 +25,10 @@
 - 📞 **One-Way Calling**: Introduced private voice and video calling feature from scratch.
 - 🔗 **Telegram Invites**: Send an instant "Join Call" button to the chat for the other person to join.
 - 💾 **Save to Device**: Securely save photos, videos, and documents directly to your phone's gallery.
+- ⚙️ **Advanced Admin Settings**: Added new configuration toggles in SetupApp for Options like Auto Download Media, Notifications, Screenshots, and Custom Call Servers before generating QR Code.
+- 🗃️ **QR Configuration Bundle**: QR codes generated in SetupApp now encrypt and bundle all advanced admin settings.
+- ☢️ **Danger Zone**: Consolidated "Clear Chat", "Clear Credentials", and "Uninstall" options into a unified, organized **Application Page -> App Settings -> Danger Zone** secure bottom sheet.
+- ℹ️ **Application Page**: Refactored and overhauled the Settings Screen to act as a central hub for **System Checks**, **About**, and **Shortcuts** for **Logs**, **Permissions**, and **App Settings**.
 
 ---
 
@@ -32,6 +36,7 @@
 - 📴 **Proximity Sensor**: Screen turns off automatically when held to the ear.
 - 🏝️ **Minimized Call Status**: A small floating indicator shows when a call is running in the background.
 - 🚫 **Auto-Hangup**: Calls disconnect instantly if the app is minimized to hide Android privacy indicators.
+- 🔒 **Tile Access Warning**: Added a critical warning popup preventing accidental lockouts before disabling the "Access by Tile" feature.
 
 ---
 
@@ -40,6 +45,10 @@
 - 🖼️ **Picture-in-Picture**: Drag and move the floating video window during active calls.
 - 🎛️ **Smooth Video Minimizing**: The floating video window now shrinks smoothly without any flashing or lag.
 - 🎙️ **Live Audio Visualizers**: Avatars pulse in real-time based on voice volume.
+- ✨ **Bouncy Buttons**: Added fluid bounce and glow effects to interactive buttons across all screens.
+- 🎭 **Smooth Transitions**: Added slick, horizontal sliding animations when navigating through app settings.
+- 🪟 **Unified Dialogs**: Upgraded legacy setup popups to match the main app's beautiful animations and styles.
+- 🧼 **Cleaner Settings**: Stripped out bulky background boxes from settings rows for a wider, more professional look.
 
 ---
 
@@ -55,12 +64,13 @@
 - ⚙️ **Custom Servers**: Added the ability to set your own custom calling servers in Settings.
 - ⚠️ **Custom Server Warnings**: The app warns you before changing to a custom calling server to prevent mistakes.
 - 🛑 **Clear Error Messages**: You will now see clear reasons if a call fails (e.g., "Network Offline" or "No Answer").
-- 💻 **Desktop Compatibility**: The calling feature now works perfectly if the other person joins from a computer.
+- 📡 **WebRTC Validation**: SetupApp now validates custom server URLs in real-time to prevent misconfigurations.
 
 ---
 
 ### 🛠️ Bug Fixes
 - 📷 **Camera Bug Fix**: Fixed a major bug where the camera would get stuck open after scanning a QR code.
+- 💥 **Startup Crash Fix**: Fixed a critical bug that caused the app to crash immediately upon opening due to an uninitialized property.
 
 ---
 

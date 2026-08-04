@@ -43,6 +43,8 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.bounceClick
 
@@ -747,6 +749,7 @@ fun WebRtcConfigPopup(
     onSave: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val fallbackUrls = remember { context.resources.getStringArray(com.mobile.superiorchat.R.array.webrtc_fallback_urls).toList() }
     val defaultUrl = fallbackUrls.firstOrNull() ?: ""
     var baseUrl by remember { 
@@ -757,6 +760,9 @@ fun WebRtcConfigPopup(
             com.mobile.superiorchat.utils.Validator.isValidWebRtcUrl(baseUrl)
         } 
     }
+    
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     BlurredPopup(onDismiss = onDismiss) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -783,7 +789,10 @@ fun WebRtcConfigPopup(
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = baseUrl,
-                        onValueChange = { baseUrl = it },
+                        onValueChange = { 
+                            baseUrl = it
+                            errorMessage = null 
+                        },
                         placeholder = { Text("https://yourdomain.com", color = TextSecondary, fontSize = 13.sp) },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -817,6 +826,17 @@ fun WebRtcConfigPopup(
                 }
             }
             
+            if (errorMessage != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = errorMessage!!,
+                    color = ErrorRed,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center
+                )
+            }
+            
             Spacer(modifier = Modifier.height(16.dp))
             
             // Save Button
@@ -825,20 +845,74 @@ fun WebRtcConfigPopup(
                     .fillMaxWidth()
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) {
-                        if (isValid) {
+                        if (isValid && !isLoading) {
                             val finalUrl = if (baseUrl.isBlank()) defaultUrl else baseUrl.trim()
-                            onSave(finalUrl)
+                            
+                            coroutineScope.launch {
+                                isLoading = true
+                                errorMessage = null
+                                
+                                val isValidServer = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                    try {
+                                        val url = java.net.URL("$finalUrl/call.html")
+                                        val connection = url.openConnection() as java.net.HttpURLConnection
+                                        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36")
+                                        connection.connectTimeout = 3000
+                                        connection.readTimeout = 3000
+                                        connection.requestMethod = "GET"
+                                        connection.connect()
+                                        
+                                        if (connection.responseCode == 200) {
+                                            val html = connection.inputStream.bufferedReader().use { it.readText() }
+                                            if (html.contains("<title>Superiorchat Connect</title>") || html.contains("id=\"ui-layer\"")) {
+                                                true
+                                            } else {
+                                                errorMessage = "Invalid server format. call.html not found."
+                                                false
+                                            }
+                                        } else {
+                                            errorMessage = "Server returned error ${connection.responseCode}"
+                                            false
+                                        }
+                                    } catch (e: Exception) {
+                                        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                                        val activeNetwork = cm.activeNetwork
+                                        val capabilities = activeNetwork?.let { cm.getNetworkCapabilities(it) }
+                                        val hasInternet = capabilities?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+                                        
+                                        if (!hasInternet) {
+                                            errorMessage = "No internet connection detected."
+                                        } else {
+                                            errorMessage = "Failed to connect to the server."
+                                        }
+                                        false
+                                    }
+                                }
+                                
+                                isLoading = false
+                                if (isValidServer) {
+                                    onSave(finalUrl)
+                                }
+                            }
                         }
                     }
                     .background(if (!isValid) ErrorRed else PrimaryLight, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (!isValid) "Invalid URL" else "Save Settings",
-                    color = if (!isValid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = if (!isValid) "Invalid URL" else "Save Settings",
+                        color = if (!isValid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -849,7 +923,7 @@ fun WebRtcConfigPopup(
                     .fillMaxWidth()
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) {
-                        onDismiss()
+                        if (!isLoading) onDismiss()
                     }
                     .background(Color.Transparent, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
