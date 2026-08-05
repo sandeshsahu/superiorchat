@@ -121,8 +121,14 @@ fun StatusPill(
             SyncState.IDLE.toUIConfig(false)
         }
 
+        val cornerRadius by animateDpAsState(
+            targetValue = if (showSyncUi && uiConfig.canExpand && isExpanded) 24.dp else 500.dp,
+            label = "pill_radius"
+        )
+        val pillShape = RoundedCornerShape(cornerRadius)
+
         Surface(
-            shape = RoundedCornerShape(percent = 50),
+            shape = pillShape,
             color = if (showCallUi) Color.Black else uiConfig.bgColor,
             modifier = Modifier
                 .padding(horizontal = 16.dp)
@@ -131,7 +137,7 @@ fun StatusPill(
                     color = if (showCallUi) Color.White.copy(alpha = 0.15f) 
                             else if (showSyncUi && uiConfig.isTransfer) PrimaryLight.copy(alpha = 0.4f) 
                             else Color.Transparent,
-                    shape = RoundedCornerShape(percent = 50)
+                    shape = pillShape
                 )
                 .animateContentSize(animationSpec = androidx.compose.animation.core.spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow))
                 .clickable(enabled = showCallUi || (showSyncUi && uiConfig.canExpand)) {

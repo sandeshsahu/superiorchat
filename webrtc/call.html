@@ -22,8 +22,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- PeerJS -->
+    <!-- PeerJS & Telegram WebApp SDK -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
     <!-- Styles -->
     <link rel="stylesheet" href="/assets/css/call.css">
@@ -96,6 +97,13 @@
                     </button>
                     <span class="btn-label">Flip</span>
                 </div>
+                <!-- Minimize Button (Guest only — hidden in host mode via CSS) -->
+                <div id="minimizeContainer" style="display:flex;flex-direction:column;align-items:center;">
+                    <button id="btnMinimize" class="btn-control btn-secondary" aria-label="Minimize call">
+                        <i class="fa-solid fa-compress"></i>
+                    </button>
+                    <span class="btn-label">Minimize</span>
+                </div>
                 <div style="display:flex;flex-direction:column;align-items:center;">
                     <button id="btnEnd" class="btn-control btn-danger" aria-label="End call">
                         <i class="fa-solid fa-phone-slash"></i>
@@ -137,7 +145,27 @@
             <div class="orb orb-1" style="background: #ef4444;"></div>
             <div class="orb orb-2" style="background: #f87171;"></div>
         </div>
+
+        <!-- Exit Warning Modal (Hidden initially) -->
+        <div id="exitModal" class="exit-modal-overlay">
+            <div class="exit-modal-card glass">
+                <div class="exit-modal-icon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h2 class="exit-modal-title">Active Call in Progress</h2>
+                <p class="exit-modal-subtitle">Leaving or reloading this page will disconnect your encrypted call.</p>
+                <div class="exit-modal-actions">
+                    <button id="btnCancelExit" class="btn-modal btn-modal-secondary">Stay in Call</button>
+                    <button id="btnConfirmExit" class="btn-modal btn-modal-danger">Leave Call</button>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <!-- ── OS Picture-in-Picture (Guest Only) ───────────────── -->
+    <!-- pipVideo is the single target for requestPictureInPicture().
+         Its srcObject is swapped between the canvas stream (audio-only
+         visualization) and a clone of the remote video stream. -->
 
     <!-- ── Application Logic (ES Modules) ──────────────────── -->
     <script type="module" src="/assets/js/call/app.js"></script>

@@ -54,9 +54,13 @@ You tap "Call", but the screen stays on "Waiting..." and automatically hangs up 
 3. **Recipient Missed the Link**: The Telegram user did not click the "Join Call" button before the 45-second timeout expired.
 
 ### How to Fix It:
-- **Switch Networks**: Turn off VPN or switch between Wi-Fi and Mobile Data.
+- **Configure a TURN Server (Firewall Bypass)**: A private signaling server will NOT bypass a strict firewall. To punch through corporate, hotel, or VPN networks that block direct UDP traffic, you **must** configure a TURN Server in `webrtc/assets/js/call/config.js` to route media traffic over TCP port 443.
+- **Switch Networks**: Turn off your VPN or switch between Wi-Fi and Mobile Data.
 - **Re-try the Call**: Prompt the Telegram recipient to click the link as soon as it appears.
-- **Host Private Signaling**: For mission-critical reliability, run your own private PeerJS server (`peerjs --port 9000`).
+- **Host Private Signaling**: If the call never rings at all, the public PeerJS broker might be down. For mission-critical reliability, run your own private PeerJS server (`peerjs --port 9000`).
+
+
+> 🚀 **Self-Hosting Guide**: Step-by-step setup guides for Vercel, Cloudflare Pages, Netlify, and VPS are available in [Deployment.md](Deployment.md).
 
 ---
 

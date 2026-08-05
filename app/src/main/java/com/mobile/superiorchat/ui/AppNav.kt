@@ -566,11 +566,12 @@ fun AppScreen(
                         message = when {
                             isFailed -> "Failed to deliver the invite link to Telegram. Please check your connection and try again."
                             callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $hardwareInitTimer / 30 seconds"
-                            else -> "A secure peer-to-peer connection link will be generated and sent to the chat."
+                            else -> "A secure peer-to-peer connection link will be generated and sent to the other person's chat."
                         },
-                        note = if (isFailed) null else "This feature is **Experimental** and calls may be blocked by strict carrier networks, corporate firewalls, VPN-Servers, or hotel/public Wi-Fi. **Not guaranteed** to work on all devices.",
+                        note = if (isFailed) null else "*Important:* This feature is **Experimental.** Calls may be blocked by firewalls or strict networks.\n\n**Reliability:** TURN servers are **Not Provided** by default. You must add your own to guarantee connectivity.\n\n**Security:** The developer assumes no responsibility for privacy or data leaks.\n\nRead the Security & Deployment documents on GitHub.",
+                        noteIcon = null,
                         icon = if (isFailed) Icons.Filled.Warning else Icons.Filled.Phone,
-                        iconTint = ErrorRed,
+                        iconTint = if (isFailed) ErrorRed else PrimaryLight,
                         confirmText = if (isFailed) "Retry" else "Start Call",
                         dismissText = "Cancel",
                         autoDismiss = false,
@@ -582,35 +583,37 @@ fun AppScreen(
                                     callConfirmationState = CallInitiationState.VALIDATING
                                     scope.launch {
                                         val result = callViewModel.initiateCall(context)
-                                        when (result) {
-                                            com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
-                                                callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
-                                                hardwareInitTimer = 0
-                                                
-                                                scope.launch {
-                                                    while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                                                        kotlinx.coroutines.delay(1000)
-                                                        hardwareInitTimer++
-                                                    }
-                                                    if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                                                        com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
-                                                        CallManager.endCall()
-                                                        CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                                        callConfirmationState = CallInitiationState.IDLE
+                                        if (callConfirmationState == CallInitiationState.VALIDATING) {
+                                            when (result) {
+                                                com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
+                                                    callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
+                                                    hardwareInitTimer = 0
+                                                    
+                                                    scope.launch {
+                                                        while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                                            kotlinx.coroutines.delay(1000)
+                                                            hardwareInitTimer++
+                                                        }
+                                                        if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                                            com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                                            CallManager.endCall()
+                                                            CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                                            callConfirmationState = CallInitiationState.IDLE
+                                                        }
                                                     }
                                                 }
+                                                com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
+                                                    callConfirmationState = CallInitiationState.IDLE
+                                                }
+                                                else -> {} // SUCCESS and TELEGRAM_FAILED handled in sendTelegramLink
                                             }
-                                            com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
-                                                callConfirmationState = CallInitiationState.IDLE
-                                            }
-                                            else -> {} // SUCCESS and TELEGRAM_FAILED handled in sendTelegramLink
                                         }
                                     }
                                 }
                             }
                         },
                         onDismiss = {
-                            if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.VALIDATING) {
+                            if (callConfirmationState != CallInitiationState.CONFIRMATION) {
                                 CallManager.endCall()
                             }
                             callConfirmationState = CallInitiationState.IDLE
@@ -624,13 +627,17 @@ fun AppScreen(
                         if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
                             callConfirmationState = CallInitiationState.SENDING_LINK
                             val result = callViewModel.sendTelegramLink()
-                            if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
-                                callConfirmationState = CallInitiationState.SUCCESS
-                                kotlinx.coroutines.delay(500)
-                                callConfirmationState = CallInitiationState.IDLE
-                                isCallMinimized = false
-                            } else {
-                                callConfirmationState = CallInitiationState.FAILED_SENDING
+                            
+                            // Check if user cancelled while sending link
+                            if (callConfirmationState == CallInitiationState.SENDING_LINK) {
+                                if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
+                                    callConfirmationState = CallInitiationState.SUCCESS
+                                    kotlinx.coroutines.delay(500)
+                                    callConfirmationState = CallInitiationState.IDLE
+                                    isCallMinimized = false
+                                } else {
+                                    callConfirmationState = CallInitiationState.FAILED_SENDING
+                                }
                             }
                         }
                     }

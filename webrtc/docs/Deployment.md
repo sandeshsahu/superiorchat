@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>🚀 Deployment & Self-Hosting Guide</h1>
+  <h1>Deployment & Self-Hosting Guide</h1>
   <p><strong>Step-by-step instructions to host the SuperiorChat WebRTC engine for free</strong></p>
 </div>
 

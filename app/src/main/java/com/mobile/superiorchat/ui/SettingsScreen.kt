@@ -812,7 +812,7 @@ fun DangerZoneSheet(
     if (showClearConfirm) {
         com.mobile.superiorchat.ui.components.popups.ActionDialog(
             title = "Clear Credentials",
-            message = "This will disconnect the bot and stop the end-to-end chat. *Both Users* will lose access to the current *Chat Session*. Do you want to proceed?",
+            message = "This will disconnect the bot and stop the end-to-end chat. *Both Users* will lose access\nto the current *Chat Session*. Do you want to proceed?",
             icon = Icons.Filled.NoAccounts,
             iconTint = ErrorRed,
             confirmText = "Proceed",

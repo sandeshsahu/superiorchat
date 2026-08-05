@@ -31,10 +31,11 @@ Because the WebRTC engine runs in JavaScript, it is completely isolated from the
 
 ---
 
-<h2 id="open-source">2. The Open Source Security Model</h2>
+<h2 id="open-source">2. The Open Source Security Model & Encryption</h2>
 
 SuperiorChat is 100% open-source across both the Android application and the WebRTC signaling engine. This architectural transparency provides critical security advantages:
 
+- 🔒 **End-to-End Encryption (E2EE)**: All WebRTC audio, video, and data channels are End-to-End Encrypted by default using DTLS-SRTP. The signaling server (even if it is a third-party public server) is only used to exchange connection coordinates (SDP). The server owner **cannot** decrypt, listen to, or view your media streams.
 - 🔍 **Auditability (No Security by Obscurity)**: Security researchers can independently verify that there are no hidden backdoors, undocumented APIs, or obfuscated telemetry being sent to third parties. The 128-bit cryptographic secret generation (`CallManager.kt`) and the connection rejection logic (`webrtc.js`) are fully visible and verifiable.
 - 🏗️ **True Supply Chain Independence**: Open source enables true self-hosting. Users are not simply changing a URL in the app; they have the ability to compile the Android app from source and deploy the exact same WebRTC static engine to their own private infrastructure. This completely severs any reliance on proprietary servers or the maintainer's default infrastructure.
 
@@ -49,8 +50,9 @@ The following outlines theoretical attacks that apply to WebRTC systems, and how
 - **The Defense**: `CallManager.kt` generates a 128-bit cryptographic `secret` UUID alongside the Room ID. `webrtc.js` intercepts all incoming `call` and `connection` events. If the incoming payload does not contain a `metadata.secret` that perfectly matches the host's expected secret, the connection is instantly closed before media tracks are requested.
 
 ### Threat B: Origin Spoofing & Malicious Hosts
-- **The Vulnerability**: If a user is tricked into pointing the app to a malicious server in **Application page $\rightarrow$ App Settings $\rightarrow$ Call Configuration**, an attacker could serve a modified `webrtc.js` designed to silently stream the camera to a third-party server.
-- **The Defense**: The Android app performs a strict HTTP GET pre-flight check before launching the WebView. It parses the HTML payload for `<title>Superiorchat Connect</title>` or `id="ui-layer"`. If the server returns an unexpected payload (like a phishing page or a raw directory), the app instantly blocks the connection.
+- **The Vulnerability**: If a user points the app to a malicious server in **Application page $\rightarrow$ App Settings $\rightarrow$ Call Configuration**, that server controls the entire WebRTC engine. The host can serve a modified `webrtc.js` designed to silently stream the camera/microphone to a third-party server, steal call metadata, or log connections.
+- **The Defense (Accepted Risk)**: The app **cannot** protect you from a server you explicitly configure. The built-in URL verification only checks for accidental typos (like entering a dead link), it does *not* defend against a malicious host forging a valid response.
+- **The Only Solution**: Do **NOT** use unknown WebRTC pages. For true security, you must deploy your own WebRTC pages from a private repository that only you control. Even the default servers provided by this repository's maintainer should be considered a potential risk. If you choose not to self-host, you assume 100% of the responsibility for any privacy breaches or data leaks caused by the server owner.
 
 ### Threat C: DataChannel Payload Injection (XSS)
 - **The Vulnerability**: An attacker sends malicious payloads through the WebRTC `DataChannel` (used for video sync) to crash the host or execute XSS.
@@ -74,7 +76,7 @@ WebRTC is fundamentally a Peer-to-Peer (P2P) technology. There is no central ser
 - 📡 **Google STUN Logging**: The engine relies on Google's public STUN (`stun.l.google.com:19302`) to punch through routers. Google can log the IP addresses of devices using this service.
 - 🔌 **Signaling Metadata**: The public PeerJS signaling broker sees the IP addresses of both devices during the initial handshake (though it cannot decrypt the media streams).
 
-**The Mitigation**: To achieve anonymity, users **must** self-host a TURN server (Coturn) to act as a proxy relay, preventing peers from seeing each other's direct IPs.
+**The Mitigation (TURN Servers)**: By default, SuperiorChat only uses STUN servers, meaning connections are strictly P2P and your IP is exposed. To achieve true anonymity, you **must** deploy your own Coturn (TURN) server and manually add it to `webrtc/assets/js/call/config.js`. A TURN server acts as a proxy relay, routing all media traffic through itself so peers cannot see each other's direct IP addresses.
 
 ---
 

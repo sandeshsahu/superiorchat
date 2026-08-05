@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>📝 Important Developer Notes & Gotchas</h1>
+  <h1>Important Developer Notes & Gotchas</h1>
   <p><strong>Critical considerations, stealth rules, and operational gotchas for SuperiorChat WebRTC</strong></p>
 </div>
 
@@ -17,6 +17,7 @@
 - [3. WebRTC & PeerJS Constraints (webrtc.js)](#webrtc)
 - [4. Telegram Link Lifecycle](#telegram)
 - [5. WebView Sandbox Rules (CallEngine.kt)](#webview)
+- [6. Development Progress & Commit History](#commits)
 
 ---
 
@@ -60,6 +61,19 @@
 > [!IMPORTANT]
 > **📐 CSS Layout Synchronization**
 > Jetpack Compose renders the WebView as a full-screen background layer. To perfectly align the native `LocalCameraBox` border with the underlying WebRTC video, the CSS rules (`style.css` `.show-local-pip`) **must** mathematically match the Compose padding in `CallScreen.kt` (`top = 160.dp, end = 16.dp`). Any desync will cause the native border to float away from the actual video stream.
+
+---
+
+<h2 id="commits">6. Development Progress & Commit History</h2>
+
+All development iterations, WebKit optimization progress, bug fixes, and feature releases for the WebRTC signaling and web client codebase (`superiorchat-connect`) are publicly tracked on GitLab.
+
+- 🦊 **GitLab Repository**: **[gitlab.com/sandeshsahu/superiorchat-connect](https://gitlab.com/sandeshsahu/superiorchat-connect)**
+- 📜 **Full Commit Log**: Track every step-by-step technical commit, single-sink WebRTC performance fixes, and cross-browser Picture-in-Picture enhancements directly on the **[GitLab Commit History](https://gitlab.com/sandeshsahu/superiorchat-connect/-/commits/main)**.
+
+> [!TIP]
+> **Tracing Technical Iterations**:
+> Every WebRTC milestone—including WebKit RTCP sink conflict resolutions, pre-warmed `readyState` PiP handling, and Telegram WebApp integration—is committed with comprehensive technical logs in the repository commit history.
 
 ---
 

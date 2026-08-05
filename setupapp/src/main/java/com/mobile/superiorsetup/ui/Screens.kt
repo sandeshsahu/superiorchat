@@ -450,21 +450,21 @@ fun Step2Screen(onNext: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(SurfaceLevel2)
+                        .background(PrimaryLight)
                         .clickable { showScanner = true }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = PrimaryLight)
+                        Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Scan QR Code", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-                            Text("Fastest & recommended", color = TextSecondary, fontSize = 12.sp)
+                            Text("Scan QR Code", fontSize = 16.sp, color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Medium)
+                            Text("Fastest & recommended", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 12.sp)
                         }
                     }
-                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = TextSecondary)
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
         }
@@ -912,7 +912,7 @@ fun AdminStep3Screen() {
         if (showDeveloperWarning) {
             com.mobile.superiorsetup.ui.components.ActionDialog(
                 title = "Developer Setting",
-                message = "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this.",
+                message = "This setting is strictly for *Developers*!\nChanging the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this.",
                 icon = Icons.Filled.Warning,
                 iconTint = ErrorRed,
                 confirmText = "I Understand",

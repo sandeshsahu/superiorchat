@@ -67,11 +67,26 @@ fun MediaViewer(
     val currentType = remember { mutableStateOf<String?>(null) }
 
     val transitionState = remember { MutableTransitionState(false) }
-    LaunchedEffect(showMedia, mediaPath, mediaType) {
+    
+    // We delay the start of the enter animation slightly so the Android Dialog Window 
+    // has time to fully attach and become visible before the animation frames play.
+    var dialogReady by remember { mutableStateOf(false) }
+    LaunchedEffect(showMedia) {
+        if (showMedia) {
+            delay(50)
+            dialogReady = true
+        } else {
+            dialogReady = false
+        }
+    }
+
+    LaunchedEffect(showMedia, dialogReady, mediaPath, mediaType) {
         if (showMedia) {
             currentPath.value = mediaPath
             currentType.value = mediaType
-            transitionState.targetState = true
+            if (dialogReady) {
+                transitionState.targetState = true
+            }
         } else {
             transitionState.targetState = false
         }
@@ -81,8 +96,14 @@ fun MediaViewer(
         transitionState.targetState = false
     }
 
+    // Prevent immediate dismissal when MediaViewer is dynamically added to the composition (e.g. in ProfileScreen)
+    var hasAnimatedIn by remember { mutableStateOf(false) }
+    if (transitionState.targetState) {
+        hasAnimatedIn = true
+    }
+
     LaunchedEffect(transitionState.currentState, transitionState.isIdle) {
-        if (!transitionState.targetState && transitionState.isIdle) {
+        if (hasAnimatedIn && !transitionState.targetState && transitionState.isIdle) {
             onDismiss()
         }
     }

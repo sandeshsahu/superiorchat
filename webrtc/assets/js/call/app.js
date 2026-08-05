@@ -60,6 +60,8 @@ rtc.on.reconnecting = () => {
 
 rtc.on.remoteVideo = (enabled) => {
     ui.setRemoteVideoVisible(enabled, rtc.isHost);
+    // Auto-switch OS PiP between real video and audio canvas (no-op if PiP not active)
+    ui.pip.syncRemoteVideoState(enabled);
     if (rtc.isHost) {
         notifyAndroid('remote_video', enabled ? 'on' : 'off');
     } else {
@@ -73,6 +75,9 @@ rtc.on.remoteFacingMode = (mode) => {
 
 rtc.on.stream = (remoteStream) => {
     ui.attachRemoteStream(remoteStream);
+    // Hand a clone of the stream to the PiP controller so it
+    // can display real video when the host has camera on
+    ui.pip.attachRemoteStream(remoteStream);
     if (!rtc.isHost) ui.startTimer();
     ui.acquireWakeLock();
 };
@@ -100,6 +105,8 @@ rtc.on.iceState = (state) => {
 
 rtc.on.audioLevel = (level) => {
     ui.updateAudioLevel(level);
+    // Feed level to PiP canvas so the avatar pulses to voice in OS PiP
+    ui.pip.updateAudioLevel(level);
     if (rtc.isHost) {
         notifyAndroid('audio_level', level.toString());
     }
@@ -119,6 +126,7 @@ ui.btnJoin.addEventListener('click', async () => {
     // Synchronously warm up remote media element inside user gesture to satisfy autoplay policies
     if (ui.remoteVideoEl) ui.remoteVideoEl.play().catch(() => { });
     ui.setJoinLoading();
+
     try {
         const stream = await rtc.acquireMedia();
         if (!stream || !stream.getAudioTracks()[0] || stream.getAudioTracks()[0].readyState !== 'live') {
@@ -161,6 +169,20 @@ if (ui.btnFlipCamera) {
 
 // End call
 ui.btnEnd.addEventListener('click', () => rtc.endCall());
+
+// User confirmed leaving call via Exit Warning Modal
+ui.onExitConfirmed(() => rtc.endCall());
+
+// Minimize — enter OS-level Picture-in-Picture (Guest only)
+// Host mode hides this button via CSS + enterHostMode(); guard is belt-and-suspenders.
+if (ui.btnMinimize) {
+    ui.btnMinimize.addEventListener('click', async () => {
+        const entered = await ui.pip.open(rtc.remoteVideoOn);
+        if (!entered) {
+            ui.showToast('Picture-in-Picture is not supported by this browser.');
+        }
+    });
+}
 
 // ─────────────────────────────────────────────────────────────
 //  Exposed Global Functions for Android WebView Bridge
@@ -222,6 +244,9 @@ async function init() {
     const btnExit = document.getElementById('btnExit');
     if (btnExit) {
         btnExit.addEventListener('click', () => {
+            if (window.Telegram?.WebApp) {
+                try { window.Telegram.WebApp.close(); } catch (_) {}
+            }
             window.close();
             // Fallback for browsers that block window.close()
             setTimeout(() => {

@@ -24,9 +24,10 @@
 ### 🚀 New Features
 - 📞 **One-Way Calling**: Introduced private voice and video calling feature from scratch.
 - 🔗 **Telegram Invites**: Send an instant "Join Call" button to the chat for the other person to join.
+- 🖼️ **Telegram OS PiP**: Full OS-level floating Picture-in-Picture for Telegram guests with live video and audio visualizer support.
 - 💾 **Save to Device**: Securely save photos, videos, and documents directly to your phone's gallery.
-- ⚙️ **Advanced Admin Settings**: Added new configuration toggles in SetupApp for Options like Auto Download Media, Notifications, Screenshots, and Custom Call Servers before generating QR Code.
-- 🗃️ **QR Configuration Bundle**: QR codes generated in SetupApp now encrypt and bundle all advanced admin settings.
+- ⚙️ **Advanced Admin Settings**: Added 3 Steps configurations in SetupApp Admin Mode for Options like Auto Download Media, Notifications, Screenshots, and Custom Call Servers before generating QR Code.
+- 🗃️ **Custom Setup QR Bundle**: SetupApp can now generate encrypted QR codes containing custom main app settings; scanning automatically configures credentials and settings on the main app.
 - ☢️ **Danger Zone**: Consolidated "Clear Chat", "Clear Credentials", and "Uninstall" options into a unified, organized **Application Page -> App Settings -> Danger Zone** secure bottom sheet.
 - ℹ️ **Application Page**: Refactored and overhauled the Settings Screen to act as a central hub for **System Checks**, **About**, and **Shortcuts** for **Logs**, **Permissions**, and **App Settings**.
 
@@ -44,10 +45,11 @@
 - 📱 **WhatsApp-Style UI**: Immersive, full-screen calling interface.
 - 🖼️ **Picture-in-Picture**: Drag and move the floating video window during active calls.
 - 🎛️ **Smooth Video Minimizing**: The floating video window now shrinks smoothly without any flashing or lag.
+- 📱 **Telegram Minimize Button**: Tap the top-left Minimize icon to float calls over other apps.
 - 🎙️ **Live Audio Visualizers**: Avatars pulse in real-time based on voice volume.
 - ✨ **Bouncy Buttons**: Added fluid bounce and glow effects to interactive buttons across all screens.
 - 🎭 **Smooth Transitions**: Added slick, horizontal sliding animations when navigating through app settings.
-- 🪟 **Unified Dialogs**: Upgraded legacy setup popups to match the main app's beautiful animations and styles.
+- 🪟 **SetupApp Popup Redesign**: Redesigned all SetupApp popups and dialogs to match the main app's popup style and fluid animations.
 - 🧼 **Cleaner Settings**: Stripped out bulky background boxes from settings rows for a wider, more professional look.
 
 ---
@@ -68,9 +70,13 @@
 
 ---
 
-### 🛠️ Bug Fixes
+### 🛠️ Bug Fixes & Performance
+- 🎬 **MediaViewer Animation Fix**: Fixed Compose bug causing MediaViewer opening animations to snap abruptly instead of fading in by adding an OS Window attachment delay.
+- ⚡ **R8 Release Animation Fix**: Fixed enter animations for all app popups and menus (Settings, Errors, Alerts, Context Menus) skipping or snapping on Release builds due to R8 compilation speed.
 - 📷 **Camera Bug Fix**: Fixed a major bug where the camera would get stuck open after scanning a QR code.
 - 💥 **Startup Crash Fix**: Fixed a critical bug that caused the app to crash immediately upon opening due to an uninitialized property.
+- 💬 **UI Bug Fix**: Fixed "Copy" option incorrectly appearing in the context menu for pure media/file messages that had no text.
+
 
 ---
 
@@ -81,7 +87,7 @@
 - 📱 **Setup App Integration**: The setup app can now securely install the Weather app disguise.
 - 🔑 **Custom Secret Password**: You can now choose your own secret word to unlock the app from the fake search bar.
 - 🎭 **Reaction Badges**: Improved message reactions, grouping them neatly (like `👍 2`) and coloring yours differently from your partner's.
-- 📊 **Media Transfer Panel**: Added a sliding panel that shows the live download/upload progress for your files.
+- 📊 **Media Transfer Pill**: Added in-app, ios-style media transfer top floating pill to show live download/upload progress for your files.
 - 💀 **Ghost Loading Screens**: Added smooth, shimmering placeholder animations while loading profiles, galleries, and chats.
 - 🕒 **12-Hour Timestamps**: Changed message timestamps to show the standard AM/PM format.
 - ⚡ **Instant Profile Loading**: User profiles now load instantly from a local database cache.

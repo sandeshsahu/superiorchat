@@ -52,10 +52,20 @@ fun MessageContextMenu(
     val expanded = expandedProvider()
     val currentReactions = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions).me
     
-    val transitionState = remember { androidx.compose.animation.core.MutableTransitionState(expanded) }
-    transitionState.targetState = expanded
+    var popupReady by remember { mutableStateOf(false) }
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            kotlinx.coroutines.delay(50)
+            popupReady = true
+        } else {
+            popupReady = false
+        }
+    }
 
-    if (transitionState.currentState || transitionState.targetState) {
+    val transitionState = remember { androidx.compose.animation.core.MutableTransitionState(false) }
+    transitionState.targetState = expanded && popupReady
+
+    if (expanded || transitionState.currentState || transitionState.targetState) {
         androidx.compose.ui.window.Popup(
             onDismissRequest = onDismiss,
             properties = androidx.compose.ui.window.PopupProperties(focusable = true)
@@ -135,11 +145,13 @@ fun MessageContextMenu(
                     )
 
                     // Copy
-                    ContextMenuItem(
-                        text = "Copy",
-                        icon = Icons.Filled.ContentCopy,
-                        onClick = { onCopyClick(); onDismiss() }
-                    )
+                    if (!message.text.isNullOrBlank()) {
+                        ContextMenuItem(
+                            text = "Copy",
+                            icon = Icons.Filled.ContentCopy,
+                            onClick = { onCopyClick(); onDismiss() }
+                        )
+                    }
 
                     // Save
                     if (onSaveClick != null) {
@@ -395,12 +407,18 @@ fun EmojiReactionTray(
     onReact: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var popupReady by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(50)
+        popupReady = true
+    }
+
     androidx.compose.ui.window.Popup(
         onDismissRequest = onDismiss,
         properties = androidx.compose.ui.window.PopupProperties(focusable = true)
     ) {
         androidx.compose.animation.AnimatedVisibility(
-            visible = true,
+            visible = popupReady,
             enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(initialScale = 0.8f),
             exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
         ) {

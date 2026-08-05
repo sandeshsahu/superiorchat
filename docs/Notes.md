@@ -41,6 +41,7 @@ The creator of this application assumes **no responsibility or liability** for a
 - 🚫 Misuse of the application
 - 💔 Personal, relational, or legal issues
 - 📉 Accidental data loss or lost messages
+- 🔓 Privacy breach or exposure of sensitive information
 
 > [!WARNING]
 > **Compliance Warning**: It is your strict responsibility to comply with all local, state, and federal regulations regarding privacy and encrypted communications in your jurisdiction. The creator is not responsible for any misuse of this application.
@@ -132,6 +133,10 @@ For security boundaries, threat models, developer notes, and self-hosting instru
 - 🛡️ **[Calling Security & Privacy Audit](../webrtc/docs/Security.md)**
 - 📝 **[Calling Developer Notes & Limitations](../webrtc/docs/Notes.md)**
 - 📁 **[Full Calling Documentation Suite](../webrtc/docs/)**
+
+### Key Usage Guidelines:
+- 🌐 **Browser Recommendation**: For optimal WebRTC performance, zero-lag video rendering, and full hardware support, always use the **Google Chrome** browser when joining call links.
+- 📱 **Telegram Side Background Requirement**: When joining a call from Telegram, do not switch apps or move the browser tab to the background without tapping the **Minimize** (PiP) button first. Moving to the background without Picture-in-Picture prevents audio/video access and may disconnect the call.
 
 > [!CAUTION]
 > **Third-Party Infrastructure Risk (WebRTC Calls)**

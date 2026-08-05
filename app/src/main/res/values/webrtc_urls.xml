@@ -3,6 +3,7 @@
     <string-array name="webrtc_fallback_urls">
         <item>https://superiorchat.vercel.app</item>
         <item>https://superiorchat.pages.dev</item>
+        <item>https://superiorchat2.vercel.app</item>
         <item>https://superiorchat2.pages.dev</item>
     </string-array>
 </resources>

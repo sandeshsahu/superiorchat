@@ -56,6 +56,7 @@ fun BaseAppDialog(
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(50)
         isVisible = true
     }
 
@@ -104,11 +105,14 @@ fun BaseAppDialog(
 
 
 @Composable
-fun parseAnnotatedMessage(text: String, tint: Color = PrimaryLight): AnnotatedString {
+fun parseAnnotatedMessage(text: String, tint: Color = PrimaryLight, isWarning: Boolean = false): AnnotatedString {
     return buildAnnotatedString {
         val regex = "\\*\\*(.*?)\\*\\*|\\*(.*?)\\*".toRegex()
         var lastIndex = 0
         val results = regex.findAll(text)
+        
+        val highlightColor = if (isWarning) ErrorRed else tint
+        val bgColor = if (isWarning) ErrorRed.copy(alpha = 0.15f) else (if (tint == PrimaryLight) SurfaceLevel2 else tint.copy(alpha = 0.15f))
         
         for (match in results) {
             // Append text before the match
@@ -116,12 +120,12 @@ fun parseAnnotatedMessage(text: String, tint: Color = PrimaryLight): AnnotatedSt
             
             // Append the highlighted text
             withStyle(style = SpanStyle(
-                color = tint,
+                color = highlightColor,
                 fontWeight = FontWeight.Bold,
-                background = if (tint == PrimaryLight) SurfaceLevel2 else tint.copy(alpha = 0.15f)
+                background = bgColor
             )) {
                 val matchedText = match.groups[1]?.value ?: match.groups[2]?.value ?: ""
-                append(" $matchedText ")
+                append(matchedText)
             }
             lastIndex = match.range.last + 1
         }
@@ -194,6 +198,7 @@ fun InfoDialog(
     var isVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(50)
         isVisible = true
     }
 
@@ -348,7 +353,7 @@ fun ActionDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Box(modifier = Modifier.padding(14.dp)) {
-                    val annotatedNote = parseAnnotatedMessage(note, tint = iconTint)
+                    val annotatedNote = parseAnnotatedMessage(note, tint = iconTint, isWarning = true)
                     Text(
                         text = buildAnnotatedString {
                             if (noteIcon != null) {

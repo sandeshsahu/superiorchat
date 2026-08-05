@@ -39,7 +39,8 @@ jobs:
       # -------------------------------------------------------------
       - name: Build Primary App Release Flavors
         run: |
-          ./gradlew :app:assembleOriginalRelease \
+          ./gradlew clean \
+                    :app:assembleOriginalRelease \
                     :app:assembleWeatherRelease \
                     :app:assembleCaptivePortalRelease \
                     -Pandroid.injected.signing.store.file=$(pwd)/app/keystore/release.jks \
@@ -97,20 +98,22 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       # -------------------------------------------------------------
-      # 5. CREATE GITHUB RELEASE & UPLOAD ASSETS
+      # 5. PREPARE RELEASE NOTES
+      # -------------------------------------------------------------
+      - name: Prepare Release Notes
+        run: |
+          sed 's/{{VERSION_NAME}}/${{ github.ref_name }}/g; s/{{COMMIT_SHA}}/${{ github.sha }}/g' \
+            docs/templates/release.md > final_release_notes.md
+
+      # -------------------------------------------------------------
+      # 6. CREATE GITHUB RELEASE & UPLOAD ASSETS
       # -------------------------------------------------------------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: SuperiorChat Release ${{ github.ref_name }}
-          body: |
-            ## 📦 Automated Release ${{ github.ref_name }}
-            
-            This release was compiled directly from commit `${{ github.sha }}` in GitHub's isolated build runner.
-            
-            ### 🔒 Binary Checksums (SHA-256)
-            You can verify your downloaded APKs locally via `Get-FileHash <filename>.apk -Algorithm SHA256`.
+          name: Release ${{ github.ref_name }}
+          body_path: final_release_notes.md
           files: |
             release-artifacts/*.apk
             release-artifacts/checksums.txt
