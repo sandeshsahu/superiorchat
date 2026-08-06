@@ -47,6 +47,7 @@ object CallManager {
 
     private val _callDuration = MutableStateFlow(0L)
     val callDuration: StateFlow<Long> = _callDuration
+    var lastCompletedDuration: Long = 0L
 
     private val _lastCallFailedDueToError = MutableStateFlow(CallError.NONE)
     val lastCallFailedDueToError: StateFlow<CallError> = _lastCallFailedDueToError.asStateFlow()
@@ -293,8 +294,10 @@ object CallManager {
         AppLog.log(LogCategory.SYSTEM, "Call Ended")
 
         if (wasActive) {
+            lastCompletedDuration = finalDuration
             StatusFlow.reportStatus(SyncState.IDLE, "Call Ended - ${finalDuration}s")
         } else {
+            lastCompletedDuration = 0L
             StatusFlow.reportStatus(SyncState.IDLE, "")
         }
 

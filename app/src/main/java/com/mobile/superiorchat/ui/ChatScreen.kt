@@ -110,7 +110,8 @@ fun ChatScreen(
     viewModel: ChatViewModel = viewModel(),
     onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
-    onNavigateToCall: () -> Unit = {}
+    onNavigateToCall: () -> Unit = {},
+    onNavigateToCallHistory: () -> Unit = {}
 ) {
     val messages by viewModel.messages.collectAsState()
     val currentPinnedMessage by viewModel.currentPinnedMessage.collectAsState()
@@ -504,6 +505,7 @@ fun ChatScreen(
                                 isSelectionMode = isInSelectionMode,
                                 isSelected = selectedMessageIds.contains(msg.messageId),
                                 onSelectMessage = { viewModel.toggleMessageSelection(it) },
+                                onNavigateToCallHistory = onNavigateToCallHistory,
                                 repliedMessageText = if (!repliedMsg?.text.isNullOrBlank()) {
                                     repliedMsg?.text
                                 } else when (repliedMsg?.mediaType) {

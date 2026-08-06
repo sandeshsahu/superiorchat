@@ -19,14 +19,17 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.mobile.superiorchat.data.entity.EmojiUsage
 import com.mobile.superiorchat.data.dao.EmojiDao
+import com.mobile.superiorchat.data.entity.CallHistoryNode
+import com.mobile.superiorchat.data.dao.CallHistoryDao
 
-@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class], version = 9, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class, CallHistoryNode::class], version = 12, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
     abstract fun conversationDao(): ThreadDao
     abstract fun profileDao(): ProfileDao
     abstract fun emojiDao(): EmojiDao
+    abstract fun callHistoryDao(): CallHistoryDao
 
     companion object {
         @Volatile
@@ -95,6 +98,25 @@ abstract class LocalDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `call_history` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timestamp` INTEGER NOT NULL, `durationSeconds` INTEGER NOT NULL, `isMissed` INTEGER NOT NULL, `partnerName` TEXT NOT NULL)")
+            }
+        }
+
+        private val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE call_history ADD COLUMN callStatus TEXT NOT NULL DEFAULT 'COMPLETED'")
+            }
+        }
+
+        private val MIGRATION_11_12 = object : Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE call_history ADD COLUMN peerJsId TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE call_history ADD COLUMN domain TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): LocalDb {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -102,7 +124,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

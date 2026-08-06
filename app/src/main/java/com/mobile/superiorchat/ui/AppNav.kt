@@ -45,6 +45,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.mobile.superiorchat.ui.call.CallScreen
+import com.mobile.superiorchat.ui.call.CallHistoryPage
 import com.mobile.superiorchat.ui.call.CallViewModel
 import com.mobile.superiorchat.core.call.CallManager
 import com.mobile.superiorchat.core.call.CallState
@@ -61,7 +62,8 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
     AppInformation("Application", Icons.Filled.Apps),
     Permissions("Permissions", Icons.Filled.Lock),
     Logs("App Logs", Icons.Filled.Terminal),
-    AppSettings("App Settings", Icons.Filled.Settings)
+    AppSettings("App Settings", Icons.Filled.Settings),
+    CallHistory("Call History", Icons.Filled.History)
 }
 
 enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, INITIALIZING_HARDWARE, SENDING_LINK, FAILED_SENDING, SUCCESS }
@@ -198,7 +200,7 @@ fun AppScreen(
 
     if (currentScreen != NavScreen.Chat) {
         BackHandler {
-            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings)) {
+            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
                 currentScreen = NavScreen.AppInformation
             } else {
                 currentScreen = NavScreen.Chat
@@ -281,7 +283,7 @@ fun AppScreen(
                             Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                         },
                         navigationIcon = {
-                            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings)) {
+                            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
                                 IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
                                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
                                 }
@@ -351,8 +353,8 @@ fun AppScreen(
                 AnimatedContent(
                     targetState = currentScreen,
                     transitionSpec = {
-                        val isSubScreenTarget = targetState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings)
-                        val isReturningToInfo = initialState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings) && targetState == NavScreen.AppInformation
+                        val isSubScreenTarget = targetState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)
+                        val isReturningToInfo = initialState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory) && targetState == NavScreen.AppInformation
                         
                         val isForward = isSubScreenTarget || (!isReturningToInfo && targetState.ordinal > initialState.ordinal)
 
@@ -374,7 +376,8 @@ fun AppScreen(
                         NavScreen.Chat -> ChatScreen(
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
                             onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
-                            onNavigateToCall = { isCallMinimized = false }
+                            onNavigateToCall = { isCallMinimized = false },
+                            onNavigateToCallHistory = { currentScreen = NavScreen.CallHistory }
                         )
                         NavScreen.Profile -> ProfileScreen(
                             hasCredentials = viewModel.hasCredentials,
@@ -453,6 +456,9 @@ fun AppScreen(
                                 onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) },
                                 onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                             )
+                        }
+                        NavScreen.CallHistory -> {
+                            CallHistoryPage(viewModel = callViewModel)
                         }
                     }
                 }
@@ -598,6 +604,7 @@ fun AppScreen(
                                                             com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
                                                             CallManager.endCall()
                                                             CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                                            callViewModel.recordLocalCallFailure("Hardware Error")
                                                             callConfirmationState = CallInitiationState.IDLE
                                                         }
                                                     }

@@ -101,6 +101,13 @@ fun AppScreenPage(
                     onClick = { onNavigate(NavScreen.Permissions) }
                 )
                 AppScreenActionRow(
+                    title = "Call History",
+                    subtitle = "View past calls",
+                    icon = Icons.Filled.History,
+                    iconTint = TextSecondary,
+                    onClick = { onNavigate(NavScreen.CallHistory) }
+                )
+                AppScreenActionRow(
                     title = "App Logs",
                     subtitle = "View system logs",
                     icon = Icons.Filled.Terminal,

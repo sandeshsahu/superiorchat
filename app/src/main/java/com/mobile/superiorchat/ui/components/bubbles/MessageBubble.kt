@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.animateColorAsState
@@ -163,7 +164,8 @@ fun MessageBubble(
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     repliedMessageText: String? = null,
-    repliedMessageAuthor: String? = null
+    repliedMessageAuthor: String? = null,
+    onNavigateToCallHistory: () -> Unit = {}
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
@@ -191,6 +193,8 @@ fun MessageBubble(
         }
         return
     }
+
+
 
     if (showApkInstallDialog) {
         ActionDialog(
@@ -265,6 +269,82 @@ fun MessageBubble(
 
     val sdf = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
     val timeString = sdf.format(Date(message.timestamp))
+
+    if (message.mediaType == "call_event") {
+        val fullText = message.text ?: "Call Event"
+        val parts = fullText.split(" - ")
+        val titleText = parts.getOrNull(0) ?: fullText
+        val durationText = parts.getOrNull(1)
+
+        val isFailed = (titleText.contains("Cancelled", ignoreCase = true) == true) || 
+                       (titleText.contains("Unanswered", ignoreCase = true) == true) || 
+                       (titleText.contains("Error", ignoreCase = true) == true)
+        val icon = if (isFailed) Icons.Filled.Close else Icons.Filled.Phone
+        val iconTint = if (isFailed) com.mobile.superiorchat.theme.ErrorRed else PrimaryLight
+        val naturalColor = Color.White.copy(alpha = 0.6f)
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.2f))
+                    .clickable {
+                        if (!isSelectionMode) {
+                            onNavigateToCallHistory()
+                        } else {
+                            onSelectMessage(message)
+                        }
+                    }
+                    .padding(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                // Title line with vector icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = titleText,
+                        color = naturalColor,
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+
+                // Duration line (below title, if present)
+                if (!durationText.isNullOrEmpty()) {
+                    Text(
+                        text = durationText,
+                        color = naturalColor.copy(alpha = 0.5f),
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+
+                // Time line (below duration)
+                Text(
+                    text = timeString,
+                    color = naturalColor.copy(alpha = 0.4f),
+                    fontSize = 10.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+        return
+    }
 
     val verticalPadding = if (message.mediaType == "voice" || message.mediaType == "audio") 6.dp else 10.dp
 
