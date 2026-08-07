@@ -123,6 +123,52 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         get() = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$")) && 
                 chatId.trim().matches(Regex("^-?[0-9]+$"))
 
+    // -- App Lock State --
+    var isFakeCrashBypassed by mutableStateOf(false)
+        private set
+
+    private val _isAppUnlocked = MutableStateFlow(!(prefs.isAppLockEnabled || prefs.isFakeCrashEnabled))
+    val isAppUnlocked: StateFlow<Boolean> = _isAppUnlocked.asStateFlow()
+
+    fun unlockApp(pin: String): Boolean {
+        val hashedInput = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
+        return if (hashedInput == prefs.appLockPin || prefs.appLockPin.isEmpty()) {
+            _isAppUnlocked.value = true
+            true
+        } else {
+            false
+        }
+    }
+
+    fun bypassFakeCrash() {
+        isFakeCrashBypassed = true
+        if (!prefs.isAppLockEnabled) {
+            _isAppUnlocked.value = true
+        }
+    }
+
+    fun lockApp() {
+        if (prefs.isAppLockEnabled || prefs.isFakeCrashEnabled) {
+            _isAppUnlocked.value = false
+            isFakeCrashBypassed = false
+        }
+    }
+
+
+    var isAppLockEnabled by mutableStateOf(prefs.isAppLockEnabled)
+        private set
+    fun toggleAppLock(enabled: Boolean) {
+        prefs.isAppLockEnabled = enabled
+        isAppLockEnabled = enabled
+    }
+
+    var isFakeCrashEnabled by mutableStateOf(prefs.isFakeCrashEnabled)
+        private set
+    fun toggleFakeCrash(enabled: Boolean) {
+        prefs.isFakeCrashEnabled = enabled
+        isFakeCrashEnabled = enabled
+    }
+
     // -- Preferences State --
     var autoDownloadMedia by mutableStateOf(prefs.isAutoDownloadMediaEnabled)
         private set

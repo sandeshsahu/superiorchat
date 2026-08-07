@@ -2,6 +2,8 @@ package com.mobile.superiorchat.ui.components.popups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -939,4 +941,241 @@ fun WebRtcConfigPopup(
     }
 }
 
+@Composable
+fun FakeCrashDialog(
+    onBypass: () -> Unit
+) {
+    val context = LocalContext.current
+    val activity = context as? android.app.Activity
+    val appName = androidx.compose.ui.res.stringResource(id = com.mobile.superiorchat.R.string.app_name)
 
+    var isPressed by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(isPressed) {
+        if (isPressed) {
+            kotlinx.coroutines.delay(1800)
+            onBypass()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { activity?.finishAffinity() },
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        val view = LocalView.current
+        val dialogWindow = (view.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.setDimAmount(0.65f)
+            dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .clip(RoundedCornerShape(24.dp)),
+            color = SurfaceLevel1,
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
+                // System Crash Title
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "$appName keeps stopping",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Medium,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onPress = { 
+                                        isPressed = true
+                                        tryAwaitRelease()
+                                        isPressed = false
+                                    }
+                                )
+                            }
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "A system error caused the application to stop responding.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Start,
+                    lineHeight = 22.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Spacer(modifier = Modifier.height(28.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { activity?.finishAffinity() },
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        Text(text = "Close app", color = TextPrimary, fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var pin by remember { mutableStateOf("") }
+    var confirmPin by remember { mutableStateOf("") }
+    var step by remember { mutableStateOf(1) }
+    var errorMsg by remember { mutableStateOf("") }
+    var pinVisible by remember { mutableStateOf(false) }
+
+    BaseAppDialog(onDismiss = onDismiss) {
+        Text(
+            text = if (step == 1) "Set PIN" else "Confirm PIN",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Column {
+            if (errorMsg.isNotEmpty()) {
+                Text(errorMsg, color = ErrorRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+            }
+            OutlinedTextField(
+                value = if (step == 1) pin else confirmPin,
+                onValueChange = { 
+                    if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                        if (step == 1) pin = it else confirmPin = it
+                        errorMsg = ""
+                    }
+                },
+                visualTransformation = if (pinVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                trailingIcon = {
+                    IconButton(onClick = { pinVisible = !pinVisible }) {
+                        Icon(
+                            if (pinVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, 
+                            contentDescription = null, 
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                },
+                singleLine = true,
+                placeholder = { Text("Enter 4-6 digits", color = TextSecondary) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryLight,
+                    unfocusedBorderColor = DividerColor,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Bold) }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    if (step == 1) {
+                        if (pin.length >= 4) step = 2 else errorMsg = "PIN must be at least 4 digits"
+                    } else {
+                        if (pin == confirmPin) onSave(pin) else {
+                            errorMsg = "PINs do not match"
+                            confirmPin = ""
+                        }
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight.copy(alpha = 0.15f), contentColor = PrimaryLight),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text(if (step == 1) "Next" else "Save", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun PinVerifyPopup(errorMsg: String, onDismiss: () -> Unit, onVerify: (String) -> Unit) {
+    var pin by remember { mutableStateOf("") }
+    var pinVisible by remember { mutableStateOf(false) }
+
+    BaseAppDialog(onDismiss = onDismiss) {
+        Text(
+            text = "Enter Current PIN",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = TextPrimary
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Column {
+            if (errorMsg.isNotEmpty()) {
+                Text(errorMsg, color = ErrorRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+            }
+            OutlinedTextField(
+                value = pin,
+                onValueChange = { 
+                    if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                        pin = it
+                    }
+                },
+                visualTransformation = if (pinVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                trailingIcon = {
+                    IconButton(onClick = { pinVisible = !pinVisible }) {
+                        Icon(
+                            if (pinVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, 
+                            contentDescription = null, 
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                },
+                singleLine = true,
+                placeholder = { Text("PIN", color = TextSecondary) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryLight,
+                    unfocusedBorderColor = DividerColor,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Bold) }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = { if (pin.isNotEmpty()) onVerify(pin) },
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight.copy(alpha = 0.15f), contentColor = PrimaryLight),
+                shape = RoundedCornerShape(24.dp)
+            ) {
+                Text("Verify", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}

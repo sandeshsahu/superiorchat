@@ -19,6 +19,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -210,7 +215,41 @@ fun AppScreen(
 
     val callState by CallManager.callState.collectAsState()
 
-    ModalNavigationDrawer(
+    val isAppUnlocked by viewModel.isAppUnlocked.collectAsState()
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) {
+                viewModel.lockApp()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    AnimatedContent(
+        targetState = isAppUnlocked,
+        transitionSpec = {
+            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+        },
+        label = "AppLockTransition"
+    ) { unlocked ->
+        if (!unlocked) {
+            if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed && com.mobile.superiorchat.BuildConfig.FLAVOR != "weather") {
+                com.mobile.superiorchat.ui.components.popups.FakeCrashDialog(
+                    onBypass = { viewModel.bypassFakeCrash() }
+                )
+            } else if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled) {
+                LockScreen(
+                    pinLength = com.mobile.superiorchat.core.AppGraph.prefs.appLockPinLength,
+                    onUnlock = { pin -> viewModel.unlockApp(pin) }
+                )
+            } else {
+                // Empty state while transitioning
+                Box(modifier = Modifier.fillMaxSize().background(Background))
+            }
+        } else {
+        ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
         scrimColor = Background.copy(alpha = 0.6f),
@@ -379,6 +418,7 @@ fun AppScreen(
                             onNavigateToCall = { isCallMinimized = false },
                             onNavigateToCallHistory = { currentScreen = NavScreen.CallHistory }
                         )
+
                         NavScreen.Profile -> ProfileScreen(
                             hasCredentials = viewModel.hasCredentials,
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
@@ -447,6 +487,29 @@ fun AppScreen(
                                 onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                                 onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
                                 onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
+                                isAppLockEnabled = viewModel.isAppLockEnabled,
+                                isFakeCrashEnabled = viewModel.isFakeCrashEnabled,
+                                onAppLockChange = { enabled, pin ->
+                                    if (enabled) {
+                                        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+                                        prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
+                                        prefs.appLockPinLength = pin.length
+                                        viewModel.toggleAppLock(true)
+                                        viewModel.unlockApp(pin)
+                                    } else {
+                                        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+                                        prefs.appLockPin = ""
+                                        viewModel.toggleAppLock(false)
+                                        viewModel.unlockApp("")
+                                    }
+                                },
+                                onFakeCrashChange = { viewModel.toggleFakeCrash(it) },
+                                onChangePin = { pin ->
+                                    val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+                                    prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
+                                    prefs.appLockPinLength = pin.length
+                                },
+                                verifyPin = { pin -> viewModel.unlockApp(pin) },
                                 onSave = { viewModel.saveCredentials() },
                                 onClearCredentials = {
                                     viewModel.botToken = ""
@@ -652,6 +715,8 @@ fun AppScreen(
             }
         }
     }
+}
+}
 }
 
 @Composable

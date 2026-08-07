@@ -147,4 +147,16 @@ object Security {
             return ""
         }
     }
+
+    fun hashSHA256(input: String): String {
+        if (input.isEmpty()) return ""
+        return try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(input.toByteArray(Charsets.UTF_8))
+            hash.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to hash input: ${e.message}", LogLevel.ERROR)
+            ""
+        }
+    }
 }

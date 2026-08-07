@@ -2,4 +2,10 @@
 <resources>
 
     <style name="Theme.Weather" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.SuperiorChat" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
 </resources>

@@ -165,6 +165,45 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isAppLockEnabled: Boolean = sharedPreferences.getBoolean("is_app_lock_enabled", false)
+    var isAppLockEnabled: Boolean
+        get() = _isAppLockEnabled
+        set(value) {
+            if (_isAppLockEnabled != value) {
+                _isAppLockEnabled = value
+                sharedPreferences.edit().putBoolean("is_app_lock_enabled", value).apply()
+            }
+        }
+
+    private var _isFakeCrashEnabled: Boolean = sharedPreferences.getBoolean("is_fake_crash_enabled", false)
+    var isFakeCrashEnabled: Boolean
+        get() = _isFakeCrashEnabled
+        set(value) {
+            if (_isFakeCrashEnabled != value) {
+                _isFakeCrashEnabled = value
+                sharedPreferences.edit().putBoolean("is_fake_crash_enabled", value).apply()
+            }
+        }
+
+    private var _appLockPin: String = sharedPreferences.getString("app_lock_pin", "").orEmpty()
+    var appLockPin: String
+        get() = _appLockPin
+        set(value) {
+            if (_appLockPin != value) {
+                _appLockPin = value
+                sharedPreferences.edit().putString("app_lock_pin", value).apply()
+            }
+        }
+
+    private var _appLockPinLength: Int = sharedPreferences.getInt("app_lock_pin_length", 6)
+    var appLockPinLength: Int
+        get() = _appLockPinLength
+        set(value) {
+            if (_appLockPinLength != value) {
+                _appLockPinLength = value
+                sharedPreferences.edit().putInt("app_lock_pin_length", value).apply()
+            }
+        }
 
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()

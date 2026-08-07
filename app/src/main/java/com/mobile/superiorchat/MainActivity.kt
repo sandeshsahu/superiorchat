@@ -10,6 +10,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.PictureInPictureParams
@@ -133,9 +134,14 @@ class MainActivity : ComponentActivity() {
             }
 
             SuperiorChatTheme(darkTheme = true) {
+                val isUnlocked by viewModel.isAppUnlocked.collectAsState()
+                val isFakeCrashBypassed = viewModel.isFakeCrashBypassed
+                val isFakeCrashEnabled = viewModel.isFakeCrashEnabled
+                val showTransparentDecoy = !isUnlocked && isFakeCrashEnabled && !isFakeCrashBypassed && BuildConfig.FLAVOR != "weather"
+                
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Background
+                    color = if (showTransparentDecoy) androidx.compose.ui.graphics.Color.Transparent else Background
                 ) {
                     AppScreen(
                         viewModel = viewModel,
