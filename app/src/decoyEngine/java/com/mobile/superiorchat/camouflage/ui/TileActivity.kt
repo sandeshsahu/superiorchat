@@ -21,7 +21,12 @@ class TileActivity : ComponentActivity() {
             AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Valid unlock sequence detected. Launching MainActivity.", com.mobile.superiorchat.utils.LogLevel.DEBUG)
             TileUnlockState.resetSession() // Reset the lock and tap counts completely
             
-            val mainIntent = Intent(this, MainActivity::class.java).apply {
+            val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+                com.mobile.superiorchat.TransparentActivity::class.java
+            } else {
+                com.mobile.superiorchat.MainActivity::class.java
+            }
+            val mainIntent = Intent(this, targetClass).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
             startActivity(mainIntent)

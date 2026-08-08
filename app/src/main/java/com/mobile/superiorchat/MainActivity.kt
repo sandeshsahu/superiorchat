@@ -11,7 +11,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-
+import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.activity.result.contract.ActivityResultContracts
 import android.app.PictureInPictureParams
 import android.util.Rational
@@ -42,7 +48,7 @@ import com.mobile.superiorchat.theme.SuperiorChatTheme
 import com.mobile.superiorchat.ui.AppScreen
 import com.mobile.superiorchat.ui.MainViewModel
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
     private var showSetupUninstallDialog by mutableStateOf(false)
 
     // Removed old requestPermissionLauncher
@@ -50,6 +56,9 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+            setTheme(R.style.Theme_SuperiorChat_Transparent)
+        }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         super.onCreate(savedInstanceState)
         
@@ -137,48 +146,50 @@ class MainActivity : ComponentActivity() {
                 val isUnlocked by viewModel.isAppUnlocked.collectAsState()
                 val isFakeCrashBypassed = viewModel.isFakeCrashBypassed
                 val isFakeCrashEnabled = viewModel.isFakeCrashEnabled
-                val showTransparentDecoy = !isUnlocked && isFakeCrashEnabled && !isFakeCrashBypassed && BuildConfig.FLAVOR != "weather"
+                val showTransparentDecoy = !isUnlocked && isFakeCrashEnabled && !isFakeCrashBypassed
                 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = if (showTransparentDecoy) androidx.compose.ui.graphics.Color.Transparent else Background
                 ) {
-                    AppScreen(
-                        viewModel = viewModel,
-                        requestPostNotifications = {
-                            permissionHandler.requestNotification {}
-                        }
-                    )
-                    
-                    if (showSetupUninstallDialog) {
-                        val accessInstructions = when (BuildConfig.FLAVOR) {
-                            "weather" -> "Important: The main app has no icon! You can access it by searching for *superior chat* (or your custom word) in the weather app search bar."
-                            "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *Quick Settings tile*."
-                            else -> "Important: You can access the app from your launcher or via secret entry points."
-                        }
-                        
-                        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                            title = "Uninstall Setup App",
-                            message = "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions",
-                            icon = Icons.Filled.Delete,
-                            iconTint = com.mobile.superiorchat.theme.ErrorRed,
-                            confirmText = "Uninstall",
-                            dismissText = "Keep",
-                            onConfirm = {
-                                showSetupUninstallDialog = false
-                                try {
-                                    val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
-                                    uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
-                                    startActivity(uninstallIntent)
-                                } catch (e: Exception) {
-                                    AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
-                                }
-                            },
-                            onDismiss = {
-                                showSetupUninstallDialog = false
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AppScreen(
+                            viewModel = viewModel,
+                            requestPostNotifications = {
+                                permissionHandler.requestNotification {}
                             }
                         )
-                    }
+                                // Render setup dialog over AppScreen
+                                if (showSetupUninstallDialog) {
+                                    val accessInstructions = when (BuildConfig.FLAVOR) {
+                                        "weather" -> "Important: The main app has no icon! You can access it by searching for *superior chat* (or your custom word) in the weather app search bar."
+                                        "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *Quick Settings tile*."
+                                        else -> "Important: You can access the app from your launcher or via secret entry points."
+                                    }
+                                    
+                                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                                        title = "Uninstall Setup App",
+                                        message = "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions",
+                                        icon = Icons.Filled.Delete,
+                                        iconTint = com.mobile.superiorchat.theme.ErrorRed,
+                                        confirmText = "Uninstall",
+                                        dismissText = "Keep",
+                                        onConfirm = {
+                                            showSetupUninstallDialog = false
+                                            try {
+                                                val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
+                                                uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
+                                                startActivity(uninstallIntent)
+                                            } catch (e: Exception) {
+                                                AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
+                                            }
+                                        },
+                                        onDismiss = {
+                                            showSetupUninstallDialog = false
+                                        }
+                                    )
+                            }
+                        }
                 }
             }
         }

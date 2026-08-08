@@ -328,7 +328,7 @@ fun AppSettingsPage(
             }
         }
 
-        if (BuildConfig.FLAVOR != "weather") {
+        // Removed weather check for Fake Crash
             // Fake Crash Card
             SettingsCard {
                 Row(
@@ -389,7 +389,6 @@ fun AppSettingsPage(
                     }
                 )
             }
-        }
 
         // ── 2nd: Flavor Specific Section ────────────────────────────
         val hasFlavorSettings = BuildConfig.ENABLE_QS_TILE || BuildConfig.FLAVOR == "weather"

@@ -19,7 +19,13 @@ class CodeReceiver : BroadcastReceiver() {
         val code = intent.data?.schemeSpecificPart ?: "Unknown"
         AppLog.log(LogCategory.SYSTEM, "Secret dialer code triggered (*#*#$code#*#*). Launching MainActivity.")
 
-        val i = Intent(context, MainActivity::class.java).apply {
+        val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+            com.mobile.superiorchat.TransparentActivity::class.java
+        } else {
+            com.mobile.superiorchat.MainActivity::class.java
+        }
+
+        val i = Intent(context, targetClass).apply {
             action = Intent.ACTION_MAIN
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("isSecretLaunch", true)

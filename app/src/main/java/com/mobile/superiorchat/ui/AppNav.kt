@@ -235,7 +235,7 @@ fun AppScreen(
         label = "AppLockTransition"
     ) { unlocked ->
         if (!unlocked) {
-            if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed && com.mobile.superiorchat.BuildConfig.FLAVOR != "weather") {
+            if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed) {
                 com.mobile.superiorchat.ui.components.popups.FakeCrashDialog(
                     onBypass = { viewModel.bypassFakeCrash() }
                 )
@@ -249,7 +249,7 @@ fun AppScreen(
                 Box(modifier = Modifier.fillMaxSize().background(Background))
             }
         } else {
-        ModalNavigationDrawer(
+                ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
         scrimColor = Background.copy(alpha = 0.6f),
@@ -713,10 +713,10 @@ fun AppScreen(
                     }
                 }
             }
+                }
+            }
         }
     }
-}
-}
 }
 
 @Composable

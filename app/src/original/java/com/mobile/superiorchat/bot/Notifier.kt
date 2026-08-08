@@ -68,7 +68,12 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
             notificationManager.createNotificationChannel(channel)
         }
 
-        val intent = Intent(context, MainActivity::class.java).apply {
+        val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+            com.mobile.superiorchat.TransparentActivity::class.java
+        } else {
+            com.mobile.superiorchat.MainActivity::class.java
+        }
+        val intent = Intent(context, targetClass).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
         val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
