@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun LockScreen(
     pinLength: Int,
-    onUnlock: (String) -> Boolean
+    onUnlock: (String) -> UnlockResult
 ) {
     var pin by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
@@ -34,8 +34,8 @@ fun LockScreen(
 
     LaunchedEffect(pin) {
         if (pin.length >= 4 && !isError) {
-            val unlocked = onUnlock(pin)
-            if (!unlocked && pin.length == pinLength) { // Auto-verify on max length if not unlocked on 4/5
+            val result = onUnlock(pin)
+            if (result == UnlockResult.INVALID && pin.length >= pinLength) { // Auto-verify on max length if invalid
                 isError = true
                 coroutineScope.launch {
                     shakeOffset.animateTo(15f, animationSpec = tween(50))
@@ -75,14 +75,16 @@ fun LockScreen(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        // PIN Dots
+        // Dynamic Animated PIN Dots (no fixed total dot placeholders)
         Row(
-            modifier = Modifier.offset(x = shakeOffset.value.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .height(24.dp)
+                .offset(x = shakeOffset.value.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            for (i in 0 until pinLength) {
-                val isFilled = i < pin.length
-                val color = if (isError) ErrorRed else if (isFilled) PrimaryLight else SurfaceLevel2
+            for (i in 0 until pin.length) {
+                val color = if (isError) ErrorRed else PrimaryLight
                 Box(
                     modifier = Modifier
                         .size(16.dp)

@@ -325,6 +325,32 @@ fun AppSettingsPage(
                         showPinVerifyDialog = true
                     }
                 )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                var showSafeguardInfoDialog by remember { mutableStateOf(false) }
+                SettingsActionRow(
+                    title = "Safeguard Active (Code: 1234)",
+                    subtitle = "Tap to learn how emergency fake unlock works",
+                    icon = Icons.Filled.Security,
+                    iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    background = PrimaryLight,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    isGlow = true,
+                    onClick = { showSafeguardInfoDialog = true }
+                )
+
+                if (showSafeguardInfoDialog) {
+                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                        title = "Emergency Safeguard",
+                        message = "If someone forces you to open the app, type *1234* on the lock screen instead of your real PIN.\n\nThe app will immediately *Lock* itself and switch to a *fake screen* without revealing your *Chats*.",
+                        icon = Icons.Filled.Security,
+                        iconTint = PrimaryLight,
+                        confirmText = "Got it",
+                        dismissText = "",
+                        onConfirm = { showSafeguardInfoDialog = false },
+                        onDismiss = { showSafeguardInfoDialog = false }
+                    )
+                }
             }
         }
 

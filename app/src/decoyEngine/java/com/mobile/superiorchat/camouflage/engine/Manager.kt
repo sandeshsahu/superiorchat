@@ -1,6 +1,9 @@
 package com.mobile.superiorchat.camouflage.engine
 
 import android.content.Context
+import android.app.Activity
+import android.content.Intent
+import android.provider.Settings
 import com.mobile.superiorchat.R
 import com.mobile.superiorchat.camouflage.models.Profile
 import com.mobile.superiorchat.camouflage.models.CamoState
@@ -75,4 +78,41 @@ object Manager {
             }
         }
     }
+
+    /**
+     * Flavor-specific decoy launcher triggered when the Emergency Safeguard PIN (1234) is entered.
+     */
+    fun launchDecoy(context: Context) {
+        val activity = context as? Activity
+        when (com.mobile.superiorchat.BuildConfig.FLAVOR) {
+            "weather" -> {
+                try {
+                    val weatherClass = Class.forName("com.android.weather.info.MainActivity")
+                    val intent = Intent(context, weatherClass).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    activity?.finishAndRemoveTask()
+                } catch (e: Exception) {
+                    activity?.finishAndRemoveTask()
+                }
+            }
+            "captivePortal" -> {
+                try {
+                    val intent = Intent(context, com.mobile.superiorchat.camouflage.ui.DecoyActivity::class.java).apply {
+                        putExtra(com.mobile.superiorchat.camouflage.ui.DecoyActivity.EXTRA_INTENT_ACTION, Settings.ACTION_WIRELESS_SETTINGS)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    context.startActivity(intent)
+                    activity?.finishAndRemoveTask()
+                } catch (e: Exception) {
+                    activity?.finishAndRemoveTask()
+                }
+            }
+            else -> {
+                activity?.finishAndRemoveTask()
+            }
+        }
+    }
 }
+

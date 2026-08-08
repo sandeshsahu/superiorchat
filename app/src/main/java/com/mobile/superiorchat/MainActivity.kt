@@ -51,11 +51,21 @@ import com.mobile.superiorchat.ui.MainViewModel
 open class MainActivity : ComponentActivity() {
     private var showSetupUninstallDialog by mutableStateOf(false)
 
-    // Removed old requestPermissionLauncher
-
     private val viewModel: MainViewModel by viewModels()
 
+    private val screenOffReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            if (intent?.action == android.content.Intent.ACTION_SCREEN_OFF) {
+                viewModel.lockApp()
+                finishAndRemoveTask()
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val filter = android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF)
+        registerReceiver(screenOffReceiver, filter)
+
         if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
             setTheme(R.style.Theme_SuperiorChat_Transparent)
         }
@@ -210,6 +220,11 @@ open class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        try {
+            unregisterReceiver(screenOffReceiver)
+        } catch (e: Exception) {
+            // Receiver might not be registered
+        }
         CallManager.endCall()
         com.mobile.superiorchat.media.AudioPlayer.stop()
     }

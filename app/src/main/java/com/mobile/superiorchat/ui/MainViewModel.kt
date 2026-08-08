@@ -68,6 +68,8 @@ sealed class GlobalDialogState {
     data class CallPermissionRationale(val onConfirm: () -> Unit) : GlobalDialogState()
 }
 
+enum class UnlockResult { SUCCESS, DURESS, INVALID }
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     var activeGlobalDialog by mutableStateOf<GlobalDialogState?>(null)
 
@@ -130,13 +132,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isAppUnlocked = MutableStateFlow(!(prefs.isAppLockEnabled || prefs.isFakeCrashEnabled))
     val isAppUnlocked: StateFlow<Boolean> = _isAppUnlocked.asStateFlow()
 
-    fun unlockApp(pin: String): Boolean {
+    fun verifyPin(pin: String): Boolean {
+        if (prefs.appLockPin.isEmpty()) return true
+        val hashedInput = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
+        return hashedInput == prefs.appLockPin
+    }
+
+    fun unlockApp(pin: String): UnlockResult {
+        if (pin.startsWith("1234")) {
+            lockApp()
+            return UnlockResult.DURESS
+        }
         val hashedInput = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
         return if (hashedInput == prefs.appLockPin || prefs.appLockPin.isEmpty()) {
             _isAppUnlocked.value = true
-            true
+            UnlockResult.SUCCESS
         } else {
-            false
+            UnlockResult.INVALID
         }
     }
 

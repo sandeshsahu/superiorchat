@@ -953,7 +953,7 @@ fun FakeCrashDialog(
     
     LaunchedEffect(isPressed) {
         if (isPressed) {
-            kotlinx.coroutines.delay(1800)
+            kotlinx.coroutines.delay(1500)
             onBypass()
         }
     }
@@ -1055,15 +1055,26 @@ fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         
         Column {
-            if (errorMsg.isNotEmpty()) {
-                Text(errorMsg, color = ErrorRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+            val currentInputPin = if (step == 1) pin else confirmPin
+            val isReservedPin = currentInputPin.startsWith("1234")
+            val displayErrorMsg = if (isReservedPin) {
+                "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!"
+            } else errorMsg
+
+            if (displayErrorMsg.isNotEmpty()) {
+                Text(displayErrorMsg, color = ErrorRed, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
             }
             OutlinedTextField(
                 value = if (step == 1) pin else confirmPin,
-                onValueChange = { 
-                    if (it.length <= 6 && it.all { char -> char.isDigit() }) {
-                        if (step == 1) pin = it else confirmPin = it
-                        errorMsg = ""
+                onValueChange = { newValue -> 
+                    if (newValue.length <= 6 && newValue.all { char -> char.isDigit() }) {
+                        if (step == 1) {
+                            pin = newValue
+                            errorMsg = if (newValue.startsWith("1234")) "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!" else ""
+                        } else {
+                            confirmPin = newValue
+                            errorMsg = if (newValue.startsWith("1234")) "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!" else ""
+                        }
                     }
                 },
                 visualTransformation = if (pinVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
@@ -1092,15 +1103,29 @@ fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
         
         Spacer(modifier = Modifier.height(24.dp))
         
+        val isPinAllowed = !(if (step == 1) pin else confirmPin).startsWith("1234")
+        
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecondary, fontWeight = FontWeight.Bold) }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
+                enabled = isPinAllowed,
                 onClick = {
                     if (step == 1) {
-                        if (pin.length >= 4) step = 2 else errorMsg = "PIN must be at least 4 digits"
+                        if (pin.startsWith("1234")) {
+                            errorMsg = "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!"
+                        } else if (pin.length >= 4) {
+                            step = 2
+                            errorMsg = ""
+                        } else {
+                            errorMsg = "PIN must be at least 4 digits"
+                        }
                     } else {
-                        if (pin == confirmPin) onSave(pin) else {
+                        if (confirmPin.startsWith("1234")) {
+                            errorMsg = "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!"
+                        } else if (pin == confirmPin) {
+                            onSave(pin)
+                        } else {
                             errorMsg = "PINs do not match"
                             confirmPin = ""
                         }

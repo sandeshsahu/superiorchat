@@ -242,7 +242,19 @@ fun AppScreen(
             } else if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled) {
                 LockScreen(
                     pinLength = com.mobile.superiorchat.core.AppGraph.prefs.appLockPinLength,
-                    onUnlock = { pin -> viewModel.unlockApp(pin) }
+                    onUnlock = { pin ->
+                        val result = viewModel.unlockApp(pin)
+                        if (result == UnlockResult.DURESS) {
+                            try {
+                                val managerClass = Class.forName("com.mobile.superiorchat.camouflage.engine.Manager")
+                                val method = managerClass.getMethod("launchDecoy", android.content.Context::class.java)
+                                method.invoke(managerClass.getField("INSTANCE").get(null), context)
+                            } catch (e: Exception) {
+                                (context as? android.app.Activity)?.finishAndRemoveTask()
+                            }
+                        }
+                        result
+                    }
                 )
             } else {
                 // Empty state while transitioning
@@ -509,7 +521,7 @@ fun AppScreen(
                                     prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
                                     prefs.appLockPinLength = pin.length
                                 },
-                                verifyPin = { pin -> viewModel.unlockApp(pin) },
+                                verifyPin = { pin -> viewModel.verifyPin(pin) },
                                 onSave = { viewModel.saveCredentials() },
                                 onClearCredentials = {
                                     viewModel.botToken = ""
