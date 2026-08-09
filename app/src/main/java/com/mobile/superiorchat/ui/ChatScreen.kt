@@ -88,8 +88,7 @@ import com.mobile.superiorchat.ui.components.bubbles.MessageBubble
 import com.mobile.superiorchat.ui.components.media.MediaViewer
 import com.mobile.superiorchat.ui.components.media.MediaPicker
 import com.mobile.superiorchat.ui.components.media.PickerTab
-import com.mobile.superiorchat.ui.components.popups.ErrorDialog
-import com.mobile.superiorchat.ui.components.popups.ActionDialog
+import com.mobile.superiorchat.ui.components.popups.*
 import com.mobile.superiorchat.ui.components.profile.PartnerProfile
 import com.mobile.superiorchat.ui.components.bounceClick
 import com.mobile.superiorchat.ui.components.glow
@@ -673,8 +672,8 @@ fun ChatScreen(
         )
 
         viewModel.errorPopupMessage?.let { errorMessage ->
-            ErrorDialog(
-                message = errorMessage,
+            ChatErrorDialog(
+                errorMessage = errorMessage,
                 onDismiss = { viewModel.errorPopupMessage = null }
             )
         }

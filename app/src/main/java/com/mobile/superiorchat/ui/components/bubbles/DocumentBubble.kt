@@ -1,5 +1,6 @@
 package com.mobile.superiorchat.ui.components.bubbles
 
+import com.mobile.superiorchat.ui.components.popups.*
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -51,11 +52,7 @@ fun DocumentBubble(
     var showApkInstallDialog by remember { mutableStateOf(false) }
 
     if (showApkInstallDialog) {
-        ActionDialog(
-            title = "Installation Permission Required",
-            message = "To install this app, you need to allow SuperiorChat to install unknown apps.",
-            icon = Icons.Filled.Warning,
-            confirmText = "Settings",
+        ApkInstallPermissionDialog(
             onConfirm = {
                 showApkInstallDialog = false
                 val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {

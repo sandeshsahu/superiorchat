@@ -19,6 +19,7 @@ import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.bounceClick
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.mobile.superiorchat.ui.components.popups.PopupTexts
 
 @Composable
 fun LockScreen(
@@ -67,7 +68,7 @@ fun LockScreen(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Enter PIN",
+            text = PopupTexts.Security.ENTER_PIN_TITLE,
             color = TextPrimary,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold

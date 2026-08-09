@@ -1,0 +1,876 @@
+package com.mobile.superiorchat.ui.components.popups
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.mobile.superiorchat.core.call.CallError
+import com.mobile.superiorchat.theme.ErrorRed
+import com.mobile.superiorchat.theme.PrimaryLight
+import com.mobile.superiorchat.theme.WarningAmber
+
+/**
+ * Centralized registry of all popup and dialog text contents, markdown descriptions,
+ * note callouts, and icon configurations across the application.
+ */
+object PopupTexts {
+    // ── Main Activity Popups ──
+    object Main {
+        const val SETUP_UNINSTALL_TITLE = "Uninstall Setup App"
+        fun getSetupUninstallMessage(accessInstructions: String): String =
+            "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions"
+        const val SETUP_UNINSTALL_CONFIRM = "Uninstall"
+        const val SETUP_UNINSTALL_DISMISS = "Keep"
+    }
+
+    // ── Settings Screen Popups ──
+    object Settings {
+        const val DEVELOPER_WARNING_TITLE = "Developer Setting"
+        const val DEVELOPER_WARNING_MESSAGE = "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this."
+        const val DEVELOPER_WARNING_CONFIRM = "I Understand"
+
+        const val SERVERS_UNAVAILABLE_TITLE = "Servers Unavailable"
+        const val SERVERS_UNAVAILABLE_MESSAGE = "All working servers are currently *Unavailable*.\nPlease contact the *Developer* or check the GitHub page to learn how to deploy your own static *PeerJS signaling server*."
+
+        const val NETWORK_ERROR_TITLE = "No Internet Connection"
+        const val NETWORK_ERROR_MESSAGE = "Please check your network connection and try again."
+
+        const val APP_LOCK_INFO_TITLE = "App Lock"
+        const val APP_LOCK_INFO_MESSAGE = "App Lock secures your chats by requiring a PIN code every time you open the app or return from the background."
+
+        const val FAKE_CRASH_TITLE = "Fake Crash Protection"
+        const val FAKE_CRASH_MESSAGE = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, **Tap and Hold the Title** for 2 seconds."
+        const val FAKE_CRASH_CONFIRM = "Enable Fake Crash"
+
+        fun getFakeCrashInfoMessage(appName: String): String =
+            "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the Word \n'**$appName**' <-- for **2 seconds**."
+
+        const val SAFEGUARD_TITLE = "Emergency Safeguard PIN (1234)"
+        const val SAFEGUARD_MESSAGE = "Emergency Safeguard is **Always Active** by default for maximum security.\n\nIf forced to unlock the app under duress, enter **1234** as your PIN.\n\n• **Fake Opening**: Instantly opens Network Settings / Weather app.\n• **Stealth Mode**: Other person assumes its just System / Weather app."
+        const val SAFEGUARD_NOTE = "Do NOT set 1234 as your normal PIN! It is reserved exclusively for emergency stealth mode."
+
+        const val CAMO_NOTIF_INFO_TITLE = "Notification Camouflage"
+        const val CAMO_NOTIF_INFO_MESSAGE = "Camouflage Notifications disguise incoming Telegram messages as innocent system or weather alerts.\n\nWhen enabled, sensitive chat text and sender names are completely hidden from lock screen notifications."
+
+        const val CAMO_NOTIF_CONFIRM_TITLE = "Enable Camouflage Notifications"
+        const val CAMO_NOTIF_CONFIRM_MESSAGE = "This will replace standard chat notifications with stealth camouflage alerts."
+        const val CAMO_NOTIF_CONFIRM_TEXT = "Enable Camouflage"
+
+        const val QS_TILE_INFO_TITLE = "Quick Settings Tile Access"
+        const val QS_TILE_INFO_MESSAGE = "Open notification panel, click on the pencil icon, find *Carrier Sync*' and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app"
+
+        const val QS_TILE_DISABLE_TITLE = "Disable Tile Access"
+        const val QS_TILE_DISABLE_MESSAGE = "If you disable this, you will no longer be able to *Open The App* using the *Notification Tile*.\nIf access by dialer fails, you may be *Completely Locked Out* of the app.\nAre you sure you want to *Proceed*?"
+        const val QS_TILE_DISABLE_CONFIRM = "Disable"
+
+        const val PERSISTENT_NOTIF_INFO_TITLE = "Persistent Notification"
+        const val PERSISTENT_NOTIF_INFO_MESSAGE = "Foreground service keeps the Telegram bot polling active continuously in the background.\n\nDisabling this may cause background message sync delays on some Android devices."
+
+        const val WEBRTC_INFO_TITLE = "WebRTC Calling Server"
+        const val WEBRTC_INFO_MESSAGE = "You can configure your custom *WebRTC Server* URL for voice calls, or reset it to the default server if you experience connection issues.\n\nCheck developer's *Github Page* for more information"
+
+        const val CUSTOM_ACCESS_INFO_TITLE = "Custom Access Word"
+        const val CUSTOM_ACCESS_INFO_MESSAGE = "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *Superior Chat* will always work as a fallback."
+
+        fun getCustomAccessConfirmMessage(word: String): String =
+            "Are you sure you want to set your access word to *$word*? If you forget this word, you can always use the default *Superior Chat* fallback to regain access."
+
+        const val BOT_INFO_TITLE = "Bot Credentials"
+        const val BOT_INFO_MESSAGE = "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*."
+
+        const val INVALID_CREDENTIALS_TITLE = "Invalid Credentials"
+
+        const val CLEAR_CREDENTIALS_TITLE = "Clear Credentials"
+        const val CLEAR_CREDENTIALS_MESSAGE = "This will disconnect the bot and stop the end-to-end chat. *Both Users* will lose access\nto the current *Chat Session*. Do you want to proceed?"
+
+        const val UNINSTALL_TITLE = "Uninstall App"
+        const val UNINSTALL_MESSAGE = "This will *permanently remove* the application from your device. Do you want to proceed?"
+
+        const val BG_POLLING_INFO_TITLE = "Background Polling"
+        const val BG_POLLING_INFO_MESSAGE = "Background polling periodically checks for new Telegram updates using WorkManager when the app is minimized."
+
+        const val CLEAR_DB_TITLE = "Clear Database"
+        const val CLEAR_DB_MESSAGE = "Are you sure you want to clear local database records? All stored messages and chat history will be removed from this device."
+        const val CLEAR_DB_CONFIRM = "Clear Database"
+
+        const val RESET_APP_TITLE = "Reset Application"
+        const val RESET_APP_MESSAGE = "Are you sure you want to reset all app settings and credentials? You will need to setup the application again."
+        const val RESET_APP_CONFIRM = "Reset Everything"
+
+        const val QR_PROMPT_TITLE = "Scan Configuration"
+        const val QR_PROMPT_MESSAGE = "Scan a QR code to *Quickly Configure* application settings."
+        const val QR_PROMPT_CONFIRM = "Scan"
+
+        const val AUTO_DOWNLOAD_INFO_TITLE = "Auto-Download Media"
+        const val AUTO_DOWNLOAD_INFO_MESSAGE = "When enabled, photos and videos will automatically download when you receive them in chat. \n\nTurn this off to save mobile data."
+
+        const val SCREEN_SECURITY_INFO_TITLE = "Screen Security"
+        const val SCREEN_SECURITY_INFO_MESSAGE = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\n*Screenshots* will appear pure black."
+
+        const val APP_NOTIFICATIONS_INFO_TITLE = "App Notifications"
+        const val APP_NOTIFICATIONS_INFO_MESSAGE = "Controls the underlying Android System notification permissions.\n\nWhen disabled, the app is completely blocked from showing *Any background notifications*, making it ultra-stealthy. *Background sync* will still work perfectly."
+
+        const val DISABLE_NOTIFICATIONS_TITLE = "Disable App Notifications"
+        const val DISABLE_NOTIFICATIONS_MESSAGE = "To completely disable notifications without crashing the background service, you must turn them off from Android's System Settings.\n\nClick Proceed to open the *App Info* page, then tap *Notifications* and turn them off."
+
+        const val NEW_MESSAGE_NOTIF_INFO_TITLE = "New Message Notifications"
+        const val NEW_MESSAGE_NOTIF_INFO_MESSAGE = "When *Enabled*, the stealth app's background service notification will visually change states (e.g., \"*Live Update*\" or \"*Heavy data usage detected*\") to alert you of new incoming messages.\n\nWhen *Disabled*, messages will still sync silently in the background, but the decoy *notification* will never change its idle state."
+    }
+
+    // ── PIN & Security Popups ──
+    object Security {
+        const val ENTER_PIN_TITLE = "Enter PIN"
+        const val RESERVED_PIN_ERROR = "Choose a different PIN. \n1234 is reserved for Emergency Safeguard!"
+        const val PIN_MIN_LENGTH_ERROR = "PIN must be at least 4 digits"
+        const val PIN_MISMATCH_ERROR = "PINs do not match"
+        const val INCORRECT_PIN_ERROR = "Incorrect PIN"
+    }
+
+    // ── Profile Screen Popups ──
+    object Profile {
+        const val RATE_LIMIT_WARNING_TITLE = "Warning: Rate Limits"
+        const val RATE_LIMIT_WARNING_MESSAGE = "Telegram strictly limits how often you can change your bot's name and description. Frequent updates will result in a 24-hour ban. Are you sure you want to proceed?"
+        const val RATE_LIMIT_WARNING_CONFIRM = "Proceed"
+        fun getRateLimitErrorMessage(timeStr: String): String =
+            "Telegram rate limit reached. Please try again in $timeStr."
+        const val DEFAULT_UPDATE_FAILED_ERROR = "Failed to update profile info."
+        const val REMOVE_PHOTO_NOT_SUPPORTED_ERROR = "Removing profile photos is only supported via @BotFather in Telegram."
+    }
+
+    // ── Chat & Media Popups ──
+    object Chat {
+        const val DELETE_SINGLE_TITLE = "Delete message?"
+        const val DELETE_SINGLE_MESSAGE = "Are you sure you want to delete this message?"
+        const val DELETE_BULK_TITLE = "Delete selected messages?"
+        const val DELETE_BULK_MESSAGE = "Are you sure you want to delete all selected messages?"
+
+        const val CLEAR_CHAT_TITLE = "Clear Chat History"
+        const val CLEAR_CHAT_MESSAGE = "Are you sure you want to clear all chat history? This will delete messages from local database."
+
+        const val APK_INSTALL_PERMISSION_TITLE = "Installation Permission Required"
+        const val APK_INSTALL_PERMISSION_MESSAGE = "To install this app, you need to allow SuperiorChat to install unknown apps."
+
+        fun getSaveMediaMessage(typeName: String, storageType: String): String =
+            "Do you want to save this *$typeName* to your device's *$storageType folder*?"
+
+        fun getFileTooLargeErrorMessage(fileName: String, formattedSize: String): String =
+            "The selected file '$fileName' ($formattedSize) exceeds the 50MB limit.\n\nFiles larger than 50MB are not supported."
+    }
+
+    // ── Global System Permissions Popups ──
+    object GlobalPermissions {
+        const val PERMISSION_DENIED_TITLE = "Permission Denied"
+        const val PERMISSION_DENIED_MESSAGE = "This permission has been permanently denied. Please enable it in the App Settings."
+
+        const val MEDIA_DENIED_TITLE = "Media Access Denied"
+        const val MEDIA_DENIED_MESSAGE = "You have previously denied full access to your media. To allow full access or select more photos, please go to Settings."
+
+        const val ALL_FILES_REQUIRED_TITLE = "All Files Access Required"
+        const val ALL_FILES_REQUIRED_MESSAGE = "The file explorer requires full access to your device storage to view and attach documents."
+
+        const val LIMITED_ACCESS_TITLE = "Limited Access Granted"
+        const val LIMITED_ACCESS_MESSAGE = "You have granted limited access to your media. Would you like to grant full access so you can easily select any photo?"
+
+        const val CAMERA_RATIONALE_TITLE = "Camera Permission"
+        const val CAMERA_RATIONALE_MESSAGE = "We need access to your camera to take photos."
+
+        const val MIC_RATIONALE_TITLE = "Microphone Permission"
+        const val MIC_RATIONALE_MESSAGE = "We need access to your microphone to record voice messages."
+
+        const val STORAGE_RATIONALE_TITLE = "Storage Permission"
+        const val STORAGE_RATIONALE_MESSAGE = "We need access to your device storage to view and attach documents."
+
+        const val CALL_RATIONALE_TITLE = "Camera & Microphone Required"
+        const val CALL_RATIONALE_MESSAGE = "We need access to both your camera and microphone to initiate the secure WebRTC call."
+    }
+
+    // ── Call Engine Popups ──
+    object Call {
+        const val CLEAR_LOGS_TITLE = "Clear History"
+        const val CLEAR_LOGS_MESSAGE = "Are you sure you want to clear your entire call history? This will delete all logs."
+        const val CLEAR_LOGS_CONFIRM = "Clear"
+
+        const val CALL_HISTORY_INFO_TITLE = "Recent Calls"
+        const val CALL_HISTORY_INFO_MESSAGE = "A history of all secure peer-to-peer WebRTC calls initiated from this device."
+
+        fun getErrorSpec(error: CallError): Triple<String, String, String> {
+            return when (error) {
+                CallError.NETWORK_ERROR -> Triple(
+                    "Network Error",
+                    "The call *Failed to Connect*.\nYour internet connection might be *Unstable* or device is completely *Offline*.\n\nPlease check your *Internet Connection*.",
+                    "Okay"
+                )
+                CallError.NO_ANSWER -> Triple(
+                    "No Answer",
+                    "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.",
+                    "Okay"
+                )
+                CallError.HARDWARE_ERROR -> Triple(
+                    "Hardware Initialization Failed",
+                    "The secure WebRTC environment failed to load properly.\nThis is usually caused by an *Invalid Server Path* blocking necessary Javascript files, or a camera/microphone hardware lock.\n\nPlease check application permissions or would you like to *Reset to Default*?",
+                    "Go to Settings"
+                )
+                else -> Triple(
+                    "Call Failed",
+                    "The call failed to connect. This is often caused by an *Invalid*, *Unreachable* Server URL. Would you like to check your Settings and *Reset to Default*?",
+                    "Go to Settings"
+                )
+            }
+        }
+    }
+
+    // ── Logs Screen Popups ──
+    object Logs {
+        const val LOGS_INFO_TITLE = "Live Logs"
+        const val LOGS_INFO_MESSAGE = "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly *Last 150 Logs* will be displayed."
+        const val LOG_DETAIL_TITLE = "Log Details"
+        const val CLEAR_LOGS_TITLE = "Clear Diagnostics"
+        const val CLEAR_LOGS_MESSAGE = "Are you sure you want to clear all recorded diagnostic logs?"
+        const val CLEAR_LOGS_CONFIRM = "Flush Logs"
+    }
+
+    // ── Navigation & Auth Popups ──
+    object Nav {
+        const val LOGOUT_TITLE = "Logout Confirmation"
+        const val LOGOUT_MESSAGE = "Are you sure you want to logout? Active background service will be stopped."
+        const val LOGOUT_CONFIRM = "Logout"
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRESET DOMAIN COMPOSABLE DIALOGS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Main Activity Domain Dialogs ──
+
+@Composable
+fun SetupUninstallDialog(
+    accessInstructions: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Main.SETUP_UNINSTALL_TITLE,
+        message = PopupTexts.Main.getSetupUninstallMessage(accessInstructions),
+        icon = Icons.Filled.Delete,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Main.SETUP_UNINSTALL_CONFIRM,
+        dismissText = PopupTexts.Main.SETUP_UNINSTALL_DISMISS,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Settings & Profile Sheet Domain Dialogs ──
+
+@Composable
+fun SettingsDeveloperWarningDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.DEVELOPER_WARNING_TITLE,
+        message = PopupTexts.Settings.DEVELOPER_WARNING_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.DEVELOPER_WARNING_CONFIRM,
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsServersUnavailableDialog(
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.SERVERS_UNAVAILABLE_TITLE,
+        message = PopupTexts.Settings.SERVERS_UNAVAILABLE_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = "Okay",
+        dismissText = "",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsNetworkErrorDialog(
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.NETWORK_ERROR_TITLE,
+        message = PopupTexts.Settings.NETWORK_ERROR_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = "Okay",
+        dismissText = "",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsAppLockInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.APP_LOCK_INFO_TITLE,
+        message = PopupTexts.Settings.APP_LOCK_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsFakeCrashInfoDialog(
+    appName: String,
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = "Fake Crash Decoy",
+        message = PopupTexts.Settings.getFakeCrashInfoMessage(appName),
+        customContent = { FakeCrashAnimPreview() },
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsFakeCrashDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.FAKE_CRASH_TITLE,
+        message = PopupTexts.Settings.FAKE_CRASH_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.FAKE_CRASH_CONFIRM,
+        customContent = { FakeCrashAnimPreview() },
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsSafeguardInfoDialog(
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.SAFEGUARD_TITLE,
+        message = PopupTexts.Settings.SAFEGUARD_MESSAGE,
+        note = PopupTexts.Settings.SAFEGUARD_NOTE,
+        noteIcon = Icons.Filled.Warning,
+        icon = Icons.Filled.Shield,
+        iconTint = PrimaryLight,
+        confirmText = "Got it",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsCamoNotifInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.CAMO_NOTIF_INFO_TITLE,
+        message = PopupTexts.Settings.CAMO_NOTIF_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsCamoNotifConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.CAMO_NOTIF_CONFIRM_TITLE,
+        message = PopupTexts.Settings.CAMO_NOTIF_CONFIRM_MESSAGE,
+        icon = Icons.Filled.VisibilityOff,
+        confirmText = PopupTexts.Settings.CAMO_NOTIF_CONFIRM_TEXT,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsQsTileInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.QS_TILE_INFO_TITLE,
+        message = PopupTexts.Settings.QS_TILE_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsQsTileDisableDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.QS_TILE_DISABLE_TITLE,
+        message = PopupTexts.Settings.QS_TILE_DISABLE_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.QS_TILE_DISABLE_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsCustomAccessWordInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.CUSTOM_ACCESS_INFO_TITLE,
+        message = PopupTexts.Settings.CUSTOM_ACCESS_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsCustomAccessWordConfirmDialog(
+    accessWord: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = "Warning",
+        message = PopupTexts.Settings.getCustomAccessConfirmMessage(accessWord),
+        icon = Icons.Filled.Warning,
+        iconTint = PrimaryLight,
+        confirmText = "Save",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsBotCredentialsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.BOT_INFO_TITLE,
+        message = PopupTexts.Settings.BOT_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsInvalidCredentialsDialog(
+    errorMessage: String,
+    onDismiss: () -> Unit
+) {
+    ErrorDialog(
+        title = PopupTexts.Settings.INVALID_CREDENTIALS_TITLE,
+        message = errorMessage,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsClearCredentialsDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.CLEAR_CREDENTIALS_TITLE,
+        message = PopupTexts.Settings.CLEAR_CREDENTIALS_MESSAGE,
+        icon = Icons.Filled.NoAccounts,
+        iconTint = ErrorRed,
+        confirmText = "Proceed",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsClearChatDialog(
+    onConfirmClear: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ClearChatWarningDialog(
+        onDismiss = onDismiss,
+        onConfirmClear = onConfirmClear
+    )
+}
+
+@Composable
+fun SettingsUninstallAppDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.UNINSTALL_TITLE,
+        message = PopupTexts.Settings.UNINSTALL_MESSAGE,
+        icon = Icons.Filled.DeleteForever,
+        iconTint = ErrorRed,
+        confirmText = "Proceed",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsPersistentNotifInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.PERSISTENT_NOTIF_INFO_TITLE,
+        message = PopupTexts.Settings.PERSISTENT_NOTIF_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsWebRtcInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.WEBRTC_INFO_TITLE,
+        message = PopupTexts.Settings.WEBRTC_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsBackgroundPollingInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.BG_POLLING_INFO_TITLE,
+        message = PopupTexts.Settings.BG_POLLING_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsClearDatabaseDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.CLEAR_DB_TITLE,
+        message = PopupTexts.Settings.CLEAR_DB_MESSAGE,
+        icon = Icons.Filled.DeleteForever,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.CLEAR_DB_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsResetAppDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.RESET_APP_TITLE,
+        message = PopupTexts.Settings.RESET_APP_MESSAGE,
+        icon = Icons.Filled.RestartAlt,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.RESET_APP_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsQrScanPromptDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.QR_PROMPT_TITLE,
+        message = PopupTexts.Settings.QR_PROMPT_MESSAGE,
+        icon = Icons.Filled.QrCodeScanner,
+        iconTint = PrimaryLight,
+        confirmText = PopupTexts.Settings.QR_PROMPT_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileAutoDownloadMediaInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.AUTO_DOWNLOAD_INFO_TITLE,
+        message = PopupTexts.Settings.AUTO_DOWNLOAD_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileScreenSecurityInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.SCREEN_SECURITY_INFO_TITLE,
+        message = PopupTexts.Settings.SCREEN_SECURITY_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileAppNotificationsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.APP_NOTIFICATIONS_INFO_TITLE,
+        message = PopupTexts.Settings.APP_NOTIFICATIONS_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileDisableAppNotificationsDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.DISABLE_NOTIFICATIONS_TITLE,
+        message = PopupTexts.Settings.DISABLE_NOTIFICATIONS_MESSAGE,
+        confirmText = "Proceed",
+        dismissText = "Cancel",
+        icon = Icons.Filled.Notifications,
+        iconTint = PrimaryLight,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileNewMessageNotificationsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.NEW_MESSAGE_NOTIF_INFO_TITLE,
+        message = PopupTexts.Settings.NEW_MESSAGE_NOTIF_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Profile Domain Dialogs ──
+
+@Composable
+fun ProfileRateLimitWarningDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Profile.RATE_LIMIT_WARNING_TITLE,
+        message = PopupTexts.Profile.RATE_LIMIT_WARNING_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = WarningAmber,
+        confirmText = PopupTexts.Profile.RATE_LIMIT_WARNING_CONFIRM,
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileRateLimitErrorDialog(
+    errorMessage: String,
+    onDismiss: () -> Unit
+) {
+    ErrorDialog(
+        message = errorMessage,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Chat & Media Domain Dialogs ──
+
+@Composable
+fun ChatErrorDialog(
+    errorMessage: String,
+    onDismiss: () -> Unit
+) {
+    ErrorDialog(
+        message = errorMessage,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ApkInstallPermissionDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Chat.APK_INSTALL_PERMISSION_TITLE,
+        message = PopupTexts.Chat.APK_INSTALL_PERMISSION_MESSAGE,
+        icon = Icons.Filled.Warning,
+        confirmText = "Settings",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SaveMediaConfirmDialog(
+    typeName: String,
+    storageType: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = "Save Media",
+        message = PopupTexts.Chat.getSaveMediaMessage(typeName, storageType),
+        icon = Icons.Filled.Download,
+        confirmText = "Save",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Call Engine Domain Dialogs ──
+
+@Composable
+fun CallInitiationDialog(
+    title: String,
+    message: String,
+    note: String?,
+    isFailed: Boolean,
+    isLoading: Boolean,
+    isSuccess: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = title,
+        message = message,
+        note = note,
+        noteIcon = null,
+        icon = if (isFailed) Icons.Filled.Warning else Icons.Filled.Phone,
+        iconTint = if (isFailed) ErrorRed else PrimaryLight,
+        confirmText = if (isFailed) "Retry" else "Start Call",
+        dismissText = "Cancel",
+        autoDismiss = false,
+        isLoading = isLoading,
+        isSuccess = isSuccess,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun CallErrorDialog(
+    callError: CallError,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val (title, message, confirm) = PopupTexts.Call.getErrorSpec(callError)
+    val isSettingsNav = callError == CallError.INVALID_URL || callError == CallError.HARDWARE_ERROR
+    ActionDialog(
+        title = title,
+        message = message,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = confirm,
+        dismissText = if (isSettingsNav) "Cancel" else "Dismiss",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun CallHistoryClearDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Call.CLEAR_LOGS_TITLE,
+        message = PopupTexts.Call.CLEAR_LOGS_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Call.CLEAR_LOGS_CONFIRM,
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun CallHistoryInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Call.CALL_HISTORY_INFO_TITLE,
+        message = PopupTexts.Call.CALL_HISTORY_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Logs Domain Dialogs ──
+
+@Composable
+fun LogsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Logs.LOGS_INFO_TITLE,
+        message = PopupTexts.Logs.LOGS_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun LogDetailDialog(
+    logMessage: String,
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Logs.LOG_DETAIL_TITLE,
+        message = logMessage,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun LogClearConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Logs.CLEAR_LOGS_TITLE,
+        message = PopupTexts.Logs.CLEAR_LOGS_MESSAGE,
+        icon = Icons.Filled.Delete,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Logs.CLEAR_LOGS_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Navigation Domain Dialogs ──
+
+@Composable
+fun AppLogoutConfirmDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Nav.LOGOUT_TITLE,
+        message = PopupTexts.Nav.LOGOUT_MESSAGE,
+        icon = Icons.AutoMirrored.Filled.Logout,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Nav.LOGOUT_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}

@@ -56,7 +56,7 @@ fun EditInfoSheet(
         ) {
             Text("Edit Info", color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 20.sp)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Changes saved locally — backend coming soon", color = TextSecondary, fontSize = 12.sp)
+            Text("Change the information of your profile", color = TextSecondary, fontSize = 12.sp)
             Spacer(modifier = Modifier.height(24.dp))
 
             // Name field

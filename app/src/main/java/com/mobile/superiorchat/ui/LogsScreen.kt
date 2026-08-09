@@ -1,5 +1,6 @@
 package com.mobile.superiorchat.ui
 
+import com.mobile.superiorchat.ui.components.popups.*
 import androidx.compose.foundation.background
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.border
@@ -96,9 +97,7 @@ fun LogsScreen() {
                 )
                 
                 if (showLogsInfo) {
-                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                        title = "Live Logs",
-                        message = "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly *Last 150 Logs* will be displayed.",
+                    LogsInfoDialog(
                         onDismiss = { showLogsInfo = false }
                     )
                 }

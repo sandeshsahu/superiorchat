@@ -1,5 +1,6 @@
 package com.mobile.superiorchat.ui
 
+import com.mobile.superiorchat.ui.components.popups.*
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -539,12 +540,7 @@ fun AppScreen(
                 }
                 
                 if (showScanPrompt) {
-                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                        title = "Scan Configuration",
-                        message = "Scan a QR code to *Quickly Configure* application settings.",
-                        icon = Icons.Filled.QrCodeScanner,
-                        iconTint = PrimaryLight,
-                        confirmText = "Scan",
+                    SettingsQrScanPromptDialog(
                         onConfirm = {
                             showScanPrompt = false
                             viewModel.showAppLevelQrScanner = true
@@ -605,23 +601,12 @@ fun AppScreen(
                 val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
                 
                 if (callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && callState == CallState.IDLE) {
-                    val (title, message, confirm) = when (callFailedError) {
-                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> Triple("Network Error", "The call *Failed to Connect*.\nYour internet connection might be *Unstable* or device is completely *Offline*.\n\nPlease check your *Internet Connection*.", "Okay")
-                        com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> Triple("No Answer", "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.", "Okay")
-                        com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR -> Triple("Hardware Initialization Failed", "The secure WebRTC environment failed to load properly.\nThis is usually caused by an *Invalid Server Path* blocking necessary Javascript files, or a camera/microphone hardware lock.\n\nPlease check application permissions or would you like to *Reset to Default*?", "Go to Settings")
-                        else -> Triple("Call Failed", "The call failed to connect. This is often caused by an *Invalid*, *Unreachable* Server URL. Would you like to check your Settings and *Reset to Default*?", "Go to Settings")
-                    }
-                    
-                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                        title = title,
-                        message = message,
-                        icon = androidx.compose.material.icons.Icons.Filled.Warning,
-                        iconTint = com.mobile.superiorchat.theme.ErrorRed,
-                        confirmText = confirm,
-                        dismissText = if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL || callFailedError == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) "Cancel" else "Dismiss",
+                    CallErrorDialog(
+                        callError = callFailedError,
                         onConfirm = {
+                            val err = callFailedError
                             CallManager.clearCallError()
-                            if (callFailedError == com.mobile.superiorchat.core.call.CallError.INVALID_URL || callFailedError == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
+                            if (err == com.mobile.superiorchat.core.call.CallError.INVALID_URL || err == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
                                 currentScreen = NavScreen.AppSettings
                             }
                         },
@@ -635,7 +620,7 @@ fun AppScreen(
                     val isFailed = callConfirmationState == CallInitiationState.FAILED_SENDING
                     val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.SENDING_LINK
                     
-                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+                    CallInitiationDialog(
                         title = when (callConfirmationState) {
                             CallInitiationState.VALIDATING -> "Validating Servers..."
                             CallInitiationState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
@@ -650,12 +635,7 @@ fun AppScreen(
                             else -> "A secure peer-to-peer connection link will be generated and sent to the other person's chat."
                         },
                         note = if (isFailed) null else "*Important:* This feature is **Experimental.** Calls may be blocked by firewalls or strict networks.\n\n**Reliability:** TURN servers are **Not Provided** by default. You must add your own to guarantee connectivity.\n\n**Security:** The developer assumes no responsibility for privacy or data leaks.\n\nRead the Security & Deployment documents on GitHub.",
-                        noteIcon = null,
-                        icon = if (isFailed) Icons.Filled.Warning else Icons.Filled.Phone,
-                        iconTint = if (isFailed) ErrorRed else PrimaryLight,
-                        confirmText = if (isFailed) "Retry" else "Start Call",
-                        dismissText = "Cancel",
-                        autoDismiss = false,
+                        isFailed = isFailed,
                         isLoading = isLoading,
                         isSuccess = callConfirmationState == CallInitiationState.SUCCESS,
                         onConfirm = {

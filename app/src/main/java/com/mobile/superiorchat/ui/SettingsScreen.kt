@@ -1,6 +1,7 @@
 package com.mobile.superiorchat.ui
 
 import com.mobile.superiorchat.ui.components.GlassCard
+import com.mobile.superiorchat.ui.components.popups.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -140,9 +141,8 @@ fun AppSettingsPage(
     }
     
     if (errorMessage != null) {
-        com.mobile.superiorchat.ui.components.popups.ErrorDialog(
-            title = "Invalid Credentials",
-            message = errorMessage!!,
+        SettingsInvalidCredentialsDialog(
+            errorMessage = errorMessage!!,
             onDismiss = { errorMessage = null }
         )
     }
@@ -184,13 +184,7 @@ fun AppSettingsPage(
     }
 
     if (showDeveloperWarning) {
-        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-            title = "Developer Setting",
-            message = "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this.",
-            icon = Icons.Filled.Warning,
-            iconTint = ErrorRed,
-            confirmText = "I Understand",
-            dismissText = "Cancel",
+        SettingsDeveloperWarningDialog(
             onConfirm = {
                 showWebRtcConfigPopup = true
             },
@@ -199,34 +193,14 @@ fun AppSettingsPage(
     }
 
     if (showAllServersUnavailable) {
-        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-            title = "Servers Unavailable",
-            message = "All working servers are currently *Unavailable*.\nPlease contact the *Developer* or check the GitHub page to learn how to deploy your own static *PeerJS signaling server*.",
-            icon = Icons.Filled.Warning,
-            iconTint = ErrorRed,
-            confirmText = "Okay",
-            dismissText = "",
-            onConfirm = { showAllServersUnavailable = false },
-            onDismiss = { showAllServersUnavailable = false },
-            isLoading = false,
-            isSuccess = false,
-            autoDismiss = true
+        SettingsServersUnavailableDialog(
+            onDismiss = { showAllServersUnavailable = false }
         )
     }
 
     if (showNetworkError) {
-        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-            title = "No Internet Connection",
-            message = "Please check your network connection and try again.",
-            icon = Icons.Filled.Warning,
-            iconTint = ErrorRed,
-            confirmText = "Okay",
-            dismissText = "",
-            onConfirm = { showNetworkError = false },
-            onDismiss = { showNetworkError = false },
-            isLoading = false,
-            isSuccess = false,
-            autoDismiss = true
+        SettingsNetworkErrorDialog(
+            onDismiss = { showNetworkError = false }
         )
     }
 
@@ -257,16 +231,16 @@ fun AppSettingsPage(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
         ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
+            HorizontalDivider(modifier = Modifier.weight(1f), color = PrimaryLight.copy(alpha = 0.25f))
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 "Security Settings",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
+                color = PrimaryLight,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.width(12.dp))
-            HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
+            HorizontalDivider(modifier = Modifier.weight(1f), color = PrimaryLight.copy(alpha = 0.25f))
         }
 
         // App Lock Card
@@ -277,7 +251,7 @@ fun AppSettingsPage(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("App Lock", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -289,9 +263,7 @@ fun AppSettingsPage(
                     modifier = Modifier.size(20.dp).clickable { showAppLockInfo = true }
                 )
                 if (showAppLockInfo) {
-                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                        title = "App Lock",
-                        message = "App Lock secures your chats by requiring a PIN code every time you open the app or return from the background.",
+                    SettingsAppLockInfoDialog(
                         onDismiss = { showAppLockInfo = false }
                     )
                 }
@@ -340,14 +312,7 @@ fun AppSettingsPage(
                 )
 
                 if (showSafeguardInfoDialog) {
-                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                        title = "Emergency Safeguard",
-                        message = "If someone forces you to open the app, type *1234* on the lock screen instead of your real PIN.\n\nThe app will immediately *Lock* itself and switch to a *fake screen* without revealing your *Chats*.",
-                        icon = Icons.Filled.Security,
-                        iconTint = PrimaryLight,
-                        confirmText = "Got it",
-                        dismissText = "",
-                        onConfirm = { showSafeguardInfoDialog = false },
+                    SettingsSafeguardInfoDialog(
                         onDismiss = { showSafeguardInfoDialog = false }
                     )
                 }
@@ -363,7 +328,7 @@ fun AppSettingsPage(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.BugReport, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.BugReport, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Fake Crash Decoy", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
@@ -375,10 +340,8 @@ fun AppSettingsPage(
                         modifier = Modifier.size(20.dp).clickable { showFakeCrashInfo = true }
                     )
                     if (showFakeCrashInfo) {
-                        com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                            title = "Fake Crash Decoy",
-                            message = "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the Word \n'**$appName**' <-- for **2 seconds**.",
-                            customContent = { com.mobile.superiorchat.ui.components.popups.FakeCrashAnimPreview() },
+                        SettingsFakeCrashInfoDialog(
+                            appName = appName,
                             onDismiss = { showFakeCrashInfo = false }
                         )
                     }
@@ -387,13 +350,7 @@ fun AppSettingsPage(
 
                 var showFakeCrashWarning by remember { mutableStateOf(false) }
                 if (showFakeCrashWarning) {
-                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                        title = "Enable Fake Crash?",
-                        message = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, **tap and hold the title** for 2 seconds.",
-                        icon = Icons.Default.Warning,
-                        iconTint = ErrorRed,
-                        confirmText = "Enable",
-                        customContent = { com.mobile.superiorchat.ui.components.popups.FakeCrashAnimPreview() },
+                    SettingsFakeCrashDialog(
                         onConfirm = { 
                             onFakeCrashChange(true)
                             showFakeCrashWarning = false
@@ -425,16 +382,16 @@ fun AppSettingsPage(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
             ) {
-                HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Secondary.copy(alpha = 0.25f))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     "Flavor Specific",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    color = Secondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(12.dp))
-                HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
+                HorizontalDivider(modifier = Modifier.weight(1f), color = Secondary.copy(alpha = 0.25f))
             }
 
             if (BuildConfig.ENABLE_QS_TILE) {
@@ -442,7 +399,7 @@ fun AppSettingsPage(
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = Secondary, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("App Accessibility", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         }
@@ -452,20 +409,13 @@ fun AppSettingsPage(
                     var showTileDisableWarning by remember { mutableStateOf(false) }
                     
                     if (showAccessibilityInfo) {
-                        com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                            title = "Quick Settings Tile Access",
-                            message = "Open notification panel, click on the pencil icon, find *Carrier Sync*' and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app",
+                        SettingsQsTileInfoDialog(
                             onDismiss = { showAccessibilityInfo = false }
                         )
                     }
 
                     if (showTileDisableWarning) {
-                        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                            title = "Disable Tile Access",
-                            message = "If you disable this, you will no longer be able to *Open The App* using the *Notification Tile*.\nIf access by dialer fails, you may be *Completely Locked Out* of the app.\nAre you sure you want to *Proceed*?",
-                            icon = Icons.Filled.Warning,
-                            iconTint = ErrorRed,
-                            confirmText = "Disable",
+                        SettingsQsTileDisableDialog(
                             onConfirm = {
                                 onTileAccessChange(false)
                                 showTileDisableWarning = false
@@ -497,7 +447,7 @@ fun AppSettingsPage(
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.VpnKey, contentDescription = "Accessibility", tint = Secondary, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("Set Custom Access Word", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         }
@@ -505,14 +455,12 @@ fun AppSettingsPage(
                         Icon(
                             Icons.Default.Info, 
                             contentDescription = "Info", 
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                            tint = Secondary, 
                             modifier = Modifier.padding(4.dp).size(20.dp).clickable { showAccessInfo = true }
                         )
                         
                         if (showAccessInfo) {
-                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                                title = "Custom Access Word",
-                                message = "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *Superior Chat* will always work as a fallback.",
+                            SettingsCustomAccessWordInfoDialog(
                                 onDismiss = { showAccessInfo = false }
                             )
                         }
@@ -532,12 +480,8 @@ fun AppSettingsPage(
                     }
                     
                     if (showWarning) {
-                        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                            title = "Warning",
-                            message = "Are you sure you want to set your access word to *${tempWord.trim()}*? If you forget this word, you can always use the default *Superior Chat* fallback to regain access.",
-                            icon = Icons.Default.Warning,
-                            iconTint = PrimaryLight,
-                            confirmText = "Save",
+                        SettingsCustomAccessWordConfirmDialog(
+                            accessWord = tempWord.trim(),
                             onConfirm = {
                                 onCustomAccessWordChange(tempWord.trim())
                                 tempWord = ""
@@ -602,23 +546,23 @@ fun AppSettingsPage(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
         ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
+            HorizontalDivider(modifier = Modifier.weight(1f), color = WarningAmber.copy(alpha = 0.25f))
             Spacer(modifier = Modifier.width(12.dp))
             Text(
                 "Developer Settings",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
+                color = WarningAmber,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.width(12.dp))
-            HorizontalDivider(modifier = Modifier.weight(1f), color = DividerColor)
+            HorizontalDivider(modifier = Modifier.weight(1f), color = WarningAmber.copy(alpha = 0.25f))
         }
 
         // Bot Credentials Card
         SettingsCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = "Lock", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Lock, contentDescription = "Lock", tint = WarningAmber, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Bot Credentials", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -626,14 +570,12 @@ fun AppSettingsPage(
                 Icon(
                     Icons.Default.Info, 
                     contentDescription = "Info", 
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    tint = WarningAmber, 
                     modifier = Modifier.padding(4.dp).size(20.dp).clickable { showBotInfo = true }
                 )
                 
                 if (showBotInfo) {
-                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                        title = "Bot Credentials",
-                        message = "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*.",
+                    SettingsBotCredentialsInfoDialog(
                         onDismiss = { showBotInfo = false }
                     )
                 }
@@ -670,7 +612,7 @@ fun AppSettingsPage(
         SettingsCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Phone, contentDescription = "Call", tint = WarningAmber, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Call Configuration", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -679,14 +621,12 @@ fun AppSettingsPage(
                 Icon(
                     Icons.Default.Info, 
                     contentDescription = "Info", 
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    tint = WarningAmber, 
                     modifier = Modifier.padding(4.dp).size(20.dp).clickable { showWebRtcInfo = true }
                 )
                 
                 if (showWebRtcInfo) {
-                    com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                        title = "Call Configuration",
-                        message = "You can configure your custom *WebRTC Server* URL for voice calls, or reset it to the default server if you experience connection issues.\n\nCheck developer's *Github Page* for more information",
+                    SettingsWebRtcInfoDialog(
                         onDismiss = { showWebRtcInfo = false }
                     )
                 }
@@ -746,9 +686,9 @@ fun AppSettingsPage(
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     "Danger Zone",
-                    color = ErrorRed.copy(0.7f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    color = ErrorRed,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.25f))
@@ -1008,7 +948,7 @@ fun DangerZoneSheet(
                         onClick = { showClearChatConfirm = true }
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             // Clear Credentials Button
@@ -1044,7 +984,7 @@ fun DangerZoneSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Uninstall App
             Column(
@@ -1066,13 +1006,7 @@ fun DangerZoneSheet(
     }
 
     if (showClearConfirm) {
-        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-            title = "Clear Credentials",
-            message = "This will disconnect the bot and stop the end-to-end chat. *Both Users* will lose access\nto the current *Chat Session*. Do you want to proceed?",
-            icon = Icons.Filled.NoAccounts,
-            iconTint = ErrorRed,
-            confirmText = "Proceed",
-            dismissText = "Cancel",
+        SettingsClearCredentialsDialog(
             onConfirm = {
                 onClearCredentials()
                 showClearConfirm = false
@@ -1083,7 +1017,7 @@ fun DangerZoneSheet(
     }
 
     if (showClearChatConfirm) {
-        com.mobile.superiorchat.ui.components.popups.ClearChatWarningDialog(
+        SettingsClearChatDialog(
             onDismiss = { showClearChatConfirm = false },
             onConfirmClear = { deleteMedia ->
                 onClearChat(deleteMedia)
@@ -1094,13 +1028,7 @@ fun DangerZoneSheet(
     }
 
     if (showUninstallConfirm) {
-        com.mobile.superiorchat.ui.components.popups.ActionDialog(
-            title = "Uninstall App",
-            message = "This will *permanently remove* the application from your device. Do you want to proceed?",
-            icon = Icons.Filled.DeleteForever,
-            iconTint = ErrorRed,
-            confirmText = "Proceed",
-            dismissText = "Cancel",
+        SettingsUninstallAppDialog(
             onConfirm = {
                 context.startActivity(android.content.Intent(android.content.Intent.ACTION_DELETE, android.net.Uri.parse("package:${context.packageName}")))
                 showUninstallConfirm = false

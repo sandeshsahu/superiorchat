@@ -10,7 +10,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.platform.LocalContext
 import androidx.activity.compose.BackHandler
-import com.mobile.superiorchat.ui.components.popups.ActionDialog
+import com.mobile.superiorchat.ui.components.popups.*
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -135,7 +135,7 @@ fun ProfileSettingsSheet(
                         onClick = { currentSheetState = ProfileSheetState.CHAT_SETTINGS }
                     )
                     
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     SettingsSheetRow(
                         icon = Icons.Filled.Notifications,
@@ -145,7 +145,7 @@ fun ProfileSettingsSheet(
                         onClick = { currentSheetState = ProfileSheetState.NOTIFICATIONS }
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     // Privacy & Security section
                     SettingsSheetRow(
@@ -206,9 +206,7 @@ fun ProfileSettingsSheet(
                         )
 
                         if (showAutoDownloadInfo) {
-                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                                title = "Auto-Download Media",
-                                message = "When enabled, photos and videos will automatically download when you receive them in chat. \n\nTurn this off to save mobile data.",
+                            ProfileAutoDownloadMediaInfoDialog(
                                 onDismiss = { showAutoDownloadInfo = false }
                             )
                         }
@@ -262,9 +260,7 @@ fun ProfileSettingsSheet(
                         )
 
                         if (showSecurityInfo) {
-                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                                title = "Screen Security",
-                                message = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\n*Screenshots* will appear pure black.",
+                            ProfileScreenSecurityInfoDialog(
                                 onDismiss = { showSecurityInfo = false }
                             )
                         }
@@ -330,21 +326,13 @@ fun ProfileSettingsSheet(
                         )
                         
                         if (showAppNotificationsInfo) {
-                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                                title = "App Notifications",
-                                message = "Controls the underlying Android System notification permissions.\n\nWhen disabled, the app is completely blocked from showing *Any background notifications*, making it ultra-stealthy. *Background sync* will still work perfectly.",
+                            ProfileAppNotificationsInfoDialog(
                                 onDismiss = { showAppNotificationsInfo = false }
                             )
                         }
                         
                         if (showDisableNotificationsDialog) {
-                            com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                                title = "Disable App Notifications",
-                                message = "To completely disable notifications without crashing the background service, you must turn them off from Android's System Settings.\n\nClick Proceed to open the *App Info* page, then tap *Notifications* and turn them off.",
-                                confirmText = "Proceed",
-                                dismissText = "Cancel",
-                                icon = Icons.Filled.Notifications,
-                                iconTint = PrimaryLight,
+                            ProfileDisableAppNotificationsDialog(
                                 onConfirm = {
                                     showDisableNotificationsDialog = false
                                     onAppNotificationsChange(false) // Save explicit intent to bypass startup prompt
@@ -359,7 +347,7 @@ fun ProfileSettingsSheet(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         var showNotificationInfo by remember { mutableStateOf(false) }
                         SettingsSwitchRow(
@@ -373,9 +361,7 @@ fun ProfileSettingsSheet(
                         )
 
                         if (showNotificationInfo) {
-                            com.mobile.superiorchat.ui.components.popups.InfoDialog(
-                                title = "New Message Notifications",
-                                message = "When *Enabled*, the stealth app's background service notification will visually change states (e.g., \"*Live Update*\" or \"*Heavy data usage detected*\") to alert you of new incoming messages.\n\nWhen *Disabled*, messages will still sync silently in the background, but the decoy *notification* will never change its idle state.",
+                            ProfileNewMessageNotificationsInfoDialog(
                                 onDismiss = { showNotificationInfo = false }
                             )
                         }

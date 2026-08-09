@@ -467,8 +467,8 @@ fun GlobalDialogHandler(
     when (dialogState) {
         is com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied -> {
             ActionDialog(
-                title = "Permission Denied",
-                message = "This permission has been permanently denied. Please enable it in the App Settings.",
+                title = PopupTexts.GlobalPermissions.PERMISSION_DENIED_TITLE,
+                message = PopupTexts.GlobalPermissions.PERMISSION_DENIED_MESSAGE,
                 icon = Icons.Filled.Warning,
                 iconTint = ErrorRed,
                 confirmText = "Go to Settings",
@@ -481,8 +481,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccessPermanentlyDenied -> {
             ActionDialog(
-                title = "Media Access Denied",
-                message = "You have previously denied full access to your media. To allow full access or select more photos, please go to Settings.",
+                title = PopupTexts.GlobalPermissions.MEDIA_DENIED_TITLE,
+                message = PopupTexts.GlobalPermissions.MEDIA_DENIED_MESSAGE,
                 icon = Icons.Filled.Warning,
                 iconTint = ErrorRed,
                 confirmText = "Go to Settings",
@@ -499,8 +499,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.ManageStorageRequired -> {
             ActionDialog(
-                title = "All Files Access Required",
-                message = "The file explorer requires full access to your device storage to view and attach documents.",
+                title = PopupTexts.GlobalPermissions.ALL_FILES_REQUIRED_TITLE,
+                message = PopupTexts.GlobalPermissions.ALL_FILES_REQUIRED_MESSAGE,
                 icon = Icons.Filled.Info,
                 confirmText = "Open Settings",
                 onConfirm = {
@@ -512,8 +512,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.PartialMediaAccess -> {
             ActionDialog(
-                title = "Limited Access Granted",
-                message = "You have granted limited access to your media. Would you like to grant full access so you can easily select any photo?",
+                title = PopupTexts.GlobalPermissions.LIMITED_ACCESS_TITLE,
+                message = PopupTexts.GlobalPermissions.LIMITED_ACCESS_MESSAGE,
                 icon = Icons.Filled.Info,
                 confirmText = "Grant Full Access",
                 dismissText = "Not Now",
@@ -529,8 +529,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.CameraPermissionRationale -> {
             ActionDialog(
-                title = "Camera Permission",
-                message = "We need access to your camera to take photos.",
+                title = PopupTexts.GlobalPermissions.CAMERA_RATIONALE_TITLE,
+                message = PopupTexts.GlobalPermissions.CAMERA_RATIONALE_MESSAGE,
                 icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
@@ -543,8 +543,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.MicrophonePermissionRationale -> {
             ActionDialog(
-                title = "Microphone Permission",
-                message = "We need access to your microphone to record voice messages.",
+                title = PopupTexts.GlobalPermissions.MIC_RATIONALE_TITLE,
+                message = PopupTexts.GlobalPermissions.MIC_RATIONALE_MESSAGE,
                 icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
@@ -557,8 +557,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.StoragePermissionRationale -> {
             ActionDialog(
-                title = "Storage Permission",
-                message = "We need access to your device storage to view and attach documents.",
+                title = PopupTexts.GlobalPermissions.STORAGE_RATIONALE_TITLE,
+                message = PopupTexts.GlobalPermissions.STORAGE_RATIONALE_MESSAGE,
                 icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
@@ -571,8 +571,8 @@ fun GlobalDialogHandler(
         }
         is com.mobile.superiorchat.ui.GlobalDialogState.CallPermissionRationale -> {
             ActionDialog(
-                title = "Camera & Microphone Required",
-                message = "We need access to both your camera and microphone to initiate the secure WebRTC call.",
+                title = PopupTexts.GlobalPermissions.CALL_RATIONALE_TITLE,
+                message = PopupTexts.GlobalPermissions.CALL_RATIONALE_MESSAGE,
                 icon = Icons.Filled.Info,
                 confirmText = "Agree",
                 dismissText = "Cancel",
@@ -1073,7 +1073,7 @@ fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
             val currentInputPin = if (step == 1) pin else confirmPin
             val isReservedPin = currentInputPin.startsWith("1234")
             val displayErrorMsg = if (isReservedPin) {
-                "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!"
+                PopupTexts.Security.RESERVED_PIN_ERROR
             } else errorMsg
 
             if (displayErrorMsg.isNotEmpty()) {
@@ -1085,10 +1085,10 @@ fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
                     if (newValue.length <= 6 && newValue.all { char -> char.isDigit() }) {
                         if (step == 1) {
                             pin = newValue
-                            errorMsg = if (newValue.startsWith("1234")) "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!" else ""
+                            errorMsg = if (newValue.startsWith("1234")) PopupTexts.Security.RESERVED_PIN_ERROR else ""
                         } else {
                             confirmPin = newValue
-                            errorMsg = if (newValue.startsWith("1234")) "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!" else ""
+                            errorMsg = if (newValue.startsWith("1234")) PopupTexts.Security.RESERVED_PIN_ERROR else ""
                         }
                     }
                 },
@@ -1128,20 +1128,20 @@ fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
                 onClick = {
                     if (step == 1) {
                         if (pin.startsWith("1234")) {
-                            errorMsg = "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!"
+                            errorMsg = PopupTexts.Security.RESERVED_PIN_ERROR
                         } else if (pin.length >= 4) {
                             step = 2
                             errorMsg = ""
                         } else {
-                            errorMsg = "PIN must be at least 4 digits"
+                            errorMsg = PopupTexts.Security.PIN_MIN_LENGTH_ERROR
                         }
                     } else {
                         if (confirmPin.startsWith("1234")) {
-                            errorMsg = "Chose diffrent Pin. \n1234 is reserved for Emergency Safeguard!"
+                            errorMsg = PopupTexts.Security.RESERVED_PIN_ERROR
                         } else if (pin == confirmPin) {
                             onSave(pin)
                         } else {
-                            errorMsg = "PINs do not match"
+                            errorMsg = PopupTexts.Security.PIN_MISMATCH_ERROR
                             confirmPin = ""
                         }
                     }

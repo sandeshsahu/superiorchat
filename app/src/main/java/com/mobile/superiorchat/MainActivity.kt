@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import com.mobile.superiorchat.ui.components.popups.*
 import androidx.compose.material3.Surface
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -172,18 +173,13 @@ open class MainActivity : ComponentActivity() {
                                 // Render setup dialog over AppScreen
                                 if (showSetupUninstallDialog) {
                                     val accessInstructions = when (BuildConfig.FLAVOR) {
-                                        "weather" -> "Important: The main app has no icon! You can access it by searching for *superior chat* (or your custom word) in the weather app search bar."
+                                        "weather" -> "Important: The main *Chat App* is hidden inside this weather app! You can access it by searching for *Superior Chat* in the weather app search bar."
                                         "captivePortal" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *Quick Settings tile*."
                                         else -> "Important: You can access the app from your launcher or via secret entry points."
                                     }
                                     
-                                    com.mobile.superiorchat.ui.components.popups.ActionDialog(
-                                        title = "Uninstall Setup App",
-                                        message = "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions",
-                                        icon = Icons.Filled.Delete,
-                                        iconTint = com.mobile.superiorchat.theme.ErrorRed,
-                                        confirmText = "Uninstall",
-                                        dismissText = "Keep",
+                                    SetupUninstallDialog(
+                                        accessInstructions = accessInstructions,
                                         onConfirm = {
                                             showSetupUninstallDialog = false
                                             try {

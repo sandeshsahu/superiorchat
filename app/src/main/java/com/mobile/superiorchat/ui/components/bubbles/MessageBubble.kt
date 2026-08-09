@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import com.mobile.superiorchat.ui.components.popups.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -197,11 +198,7 @@ fun MessageBubble(
 
 
     if (showApkInstallDialog) {
-        ActionDialog(
-            title = "Installation Permission Required",
-            message = "To install this app, you need to allow SuperiorChat to install unknown apps.",
-            icon = Icons.Filled.Warning,
-            confirmText = "Settings",
+        ApkInstallPermissionDialog(
             onConfirm = {
                 showApkInstallDialog = false
                 val intent = Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
@@ -226,11 +223,9 @@ fun MessageBubble(
             "voice", "audio" -> "Music"
             else -> "Downloads"
         }
-        ActionDialog(
-            title = "Save Media",
-            message = "Do you want to save this *$typeName* to your device's *$storagetype folder*?",
-            icon = Icons.Filled.Download,
-            confirmText = "Save",
+        SaveMediaConfirmDialog(
+            typeName = typeName,
+            storageType = storagetype,
             onConfirm = {
                 showSaveDialog = false
                 val fileToSave = com.mobile.superiorchat.media.LocalDirs.resolveFile(context, message.mediaLocalPath)

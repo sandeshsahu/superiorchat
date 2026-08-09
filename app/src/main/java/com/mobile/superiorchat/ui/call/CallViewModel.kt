@@ -196,6 +196,8 @@ class CallViewModel : ViewModel() {
                             }
                             val now = System.currentTimeMillis()
                             val localEventMsgId: Long
+                            // Ensure conversation row exists before inserting any message (FK requirement).
+                            AppGraph.appRepository.ensureConversationExists(chat)
                             if (now - lastCallEventTime < 15000 && lastCallEventMsgId != 0L) {
                                 localEventMsgId = lastCallEventMsgId
                                 AppGraph.appRepository.updateMessageText(localEventMsgId, "Outgoing Call")
@@ -326,8 +328,35 @@ class CallViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val chat = AppGraph.prefs.chatId
             if (chat.isEmpty()) return@launch
-            
+
             val now = System.currentTimeMillis()
+            val lastError = CallManager.lastCallFailedDueToError.value
+
+            // 1. Always save to call_history — no FK, always safe regardless of DB state.
+            val callStatus = when (lastError) {
+                CallError.NETWORK_ERROR -> "FAILED_NETWORK"
+                CallError.HARDWARE_ERROR -> "FAILED_HARDWARE"
+                CallError.INVALID_URL -> "FAILED_CONFIG"
+                else -> "FAILED_CONFIG"
+            }
+            val profile = AppGraph.database.profileDao().getProfileSync(chat)
+            val partnerName = profile?.title ?: "Unknown"
+            AppGraph.database.callHistoryDao().insertCall(
+                CallHistoryNode(
+                    timestamp = now,
+                    durationSeconds = 0L,
+                    isMissed = true,
+                    callStatus = callStatus,
+                    peerJsId = CallManager.currentRoomId ?: "",
+                    domain = CallManager.currentBaseUrl ?: "",
+                    partnerName = partnerName
+                )
+            )
+
+            // 2. Ensure conversation row exists, then insert the chat bubble event.
+            //    ensureConversationExists uses INSERT OR IGNORE — safe to call even if conversation
+            //    already exists. This guarantees the FK is always satisfied before insertMessage.
+            AppGraph.appRepository.ensureConversationExists(chat)
             val localEventMsgId = -now
             val eventNode = com.mobile.superiorchat.data.entity.MessageNode(
                 messageId = localEventMsgId,

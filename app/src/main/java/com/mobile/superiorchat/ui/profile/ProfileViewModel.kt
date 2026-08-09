@@ -25,7 +25,7 @@ import java.io.FileOutputStream
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
+import com.mobile.superiorchat.ui.components.popups.PopupTexts
 
 class ProfileViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -162,10 +162,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 val hours = e.retryAfterSeconds / 3600
                 val mins = (e.retryAfterSeconds % 3600) / 60
                 val timeStr = if (hours > 0) "${hours}h ${mins}m" else "${mins}m"
-                rateLimitError = "Telegram rate limit reached. Please try again in $timeStr."
+                rateLimitError = PopupTexts.Profile.getRateLimitErrorMessage(timeStr)
                 StatusFlow.reportStatus(SyncState.ERROR, "Rate Limited")
             } catch (e: Exception) {
-                rateLimitError = e.message ?: "Failed to update profile info."
+                rateLimitError = e.message ?: PopupTexts.Profile.DEFAULT_UPDATE_FAILED_ERROR
                 StatusFlow.reportStatus(SyncState.ERROR, "Update failed")
             } finally {
                 isSaving = false
@@ -217,6 +217,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun removeProfilePhoto() {
         val token = prefs.botToken
         if (token.isBlank()) return
-        StatusFlow.reportStatus(SyncState.ERROR, "Removing profile photos is only supported via @BotFather in Telegram.")
+        StatusFlow.reportStatus(SyncState.ERROR, PopupTexts.Profile.REMOVE_PHOTO_NOT_SUPPORTED_ERROR)
     }
 }

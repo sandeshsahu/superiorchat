@@ -44,8 +44,7 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import com.mobile.superiorchat.data.repository.LocalMediaItem
 import com.mobile.superiorchat.theme.*
-import com.mobile.superiorchat.ui.components.popups.ActionDialog
-import com.mobile.superiorchat.ui.components.popups.ErrorDialog
+import com.mobile.superiorchat.ui.components.popups.*
 import com.mobile.superiorchat.theme.TextPrimary
 import com.mobile.superiorchat.theme.TextSecondary
 import com.mobile.superiorchat.ui.skeletonEffect
@@ -263,13 +262,7 @@ fun ProfileScreen(
     // Rate limit warning before saving
     if (currentOverlay is ProfileOverlay.RateLimitWarning) {
         val pendingInfo = (currentOverlay as ProfileOverlay.RateLimitWarning).pendingInfo
-        ActionDialog(
-            title = "Warning: Rate Limits",
-            message = "Telegram strictly limits how often you can change your bot's name and description. Frequent updates will result in a 24-hour ban. Are you sure you want to proceed?",
-            icon = Icons.Filled.Warning,
-            iconTint = WarningAmber,
-            confirmText = "Proceed",
-            dismissText = "Cancel",
+        ProfileRateLimitWarningDialog(
             onConfirm = {
                 viewModel.saveInfo(pendingInfo.first, pendingInfo.second, pendingInfo.third)
                 currentOverlay = ProfileOverlay.None
@@ -282,8 +275,8 @@ fun ProfileScreen(
 
     // Rate limit error (from ViewModel)
     viewModel.rateLimitError?.let { errorMsg ->
-        ErrorDialog(
-            message = errorMsg,
+        ProfileRateLimitErrorDialog(
+            errorMessage = errorMsg,
             onDismiss = { viewModel.clearError() }
         )
     }
@@ -403,7 +396,7 @@ private fun ProfileHeroHeader(
                 Text("@$username", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Bot ID chip — read-only
             if (isLoading) {

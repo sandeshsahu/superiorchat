@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import com.mobile.superiorchat.ui.components.ScrollEvent
+import com.mobile.superiorchat.ui.components.popups.PopupTexts
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -601,7 +602,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (fileSize > 50 * 1024 * 1024) {
             val formattedSize = com.mobile.superiorchat.utils.FileUtils.formatFileSize(fileSize)
             val fileName = com.mobile.superiorchat.utils.FileUtils.getFileName(context, uri)
-            errorPopupMessage = "The selected file '$fileName' ($formattedSize) exceeds the 50MB limit.\n\nFiles larger than 50MB are not supported."
+            errorPopupMessage = PopupTexts.Chat.getFileTooLargeErrorMessage(fileName, formattedSize)
             return false
         }
 
@@ -665,7 +666,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             if (fileSize > 50 * 1024 * 1024) {
                 val formattedSize = com.mobile.superiorchat.utils.FileUtils.formatFileSize(fileSize)
                 val fileName = com.mobile.superiorchat.utils.FileUtils.getFileName(context, uri)
-                errorPopupMessage = "The selected file '$fileName' ($formattedSize) exceeds the 50MB limit.\n\nFiles larger than 50MB are not supported."
+                errorPopupMessage = PopupTexts.Chat.getFileTooLargeErrorMessage(fileName, formattedSize)
                 return false
             }
             val messageTime = getNextMessageTime()

@@ -1,5 +1,6 @@
 package com.mobile.superiorchat.ui.call
 
+import com.mobile.superiorchat.ui.components.popups.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -78,21 +79,13 @@ fun CallHistoryPage(viewModel: CallViewModel = viewModel()) {
     }
 
     if (showInfoDialog) {
-        InfoDialog(
-            title = "Recent Calls",
-            message = "A history of all secure peer-to-peer WebRTC calls initiated from this device.",
+        CallHistoryInfoDialog(
             onDismiss = { showInfoDialog = false }
         )
     }
 
     if (showClearWarning) {
-        ActionDialog(
-            title = "Clear History",
-            message = "Are you sure you want to clear your entire call history? This will delete all logs.",
-            icon = Icons.Filled.Warning,
-            iconTint = ErrorRed,
-            confirmText = "Clear",
-            dismissText = "Cancel",
+        CallHistoryClearDialog(
             onConfirm = {
                 viewModel.clearCallHistory()
                 showClearWarning = false
