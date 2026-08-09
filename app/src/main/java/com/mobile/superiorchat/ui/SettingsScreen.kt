@@ -378,6 +378,7 @@ fun AppSettingsPage(
                         com.mobile.superiorchat.ui.components.popups.InfoDialog(
                             title = "Fake Crash Decoy",
                             message = "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the Word \n'**$appName**' <-- for **2 seconds**.",
+                            customContent = { com.mobile.superiorchat.ui.components.popups.FakeCrashAnimPreview() },
                             onDismiss = { showFakeCrashInfo = false }
                         )
                     }
@@ -388,10 +389,11 @@ fun AppSettingsPage(
                 if (showFakeCrashWarning) {
                     com.mobile.superiorchat.ui.components.popups.ActionDialog(
                         title = "Enable Fake Crash?",
-                        message = "You are about to enable Fake Crash. This will display fake **Crash Dialog on Startup**.\n\nTo open the Chat, you must **Hold** the Word \n'**$appName**' <-- for **2 seconds**. Do not forget this!",
+                        message = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, **tap and hold the title** for 2 seconds.",
                         icon = Icons.Default.Warning,
                         iconTint = ErrorRed,
                         confirmText = "Enable",
+                        customContent = { com.mobile.superiorchat.ui.components.popups.FakeCrashAnimPreview() },
                         onConfirm = { 
                             onFakeCrashChange(true)
                             showFakeCrashWarning = false

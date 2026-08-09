@@ -32,7 +32,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -195,6 +198,7 @@ fun ErrorDialog(
 fun InfoDialog(
     title: String,
     message: String,
+    customContent: @Composable (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
@@ -263,6 +267,11 @@ fun InfoDialog(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    if (customContent != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        customContent()
+                    }
+
                     Spacer(modifier = Modifier.height(28.dp))
 
                     Row(
@@ -301,6 +310,7 @@ fun ActionDialog(
     noteIcon: androidx.compose.ui.graphics.vector.ImageVector? = Icons.Filled.Warning,
     icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     iconTint: Color = PrimaryLight,
+    customContent: @Composable (() -> Unit)? = null,
     confirmText: String,
     dismissText: String = "Dismiss",
     neutralText: String? = null,
@@ -378,6 +388,11 @@ fun ActionDialog(
                     )
                 }
             }
+        }
+        
+        if (customContent != null) {
+            Spacer(modifier = Modifier.height(16.dp))
+            customContent()
         }
         
         Spacer(modifier = Modifier.height(28.dp))
@@ -1200,6 +1215,119 @@ fun PinVerifyPopup(errorMsg: String, onDismiss: () -> Unit, onVerify: (String) -
                 shape = RoundedCornerShape(24.dp)
             ) {
                 Text("Verify", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun FakeCrashAnimPreview() {
+    val infiniteTransition = rememberInfiniteTransition(label = "anim")
+    val progress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "progress"
+    )
+
+    val isPressing = progress in 0.2f..0.8f
+    val pressProgress = if (progress < 0.2f) 0f else if (progress > 0.8f) 1f else (progress - 0.2f) / 0.6f
+    
+    val touchScale = if (isPressing) 1f + (pressProgress * 0.2f) else 1f
+    val touchAlpha = if (isPressing) 0.8f else 0f
+    
+    val rippleAlpha = if (isPressing) (1f - pressProgress) * 0.5f else 0f
+    val rippleScale = if (isPressing) 1f + pressProgress else 1f
+
+    val appName = androidx.compose.ui.res.stringResource(id = com.mobile.superiorchat.R.string.app_name)
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.Visibility, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text("PREVIEW", fontSize = 11.sp, color = PrimaryLight, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Surface(
+            color = SurfaceLevel2,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, DividerColor),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Column {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .drawBehind {
+                                if (pressProgress > 0f && progress < 0.9f) {
+                                    drawRect(
+                                        color = Color.White.copy(alpha = 0.15f),
+                                        size = Size(size.width * pressProgress, size.height)
+                                    )
+                                }
+                                if (progress in 0.8f..0.9f) {
+                                    drawRect(
+                                        color = PrimaryLight.copy(alpha = 0.3f),
+                                        size = size
+                                    )
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "$appName keeps stopping",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "A system error caused the application to stop responding.",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        lineHeight = 16.sp
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Text("Close app", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+                    }
+                }
+                
+                if (isPressing || progress in 0.8f..0.9f) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = 60.dp, y = (-4).dp)
+                    ) {
+                        // Ripple
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp * rippleScale)
+                                .align(Alignment.Center)
+                                .background(PrimaryLight.copy(alpha = rippleAlpha), androidx.compose.foundation.shape.CircleShape)
+                        )
+                        // Touch Icon
+                        Icon(
+                            imageVector = Icons.Filled.TouchApp,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = if (progress > 0.8f) 0f else touchAlpha),
+                            modifier = Modifier
+                                .size(32.dp * touchScale)
+                                .align(Alignment.Center)
+                        )
+                    }
+                }
             }
         }
     }
