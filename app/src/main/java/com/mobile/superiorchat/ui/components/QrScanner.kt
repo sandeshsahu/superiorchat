@@ -205,7 +205,7 @@ fun QrScanner(
                 maxSelection = 1,
                 showVideos = false,
                 onDismiss = { showCustomGallery = false },
-                onMediaSelected = { items ->
+                onMediaSelected = { items, _ ->
                     if (items.isNotEmpty()) {
                         QrManager.processUri(items.first().uri, context, onSuccess)
                         showCustomGallery = false

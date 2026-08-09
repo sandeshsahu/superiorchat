@@ -80,7 +80,7 @@ import android.provider.Settings
 fun FileExplorer(
     viewModel: ChatViewModel,
     onDismiss: () -> Unit,
-    onFilesSelected: (List<File>) -> Boolean,
+    onFilesSelected: (List<File>, String?) -> Boolean,
     onSystemPickerClick: () -> Unit,
     onBottomBarVisibilityChanged: (Boolean) -> Unit,
     onRequestManageStoragePermission: () -> Unit
@@ -88,13 +88,13 @@ fun FileExplorer(
     val context = LocalContext.current
     var explorerDirectory by remember { mutableStateOf<File?>(null) }
     val selectedFiles = remember { mutableStateListOf<File>() }
+    var captionText by remember { mutableStateOf("") }
     
     var isSearching by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(true) }
     
     LaunchedEffect(Unit) {
-        delay(250) // Wait for Dialog entry slide-up animation to finish to prevent lag
         viewModel.loadRecentFiles(context)
         isLoading = false
     }
@@ -117,8 +117,8 @@ fun FileExplorer(
             if (parent == null || explorerDirectory!!.absolutePath == rootPath) {
                 explorerDirectory = null
             } else {
-                explorerDirectory = parent
                 viewModel.openDirectory(context, parent)
+                explorerDirectory = parent
             }
         }
     }
@@ -165,8 +165,8 @@ fun FileExplorer(
                                 if (parent == null || explorerDirectory!!.absolutePath == rootPath) {
                                     explorerDirectory = null
                                 } else {
-                                    explorerDirectory = parent
-                                    viewModel.openDirectory(context, parent)
+                                     viewModel.openDirectory(context, parent)
+                                     explorerDirectory = parent
                                 }
                             } else {
                                 onDismiss()
@@ -193,26 +193,6 @@ fun FileExplorer(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
             )
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = selectedFiles.isNotEmpty(),
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
-                ExtendedFloatingActionButton(
-                    text = { Text("Send (${selectedFiles.size})", color = Color.Black, fontWeight = FontWeight.Bold) },
-                    icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black) },
-                    onClick = {
-                        val success = onFilesSelected(selectedFiles.toList())
-                        if (success) {
-                            onDismiss()
-                        }
-                    },
-                    containerColor = PrimaryLight,
-                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
-                )
-            }
         },
         containerColor = Color.Black,
         contentWindowInsets = WindowInsets(0.dp)
@@ -330,9 +310,9 @@ fun FileExplorer(
                                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
                                                 onRequestManageStoragePermission()
                                             } else {
-                                                val dir = Environment.getExternalStorageDirectory()
-                                                explorerDirectory = dir
-                                                viewModel.openDirectory(context, dir)
+                                                 val dir = Environment.getExternalStorageDirectory()
+                                                 viewModel.openDirectory(context, dir)
+                                                 explorerDirectory = dir
                                             }
                                         }
                                     )
@@ -386,10 +366,10 @@ fun FileExplorer(
                                             .clip(RoundedCornerShape(12.dp))
                                             .background(MaterialTheme.colorScheme.surfaceVariant)
                                             .clickable {
-                                                if (item.isDirectory) {
-                                                    explorerDirectory = fileObj
-                                                    viewModel.openDirectory(context, fileObj)
-                                                } else {
+                                                 if (item.isDirectory) {
+                                                     viewModel.openDirectory(context, fileObj)
+                                                     explorerDirectory = fileObj
+                                                 } else {
                                                     if (isSelected) {
                                                         selectedFiles.remove(fileObj)
                                                     } else {
@@ -461,6 +441,74 @@ fun FileExplorer(
                             }
                         }
                     }
+                }
+            }
+
+            // Bottom Floating Caption & Send Bar
+            AnimatedVisibility(
+                visible = selectedFiles.isNotEmpty(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(SurfaceLevel2)
+                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        BasicTextField(
+                            value = captionText,
+                            onValueChange = { captionText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                            maxLines = 2,
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(PrimaryLight),
+                            decorationBox = { innerTextField ->
+                                Box(contentAlignment = Alignment.CenterStart) {
+                                    if (captionText.isEmpty()) {
+                                        Text(
+                                            "Add a caption...",
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
+                    }
+
+                    ExtendedFloatingActionButton(
+                        text = { Text("Send (${selectedFiles.size})", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold) },
+                        icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimaryContainer) },
+                        onClick = {
+                            val success = onFilesSelected(selectedFiles.toList(), captionText.takeIf { it.isNotBlank() })
+                            if (success) {
+                                onDismiss()
+                            }
+                        },
+                        containerColor = PrimaryLight,
+                        elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                    )
                 }
             }
         }

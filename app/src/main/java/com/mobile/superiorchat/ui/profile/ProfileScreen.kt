@@ -190,7 +190,7 @@ fun ProfileScreen(
                 maxSelection = 1,
                 showVideos = false,
                 onDismiss = { currentOverlay = ProfileOverlay.None },
-                onMediaSelected = { items ->
+                onMediaSelected = { items, _ ->
                     if (items.isNotEmpty()) {
                         currentOverlay = ProfileOverlay.CropDialog(items.first().uri)
                         false // Prevent GalleryGrid from firing onDismiss and wiping our CropDialog!

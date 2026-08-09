@@ -736,21 +736,21 @@ fun ChatScreen(
         initialTab = if (currentPickerMode == PickerMode.FILES) PickerTab.FILES else PickerTab.GALLERY,
         onDismiss = { currentPickerMode = PickerMode.NONE },
         viewModel = viewModel,
-        onMediaSelected = { items ->
+        onMediaSelected = { items, caption ->
             val mappedItems = items.map { item ->
                 val type = if (item.isVideo) "video" else "photo"
                 Pair(item.uri, type)
             }
-            val success = viewModel.sendMediaBatch(context, mappedItems)
+            val success = viewModel.sendMediaBatch(context, mappedItems, caption)
             if (success) currentPickerMode = PickerMode.NONE
             success
         },
-        onFilesSelected = { files ->
+        onFilesSelected = { files, caption ->
             val mappedItems = files.map { file ->
                 val mediaType = com.mobile.superiorchat.utils.FileUtils.getMediaType(file.name)
                 Pair(Uri.fromFile(file), mediaType)
             }
-            val success = viewModel.sendMediaBatch(context, mappedItems)
+            val success = viewModel.sendMediaBatch(context, mappedItems, caption)
             if (success) currentPickerMode = PickerMode.NONE
             success
         },

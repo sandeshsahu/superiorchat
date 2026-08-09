@@ -75,20 +75,24 @@ fun GalleryGrid(
     maxSelection: Int = Int.MAX_VALUE,
     showVideos: Boolean = true,
     onDismiss: () -> Unit,
-    onMediaSelected: (List<LocalMediaItem>) -> Boolean,
-    onCameraClick: () -> Unit
+    onMediaSelected: (List<LocalMediaItem>, String?) -> Boolean,
+    onCameraClick: () -> Unit,
+    onBottomBarVisibilityChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val selectedItems = remember { mutableStateListOf<LocalMediaItem>() }
+    var captionText by remember { mutableStateOf("") }
     var previewMedia by remember { mutableStateOf<LocalMediaItem?>(null) }
     var isLoading by remember { mutableStateOf(preLoadedMedia == null) }
     var localMediaState by remember { mutableStateOf<List<LocalMediaItem>>(preLoadedMedia ?: emptyList()) }
+
+    LaunchedEffect(selectedItems.size) {
+        onBottomBarVisibilityChanged(selectedItems.isEmpty())
+    }
     
     LaunchedEffect(preLoadedMedia) {
         if (preLoadedMedia == null) {
             isLoading = true
-            // Delay to allow MediaPicker's entry animation (300ms) to complete before stealing CPU for DB/Cursor query
-            delay(350)
             kotlinx.coroutines.withContext(Dispatchers.IO) {
                 val media = com.mobile.superiorchat.core.AppGraph.appRepository.getAllLocalMedia(context)
                 kotlinx.coroutines.withContext(Dispatchers.Main) {
@@ -156,37 +160,6 @@ fun GalleryGrid(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
             )
         },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = selectedItems.isNotEmpty(),
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-            ) {
-                ExtendedFloatingActionButton(
-                    text = {
-                        AnimatedContent(
-                            targetState = selectedItems.size,
-                            transitionSpec = {
-                                (slideInVertically { height -> height } + fadeIn())
-                                    .togetherWith(slideOutVertically { height -> -height } + fadeOut())
-                            },
-                            label = "fab_counter"
-                        ) { count ->
-                            Text("Send ($count)", color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
-                    },
-                    icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = Color.Black) },
-                    onClick = {
-                        val success = onMediaSelected(selectedItems.toList())
-                        if (success) {
-                            onDismiss()
-                        }
-                    },
-                    containerColor = PrimaryLight,
-                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
-                )
-            }
-        },
         containerColor = Color.Black,
         contentWindowInsets = WindowInsets(0.dp)
     ) { paddingValues ->
@@ -225,7 +198,7 @@ fun GalleryGrid(
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(4.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp, start = 4.dp, end = 4.dp, top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxSize()
@@ -251,7 +224,7 @@ fun GalleryGrid(
                                         if (maxSelection == 1) {
                                             selectedItems.clear()
                                             selectedItems.add(media)
-                                            val success = onMediaSelected(listOf(media))
+                                            val success = onMediaSelected(listOf(media), captionText.takeIf { it.isNotBlank() })
                                             if (success) {
                                                 onDismiss()
                                             }
@@ -269,6 +242,85 @@ fun GalleryGrid(
                             )
                         }
                     }
+                }
+            }
+
+            // Bottom Floating Caption & Send Bar
+            AnimatedVisibility(
+                visible = selectedItems.isNotEmpty(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(SurfaceLevel2)
+                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        androidx.compose.foundation.text.BasicTextField(
+                            value = captionText,
+                            onValueChange = { captionText = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                            maxLines = 2,
+                            cursorBrush = androidx.compose.ui.graphics.SolidColor(PrimaryLight),
+                            decorationBox = { innerTextField ->
+                                Box(contentAlignment = Alignment.CenterStart) {
+                                    if (captionText.isEmpty()) {
+                                        Text(
+                                            "Add a caption...",
+                                            color = Color.White.copy(alpha = 0.5f),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
+                        )
+                    }
+
+                    ExtendedFloatingActionButton(
+                        text = {
+                            AnimatedContent(
+                                targetState = selectedItems.size,
+                                transitionSpec = {
+                                    (slideInVertically { height -> height } + fadeIn())
+                                        .togetherWith(slideOutVertically { height -> -height } + fadeOut())
+                                },
+                                label = "fab_counter"
+                            ) { count ->
+                                Text("Send ($count)", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimaryContainer) },
+                        onClick = {
+                            val success = onMediaSelected(selectedItems.toList(), captionText.takeIf { it.isNotBlank() })
+                            if (success) {
+                                onDismiss()
+                            }
+                        },
+                        containerColor = PrimaryLight,
+                        elevation = FloatingActionButtonDefaults.elevation(8.dp)
+                    )
                 }
             }
         }

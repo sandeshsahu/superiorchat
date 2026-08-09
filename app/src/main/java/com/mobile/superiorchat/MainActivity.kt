@@ -65,7 +65,15 @@ open class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val filter = android.content.IntentFilter(android.content.Intent.ACTION_SCREEN_OFF)
-        registerReceiver(screenOffReceiver, filter)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenOffReceiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(screenOffReceiver, filter)
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to register screenOffReceiver: ${e.message}", LogLevel.WARN)
+        }
 
         if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
             setTheme(R.style.Theme_SuperiorChat_Transparent)

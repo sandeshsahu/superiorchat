@@ -48,6 +48,7 @@ data class Message(
     val chat: Chat,
     val date: Long = 0,
     val text: String? = null,
+    val caption: String? = null,
     val photo: List<JsonElement>? = null,
     val document: JsonElement? = null,
     val video: JsonElement? = null,

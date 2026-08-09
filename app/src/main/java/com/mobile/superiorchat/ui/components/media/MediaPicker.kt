@@ -55,8 +55,8 @@ fun MediaPicker(
     initialTab: PickerTab,
     onDismiss: () -> Unit,
     viewModel: ChatViewModel,
-    onMediaSelected: (List<LocalMediaItem>) -> Boolean,
-    onFilesSelected: (List<File>) -> Boolean,
+    onMediaSelected: (List<LocalMediaItem>, String?) -> Boolean,
+    onFilesSelected: (List<File>, String?) -> Boolean,
     onCameraClick: () -> Unit,
     onSystemPickerClick: () -> Unit,
     onRequestManageStoragePermission: () -> Unit
@@ -64,7 +64,6 @@ fun MediaPicker(
     if (!visible) return
 
     val scope = rememberCoroutineScope()
-    var currentTab by remember { mutableStateOf(initialTab) }
     var isBottomBarVisible by remember { mutableStateOf(true) }
 
     // Dialog layout animation trigger via MutableTransitionState to avoid brittle delay()
@@ -124,6 +123,7 @@ fun MediaPicker(
                     .fillMaxSize()
                     .background(Color.Black)
                     .systemBarsPadding()
+                    .imePadding()
             ) {
                 // Drag handle pill at the top of the sheet
                 Box(
@@ -140,35 +140,29 @@ fun MediaPicker(
                     )
                 }
 
+                val pagerState = androidx.compose.foundation.pager.rememberPagerState(
+                    initialPage = if (initialTab == PickerTab.GALLERY) 0 else 1,
+                    pageCount = { 2 }
+                )
+                val currentTab by remember {
+                    derivedStateOf {
+                        if (pagerState.currentPage == 0) PickerTab.GALLERY else PickerTab.FILES
+                    }
+                }
+
                 // Inner content layout
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    val pagerState = androidx.compose.foundation.pager.rememberPagerState(
-                        initialPage = if (initialTab == PickerTab.GALLERY) 0 else 1,
-                        pageCount = { 2 }
-                    )
-                    
-                    LaunchedEffect(pagerState.currentPage) {
-                        currentTab = if (pagerState.currentPage == 0) PickerTab.GALLERY else PickerTab.FILES
-                    }
-                    
-                    LaunchedEffect(currentTab) {
-                        val targetPage = if (currentTab == PickerTab.GALLERY) 0 else 1
-                        if (pagerState.currentPage != targetPage) {
-                            pagerState.animateScrollToPage(targetPage)
-                        }
-                    }
-
                     androidx.compose.foundation.pager.HorizontalPager(
                         state = pagerState,
+                        beyondViewportPageCount = 1,
                         modifier = Modifier.fillMaxSize()
                     ) { page ->
                         when (page) {
                             0 -> {
-                                isBottomBarVisible = true
                                 GalleryGrid(
                                     preLoadedMedia = viewModel.allLocalMedia,
                                     onDismiss = animatedDismiss,
@@ -191,16 +185,15 @@ fun MediaPicker(
                 }
 
                 // Shared animated bottom bar
-                AnimatedVisibility(
-                    visible = isBottomBarVisible,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                ) {
-                    SharedPickerBottomBar(
-                        currentTab = currentTab,
-                        onTabSelected = { currentTab = it }
-                    )
-                }
+                SharedPickerBottomBar(
+                    currentTab = currentTab,
+                    onTabSelected = { targetTab ->
+                        scope.launch {
+                            val targetPage = if (targetTab == PickerTab.GALLERY) 0 else 1
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    }
+                )
             }
         }
     }

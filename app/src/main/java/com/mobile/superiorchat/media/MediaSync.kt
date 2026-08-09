@@ -393,13 +393,14 @@ object MediaSync {
                         StatusFlow.updateProgress(messageId, prog)
                     }
                 }
+                val caption = msg?.text?.takeIf { it.isNotBlank() }
                 when (mediaType) {
-                    "photo" -> TelegramApi.sendPhoto(token, chatId, file, onProgress = progressListener)
-                    "video" -> TelegramApi.sendVideo(token, chatId, file, onProgress = progressListener)
-                    "voice" -> TelegramApi.sendVoice(token, chatId, file, onProgress = progressListener)
-                    "audio" -> TelegramApi.sendAudio(token, chatId, file, onProgress = progressListener)
+                    "photo" -> TelegramApi.sendPhoto(token, chatId, file, caption = caption, onProgress = progressListener)
+                    "video" -> TelegramApi.sendVideo(token, chatId, file, caption = caption, onProgress = progressListener)
+                    "voice" -> TelegramApi.sendVoice(token, chatId, file, caption = caption, onProgress = progressListener)
+                    "audio" -> TelegramApi.sendAudio(token, chatId, file, caption = caption, onProgress = progressListener)
                     "document" -> {
-                        TelegramApi.sendDocument(token, chatId, file, caption = "", displayName = displayName, onProgress = progressListener)
+                        TelegramApi.sendDocument(token, chatId, file, caption = caption ?: "", displayName = displayName, onProgress = progressListener)
                     }
                     else -> null
                 }

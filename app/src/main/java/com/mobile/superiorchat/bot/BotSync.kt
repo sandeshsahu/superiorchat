@@ -257,7 +257,7 @@ class BotSync(private val context: Context) {
         }
 
         val chatId = message.chat.id.toString()
-        val text = message.text ?: ""
+        val text = message.text ?: message.caption ?: ""
 
         // All incoming messages from polling are from Client B (isFromMe = false)
         var mediaType: String? = null

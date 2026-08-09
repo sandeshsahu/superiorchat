@@ -590,7 +590,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendMedia(context: Context, uri: Uri, mediaType: String): Boolean {
+    fun sendMedia(context: Context, uri: Uri, mediaType: String, caption: String? = null): Boolean {
         val chatId = prefs.chatId
         
         if (chatId.isBlank()) return false
@@ -616,7 +616,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     messageId = tempMessageId,
                     conversationId = chatId,
                     senderId = "ME",
-                    text = "",
+                    text = caption ?: "",
                     timestamp = messageTime,
                     isFromMe = true,
                     mediaType = mediaType,
@@ -656,7 +656,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         return true
     }
 
-    fun sendMediaBatch(context: Context, items: List<Pair<Uri, String>>): Boolean {
+    fun sendMediaBatch(context: Context, items: List<Pair<Uri, String>>, caption: String? = null): Boolean {
         val chatId = prefs.chatId
         if (chatId.isBlank()) return false
 
@@ -679,13 +679,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             
             // First pass: Insert all into UI immediately
             repository.ensureConversationExists(chatId)
-            for ((tempMessageId, uri, mediaType) in validItems) {
+            for ((index, item) in validItems.withIndex()) {
+                val (tempMessageId, uri, mediaType) = item
                 val originalName = com.mobile.superiorchat.utils.FileUtils.getFileName(context, uri)
                 val newMsg = MessageNode(
                     messageId = tempMessageId,
                     conversationId = chatId,
                     senderId = "ME",
-                    text = "",
+                    text = if (index == 0) (caption ?: "") else "",
                     timestamp = -tempMessageId,
                     isFromMe = true,
                     mediaType = mediaType,
@@ -826,9 +827,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openDirectory(context: Context, directory: File) {
         currentExplorerDirectory = directory
-        viewModelScope.launch(Dispatchers.IO) {
-            explorerFilesList = repository.getFilesInDirectory(context, directory)
-        }
+        explorerFilesList = repository.getFilesInDirectory(context, directory)
     }
 
     fun deleteMessage(message: MessageNode) {
