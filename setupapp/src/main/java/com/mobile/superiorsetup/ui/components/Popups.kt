@@ -384,7 +384,7 @@ fun DisplayQrPopup(
                     .bounceClick(scaleDown = 0.95f) {
                         qrBitmap?.let { bmp ->
                             try {
-                                android.provider.MediaStore.Images.Media.insertImage(context.contentResolver, bmp, "SuperiorChat_Config", null)
+                                android.provider.MediaStore.Images.Media.insertImage(context.contentResolver, bmp, java.util.UUID.randomUUID().toString(), null)
                                 android.widget.Toast.makeText(context, "Saved to Gallery", android.widget.Toast.LENGTH_SHORT).show()
                             } catch (e: Exception) {
                                 android.widget.Toast.makeText(context, "Failed to save", android.widget.Toast.LENGTH_SHORT).show()
@@ -412,7 +412,7 @@ fun DisplayQrPopup(
                             try {
                                 val cachePath = java.io.File(context.cacheDir, "images")
                                 cachePath.mkdirs()
-                                val file = java.io.File(cachePath, "qr_config.png")
+                                val file = java.io.File(cachePath, "${java.util.UUID.randomUUID()}.png")
                                 val stream = java.io.FileOutputStream(file)
                                 bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
                                 stream.close()

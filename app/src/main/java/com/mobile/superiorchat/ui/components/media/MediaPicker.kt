@@ -167,7 +167,8 @@ fun MediaPicker(
                                     preLoadedMedia = viewModel.allLocalMedia,
                                     onDismiss = animatedDismiss,
                                     onMediaSelected = onMediaSelected,
-                                    onCameraClick = onCameraClick
+                                    onCameraClick = onCameraClick,
+                                    allowHiddenMedia = true
                                 )
                             }
                             1 -> {

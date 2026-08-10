@@ -16,7 +16,13 @@ class CodeReceiver : BroadcastReceiver() {
             return
         }
 
-        val code = intent.data?.schemeSpecificPart ?: "Unknown"
+        val code = intent.data?.host ?: return
+        val customCode = com.mobile.superiorchat.core.AppGraph.prefs.customDialerCode
+        
+        if (code != "9131" && (customCode.isBlank() || code != customCode)) {
+            return
+        }
+
         AppLog.log(LogCategory.SYSTEM, "Secret dialer code triggered (*#*#$code#*#*). Launching MainActivity.")
 
         val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {

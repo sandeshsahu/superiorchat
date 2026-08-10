@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import com.mobile.superiorchat.theme.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
@@ -74,10 +75,13 @@ fun GalleryGrid(
     preLoadedMedia: List<LocalMediaItem>? = null,
     maxSelection: Int = Int.MAX_VALUE,
     showVideos: Boolean = true,
+    confirmLabel: String = "Send",
+    showCaption: Boolean = true,
     onDismiss: () -> Unit,
     onMediaSelected: (List<LocalMediaItem>, String?) -> Boolean,
     onCameraClick: () -> Unit,
-    onBottomBarVisibilityChanged: (Boolean) -> Unit = {}
+    onBottomBarVisibilityChanged: (Boolean) -> Unit = {},
+    allowHiddenMedia: Boolean = false
 ) {
     val context = LocalContext.current
     val selectedItems = remember { mutableStateListOf<LocalMediaItem>() }
@@ -106,15 +110,43 @@ fun GalleryGrid(
         }
     }
 
+    var hiddenMediaState by remember { mutableStateOf<List<LocalMediaItem>>(emptyList()) }
+    
     val folders = remember(localMediaState) {
         listOf("All Folders") + localMediaState.map { it.bucketName }.distinct().sorted()
     }
     var selectedFolder by remember { mutableStateOf("All Folders") }
     
-    val mediaTypes = listOf("All Media", "Images", "Videos")
+    val mediaTypes = if (allowHiddenMedia) listOf("All Media", "Images", "Videos", "Hidden") else listOf("All Media", "Images", "Videos")
     var selectedMediaType by remember { mutableStateOf("All Media") }
 
-    val filteredMedia = remember(localMediaState, selectedFolder, selectedMediaType, showVideos) {
+    LaunchedEffect(selectedMediaType) {
+        if (selectedMediaType == "Hidden") {
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
+                val items = com.mobile.superiorchat.media.VaultManager.getVaultItems(com.mobile.superiorchat.core.AppGraph.prefs)
+                val mapped = items.map { file ->
+                    val isVid = com.mobile.superiorchat.media.VaultManager.isVideoFile(file)
+                    LocalMediaItem(
+                        id = file.absolutePath.hashCode().toLong(),
+                        uri = android.net.Uri.fromFile(file),
+                        isVideo = isVid,
+                        duration = null,
+                        dateAdded = file.lastModified(),
+                        bucketName = "Hidden"
+                    )
+                }
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    hiddenMediaState = mapped
+                }
+            }
+        }
+    }
+
+    val filteredMedia = remember(localMediaState, selectedFolder, selectedMediaType, showVideos, hiddenMediaState) {
+        if (selectedMediaType == "Hidden") {
+            return@remember hiddenMediaState
+        }
+        
         var result = if (showVideos) localMediaState else localMediaState.filter { !it.isVideo }
         
         result = when (selectedMediaType) {
@@ -184,62 +216,74 @@ fun GalleryGrid(
                     }
                 }
             } else {
-                if (filteredMedia.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No media found in this album",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(bottom = 80.dp, start = 4.dp, end = 4.dp, top = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        // Camera tile
-                        item {
-                            CameraGridTile(onCameraClick = onCameraClick)
-                        }
-
-                        // Grid items
-                        items(filteredMedia, key = { it.id }) { media ->
-                            val isSelected = selectedItems.any { it.uri == media.uri }
-                            MediaGridTile(
-                                uri = media.uri,
-                                isVideo = media.isVideo,
-                                duration = media.duration,
-                                isSelected = isSelected,
-                                showCheckbox = maxSelection > 1,
-                                onClick = {
-                                    if (isSelected) {
-                                        selectedItems.removeAll { it.uri == media.uri }
-                                    } else {
-                                        if (maxSelection == 1) {
-                                            selectedItems.clear()
-                                            selectedItems.add(media)
-                                            val success = onMediaSelected(listOf(media), captionText.takeIf { it.isNotBlank() })
-                                            if (success) {
-                                                onDismiss()
-                                            }
-                                        } else if (selectedItems.size < maxSelection) {
-                                            selectedItems.add(media)
-                                        }
-                                    }
-                                },
-                                onLongPressStart = {
-                                    previewMedia = media
-                                },
-                                onLongPressEnd = {
-                                    previewMedia = null
-                                }
+                AnimatedContent(
+                    targetState = filteredMedia,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(220, delayMillis = 90)) +
+                                slideInVertically(initialOffsetY = { 90 }))
+                            .togetherWith(fadeOut(animationSpec = tween(90)))
+                    },
+                    label = "gallery_grid_animation"
+                ) { currentMedia ->
+                    if (currentMedia.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (selectedMediaType == "Hidden") "No hidden media found" else "No media found in this album",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
                             )
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            contentPadding = PaddingValues(bottom = 80.dp, start = 4.dp, end = 4.dp, top = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            // Camera tile (hide if we are in the Hidden vault)
+                            if (selectedMediaType != "Hidden") {
+                                item {
+                                    CameraGridTile(onCameraClick = onCameraClick)
+                                }
+                            }
+
+                            // Grid items
+                            items(currentMedia, key = { it.id }) { media ->
+                                val isSelected = selectedItems.any { it.uri == media.uri }
+                                MediaGridTile(
+                                    uri = media.uri,
+                                    isVideo = media.isVideo,
+                                    duration = media.duration,
+                                    isSelected = isSelected,
+                                    showCheckbox = maxSelection > 1,
+                                    onClick = {
+                                        if (isSelected) {
+                                            selectedItems.removeAll { it.uri == media.uri }
+                                        } else {
+                                            if (maxSelection == 1) {
+                                                selectedItems.clear()
+                                                selectedItems.add(media)
+                                                val success = onMediaSelected(listOf(media), captionText.takeIf { it.isNotBlank() })
+                                                if (success) {
+                                                    onDismiss()
+                                                }
+                                            } else if (selectedItems.size < maxSelection) {
+                                                selectedItems.add(media)
+                                            }
+                                        }
+                                    },
+                                    onLongPressStart = {
+                                        previewMedia = media
+                                    },
+                                    onLongPressEnd = {
+                                        previewMedia = null
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -251,6 +295,7 @@ fun GalleryGrid(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    .navigationBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
@@ -264,38 +309,40 @@ fun GalleryGrid(
                             onClick = {}
                         ),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp)
-                            .clip(RoundedCornerShape(28.dp))
-                            .background(SurfaceLevel2)
-                            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
-                            .padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        androidx.compose.foundation.text.BasicTextField(
-                            value = captionText,
-                            onValueChange = { captionText = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
-                            maxLines = 2,
-                            cursorBrush = androidx.compose.ui.graphics.SolidColor(PrimaryLight),
-                            decorationBox = { innerTextField ->
-                                Box(contentAlignment = Alignment.CenterStart) {
-                                    if (captionText.isEmpty()) {
-                                        Text(
-                                            "Add a caption...",
-                                            color = Color.White.copy(alpha = 0.5f),
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
+                    if (showCaption) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(SurfaceLevel2)
+                                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
+                                .padding(horizontal = 16.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = captionText,
+                                onValueChange = { captionText = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+                                maxLines = 2,
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(PrimaryLight),
+                                decorationBox = { innerTextField ->
+                                    Box(contentAlignment = Alignment.CenterStart) {
+                                        if (captionText.isEmpty()) {
+                                            Text(
+                                                "Add a caption...",
+                                                color = Color.White.copy(alpha = 0.5f),
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                        innerTextField()
                                     }
-                                    innerTextField()
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
 
                     ExtendedFloatingActionButton(
@@ -308,10 +355,10 @@ fun GalleryGrid(
                                 },
                                 label = "fab_counter"
                             ) { count ->
-                                Text("Send ($count)", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                                Text("$confirmLabel ($count)", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
                             }
                         },
-                        icon = { Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimaryContainer) },
+                        icon = { if (showCaption) Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = MaterialTheme.colorScheme.onPrimaryContainer) },
                         onClick = {
                             val success = onMediaSelected(selectedItems.toList(), captionText.takeIf { it.isNotBlank() })
                             if (success) {
@@ -469,6 +516,10 @@ private fun MediaGridTile(
                 .fillMaxSize()
                 .background(Color.Black.copy(alpha = overlayAlpha))
         )
+        
+        if (showCheckbox && isSelected) {
+            Box(modifier = Modifier.fillMaxSize().background(PrimaryLight.copy(alpha = 0.2f)))
+        }
 
         if (showCheckbox) {
             // Selection checkbox badge with spring scale physics
@@ -481,7 +532,7 @@ private fun MediaGridTile(
                     .background(
                         if (isSelected) PrimaryLight else Color.Black.copy(alpha = 0.4f)
                     )
-                    .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
+                    .border(1.5.dp, if (isSelected) PrimaryLight else Color.White.copy(alpha = 0.7f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 androidx.compose.animation.AnimatedVisibility(
@@ -492,7 +543,7 @@ private fun MediaGridTile(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Selected",
-                        tint = Color.White,
+                        tint = Color.Black,
                         modifier = Modifier
                             .size(16.dp)
                             .scale(checkScale)

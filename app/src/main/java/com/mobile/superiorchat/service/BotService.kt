@@ -64,7 +64,7 @@ class BotService : Service() {
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(NOTIFICATION_ID, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING)
+                startForeground(NOTIFICATION_ID, notification, com.mobile.superiorchat.BuildConfig.FG_SERVICE_TYPE)
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }

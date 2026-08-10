@@ -28,16 +28,19 @@ android {
             dimension = "camouflage"
             applicationId = "com.mobile.superiorchat"
             buildConfigField("boolean", "ENABLE_QS_TILE", "false")
+            buildConfigField("int", "FG_SERVICE_TYPE", "android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_REMOTE_MESSAGING")
         }
         create("captivePortal") {
             dimension = "camouflage"
             applicationId = "com.android.connectivity.stats"
             buildConfigField("boolean", "ENABLE_QS_TILE", "true")
+            buildConfigField("int", "FG_SERVICE_TYPE", "android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC")
         }
         create("weather") {
             dimension = "camouflage"
             applicationId = "com.android.weather.info"
             buildConfigField("boolean", "ENABLE_QS_TILE", "false")
+            buildConfigField("int", "FG_SERVICE_TYPE", "android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC")
         }
     }
 

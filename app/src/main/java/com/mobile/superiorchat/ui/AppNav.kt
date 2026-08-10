@@ -55,6 +55,7 @@ import com.mobile.superiorchat.ui.call.CallHistoryPage
 import com.mobile.superiorchat.ui.call.CallViewModel
 import com.mobile.superiorchat.core.call.CallManager
 import com.mobile.superiorchat.core.call.CallState
+import com.mobile.superiorchat.ui.components.vault.VaultScreen
 
 fun Context.findActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
@@ -176,7 +177,7 @@ fun AppScreen(
                 val permsToCheck = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                     arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
                 } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
-                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_AUDIO)
+                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
                 } else {
                     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
                 }
@@ -245,15 +246,6 @@ fun AppScreen(
                     pinLength = com.mobile.superiorchat.core.AppGraph.prefs.appLockPinLength,
                     onUnlock = { pin ->
                         val result = viewModel.unlockApp(pin)
-                        if (result == UnlockResult.DURESS) {
-                            try {
-                                val managerClass = Class.forName("com.mobile.superiorchat.camouflage.engine.Manager")
-                                val method = managerClass.getMethod("launchDecoy", android.content.Context::class.java)
-                                method.invoke(managerClass.getField("INSTANCE").get(null), context)
-                            } catch (e: Exception) {
-                                (context as? android.app.Activity)?.finishAndRemoveTask()
-                            }
-                        }
                         result
                     }
                 )
@@ -262,6 +254,12 @@ fun AppScreen(
                 Box(modifier = Modifier.fillMaxSize().background(Background))
             }
         } else {
+            if (viewModel.isDuressModeActive) {
+                VaultScreen(
+                    permissionHandler = permissionHandler,
+                    onGlobalDialog = { viewModel.activeGlobalDialog = it }
+                )
+            } else {
                 ModalNavigationDrawer(
         drawerState = drawerState,
         gesturesEnabled = currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
@@ -492,10 +490,12 @@ fun AppScreen(
                                 webrtcBaseUrl = viewModel.webrtcBaseUrl,
                                 isTileAccessEnabled = viewModel.tileAccessEnabled,
                                 customAccessWord = viewModel.customAccessWord,
+                                customDialerCode = viewModel.customDialerCode,
                                 onBotTokenChange = { viewModel.botToken = it },
                                 onChatIdChange = { viewModel.chatId = it },
                                 onTileAccessChange = { viewModel.toggleTileAccess(it) },
                                 onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
+                                onCustomDialerCodeChange = { viewModel.updateCustomDialerCode(it) },
                                 onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                                 onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                                 onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
@@ -706,10 +706,13 @@ fun AppScreen(
                 }
             }
                 }
+                }
             }
         }
     }
 }
+
+
 
 @Composable
 private fun ExternalLinkItem(title: String, icon: ImageVector, url: String) {

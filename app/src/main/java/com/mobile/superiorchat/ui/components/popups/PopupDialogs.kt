@@ -42,13 +42,13 @@ object PopupTexts {
 
         const val FAKE_CRASH_TITLE = "Fake Crash Protection"
         const val FAKE_CRASH_MESSAGE = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, **Tap and Hold the Title** for 2 seconds."
-        const val FAKE_CRASH_CONFIRM = "Enable Fake Crash"
+        const val FAKE_CRASH_CONFIRM = "Enable"
 
         fun getFakeCrashInfoMessage(appName: String): String =
             "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the Word \n'**$appName**' <-- for **2 seconds**."
 
         const val SAFEGUARD_TITLE = "Emergency Safeguard PIN (1234)"
-        const val SAFEGUARD_MESSAGE = "Emergency Safeguard is **Always Active** by default for maximum security.\n\nIf forced to unlock the app under duress, enter **1234** as your PIN.\n\n• **Fake Opening**: Instantly opens Network Settings / Weather app.\n• **Stealth Mode**: Other person assumes its just System / Weather app."
+        const val SAFEGUARD_MESSAGE = "Emergency Safeguard is **Always Active** by default for maximum security.\n\nIf forced to unlock, enter **1234** as your PIN.\n\n• **Hidden Vault**: Instantly opens fully working media vault, users can hide media files there, but its not recommended to hide your private Images/Videos.\n• **Defence**: In case of forced to open then use 1234 code to justify as its a media hider app."
         const val SAFEGUARD_NOTE = "Do NOT set 1234 as your normal PIN! It is reserved exclusively for emergency stealth mode."
 
         const val CAMO_NOTIF_INFO_TITLE = "Notification Camouflage"
@@ -76,6 +76,12 @@ object PopupTexts {
 
         fun getCustomAccessConfirmMessage(word: String): String =
             "Are you sure you want to set your access word to *$word*? If you forget this word, you can always use the default *Superior Chat* fallback to regain access."
+
+        const val CUSTOM_DIALER_INFO_TITLE = "Custom Dialer Code"
+        const val CUSTOM_DIALER_INFO_MESSAGE = "Set a custom secret code that you can type into your phone's dialer to open the app. The default ** *#*#9131#*#* ** will always work as a fallback."
+
+        fun getCustomDialerConfirmMessage(code: String): String =
+            "Are you sure you want to set your custom dialer code to *$code*? (You will dial ** *#*#$code#*#* **). If you forget it, you can always use the default ** *#*#9131#*#* ** fallback."
 
         const val BOT_INFO_TITLE = "Bot Credentials"
         const val BOT_INFO_MESSAGE = "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*."
@@ -364,7 +370,7 @@ fun SettingsSafeguardInfoDialog(
         message = PopupTexts.Settings.SAFEGUARD_MESSAGE,
         note = PopupTexts.Settings.SAFEGUARD_NOTE,
         noteIcon = Icons.Filled.Warning,
-        icon = Icons.Filled.Shield,
+        icon = Icons.Filled.Security,
         iconTint = PrimaryLight,
         confirmText = "Got it",
         onConfirm = onDismiss,
@@ -443,8 +449,36 @@ fun SettingsCustomAccessWordConfirmDialog(
     onDismiss: () -> Unit
 ) {
     ActionDialog(
-        title = "Warning",
+        title = "IMPORTANT",
         message = PopupTexts.Settings.getCustomAccessConfirmMessage(accessWord),
+        icon = Icons.Filled.Warning,
+        iconTint = PrimaryLight,
+        confirmText = "Save",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsCustomDialerInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.CUSTOM_DIALER_INFO_TITLE,
+        message = PopupTexts.Settings.CUSTOM_DIALER_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsCustomDialerConfirmDialog(
+    dialerCode: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = "IMPORTANT",
+        message = PopupTexts.Settings.getCustomDialerConfirmMessage(dialerCode),
         icon = Icons.Filled.Warning,
         iconTint = PrimaryLight,
         confirmText = "Save",

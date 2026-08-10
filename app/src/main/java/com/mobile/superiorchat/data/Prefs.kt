@@ -114,6 +114,16 @@ class Prefs private constructor(context: Context) {
                 sharedPreferences.edit().putBoolean("tile_access_enabled", value).apply()
             }
         }
+
+    private var _customDialerCode: String = sharedPreferences.getString("custom_dialer_code", "").orEmpty()
+    var customDialerCode: String
+        get() = _customDialerCode
+        set(value) {
+            if (_customDialerCode != value) {
+                _customDialerCode = value
+                sharedPreferences.edit().putString("custom_dialer_code", value).apply()
+            }
+        }
         
     private var _isScreenSecurityEnabled: Boolean = sharedPreferences.getBoolean("screen_security_enabled", true)
     var isScreenSecurityEnabled: Boolean
@@ -207,4 +217,12 @@ class Prefs private constructor(context: Context) {
 
     val isConfigured: Boolean
         get() = botToken.isNotEmpty() && chatId.isNotEmpty()
+
+    private var _vaultPaths: Set<String> = sharedPreferences.getStringSet("vault_paths", emptySet<String>()) ?: emptySet()
+    var vaultPaths: Set<String>
+        get() = _vaultPaths
+        set(value) {
+            _vaultPaths = value
+            sharedPreferences.edit().putStringSet("vault_paths", value).apply()
+        }
 }

@@ -68,7 +68,7 @@ sealed class GlobalDialogState {
     data class CallPermissionRationale(val onConfirm: () -> Unit) : GlobalDialogState()
 }
 
-enum class UnlockResult { SUCCESS, DURESS, INVALID }
+enum class UnlockResult { SUCCESS, INVALID }
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     var activeGlobalDialog by mutableStateOf<GlobalDialogState?>(null)
@@ -126,6 +126,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 chatId.trim().matches(Regex("^-?[0-9]+$"))
 
     // -- App Lock State --
+    var isDuressModeActive by mutableStateOf(false)
+        private set
+
     var isFakeCrashBypassed by mutableStateOf(false)
         private set
 
@@ -140,8 +143,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun unlockApp(pin: String): UnlockResult {
         if (pin.startsWith("1234")) {
-            lockApp()
-            return UnlockResult.DURESS
+            isDuressModeActive = true
+            _isAppUnlocked.value = true
+            return UnlockResult.SUCCESS
         }
         val hashedInput = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
         return if (hashedInput == prefs.appLockPin || prefs.appLockPin.isEmpty()) {
@@ -204,6 +208,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var customAccessWord by mutableStateOf(prefs.customAccessWord)
         private set
+        
+    var customDialerCode by mutableStateOf(prefs.customDialerCode)
+        private set
+        
     var showAppLevelQrScanner by mutableStateOf(false)
 
     fun updateCustomAccessWord(word: String) {
@@ -213,6 +221,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             com.mobile.superiorchat.core.SyncState.SUCCESS, 
             "Custom Word Saved"
         )
+    }
+    
+    fun updateCustomDialerCode(code: String) {
+        prefs.customDialerCode = code
+        customDialerCode = code
     }
 
     var isScreenSecurityEnabled by mutableStateOf(prefs.isScreenSecurityEnabled)

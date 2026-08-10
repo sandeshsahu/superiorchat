@@ -14,6 +14,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -56,15 +57,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 
+private data class MediaItemData(val path: String, val type: String, val index: Int)
+
 @Composable
 fun MediaViewer(
     mediaPath: String?,
     mediaType: String?, // "photo", "video", etc.
-    onDismiss: () -> Unit
+    mediaIndex: Int = 0,
+    onDismiss: () -> Unit,
+    onSwipeLeft: (() -> Boolean)? = null,
+    onSwipeRight: (() -> Boolean)? = null
 ) {
     val showMedia = mediaPath != null
-    val currentPath = remember { mutableStateOf<String?>(null) }
-    val currentType = remember { mutableStateOf<String?>(null) }
+    val currentItem = remember { mutableStateOf<MediaItemData?>(null) }
 
     val transitionState = remember { MutableTransitionState(false) }
     
@@ -80,10 +85,9 @@ fun MediaViewer(
         }
     }
 
-    LaunchedEffect(showMedia, dialogReady, mediaPath, mediaType) {
+    LaunchedEffect(showMedia, dialogReady, mediaPath, mediaType, mediaIndex) {
         if (showMedia) {
-            currentPath.value = mediaPath
-            currentType.value = mediaType
+            currentItem.value = MediaItemData(mediaPath!!, mediaType ?: "photo", mediaIndex)
             if (dialogReady) {
                 transitionState.targetState = true
             }
@@ -138,14 +142,26 @@ fun MediaViewer(
             enter = fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.9f, animationSpec = tween(300)),
             exit = fadeOut(animationSpec = tween(300)) + scaleOut(targetScale = 0.9f, animationSpec = tween(300))
         ) {
-            val path = currentPath.value
-            val type = currentType.value
-            if (path != null) {
-                MediaViewerContent(
-                    path = path,
-                    type = type ?: "photo",
-                    onDismiss = animatedDismiss
-                )
+            val item = currentItem.value
+            if (item != null) {
+                androidx.compose.animation.AnimatedContent(
+                    targetState = item,
+                    transitionSpec = {
+                        val direction = if (targetState.index > initialState.index) 1 else -1
+                        (androidx.compose.animation.slideInHorizontally { width -> direction * width } + androidx.compose.animation.fadeIn()).togetherWith(
+                            androidx.compose.animation.slideOutHorizontally { width -> -direction * width } + androidx.compose.animation.fadeOut()
+                        )
+                    },
+                    label = "media_viewer_transition"
+                ) { targetItem ->
+                    MediaViewerContent(
+                        path = targetItem.path,
+                        type = targetItem.type,
+                        onDismiss = animatedDismiss,
+                        onSwipeLeft = onSwipeLeft,
+                        onSwipeRight = onSwipeRight
+                    )
+                }
             }
         }
     }
@@ -155,7 +171,9 @@ fun MediaViewer(
 private fun MediaViewerContent(
     path: String,
     type: String,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSwipeLeft: (() -> Boolean)? = null,
+    onSwipeRight: (() -> Boolean)? = null
 ) {
     val scope = rememberCoroutineScope()
     var isControlsVisible by remember { mutableStateOf(true) }
@@ -175,14 +193,14 @@ private fun MediaViewerContent(
     }
 
     // Drag to dismiss states
-    val dragOffsetY = remember { Animatable(0f) }
-    val dragOffsetX = remember { Animatable(0f) }
+    val dragOffsetY = remember(path) { Animatable(0f) }
+    val dragOffsetX = remember(path) { Animatable(0f) }
     val scaleFactor = remember { derivedStateOf { (1f - (Math.abs(dragOffsetY.value) / 1000f)).coerceIn(0.7f, 1f) } }
     val backdropAlpha = remember { derivedStateOf { (1f - (Math.abs(dragOffsetY.value) / 800f)).coerceIn(0f, 1f) } }
 
     // Pinch-to-zoom states
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    var scale by remember(path) { mutableStateOf(1f) }
+    var offset by remember(path) { mutableStateOf(Offset.Zero) }
 
     Box(
         modifier = Modifier
@@ -230,11 +248,21 @@ private fun MediaViewerContent(
                                         allUp = event.changes.all { !it.pressed }
                                     } while (!allUp)
                                     
-                                    if (Math.abs(dragOffsetY.value) > 150f) {
+                                    if (Math.abs(dragOffsetY.value) > 150f && Math.abs(dragOffsetY.value) > Math.abs(dragOffsetX.value)) {
                                         scope.launch {
                                             val targetY = if (dragOffsetY.value > 0) 1500f else -1500f
                                             dragOffsetY.animateTo(targetY, tween(200))
                                             onDismiss()
+                                        }
+                                    } else if (Math.abs(dragOffsetX.value) > 150f && (onSwipeLeft != null || onSwipeRight != null)) {
+                                        scope.launch {
+                                            val switched = if (dragOffsetX.value > 0) onSwipeRight?.invoke() ?: false else onSwipeLeft?.invoke() ?: false
+                                            if (!switched) {
+                                                launch { dragOffsetY.animateTo(0f, spring()) }
+                                                launch { dragOffsetX.animateTo(0f, spring()) }
+                                            } else {
+                                                // Keep the drag offsets where they are, AnimatedContent will slide them out smoothly
+                                            }
                                         }
                                     } else {
                                         scope.launch {
@@ -258,7 +286,7 @@ private fun MediaViewerContent(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(
                             when {
-                                path.startsWith("content://") || path.startsWith("http://") || path.startsWith("https://") -> android.net.Uri.parse(path)
+                                path.startsWith("content://") || path.startsWith("file://") || path.startsWith("http://") || path.startsWith("https://") -> android.net.Uri.parse(path)
                                 else -> com.mobile.superiorchat.media.LocalDirs.resolveFile(LocalContext.current, path) ?: File(path)
                             }
                         )
@@ -318,11 +346,21 @@ private fun MediaViewerContent(
                                     } while (!allUp)
                                     
                                     if (scale <= 1f) {
-                                        if (Math.abs(dragOffsetY.value) > 150f) {
+                                        if (Math.abs(dragOffsetY.value) > 150f && Math.abs(dragOffsetY.value) > Math.abs(dragOffsetX.value)) {
                                             scope.launch {
                                                 val targetY = if (dragOffsetY.value > 0) 1500f else -1500f
                                                 dragOffsetY.animateTo(targetY, tween(200))
                                                 onDismiss()
+                                            }
+                                        } else if (Math.abs(dragOffsetX.value) > 150f && (onSwipeLeft != null || onSwipeRight != null)) {
+                                            scope.launch {
+                                                val switched = if (dragOffsetX.value > 0) onSwipeRight?.invoke() ?: false else onSwipeLeft?.invoke() ?: false
+                                                if (!switched) {
+                                                    launch { dragOffsetY.animateTo(0f, spring()) }
+                                                    launch { dragOffsetX.animateTo(0f, spring()) }
+                                                } else {
+                                                    // Keep the drag offsets where they are, AnimatedContent will slide them out smoothly
+                                                }
                                             }
                                         } else {
                                             scope.launch {
@@ -383,7 +421,7 @@ private fun VideoPlayerComponent(
     DisposableEffect(path) {
         val mp = MediaPlayer().apply {
             try {
-                if (path.startsWith("content://")) {
+                if (path.startsWith("content://") || path.startsWith("file://") || path.startsWith("http://") || path.startsWith("https://")) {
                     setDataSource(context, android.net.Uri.parse(path))
                 } else {
                     val resolved = com.mobile.superiorchat.media.LocalDirs.resolveFile(context, path)
@@ -458,6 +496,11 @@ private fun VideoPlayerComponent(
                         }
                         override fun onSurfaceTextureUpdated(surface: android.graphics.SurfaceTexture) {}
                     }
+                }
+            },
+            update = { textureView ->
+                if (textureView.isAvailable) {
+                    mediaPlayer?.setSurface(android.view.Surface(textureView.surfaceTexture))
                 }
             },
             modifier = Modifier.fillMaxSize()

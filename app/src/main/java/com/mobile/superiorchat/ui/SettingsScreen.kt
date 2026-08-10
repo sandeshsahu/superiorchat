@@ -58,6 +58,8 @@ fun AppSettingsPage(
     chatId: String,
     isTileAccessEnabled: Boolean,
     customAccessWord: String = "",
+    customDialerCode: String = "",
+    onCustomDialerCodeChange: (String) -> Unit = {},
     webrtcBaseUrl: String,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
@@ -302,7 +304,7 @@ fun AppSettingsPage(
                 var showSafeguardInfoDialog by remember { mutableStateOf(false) }
                 SettingsActionRow(
                     title = "Safeguard Active (Code: 1234)",
-                    subtitle = "Tap to learn how emergency fake unlock works",
+                    subtitle = "Tap to learn how fake unlock works",
                     icon = Icons.Filled.Security,
                     iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
                     background = PrimaryLight,
@@ -376,7 +378,7 @@ fun AppSettingsPage(
             }
 
         // ── 2nd: Flavor Specific Section ────────────────────────────
-        val hasFlavorSettings = BuildConfig.ENABLE_QS_TILE || BuildConfig.FLAVOR == "weather"
+        val hasFlavorSettings = BuildConfig.ENABLE_QS_TILE || BuildConfig.FLAVOR == "weather" || BuildConfig.FLAVOR == "captivePortal"
         if (hasFlavorSettings) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -394,148 +396,304 @@ fun AppSettingsPage(
                 HorizontalDivider(modifier = Modifier.weight(1f), color = Secondary.copy(alpha = 0.25f))
             }
 
-            if (BuildConfig.ENABLE_QS_TILE) {
-                // App Accessibility Card
-                SettingsCard {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = TextSecondary, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("App Accessibility", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        }
+            // App Accessibility Card
+            SettingsCard {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = TextSecondary, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("App Accessibility", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
-                    var showAccessibilityInfo by remember { mutableStateOf(false) }
-                    var showTileDisableWarning by remember { mutableStateOf(false) }
-                    
-                    if (showAccessibilityInfo) {
-                        SettingsQsTileInfoDialog(
-                            onDismiss = { showAccessibilityInfo = false }
-                        )
-                    }
-
-                    if (showTileDisableWarning) {
-                        SettingsQsTileDisableDialog(
-                            onConfirm = {
-                                onTileAccessChange(false)
-                                showTileDisableWarning = false
-                            },
-                            onDismiss = { showTileDisableWarning = false }
-                        )
-                    }
-
-                    SettingsSwitchRow(
-                        title = "Access by Tile",
-                        subtitle = "Use Quick Settings to open",
-                        icon = Icons.Default.SettingsInputAntenna,
-                        iconTint = PrimaryLight,
-                        isChecked = isTileAccessEnabled,
-                        onCheckedChange = { isChecked ->
-                            if (!isChecked) {
-                                showTileDisableWarning = true
-                            } else {
-                                onTileAccessChange(true)
-                            }
-                        },
-                        onInfoClick = { showAccessibilityInfo = true }
-                    )
                 }
-            }
-
-            if (BuildConfig.FLAVOR == "weather") {
-                // Custom Access Word for Weather Flavor
-                SettingsCard {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.VpnKey, contentDescription = "Accessibility", tint = TextSecondary, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("Set Custom Access Word", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
-                        }
-                        var showAccessInfo by remember { mutableStateOf(false) }
-                        Icon(
-                            Icons.Default.Info, 
-                            contentDescription = "Info", 
-                            tint = TextSecondary, 
-                            modifier = Modifier.padding(4.dp).size(20.dp).clickable { showAccessInfo = true }
-                        )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (BuildConfig.ENABLE_QS_TILE) {
+                        var showAccessibilityInfo by remember { mutableStateOf(false) }
+                        var showTileDisableWarning by remember { mutableStateOf(false) }
                         
-                        if (showAccessInfo) {
-                            SettingsCustomAccessWordInfoDialog(
-                                onDismiss = { showAccessInfo = false }
+                        if (showAccessibilityInfo) {
+                            SettingsQsTileInfoDialog(onDismiss = { showAccessibilityInfo = false })
+                        }
+
+                        if (showTileDisableWarning) {
+                            SettingsQsTileDisableDialog(
+                                onConfirm = {
+                                    onTileAccessChange(false)
+                                    showTileDisableWarning = false
+                                },
+                                onDismiss = { showTileDisableWarning = false }
                             )
                         }
-                    }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    
-                    var tempWord by remember { mutableStateOf("") }
-                    val isValid = tempWord.trim().length >= 4
-                    var showWarning by remember { mutableStateOf(false) }
-                    var isSaved by remember { mutableStateOf(false) }
-                    
-                    LaunchedEffect(isSaved) {
-                        if (isSaved) {
-                            kotlinx.coroutines.delay(2000)
-                            isSaved = false
-                        }
-                    }
-                    
-                    if (showWarning) {
-                        SettingsCustomAccessWordConfirmDialog(
-                            accessWord = tempWord.trim(),
-                            onConfirm = {
-                                onCustomAccessWordChange(tempWord.trim())
-                                tempWord = ""
-                                isSaved = true
+
+                        SettingsSwitchRow(
+                            title = "Access by Tile",
+                            subtitle = "Use Quick Settings to open",
+                            icon = Icons.Default.SettingsInputAntenna,
+                            iconTint = PrimaryLight,
+                            isChecked = isTileAccessEnabled,
+                            onCheckedChange = { isChecked ->
+                                if (!isChecked) {
+                                    showTileDisableWarning = true
+                                } else {
+                                    onTileAccessChange(true)
+                                }
                             },
-                            onDismiss = { showWarning = false }
+                            onInfoClick = { showAccessibilityInfo = true }
                         )
                     }
 
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = tempWord,
-                            onValueChange = { tempWord = it },
-                            placeholder = { Text("e.g. open door", color = TextSecondary, fontSize = 14.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = SurfaceLevel2,
-                                focusedContainerColor = SurfaceLevel2,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedBorderColor = Primary,
-                                unfocusedTextColor = TextPrimary,
-                                focusedTextColor = TextPrimary,
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            singleLine = true
-                        )
+                    if (BuildConfig.FLAVOR == "weather") {
+                        var showAccessInfo by remember { mutableStateOf(false) }
+                        if (showAccessInfo) {
+                            SettingsCustomAccessWordInfoDialog(onDismiss = { showAccessInfo = false })
+                        }
                         
-                        if (customAccessWord.isNotEmpty()) {
-                            Text(
-                                text = "Current saved word: $customAccessWord",
-                                color = PrimaryLight,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(start = 4.dp)
+                        var tempWord by remember { mutableStateOf("") }
+                        val isValid = tempWord.trim().length >= 4
+                        var showWarning by remember { mutableStateOf(false) }
+                        var isSaved by remember { mutableStateOf(false) }
+                        
+                        LaunchedEffect(isSaved) {
+                            if (isSaved) {
+                                kotlinx.coroutines.delay(2000)
+                                isSaved = false
+                            }
+                        }
+                        
+                        if (showWarning) {
+                            SettingsCustomAccessWordConfirmDialog(
+                                accessWord = tempWord.trim(),
+                                onConfirm = {
+                                    onCustomAccessWordChange(tempWord.trim())
+                                    tempWord = ""
+                                    isSaved = true
+                                },
+                                onDismiss = { showWarning = false }
                             )
                         }
 
-                        SettingsActionRow(
-                            title = if (isSaved) "Saved!" else "Save Custom Word",
-                            subtitle = "Apply new phrase",
-                            icon = if (isSaved) Icons.Filled.Check else Icons.Filled.Save,
-                            iconTint = if (isSaved) Color.White else if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary,
-                            background = if (isSaved) Success else if (isValid) PrimaryLight else SurfaceLevel2,
-                            contentColor = if (isSaved) Color.White else if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary,
-                            isGlow = isValid || isSaved,
-                            onClick = {
-                                if (isValid && !isSaved) {
-                                    showWarning = true
+                        val displayWord = if (customAccessWord.isBlank()) "Superior Chat (Default)" else customAccessWord
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(SurfaceLevel2)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.VpnKey, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Custom Access Word", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Icon(
+                                                Icons.Default.Info,
+                                                contentDescription = "Info",
+                                                tint = TextSecondary,
+                                                modifier = Modifier
+                                                    .padding(4.dp)
+                                                    .size(18.dp)
+                                                    .clickable { showAccessInfo = true }
+                                            )
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Current: ", color = TextSecondary, fontSize = 12.sp)
+                                            Text(
+                                                text = displayWord,
+                                                color = PrimaryLight.copy(alpha = 0.75f),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                        )
+                            
+                            OutlinedTextField(
+                                value = tempWord,
+                                onValueChange = { if (it.length <= 14) tempWord = it },
+                                placeholder = { Text("e.g. open door", color = TextSecondary, fontSize = 14.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = SurfaceLevel1,
+                                    focusedContainerColor = SurfaceLevel1,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = Primary,
+                                    unfocusedTextColor = TextPrimary,
+                                    focusedTextColor = TextPrimary,
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                singleLine = true
+                            )
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = DividerColor.copy(alpha = 0.3f))
+                            
+                            val saveBgColor = if (isSaved) Success else if (isValid) PrimaryLight else Color.Transparent
+                            val saveContentColor = if (isSaved) Color.Black else if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(saveBgColor)
+                                    .clickable(enabled = isValid && !isSaved) {
+                                        showWarning = true
+                                    }
+                                    .padding(vertical = 14.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    if (isSaved) Icons.Default.CheckCircle else Icons.Filled.Save,
+                                    contentDescription = null,
+                                    tint = saveContentColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    if (isSaved) "New Custom Word Saved!" else "Save New Custom Word",
+                                    color = saveContentColor,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                    
+                    if (BuildConfig.FLAVOR == "captivePortal") {
+                        var showDialerInfo by remember { mutableStateOf(false) }
+                        if (showDialerInfo) {
+                            SettingsCustomDialerInfoDialog(onDismiss = { showDialerInfo = false })
+                        }
+                        
+                        var tempCode by remember { mutableStateOf("") }
+                        val isCodeValid = tempCode.trim().length >= 2 && tempCode.trim().all { it.isDigit() }
+                        var showCodeWarning by remember { mutableStateOf(false) }
+                        var isCodeSaved by remember { mutableStateOf(false) }
+                        
+                        LaunchedEffect(isCodeSaved) {
+                            if (isCodeSaved) {
+                                kotlinx.coroutines.delay(2000)
+                                isCodeSaved = false
+                            }
+                        }
+                        
+                        if (showCodeWarning) {
+                            SettingsCustomDialerConfirmDialog(
+                                dialerCode = tempCode.trim(),
+                                onConfirm = {
+                                    onCustomDialerCodeChange(tempCode.trim())
+                                    tempCode = ""
+                                    isCodeSaved = true
+                                },
+                                onDismiss = { showCodeWarning = false }
+                            )
+                        }
+
+                        val displayCode = if (customDialerCode.isBlank()) "*#*#9131#*#* (Default)" else "*#*#$customDialerCode#*#*"
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(SurfaceLevel2)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Dialpad, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
+                                    Spacer(modifier = Modifier.width(16.dp))
+                                    Column {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Custom Dialer Code", fontSize = 16.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Icon(
+                                                Icons.Default.Info,
+                                                contentDescription = "Info",
+                                                tint = TextSecondary,
+                                                modifier = Modifier
+                                                    .padding(4.dp)
+                                                    .size(18.dp)
+                                                    .clickable { showDialerInfo = true }
+                                            )
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text("Current: ", color = TextSecondary, fontSize = 12.sp)
+                                            Text(
+                                                text = displayCode,
+                                                color = PrimaryLight.copy(alpha = 0.75f),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            OutlinedTextField(
+                                value = tempCode,
+                                onValueChange = { if (it.length <= 5 && it.all { char -> char.isDigit() }) tempCode = it },
+                                placeholder = { Text("e.g. 1234", color = TextSecondary, fontSize = 14.sp) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedContainerColor = SurfaceLevel1,
+                                    focusedContainerColor = SurfaceLevel1,
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = Primary,
+                                    unfocusedTextColor = TextPrimary,
+                                    focusedTextColor = TextPrimary,
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                singleLine = true
+                            )
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            HorizontalDivider(color = DividerColor.copy(alpha = 0.3f))
+                            
+                            val saveBgColor = if (isCodeSaved) Success else if (isCodeValid) PrimaryLight else Color.Transparent
+                            val saveContentColor = if (isCodeSaved) Color.Black else if (isCodeValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(saveBgColor)
+                                    .clickable(enabled = isCodeValid && !isCodeSaved) {
+                                        showCodeWarning = true
+                                    }
+                                    .padding(vertical = 14.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    if (isCodeSaved) Icons.Default.CheckCircle else Icons.Filled.Save,
+                                    contentDescription = null,
+                                    tint = saveContentColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    if (isCodeSaved) "New Dialer Code Saved!" else "Save New Dialer Code",
+                                    color = saveContentColor,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
                 }
             }

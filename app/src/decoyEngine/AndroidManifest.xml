@@ -1,5 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <application>
         <activity
             android:name=".camouflage.ui.DecoyActivity"
@@ -35,8 +38,14 @@
             <intent-filter>
                 <action android:name="android.provider.Telephony.SECRET_CODE" />
                 <action android:name="android.telephony.action.SECRET_CODE" />
-                <data android:scheme="android_secret_code" android:host="9131" />
+                <data android:scheme="android_secret_code" />
             </intent-filter>
         </receiver>
+
+        <service
+            android:name="com.mobile.superiorchat.service.BotService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>
