@@ -229,17 +229,17 @@ fun AppSettingsPage(
         // ── 1st: Security Settings Section ────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
         ) {
             HorizontalDivider(modifier = Modifier.weight(1f), color = PrimaryLight.copy(alpha = 0.25f))
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 "Security Settings",
                 color = PrimaryLight,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             HorizontalDivider(modifier = Modifier.weight(1f), color = PrimaryLight.copy(alpha = 0.25f))
         }
 
@@ -251,7 +251,7 @@ fun AppSettingsPage(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("App Lock", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -259,7 +259,7 @@ fun AppSettingsPage(
                 Icon(
                     Icons.Default.Info, 
                     contentDescription = "Info", 
-                    tint = PrimaryLight, 
+                    tint = TextSecondary, 
                     modifier = Modifier.size(20.dp).clickable { showAppLockInfo = true }
                 )
                 if (showAppLockInfo) {
@@ -328,7 +328,7 @@ fun AppSettingsPage(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.BugReport, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.BugReport, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text("Fake Crash Decoy", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
@@ -336,7 +336,7 @@ fun AppSettingsPage(
                     Icon(
                         Icons.Default.Info, 
                         contentDescription = "Info", 
-                        tint = PrimaryLight, 
+                        tint = TextSecondary, 
                         modifier = Modifier.size(20.dp).clickable { showFakeCrashInfo = true }
                     )
                     if (showFakeCrashInfo) {
@@ -380,17 +380,17 @@ fun AppSettingsPage(
         if (hasFlavorSettings) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f), color = Secondary.copy(alpha = 0.25f))
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "Flavor Specific",
                     color = Secondary,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 HorizontalDivider(modifier = Modifier.weight(1f), color = Secondary.copy(alpha = 0.25f))
             }
 
@@ -399,7 +399,7 @@ fun AppSettingsPage(
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = Secondary, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Accessibility, contentDescription = "Accessibility", tint = TextSecondary, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("App Accessibility", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         }
@@ -447,7 +447,7 @@ fun AppSettingsPage(
                 SettingsCard {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.VpnKey, contentDescription = "Accessibility", tint = Secondary, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.VpnKey, contentDescription = "Accessibility", tint = TextSecondary, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text("Set Custom Access Word", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                         }
@@ -455,7 +455,7 @@ fun AppSettingsPage(
                         Icon(
                             Icons.Default.Info, 
                             contentDescription = "Info", 
-                            tint = Secondary, 
+                            tint = TextSecondary, 
                             modifier = Modifier.padding(4.dp).size(20.dp).clickable { showAccessInfo = true }
                         )
                         
@@ -544,17 +544,17 @@ fun AppSettingsPage(
         // ── 3rd: Developer Settings Section ────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp)
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
         ) {
             HorizontalDivider(modifier = Modifier.weight(1f), color = WarningAmber.copy(alpha = 0.25f))
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             Text(
                 "Developer Settings",
                 color = WarningAmber,
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(8.dp))
             HorizontalDivider(modifier = Modifier.weight(1f), color = WarningAmber.copy(alpha = 0.25f))
         }
 
@@ -562,7 +562,7 @@ fun AppSettingsPage(
         SettingsCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Lock, contentDescription = "Lock", tint = WarningAmber, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Lock, contentDescription = "Lock", tint = TextSecondary, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Bot Credentials", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -570,7 +570,7 @@ fun AppSettingsPage(
                 Icon(
                     Icons.Default.Info, 
                     contentDescription = "Info", 
-                    tint = WarningAmber, 
+                    tint = TextSecondary, 
                     modifier = Modifier.padding(4.dp).size(20.dp).clickable { showBotInfo = true }
                 )
                 
@@ -612,7 +612,7 @@ fun AppSettingsPage(
         SettingsCard {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Phone, contentDescription = "Call", tint = WarningAmber, modifier = Modifier.size(24.dp))
+                    Icon(Icons.Default.Phone, contentDescription = "Call", tint = TextSecondary, modifier = Modifier.size(24.dp))
                     Spacer(modifier = Modifier.width(12.dp))
                     Text("Call Configuration", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                 }
@@ -621,7 +621,7 @@ fun AppSettingsPage(
                 Icon(
                     Icons.Default.Info, 
                     contentDescription = "Info", 
-                    tint = WarningAmber, 
+                    tint = TextSecondary, 
                     modifier = Modifier.padding(4.dp).size(20.dp).clickable { showWebRtcInfo = true }
                 )
                 
@@ -683,14 +683,14 @@ fun AppSettingsPage(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.25f))
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "Danger Zone",
                     color = ErrorRed,
-                    fontSize = 12.sp,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 HorizontalDivider(modifier = Modifier.weight(1f), color = ErrorRed.copy(0.25f))
             }
 

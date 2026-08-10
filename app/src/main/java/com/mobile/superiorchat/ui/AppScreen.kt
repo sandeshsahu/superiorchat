@@ -97,28 +97,28 @@ fun AppScreenPage(
                     title = "Permissions",
                     subtitle = "Manage app access",
                     icon = Icons.Filled.Lock,
-                    iconTint = TextSecondary,
+                    iconTint = PrimaryLight,
                     onClick = { onNavigate(NavScreen.Permissions) }
                 )
                 AppScreenActionRow(
                     title = "Call History",
                     subtitle = "View past calls",
                     icon = Icons.Filled.History,
-                    iconTint = TextSecondary,
+                    iconTint = PrimaryLight,
                     onClick = { onNavigate(NavScreen.CallHistory) }
                 )
                 AppScreenActionRow(
                     title = "App Logs",
                     subtitle = "View system logs",
                     icon = Icons.Filled.Terminal,
-                    iconTint = TextSecondary,
+                    iconTint = PrimaryLight,
                     onClick = { onNavigate(NavScreen.Logs) }
                 )
                 AppScreenActionRow(
                     title = "App Settings",
                     subtitle = "Configure application",
                     icon = Icons.Filled.Settings,
-                    iconTint = TextSecondary,
+                    iconTint = PrimaryLight,
                     onClick = { onNavigate(NavScreen.AppSettings) }
                 )
             }
