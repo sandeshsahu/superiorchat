@@ -7,17 +7,22 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
-import android.widget.Toast
-import androidx.camera.core.ImageProxy
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
-import com.google.zxing.MultiFormatReader
+import com.google.zxing.DecodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
+import com.google.zxing.qrcode.QRCodeReader
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.camera.core.ImageProxy
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class QrConfigData(
     val token: String,
@@ -29,6 +34,24 @@ data class QrConfigData(
 )
 
 object QrManager {
+
+    // Reused reader with QR_CODE-only hints for performance
+    private val qrReader = QRCodeReader()
+    private val decodeHints = mapOf(
+        DecodeHintType.POSSIBLE_FORMATS to listOf(BarcodeFormat.QR_CODE),
+        DecodeHintType.TRY_HARDER to true
+    )
+
+    // Debounce flag — prevents onSuccess firing multiple times per scan session
+    private val isProcessing = AtomicBoolean(false)
+
+    /** Call this when the scanner is opened to reset debounce state. */
+    fun resetState() {
+        isProcessing.set(false)
+    }
+
+    // ─── QR Code Generation ────────────────────────────────────────────────
+
     fun generateQrCode(text: String, size: Int = 512): Bitmap? {
         if (text.isBlank()) return null
         return try {
@@ -36,7 +59,6 @@ object QrManager {
             val width = bitMatrix.width
             val height = bitMatrix.height
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-
             for (x in 0 until width) {
                 for (y in 0 until height) {
                     bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
@@ -49,14 +71,34 @@ object QrManager {
         }
     }
 
+    // ─── Live Camera Scan ──────────────────────────────────────────────────
+
     @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
-    fun processImageProxy(imageProxy: ImageProxy, onSuccess: (QrConfigData) -> Unit) {
+    fun processImageProxy(
+        imageProxy: ImageProxy,
+        onSuccess: (QrConfigData) -> Unit,
+        onError: (String) -> Unit = {}
+    ) {
+        // Drop frame immediately if we already have a result in flight
+        if (isProcessing.get()) {
+            imageProxy.close()
+            return
+        }
+
         val image = imageProxy.image
-        if (image != null) {
+        if (image == null) {
+            imageProxy.close()
+            return
+        }
+
+        try {
             val buffer = image.planes[0].buffer
-            val data = ByteArray(buffer.capacity())
+            // Use buffer.remaining() not buffer.capacity() — avoids garbage bytes from buffer padding
+            val data = ByteArray(buffer.remaining())
             buffer.get(data)
-            
+
+            // PlanarYUVLuminanceSource does not support rotateCounterClockwise() —
+            // CameraX handles frame rotation via ImageAnalysis.setTargetRotation() on the use-case.
             val source = PlanarYUVLuminanceSource(
                 data,
                 image.width,
@@ -66,100 +108,145 @@ object QrManager {
                 image.height,
                 false
             )
-            
-            val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-            val reader = MultiFormatReader()
-            
-            try {
-                val result = reader.decodeWithState(binaryBitmap)
-                val decrypted = Security.decryptAES(result.text)
-                if (decrypted.isNotEmpty()) {
-                    try {
-                        val json = JSONObject(decrypted)
-                        val token = json.getString("token")
-                        val chat = json.getString("chatId")
-                        val autoDownloadMedia = json.optBoolean("autoDownloadMedia", false)
-                        val screenSecurity = json.optBoolean("screenSecurity", true)
-                        val newMessageNotification = json.optBoolean("newMessageNotification", true)
-                        val callServer = json.optString("callServer", "")
 
-                        if (Validator.isValidBotToken(token) && Validator.isValidChatId(chat)) {
-                            Handler(Looper.getMainLooper()).post {
-                                onSuccess(QrConfigData(
-                                    token = token,
-                                    chatId = chat,
-                                    autoDownloadMedia = autoDownloadMedia,
-                                    screenSecurity = screenSecurity,
-                                    newMessageNotification = newMessageNotification,
-                                    callServer = callServer
-                                ))
-                            }
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
+            val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
+
+            try {
+                // QRCodeReader is not thread-safe — synchronize
+                val result = synchronized(qrReader) { qrReader.decode(binaryBitmap, decodeHints) }
+                if (isProcessing.compareAndSet(false, true)) {
+                    val parsed = parseQrPayload(result.text)
+                    parsed.onSuccess { data ->
+                        Handler(Looper.getMainLooper()).post { onSuccess(data) }
+                    }.onFailure { err ->
+                        isProcessing.set(false)
+                        Handler(Looper.getMainLooper()).post { onError(err.message ?: "Invalid QR code.") }
                     }
                 }
             } catch (e: NotFoundException) {
-                // QR not found in frame, continue
-            } finally {
-                imageProxy.close()
+                // No QR in this frame — normal, keep scanning
             }
-        } else {
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
             imageProxy.close()
         }
     }
 
-    fun processUri(uri: Uri, context: Context, onSuccess: (QrConfigData) -> Unit) {
-        try {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val bitmap = BitmapFactory.decodeStream(inputStream)
-            
-            val intArray = IntArray(bitmap.width * bitmap.height)
-            bitmap.getPixels(intArray, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-            
-            val source = RGBLuminanceSource(bitmap.width, bitmap.height, intArray)
-            val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-            val reader = MultiFormatReader()
-            
-            val result = reader.decode(binaryBitmap)
-            val decrypted = Security.decryptAES(result.text)
-            
-            if (decrypted.isNotEmpty()) {
-                try {
-                    val json = JSONObject(decrypted)
-                    val token = json.getString("token")
-                    val chat = json.getString("chatId")
-                    val autoDownloadMedia = json.optBoolean("autoDownloadMedia", false)
-                    val screenSecurity = json.optBoolean("screenSecurity", true)
-                    val newMessageNotification = json.optBoolean("newMessageNotification", true)
-                    val callServer = json.optString("callServer", "")
+    // ─── Gallery / URI Scan ────────────────────────────────────────────────
 
-                    if (Validator.isValidBotToken(token) && Validator.isValidChatId(chat)) {
-                        Handler(Looper.getMainLooper()).post {
-                            onSuccess(QrConfigData(
-                                token = token,
-                                chatId = chat,
-                                autoDownloadMedia = autoDownloadMedia,
-                                screenSecurity = screenSecurity,
-                                newMessageNotification = newMessageNotification,
-                                callServer = callServer
-                            ))
-                        }
-                    } else {
-                        Toast.makeText(context, "QR code contains invalid credentials format", Toast.LENGTH_SHORT).show()
+    fun processUri(
+        uri: Uri,
+        context: Context,
+        onSuccess: (QrConfigData) -> Unit,
+        onError: (String) -> Unit = {}
+    ) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val bitmap = decodeSampledBitmapFromUri(uri, context, 1024)
+                    ?: run {
+                        withContext(Dispatchers.Main) { onError("Could not read the selected image.") }
+                        return@launch
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    Handler(Looper.getMainLooper()).post {
-                        Toast.makeText(context, "Invalid or corrupted QR Code.", Toast.LENGTH_LONG).show()
+
+                val bitmapWidth = bitmap.width
+                val bitmapHeight = bitmap.height
+                val intArray = IntArray(bitmapWidth * bitmapHeight)
+                bitmap.getPixels(intArray, 0, bitmapWidth, 0, 0, bitmapWidth, bitmapHeight)
+                bitmap.recycle()
+
+                val source = RGBLuminanceSource(bitmapWidth, bitmapHeight, intArray)
+                val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
+
+                try {
+                    val result = synchronized(qrReader) { qrReader.decode(binaryBitmap, decodeHints) }
+                    val parsed = parseQrPayload(result.text)
+                    parsed.onSuccess { data ->
+                        withContext(Dispatchers.Main) { onSuccess(data) }
+                    }.onFailure { err ->
+                        withContext(Dispatchers.Main) { onError(err.message ?: "Invalid QR code.") }
                     }
+                } catch (e: NotFoundException) {
+                    withContext(Dispatchers.Main) { onError("No QR code found in the image.") }
                 }
-            } else {
-                Toast.makeText(context, "Could not decrypt QR code. It may be invalid or corrupted.", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) { onError("Failed to process image: ${e.localizedMessage}") }
+            }
+        }
+    }
+
+    // ─── Shared Payload Parser ─────────────────────────────────────────────
+
+    private fun parseQrPayload(raw: String): Result<QrConfigData> {
+        return try {
+            val decrypted = Security.decryptAES(raw)
+            if (decrypted.isEmpty()) {
+                return Result.failure(Exception("QR code is not a valid Superior Chat config."))
+            }
+
+            val json = JSONObject(decrypted)
+
+            if (!json.has("token") || !json.has("chatId")) {
+                return Result.failure(Exception("QR code is missing required fields."))
+            }
+
+            val token = json.getString("token")
+            val chat = json.getString("chatId")
+
+            if (!Validator.isValidBotToken(token)) {
+                return Result.failure(Exception("Invalid bot token in QR code."))
+            }
+            if (!Validator.isValidChatId(chat)) {
+                return Result.failure(Exception("Invalid chat ID in QR code."))
+            }
+
+            Result.success(
+                QrConfigData(
+                    token = token,
+                    chatId = chat,
+                    autoDownloadMedia = json.optBoolean("autoDownloadMedia", false),
+                    screenSecurity = json.optBoolean("screenSecurity", true),
+                    newMessageNotification = json.optBoolean("newMessageNotification", true),
+                    callServer = json.optString("callServer", "")
+                )
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to parse QR code content."))
+        }
+    }
+
+    // ─── Bitmap Sampling ───────────────────────────────────────────────────
+
+    private fun decodeSampledBitmapFromUri(uri: Uri, context: Context, maxSize: Int): Bitmap? {
+        return try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
+            }
+            options.inSampleSize = calculateInSampleSize(options, maxSize, maxSize)
+            options.inJustDecodeBounds = false
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, options)
             }
         } catch (e: Exception) {
-            Toast.makeText(context, "No valid QR code found in the image", Toast.LENGTH_SHORT).show()
             e.printStackTrace()
+            null
         }
+    }
+
+    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+        val height = options.outHeight
+        val width = options.outWidth
+        var inSampleSize = 1
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight = height / 2
+            val halfWidth = width / 2
+            while ((halfHeight / inSampleSize) >= reqHeight && (halfWidth / inSampleSize) >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
     }
 }

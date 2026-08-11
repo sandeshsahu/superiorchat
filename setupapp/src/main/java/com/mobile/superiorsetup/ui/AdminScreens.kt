@@ -227,8 +227,24 @@ fun AdminStep3Screen() {
     var showDeveloperWarning by remember { mutableStateOf(false) }
     
     var showQrDialog by remember { mutableStateOf(false) }
-    var currentQrPayload by remember { mutableStateOf("") }
-    var lastGeneratedState by remember { mutableStateOf("") }
+    var lastGeneratedState by remember { mutableStateOf(Config.adminLastGeneratedState) }
+    
+    val generateJsonPayload = {
+        """
+            {
+                "token":"${Config.adminBotToken}",
+                "chatId":"${Config.adminChatId}",
+                "autoDownloadMedia":$autoDownloadMedia,
+                "screenSecurity":$blockScreenshots,
+                "newMessageNotification":$newMessageNotification,
+                "callServer":"$webrtcBaseUrl"
+            }
+        """.trimIndent().replace("\n", "").replace(" ", "")
+    }
+    
+    var currentQrPayload by remember { 
+        mutableStateOf(if (lastGeneratedState.isNotEmpty()) generateJsonPayload() else "")
+    }
 
     var isCheckingUrl by remember { mutableStateOf(false) }
     var showNetworkError by remember { mutableStateOf(false) }
@@ -488,19 +504,9 @@ fun AdminStep3Screen() {
                     .fillMaxWidth()
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) {
-                        val json = """
-                            {
-                                "token":"${Config.adminBotToken}",
-                                "chatId":"${Config.adminChatId}",
-                                "autoDownloadMedia":$autoDownloadMedia,
-                                "screenSecurity":$blockScreenshots,
-                                "newMessageNotification":$newMessageNotification,
-                                "callServer":"$webrtcBaseUrl"
-                            }
-                        """.trimIndent().replace("\\n", "").replace(" ", "")
-                        
-                        currentQrPayload = json
+                        currentQrPayload = generateJsonPayload()
                         lastGeneratedState = currentStateHash
+                        Config.adminLastGeneratedState = currentStateHash
                         showQrDialog = true
                     }
                     .glow(color = if (isButtonReady) Success else PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)

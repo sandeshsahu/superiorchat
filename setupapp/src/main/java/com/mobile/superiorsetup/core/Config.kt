@@ -55,4 +55,8 @@ object Config {
     var adminCallServer: String
         get() = prefs?.getString("admin_call_server", "") ?: ""
         set(value) { prefs?.edit()?.putString("admin_call_server", value)?.apply() }
+
+    var adminLastGeneratedState: String
+        get() = prefs?.getString("admin_last_generated_state", "") ?: ""
+        set(value) { prefs?.edit()?.putString("admin_last_generated_state", value)?.apply() }
 }
