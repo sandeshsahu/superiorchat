@@ -243,15 +243,22 @@ fun AdminStep3Screen() {
     }
     
     var currentQrPayload by remember { 
-        mutableStateOf(if (lastGeneratedState.isNotEmpty()) generateJsonPayload() else "")
+        mutableStateOf(if (lastGeneratedState.isNotEmpty()) Config.adminLastEncryptedPayload else "")
+    }
+    var currentPin by remember {
+        mutableStateOf(if (lastGeneratedState.isNotEmpty()) Config.adminLastGeneratedPin else "")
     }
 
     var isCheckingUrl by remember { mutableStateOf(false) }
     var showNetworkError by remember { mutableStateOf(false) }
     var showWebRtcInfo by remember { mutableStateOf(false) }
+    var requirePin by remember { mutableStateOf(Config.adminRequirePin) }
+    var showRequirePinInfo by remember { mutableStateOf(false) }
+    var showDisablePinWarning by remember { mutableStateOf(false) }
+    var isGeneratingQr by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val currentStateHash = "${Config.adminBotToken}:${Config.adminChatId}:$autoDownloadMedia:$newMessageNotification:$blockScreenshots:$webrtcBaseUrl"
+    val currentStateHash = "${Config.adminBotToken}:${Config.adminChatId}:$autoDownloadMedia:$newMessageNotification:$blockScreenshots:$webrtcBaseUrl:$requirePin"
     
     if (showNetworkError) {
         com.mobile.superiorsetup.ui.components.ActionDialog(
@@ -266,9 +273,33 @@ fun AdminStep3Screen() {
         )
     }
     
+    if (showRequirePinInfo) {
+        com.mobile.superiorsetup.ui.components.RequirePinInfoDialog(onDismiss = { showRequirePinInfo = false })
+    }
+    
+    if (showDisablePinWarning) {
+        com.mobile.superiorsetup.ui.components.ActionDialog(
+            title = "Security Warning",
+            message = "Disabling **Require PIN** will generate setup QR codes without two step PIN protection.\n\nAnyone who gets access to your QR image (or if it leaks) can able to decrypt your credentials since the full project is opensource. They can **Misuse** of your credentials.\n\nAre you sure you want to proceed?",
+            icon = Icons.Filled.Warning,
+            iconTint = ErrorRed,
+            confirmText = "Disable",
+            dismissText = "Cancel",
+            onConfirm = { 
+                requirePin = false
+                Config.adminRequirePin = false
+                showDisablePinWarning = false 
+            },
+            onDismiss = { 
+                showDisablePinWarning = false 
+            }
+        )
+    }
+    
     if (showQrDialog) {
         com.mobile.superiorsetup.ui.components.DisplayQrPopup(
             payloadJson = currentQrPayload,
+            pin = currentPin,
             onDismiss = { showQrDialog = false }
         )
     }
@@ -456,7 +487,111 @@ fun AdminStep3Screen() {
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(SurfaceLevel1)
+                    .padding(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Setup QR Code", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                SettingsSwitchRow(
+                    title = "Require PIN",
+                    subtitle = if (requirePin) "Enabled: Scanning QR will require a two-step PIN" else "Disabled: Scanning QR will not require two-step PIN",
+                    icon = Icons.Default.Lock,
+                    iconTint = PrimaryLight,
+                    isChecked = requirePin,
+                    onCheckedChange = { newValue ->
+                        if (!newValue) {
+                            showDisablePinWarning = true
+                        } else {
+                            requirePin = true
+                            Config.adminRequirePin = true
+                        }
+                    },
+                    onInfoClick = { showRequirePinInfo = true }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                val isButtonReady = lastGeneratedState.isNotEmpty() && lastGeneratedState == currentStateHash
+                val btnText = if (lastGeneratedState.isEmpty()) "Generate QR" 
+                              else if (lastGeneratedState == currentStateHash) "Display QR" 
+                              else "Regenerate QR"
+                val btnBgColor = if (isButtonReady) Success else PrimaryLight
+                val btnTextColor = if (isButtonReady) Color.White else MaterialTheme.colorScheme.onPrimaryContainer
+    
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .bounceClick(scaleDown = 0.95f) {
+                            if (isGeneratingQr) return@bounceClick
+                            scope.launch {
+                                isGeneratingQr = true
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                    if (lastGeneratedState == currentStateHash && Config.adminLastEncryptedPayload.isNotEmpty()) {
+                                        currentQrPayload = Config.adminLastEncryptedPayload
+                                        currentPin = Config.adminLastGeneratedPin
+                                    } else {
+                                        val rawJson = generateJsonPayload()
+                                        if (requirePin) {
+                                            val secureRandom = java.security.SecureRandom()
+                                            val newPin = String.format("%04d", secureRandom.nextInt(10000))
+                                            val encrypted = com.mobile.superiorsetup.core.Security.encryptAESWithPin(rawJson, newPin)
+                                            currentQrPayload = encrypted
+                                            currentPin = newPin
+                                        } else {
+                                            val encrypted = com.mobile.superiorsetup.core.Security.encryptAES(rawJson)
+                                            currentQrPayload = encrypted
+                                            currentPin = ""
+                                        }
+                                        lastGeneratedState = currentStateHash
+                                        Config.adminLastGeneratedState = currentStateHash
+                                        Config.adminLastGeneratedPin = currentPin
+                                        Config.adminLastEncryptedPayload = currentQrPayload
+                                    }
+                                }
+                                isGeneratingQr = false
+                                showQrDialog = true
+                            }
+                        }
+                        .glow(color = if (isButtonReady) Success else PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
+                        .background(btnBgColor, RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isGeneratingQr) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = btnTextColor, strokeWidth = 2.dp)
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.QrCode, contentDescription = null, tint = btnTextColor)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(btnText, color = btnTextColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Filled.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        if (requirePin) "Encrypted with AES-GCM & 4-digit PIN." else "Encrypted directly with AES-GCM.", 
+                        color = TextSecondary, 
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
         
         if (showDeveloperWarning) {
@@ -495,39 +630,6 @@ fun AdminStep3Screen() {
                     showWebRtcConfigPopup = false
                 }
             )
-        }
-        
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            val isButtonReady = lastGeneratedState.isNotEmpty() && lastGeneratedState == currentStateHash
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .bounceClick(scaleDown = 0.95f) {
-                        currentQrPayload = generateJsonPayload()
-                        lastGeneratedState = currentStateHash
-                        Config.adminLastGeneratedState = currentStateHash
-                        showQrDialog = true
-                    }
-                    .glow(color = if (isButtonReady) Success else PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
-                    .background(if (isButtonReady) Success else PrimaryLight, RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.QrCode, contentDescription = null, tint = if (isButtonReady) Color.White else MaterialTheme.colorScheme.onPrimaryContainer)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    val btnText = if (lastGeneratedState.isEmpty()) "Generate QR" 
-                                  else if (lastGeneratedState == currentStateHash) "Display QR" 
-                                  else "Regenerate QR"
-                    Text(btnText, color = if (isButtonReady) Color.White else MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(10.dp))
-                Text("QR payload will be securely encrypted with AES-GCM.", color = TextSecondary, fontSize = 11.sp)
-            }
         }
         
         Spacer(modifier = Modifier.height(30.dp))

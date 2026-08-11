@@ -62,6 +62,7 @@ sealed class ScannerState {
     object Detected : ScannerState()
     object Processing : ScannerState()
     data class Error(val message: String) : ScannerState()
+    data class PinRequired(val rawPayload: String) : ScannerState()
     object Success : ScannerState()
 }
 
@@ -120,9 +121,13 @@ fun QrScanner(
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onSuccess(data)
                 },
-                onError = { msg ->
+                onError = { err ->
                     isGalleryLoading = false
-                    scannerState = ScannerState.Error(msg)
+                    if (err is QrManager.PinRequiredException) {
+                        scannerState = ScannerState.PinRequired(err.rawPayload)
+                    } else {
+                        scannerState = ScannerState.Error(err.message ?: "Invalid QR code.")
+                    }
                 }
             )
         }
@@ -188,6 +193,10 @@ fun QrScanner(
                                     .build()
 
                                 imageAnalysis.setAnalyzer(executor) { imageProxy ->
+                                    if (scannerState !is ScannerState.Scanning) {
+                                        imageProxy.close()
+                                        return@setAnalyzer
+                                    }
                                     QrManager.processImageProxy(
                                         imageProxy = imageProxy,
                                         onSuccess = { data ->
@@ -195,8 +204,12 @@ fun QrScanner(
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             onSuccess(data)
                                         },
-                                        onError = { msg ->
-                                            scannerState = ScannerState.Error(msg)
+                                        onError = { err ->
+                                            if (err is QrManager.PinRequiredException) {
+                                                scannerState = ScannerState.PinRequired(err.rawPayload)
+                                            } else {
+                                                scannerState = ScannerState.Error(err.message ?: "Invalid QR code.")
+                                            }
                                         }
                                     )
                                 }
@@ -290,6 +303,9 @@ fun QrScanner(
                             is ScannerState.Scanning -> {
                                 HintPill("Align the QR code within the frame")
                             }
+                            is ScannerState.PinRequired -> {
+                                HintPill("Action Required", color = com.mobile.superiorchat.theme.WarningAmber.copy(alpha = 0.85f))
+                            }
                             is ScannerState.Detected -> {
                                 HintPill("QR code detected…", color = Success.copy(alpha = 0.85f))
                             }
@@ -375,6 +391,31 @@ fun QrScanner(
                         }
                     }
                 }
+
+                if (scannerState is ScannerState.PinRequired) {
+                    val payload = (scannerState as ScannerState.PinRequired).rawPayload
+                    var pinError by remember { mutableStateOf<String?>(null) }
+                    
+                    com.mobile.superiorchat.ui.components.popups.PinEntryDialog(
+                        errorMessage = pinError,
+                        onDismiss = { 
+                            QrManager.resetState()
+                            scannerState = ScannerState.Scanning 
+                        },
+                        onSubmit = { pin ->
+                            val decrypted = com.mobile.superiorchat.utils.Security.decryptAESWithPin(payload, pin)
+                            val result = QrManager.parseDecryptedJson(decrypted)
+                            result.onSuccess { data ->
+                                scannerState = ScannerState.Success
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onSuccess(data)
+                            }.onFailure { err ->
+                                pinError = "Incorrect PIN or Invalid Config."
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        }
+                    )
+                }
             }
         }
     }
@@ -401,9 +442,13 @@ fun QrScanner(
                                 scannerState = ScannerState.Success
                                 onSuccess(data)
                             },
-                            onError = { msg ->
+                            onError = { err ->
                                 isGalleryLoading = false
-                                scannerState = ScannerState.Error(msg)
+                                if (err is QrManager.PinRequiredException) {
+                                    scannerState = ScannerState.PinRequired(err.rawPayload)
+                                } else {
+                                    scannerState = ScannerState.Error(err.message ?: "Invalid QR code.")
+                                }
                             }
                         )
                         true

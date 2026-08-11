@@ -54,7 +54,13 @@ Superior Chat is built to protect against a specific threat model. It is importa
 
 - **Target Adversary**: "Casual snoopers", nosy friends, or people who happen to briefly shoulder-surf or look at your unlocked phone.
 - **Out of Scope (Accepted Risk)**: Highly technical attackers or forensic experts with prolonged physical access to an *unlocked* device. If a forensic expert has your unlocked phone, they can bypass stealth measures, find the dialer code, dump the APK, and read local databases. We are *not* fighting this attacker.
-- **QR Code Encryption (AES-GCM)**: The Setup App encrypts your Bot Token into a QR code. However, because this app is open-source, the AES decryption key is publicly visible on GitHub. **This is an accepted risk.** The encryption exists solely to stop automated image scanners or accidental scans from exposing the plaintext token, *not* to defeat targeted cryptographic attacks.
+- **QR Code Encryption (Two-Step PIN Mechanism)**: To protect your setup data from hackers who can read our open-source code, the app uses a **Two-Step PIN Mechanism** by default:
+  1. **Generating (Setup App)**: The app generates a random 4-digit PIN. It then mathematically mixes this PIN with our public default key to create a brand new, highly secure secret key.
+  2. **Encryption**: It locks your data inside the QR image using this new key. The PIN is *never* saved in the QR code itself.
+  3. **Scanning (Main App)**: When you scan the QR code, you must manually enter the PIN. The app mixes it with the default key again to instantly unlock the data.
+  Because the public key is mathematically useless without your exact PIN, an attacker cannot decrypt your QR code just by looking at our GitHub repository.
+  - **Accepted Risk**: Since a 4-digit PIN only has 10,000 possible combinations, a determined hacker who steals a picture of your QR code could theoretically use a computer to guess all 10,000 PINs. We intentionally slow down this mathematical guessing process in the code. Furthermore, as an added "Security through Obscurity" layer, the PIN is cryptographically mixed with an app-specific hardcoded key (a "pepper"). This means an attacker who steals the QR code but doesn't know it came from Superior Chat (and thus doesn't have our source code) is completely blocked from brute-forcing it.
+  - **Note (Direct Mode Vulnerability)**: If you turn off "Require PIN" in the Setup App, the app falls back to using a hardcoded, default AES key instead of deriving a unique one. Because this project is open-source, anyone who finds this GitHub repository can easily look up that default key in the public code (`CONSTANT_SECRET`). This means if someone steals your un-PINned QR code, they can instantly decrypt it and gain full access to your Telegram Bot API Token—allowing them to hijack your bot, read your private messages, or send messages on your behalf.
 
 ---
 
@@ -112,15 +118,13 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 
 > [!IMPORTANT]
 > **Why you might see a "Harmful App" warning during installation**
-> 
-> I have poured a lot of hard work and passion into this project to deliver a seamless, beautifully designed application.
-> 
+
 > Because this app is only available as open-source (not from Play Store), **Google Play Protect may flag this application as harmful.** This is an automated security warning from Android.
 > 
 > I cannot control Google's automated flagging. Therefore, **the choice is entirely in your hands**:
 > 
 > 1. **Verify it yourself:** This project is completely open-source. You have access to the complete source code, and you are highly encouraged to audit it, compile it yourself, and use your own builds.
-> 2. **Use the provided releases:** If you don't want to build it yourself, you can use the signed APKs provided in the Releases section. 
+> 2. **Use the provided releases:** If you don't want to build it yourself, you can use my automated build and signed APKs provided in the Releases section by **Github's Actions**. 
 > 
 > I am not forcing anyone to use my provided APKs. This project is the result of a personal vision and a strong, relentless drive to make these ideas work in the real world. If you choose to install the pre-built APK and see the warning, simply click **More Details -> Install Anyway**.
 

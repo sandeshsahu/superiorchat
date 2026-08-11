@@ -77,55 +77,51 @@ object QrManager {
     fun processImageProxy(
         imageProxy: ImageProxy,
         onSuccess: (QrConfigData) -> Unit,
-        onError: (String) -> Unit = {}
+        onError: (Throwable) -> Unit
     ) {
-        // Drop frame immediately if we already have a result in flight
-        if (isProcessing.get()) {
-            imageProxy.close()
-            return
-        }
-
-        val image = imageProxy.image
-        if (image == null) {
-            imageProxy.close()
-            return
-        }
-
         try {
-            val buffer = image.planes[0].buffer
-            val data = ByteArray(buffer.remaining())
-            buffer.get(data)
+            if (isProcessing.get()) {
+                imageProxy.close()
+                return
+            }
 
-            // PlanarYUVLuminanceSource does not support rotateCounterClockwise() —
-            // CameraX handles frame rotation via ImageAnalysis.setTargetRotation() on the use-case.
+            val image = imageProxy.image
+            if (image == null) {
+                imageProxy.close()
+                return
+            }
+
+            val buffer = imageProxy.planes[0].buffer
+            val remaining = buffer.remaining()
+            val data = ByteArray(remaining)
+            buffer.get(data)
+            
             val source = PlanarYUVLuminanceSource(
                 data,
-                image.width,
-                image.height,
+                imageProxy.width,
+                imageProxy.height,
                 0, 0,
-                image.width,
-                image.height,
+                imageProxy.width,
+                imageProxy.height,
                 false
             )
-
+            
             val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
-
-            // QRCodeReader is not thread-safe — synchronize across live + gallery paths
+            
             try {
                 val result = synchronized(qrReader) { qrReader.decode(binaryBitmap, decodeHints) }
-                // Mark as processing immediately to block further frames
+                
                 if (isProcessing.compareAndSet(false, true)) {
                     val parsed = parseQrPayload(result.text)
                     parsed.onSuccess { data ->
                         Handler(Looper.getMainLooper()).post { onSuccess(data) }
                     }.onFailure { err ->
-                        // Reset so user can try a different QR
                         isProcessing.set(false)
-                        Handler(Looper.getMainLooper()).post { onError(err.message ?: "Invalid QR code.") }
+                        Handler(Looper.getMainLooper()).post { onError(err) }
                     }
                 }
             } catch (e: NotFoundException) {
-                // No QR in this frame — normal, keep scanning
+                // Keep scanning
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -136,22 +132,17 @@ object QrManager {
 
     // ─── Gallery / URI Scan ────────────────────────────────────────────────
 
-    /**
-     * Decodes a QR code from a URI on an IO coroutine.
-     * Handles large images safely via inSampleSize subsampling.
-     * Callbacks are always delivered on the Main thread.
-     */
     fun processUri(
         uri: Uri,
         context: Context,
         onSuccess: (QrConfigData) -> Unit,
-        onError: (String) -> Unit = {}
+        onError: (Throwable) -> Unit = {}
     ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val bitmap = decodeSampledBitmapFromUri(uri, context, 1024)
                     ?: run {
-                        withContext(Dispatchers.Main) { onError("Could not read the selected image.") }
+                        withContext(Dispatchers.Main) { onError(Exception("Could not read the selected image.")) }
                         return@launch
                     }
 
@@ -165,33 +156,29 @@ object QrManager {
                 val binaryBitmap = BinaryBitmap(HybridBinarizer(source))
 
                 try {
-                    // QRCodeReader is not thread-safe — synchronize
                     val result = synchronized(qrReader) { qrReader.decode(binaryBitmap, decodeHints) }
                     val parsed = parseQrPayload(result.text)
                     parsed.onSuccess { data ->
                         withContext(Dispatchers.Main) { onSuccess(data) }
                     }.onFailure { err ->
-                        withContext(Dispatchers.Main) { onError(err.message ?: "Invalid QR code.") }
+                        withContext(Dispatchers.Main) { onError(err) }
                     }
                 } catch (e: NotFoundException) {
-                    withContext(Dispatchers.Main) { onError("No QR code found in the image.") }
+                    withContext(Dispatchers.Main) { onError(Exception("No QR code found in the image.")) }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
-                withContext(Dispatchers.Main) { onError("Failed to process image: ${e.localizedMessage}") }
+                withContext(Dispatchers.Main) { onError(Exception("Failed to process image: ${e.localizedMessage}")) }
             }
         }
     }
 
     // ─── Shared Payload Parser ─────────────────────────────────────────────
 
-    /**
-     * Synchronous parser — safe to call from any thread.
-     * Returns Result.success(QrConfigData) or Result.failure(Exception with user-readable message).
-     */
-    private fun parseQrPayload(raw: String): Result<QrConfigData> {
+    class PinRequiredException(val rawPayload: String) : Exception("PIN required")
+
+    fun parseDecryptedJson(decrypted: String): Result<QrConfigData> {
         return try {
-            val decrypted = Security.decryptAES(raw)
             if (decrypted.isEmpty()) {
                 return Result.failure(Exception("QR code is not a valid Superior Chat config."))
             }
@@ -222,6 +209,29 @@ object QrManager {
             )
 
             Result.success(configData)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(Exception("Failed to parse QR code content."))
+        }
+    }
+
+    /**
+     * Synchronous parser — safe to call from any thread.
+     * Returns Result.success(QrConfigData) or Result.failure(Exception with user-readable message).
+     */
+    fun parseQrPayload(raw: String): Result<QrConfigData> {
+        return try {
+            if (raw.startsWith("SEC_QR:")) {
+                return Result.failure(PinRequiredException(raw))
+            } else if (raw.startsWith("DIR_QR:")) {
+                val decrypted = Security.decryptAES(raw)
+                if (decrypted.isEmpty()) return Result.failure(Exception("Failed to decrypt setup configuration."))
+                return parseDecryptedJson(decrypted)
+            } else {
+                return Result.failure(Exception("Invalid or unsupported QR Code"))
+            }
+        } catch (e: PinRequiredException) {
+            Result.failure(e)
         } catch (e: Exception) {
             e.printStackTrace()
             Result.failure(Exception("Failed to parse QR code content."))

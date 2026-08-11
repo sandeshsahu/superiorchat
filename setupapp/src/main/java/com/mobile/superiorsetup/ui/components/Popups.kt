@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SaveAlt
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
@@ -343,44 +344,89 @@ fun AddManuallyPopup(
 }
 
 @Composable
+fun PinInfoPopup(hasPin: Boolean, onDismiss: () -> Unit) {
+    ActionDialog(
+        title = "Secure Configuration",
+        message = if (hasPin) {
+            "For maximum security, this QR code is protected by a dynamically generated *PIN*. \n\n1. Save or share this QR code with the host device.\n2. When the device scans it, they will be prompted for the PIN.\n3. Share the *4-digit PIN* with the user through a separate, secure channel."
+        } else {
+            "This QR code contains your configuration encrypted directly without **two-step PIN**. \n\n1. Save or share this QR code with the host device.\n2. When the device scans it, app will instantly apply the configuration.\n\n*Note:* Anyone with access to this QR code can link to your bot or decrypt your credentials if they identified this QR is from opensource project."
+        },
+        icon = androidx.compose.material.icons.Icons.Filled.Info,
+        iconTint = PrimaryLight,
+        confirmText = "Understood",
+        dismissText = "",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun RequirePinInfoDialog(onDismiss: () -> Unit) {
+    ActionDialog(
+        title = "Require PIN Setting",
+        message = "When **Require PIN** is enabled:\n- Setup QR codes will be encrypted using a random *4-Digit PIN*.\n- Scanning devices must enter the PIN to decrypt and apply the configured settings.\n\nWhen **Require PIN** is disabled:\n- Setup QR codes will be encrypted directly without a two-step PIN.\n- Scanning devices can decrypt and apply the configured settings instantly.",
+        icon = androidx.compose.material.icons.Icons.Filled.Info,
+        iconTint = PrimaryLight,
+        confirmText = "Understood",
+        dismissText = "",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
 fun DisplayQrPopup(
     payloadJson: String,
+    pin: String,
     onDismiss: () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
     var qrBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var showInfo by remember { mutableStateOf(false) }
     
+    // payloadJson is already encrypted in AdminScreens.kt using encryptAESWithPin
     LaunchedEffect(payloadJson) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            val encrypted = com.mobile.superiorsetup.core.Security.encryptAES(payloadJson)
-            qrBitmap = com.mobile.superiorsetup.core.QrManager.generateQrCode(encrypted)
+            qrBitmap = com.mobile.superiorsetup.core.QrManager.generateQrCode(payloadJson)
         }
+    }
+
+    if (showInfo) {
+        PinInfoPopup(hasPin = pin.isNotEmpty(), onDismiss = { showInfo = false })
     }
 
     BaseAppDialog(onDismiss = onDismiss) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-            Text("Scan Configuration", color = PrimaryLight, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                Text("Scan Configuration", color = PrimaryLight, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = { showInfo = true }, modifier = Modifier.size(24.dp)) {
+                    Icon(androidx.compose.material.icons.Icons.Filled.Info, contentDescription = "Info", tint = PrimaryLight)
+                }
+            }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             if (qrBitmap != null) {
                 androidx.compose.foundation.Image(
                     bitmap = qrBitmap!!.asImageBitmap(),
                     contentDescription = "QR Code",
-                    modifier = Modifier.size(240.dp).clip(RoundedCornerShape(8.dp))
+                    modifier = Modifier.size(220.dp).clip(RoundedCornerShape(8.dp))
                 )
             } else {
-                Box(modifier = Modifier.size(240.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.size(220.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = PrimaryLight)
                 }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .height(50.dp)
                     .bounceClick(scaleDown = 0.95f) {
                         qrBitmap?.let { bmp ->
                             try {
@@ -401,12 +447,34 @@ fun DisplayQrPopup(
                 }
             }
             
-            Spacer(modifier = Modifier.height(12.dp))
-            
+            if (pin.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(10.dp))
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .bounceClick(scaleDown = 0.95f) {
+                            clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(pin))
+                            android.widget.Toast.makeText(context, "PIN Copied", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        .background(SurfaceLevel2, RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Copy $pin PIN", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .height(50.dp)
                     .bounceClick(scaleDown = 0.95f) {
                         qrBitmap?.let { bmp ->
                             try {
@@ -438,13 +506,13 @@ fun DisplayQrPopup(
                     Text("Share QR", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+            
+            Spacer(modifier = Modifier.height(6.dp))
+            
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp)
+                    .height(44.dp)
                     .bounceClick(scaleDown = 0.95f) { onDismiss() }
                     .background(Color.Transparent, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
@@ -614,6 +682,137 @@ fun WebRtcConfigPopup(
                         onDismiss()
                     }
                     .background(Color.Transparent, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Cancel", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+fun PinEntryDialog(
+    errorMessage: String? = null,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit
+) {
+    var pin by remember { mutableStateOf("") }
+    var isVerifying by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    BaseAppDialog(onDismiss = onDismiss) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Enter PIN",
+                color = PrimaryLight,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "This QR code is protected. Please enter the two-step setup PIN to proceed..",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, DividerColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Security PIN", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    var passwordVisible by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { if (it.length <= 4) pin = it.filter { char -> char.isDigit() } },
+                        placeholder = { Text("4-digit PIN", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Hide PIN" else "Show PIN",
+                                    tint = TextSecondary
+                                )
+                            }
+                        }
+                    )
+                    
+                    if (errorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = errorMessage,
+                            color = ErrorRed,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) {
+                        if (pin.length >= 4 && !isVerifying) {
+                            scope.launch {
+                                isVerifying = true
+                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                    onSubmit(pin)
+                                }
+                                isVerifying = false
+                            }
+                        }
+                    }
+                    .background(if (pin.length >= 4 && !isVerifying) PrimaryLight else SurfaceLevel2, RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isVerifying) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        text = "Unlock & Continue",
+                        color = if (pin.length >= 4) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .bounceClick(scaleDown = 0.95f) {
+                        onDismiss()
+                    }
+                    .background(SurfaceLevel2, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Text("Cancel", color = TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Medium)

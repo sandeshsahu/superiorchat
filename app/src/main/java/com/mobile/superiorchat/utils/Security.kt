@@ -118,16 +118,19 @@ object Security {
             System.arraycopy(iv, 0, combined, 0, iv.size)
             System.arraycopy(encryptedBytes, 0, combined, iv.size, encryptedBytes.size)
             
-            return Base64.encodeToString(combined, Base64.NO_WRAP)
+            return "DIR_QR:" + Base64.encodeToString(combined, Base64.NO_WRAP)
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "Failed to encrypt AES payload: ${e.message}", LogLevel.ERROR)
             return ""
         }
     }
 
-    fun decryptAES(encryptedBase64: String): String {
+    fun decryptAES(encryptedPayload: String): String {
         try {
-            val combined = Base64.decode(encryptedBase64, Base64.NO_WRAP)
+            if (!encryptedPayload.startsWith("DIR_QR:")) return ""
+            val b64 = encryptedPayload.removePrefix("DIR_QR:")
+            val combined = Base64.decode(b64, Base64.NO_WRAP)
+            if (combined.size < 12) return ""
             val iv = ByteArray(12)
             val encryptedBytes = ByteArray(combined.size - 12)
             
@@ -144,6 +147,71 @@ object Security {
             return String(decryptedBytes, Charsets.UTF_8)
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "Failed to decrypt AES payload: ${e.message}", LogLevel.ERROR)
+            return ""
+        }
+    }
+
+    private fun deriveKeyFromPin(pin: String, salt: ByteArray): javax.crypto.SecretKey {
+        val factory = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+        val combinedSecret = pin + CONSTANT_SECRET
+        val spec = javax.crypto.spec.PBEKeySpec(combinedSecret.toCharArray(), salt, 65536, 256)
+        val secret = factory.generateSecret(spec)
+        return javax.crypto.spec.SecretKeySpec(secret.encoded, "AES")
+    }
+
+    fun encryptAESWithPin(plainText: String, pin: String): String {
+        try {
+            val salt = ByteArray(16)
+            java.security.SecureRandom().nextBytes(salt)
+            
+            val key = deriveKeyFromPin(pin, salt)
+            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
+            
+            val iv = ByteArray(12)
+            java.security.SecureRandom().nextBytes(iv)
+            val parameterSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
+            
+            cipher.init(Cipher.ENCRYPT_MODE, key, parameterSpec)
+            val encryptedBytes = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
+            
+            val combined = ByteArray(salt.size + iv.size + encryptedBytes.size)
+            System.arraycopy(salt, 0, combined, 0, salt.size)
+            System.arraycopy(iv, 0, combined, salt.size, iv.size)
+            System.arraycopy(encryptedBytes, 0, combined, salt.size + iv.size, encryptedBytes.size)
+            
+            return "SEC_QR:" + Base64.encodeToString(combined, Base64.NO_WRAP)
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to encrypt with PIN: ${e.message}", LogLevel.ERROR)
+            return ""
+        }
+    }
+
+    fun decryptAESWithPin(payload: String, pin: String): String {
+        try {
+            if (!payload.startsWith("SEC_QR:")) return ""
+            val b64 = payload.removePrefix("SEC_QR:")
+            val combined = Base64.decode(b64, Base64.NO_WRAP)
+            
+            if (combined.size < 28) return "" // Salt(16) + IV(12)
+            
+            val salt = ByteArray(16)
+            val iv = ByteArray(12)
+            val encryptedBytes = ByteArray(combined.size - 28)
+            
+            System.arraycopy(combined, 0, salt, 0, 16)
+            System.arraycopy(combined, 16, iv, 0, 12)
+            System.arraycopy(combined, 28, encryptedBytes, 0, encryptedBytes.size)
+            
+            val key = deriveKeyFromPin(pin, salt)
+            val cipher = Cipher.getInstance(AES_TRANSFORMATION)
+            val parameterSpec = javax.crypto.spec.GCMParameterSpec(128, iv)
+            
+            cipher.init(Cipher.DECRYPT_MODE, key, parameterSpec)
+            val decryptedBytes = cipher.doFinal(encryptedBytes)
+            
+            return String(decryptedBytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to decrypt with PIN: ${e.message}", LogLevel.ERROR)
             return ""
         }
     }

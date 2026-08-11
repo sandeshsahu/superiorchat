@@ -1332,3 +1332,136 @@ fun FakeCrashAnimPreview() {
         }
     }
 }
+
+@Composable
+fun PinEntryDialog(
+    errorMessage: String? = null,
+    onDismiss: () -> Unit,
+    onSubmit: (String) -> Unit
+) {
+    var pin by remember { mutableStateOf("") }
+    var isVerifying by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    BlurredPopup(onDismiss = onDismiss) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = "Enter PIN",
+                color = PrimaryLight,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "This QR code is protected. Please enter the two-step setup PIN to proceed.",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Surface(
+                color = SurfaceLevel1,
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, DividerColor),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Security PIN", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    var passwordVisible by remember { mutableStateOf(false) }
+                    OutlinedTextField(
+                        value = pin,
+                        onValueChange = { if (it.length <= 4) pin = it.filter { char -> char.isDigit() } },
+                        placeholder = { Text("4-digit PIN", color = TextSecondary, fontSize = 13.sp) },
+                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedContainerColor = SurfaceLevel2,
+                            focusedContainerColor = SurfaceLevel2,
+                            unfocusedBorderColor = Color.Transparent,
+                            focusedBorderColor = Primary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedTextColor = TextPrimary,
+                            errorBorderColor = ErrorRed
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.NumberPassword),
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (passwordVisible) "Hide PIN" else "Show PIN",
+                                    tint = TextSecondary
+                                )
+                            }
+                        }
+                    )
+                    
+                    if (errorMessage != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = errorMessage,
+                            color = ErrorRed,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Button(
+                onClick = { 
+                    if (pin.length >= 4 && !isVerifying) {
+                        scope.launch {
+                            isVerifying = true
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                                onSubmit(pin)
+                            }
+                            isVerifying = false
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryLight,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = SurfaceLevel2,
+                    disabledContentColor = TextSecondary
+                ),
+                shape = RoundedCornerShape(16.dp),
+                enabled = pin.length >= 4 && !isVerifying
+            ) {
+                if (isVerifying) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimaryContainer, strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        text = "Unlock & Continue",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SurfaceLevel2,
+                    contentColor = TextSecondary
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}

@@ -59,4 +59,16 @@ object Config {
     var adminLastGeneratedState: String
         get() = prefs?.getString("admin_last_generated_state", "") ?: ""
         set(value) { prefs?.edit()?.putString("admin_last_generated_state", value)?.apply() }
+
+    var adminLastGeneratedPin: String
+        get() = prefs?.getString("admin_last_generated_pin", "") ?: ""
+        set(value) { prefs?.edit()?.putString("admin_last_generated_pin", value)?.apply() }
+
+    var adminLastEncryptedPayload: String
+        get() = prefs?.getString("admin_last_encrypted_payload", "") ?: ""
+        set(value) { prefs?.edit()?.putString("admin_last_encrypted_payload", value)?.apply() }
+
+    var adminRequirePin: Boolean
+        get() = prefs?.getBoolean("admin_require_pin", true) ?: true
+        set(value) { prefs?.edit()?.putBoolean("admin_require_pin", value)?.apply() }
 }
