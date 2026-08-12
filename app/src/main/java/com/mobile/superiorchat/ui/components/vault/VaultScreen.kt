@@ -226,7 +226,7 @@ fun VaultScreen(
                             }
                             onGlobalDialog(GlobalDialogState.ManageStorageRequired(intent))
                         } else {
-                            permissionHandler.requestStorageForMedia { showPicker = true } 
+                            showPicker = true
                         }
                     }) {
                         Icon(Icons.Default.Add, contentDescription = "Add", tint = PrimaryLight)
