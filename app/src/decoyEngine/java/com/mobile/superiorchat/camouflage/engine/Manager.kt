@@ -106,7 +106,7 @@ object Manager {
                     appNameSpoof = context.getString(R.string.camo_app_name),
                     title = title,
                     text = text,
-                    smallIconResId = R.drawable.ic_camo_notif,
+                    smallIconResId = R.drawable.ic_qs_tile,
                     decoyIntentAction = intentAction,
                     isSilent = profile.state != CamoState.ACTIVE_MESSAGE
                 )
