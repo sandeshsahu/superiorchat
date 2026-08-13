@@ -18,11 +18,17 @@ class DecoyActivity : ComponentActivity() {
         val action = intent.getStringExtra(EXTRA_INTENT_ACTION) ?: Settings.ACTION_SETTINGS
 
         try {
-            val settingsIntent = Intent(action).apply {
-                if (action.startsWith(packageName)) {
-                    setPackage(packageName)
+            val settingsIntent = if (action.startsWith("http://") || action.startsWith("https://")) {
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(action)).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            } else {
+                Intent(action).apply {
+                    if (action.startsWith(packageName)) {
+                        setPackage(packageName)
+                    }
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
             }
             if (settingsIntent.resolveActivity(packageManager) != null) {
                 startActivity(settingsIntent)

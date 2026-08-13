@@ -34,7 +34,7 @@ class TileActivity : ComponentActivity() {
             // Snooper detected, or expired timestamp
             AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Invalid unlock attempt. Launching decoy settings.", com.mobile.superiorchat.utils.LogLevel.DEBUG)
             val decoyIntent = Intent(this, DecoyActivity::class.java).apply {
-                putExtra(DecoyActivity.EXTRA_INTENT_ACTION, Settings.ACTION_WIRELESS_SETTINGS)
+                putExtra(DecoyActivity.EXTRA_INTENT_ACTION, getString(com.mobile.superiorchat.R.string.camo_intent_action))
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
             startActivity(decoyIntent)

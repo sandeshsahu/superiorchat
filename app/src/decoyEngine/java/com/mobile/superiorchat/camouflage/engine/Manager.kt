@@ -76,6 +76,41 @@ object Manager {
                     isSilent = profile.state != CamoState.ACTIVE_MESSAGE
                 )
             }
+            is Profile.Aosp.PlayHelper -> {
+                val titles = context.resources.getStringArray(R.array.camo_idle_titles)
+                val texts = context.resources.getStringArray(R.array.camo_idle_texts)
+                val randomIndex = (System.currentTimeMillis() / 10000 % titles.size).toInt() // Cache based on time so it doesn't flicker rapidly
+                
+                val title = when (profile.state) {
+                    CamoState.IDLE -> titles[randomIndex]
+                    CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_title_active)
+                    CamoState.NO_INTERNET -> context.getString(R.string.camo_title_no_internet)
+                    CamoState.API_UNREACHABLE -> context.getString(R.string.camo_title_api_unreachable)
+                    CamoState.UNINITIALIZED -> context.getString(R.string.camo_title_uninitialized)
+                }
+
+                val text = when (profile.state) {
+                    CamoState.IDLE -> texts[randomIndex]
+                    CamoState.ACTIVE_MESSAGE -> context.getString(R.string.camo_state_active)
+                    CamoState.NO_INTERNET -> context.getString(R.string.camo_state_no_internet)
+                    CamoState.API_UNREACHABLE -> context.getString(R.string.camo_state_api_unreachable)
+                    CamoState.UNINITIALIZED -> context.getString(R.string.camo_state_uninitialized)
+                }
+                val intentAction = if (profile.state == CamoState.ACTIVE_MESSAGE) {
+                    context.getString(R.string.camo_intent_action_active)
+                } else {
+                    context.getString(R.string.camo_intent_action)
+                }
+                
+                DecoyData(
+                    appNameSpoof = context.getString(R.string.camo_app_name),
+                    title = title,
+                    text = text,
+                    smallIconResId = R.drawable.ic_camo_notif,
+                    decoyIntentAction = intentAction,
+                    isSilent = profile.state != CamoState.ACTIVE_MESSAGE
+                )
+            }
         }
     }
 

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 
+      Scale by 3.0 to make the triangle large (48dp wide).
+      Translate to perfectly center the triangle at (54, 54).
+      Triangle center in original 40x40 is (18.3, 17.3).
+      X' = 18.3 * 3.0 - 0.9 = 54.0
+      Y' = 17.3 * 3.0 + 2.1 = 54.0
+    -->
+    <group 
+        android:scaleX="3.0" 
+        android:scaleY="3.0" 
+        android:translateX="-0.9" 
+        android:translateY="2.1">
+        
+        <!-- Black shadow effect from original Play Protect logo -->
+        <path android:fillColor="#000000" android:pathData="M11.69,8.42L10.36,9.45L10.25,9.68L10.31,24.88L19.79,34.24C28.29,29.36 31.17,21.08 31.17,21.08L25.85,16.39L21.5,13.88L11.69,8.42Z" android:strokeColor="#00000000" android:strokeWidth="1.0" android:strokeAlpha="0.5" android:fillAlpha="0.1" />
+        
+        <!-- White Play triangle from original Play Protect logo -->
+        <path android:fillColor="#fafafa" android:pathData="M18.31,17.25L10.63,9.57C10.47,9.41 10.3,9.51 10.3,9.74L10.3,24.76C10.3,24.99 10.47,25.09 10.63,24.93C10.8,24.76 18.31,17.25 18.31,17.25M11.82,25.75C11.79,25.78 11.77,25.81 11.75,25.83C11.61,25.97 11.73,26.08 11.88,26.01C11.94,25.99 12,25.96 12.06,25.92L21.59,20.53L19.32,18.26C19.32,18.26 12.9,24.67 11.82,25.75M11.82,8.75C12.9,9.83 19.32,16.24 19.32,16.24L21.59,13.97L12.06,8.58C12,8.54 11.94,8.51 11.88,8.49C11.73,8.42 11.61,8.53 11.75,8.67C11.77,8.69 11.79,8.72 11.82,8.75M25.6,16.25L22.87,14.7L20.33,17.25L22.87,19.8L25.6,18.25C26.08,17.97 26.33,17.61 26.33,17.25C26.33,16.89 26.08,16.53 25.6,16.25" android:strokeColor="#00000000" android:strokeWidth="1.0" />
+    </group>
+</vector>

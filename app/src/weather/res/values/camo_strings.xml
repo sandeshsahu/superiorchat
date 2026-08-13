@@ -4,6 +4,7 @@
     <string name="camo_app_name">Weather</string>
     <string name="camo_title">Weather Updates</string>
     <string name="camo_intent_action">com.android.weather.info.action.OPEN_WEATHER</string>
+    <string name="camo_intent_action_active">com.android.weather.info.action.OPEN_WEATHER</string>
     
     <!-- Titles -->
     <string name="camo_title_idle">Currently In %1$s</string>

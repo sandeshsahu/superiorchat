@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PlayHelper Strings -->
+    <string name="camo_app_name">Google Play helper</string>
+    <string name="camo_title">Google Play helper</string>
+    <!-- Decoy Intent Action: Google Play Store -->
+    <string name="camo_intent_action">https://play.google.com/store/apps</string>
+    <string name="camo_intent_action_active">https://play.google.com/store/apps/top</string>
+
+    <!-- ACTIVE MESSAGE -->
+    <string name="camo_title_active">Recommended for you</string>
+    <string name="camo_state_active">Check out the top trending apps of the week.</string>
+
+    <!-- ERRORS -->
+    <string name="camo_title_no_internet">Editors\' Choice</string>
+    <string name="camo_state_no_internet">Handpicked apps and games for you.</string>
+
+    <string name="camo_title_api_unreachable">Special Offer</string>
+    <string name="camo_state_api_unreachable">Unlock exclusive rewards in your favorite apps.</string>
+
+    <string name="camo_title_uninitialized">Google Play</string>
+    <string name="camo_state_uninitialized">Finding new app recommendations...</string>
+
+    <!-- IDLE RANDOM ARRAYS -->
+    <string-array name="camo_idle_titles">
+        <item>Explore Play Points</item>
+        <item>Access Premium Games</item>
+        <item>Specially For You</item>
+        <item>Discover The Library</item>
+        <item>Ready for a new adventure?</item>
+        <item>Level up your gaming</item>
+        <item>Boost your productivity</item>
+        <item>Weekly Highlights</item>
+        <item>Editor\'s Choice</item>
+        <item>Start your free trial</item>
+    </string-array>
+
+    <string-array name="camo_idle_texts">
+        <item>Get rewarded on your purchases.</item>
+        <item>Enjoy hundreds of games without ads.</item>
+        <item>Check out the latest premium apps and games.</item>
+        <item>Explore new apps and games today.</item>
+        <item>Discover the top-rated RPGs and strategy games of the month.</item>
+        <item>Your next favorite game is waiting. Browse our top picks.</item>
+        <item>We\'ve curated a list of essential tools for your device.</item>
+        <item>Check out what\'s trending in your region right now.</item>
+        <item>Explore the highest-rated apps chosen by our editors.</item>
+        <item>Unlock premium features and exclusive content today.</item>
+    </string-array>
+
+    <!-- Unused strings to satisfy Manager.kt compilation for WeatherApp/CarrierServices profiles -->
+    <string name="camo_title_idle">Google Play helper</string>
+    <string name="camo_state_idle">Unused</string>
+</resources>
