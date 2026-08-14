@@ -50,8 +50,8 @@ fun MediaBubble(
     val isPhoto = message.mediaType == "photo"
     val isVideo = message.mediaType == "video"
     val mediaLabel = if (isPhoto) "IMAGE" else "VIDEO"
-    val isUploading = message.isFromMe && message.status == MessageStatus.SENDING
-    val isQueued = message.isFromMe && message.status == MessageStatus.QUEUED
+    val isUploading = message.isFromMe && message.status == MessageStatus.SENDING && progress > 0f
+    val isQueued = message.isFromMe && (message.status == MessageStatus.QUEUED || (message.status == MessageStatus.SENDING && progress == 0f))
     val isFailed = message.status == MessageStatus.FAILED
     val isDownloading = !message.isFromMe && message.status == MessageStatus.SENDING
 
@@ -126,13 +126,23 @@ fun MediaBubble(
                         }
                     } else if (isQueued) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(30.dp),
-                                color = Color.White,
-                                strokeWidth = 2.5.dp
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(40.dp),
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    strokeWidth = 3.dp
+                                )
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cancel Upload",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clickable { viewModel.cancelTransfer(message) }
+                                )
+                            }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Preparing...", color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                            Text("Waiting...", color = Color.White.copy(alpha = 0.9f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         }
                     } else {
                         Box(contentAlignment = Alignment.Center) {

@@ -64,8 +64,8 @@ fun DocumentBubble(
         )
     }
 
-    val isUploading = message.isFromMe && message.status == MessageStatus.SENDING
-    val isQueued = message.isFromMe && message.status == MessageStatus.QUEUED
+    val isUploading = message.isFromMe && message.status == MessageStatus.SENDING && progress > 0f
+    val isQueued = message.isFromMe && (message.status == MessageStatus.QUEUED || (message.status == MessageStatus.SENDING && progress == 0f))
     val isFailed = message.status == MessageStatus.FAILED
     val isDownloading = !message.isFromMe && message.status == MessageStatus.SENDING
 
@@ -121,9 +121,17 @@ fun DocumentBubble(
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = textColor,
+                        modifier = Modifier.size(40.dp),
+                        color = textColor.copy(alpha = 0.5f),
                         strokeWidth = 2.dp
+                    )
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel Upload",
+                        tint = textColor,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { viewModel.cancelTransfer(message) }
                     )
                 }
             } else if (isUploading) {
@@ -174,7 +182,7 @@ fun DocumentBubble(
                 val extPrefix = if (ext.isNotEmpty()) "$ext • " else ""
                 Text(
                     text = if (isQueued) {
-                        "${extPrefix}Preparing..."
+                        "${extPrefix}Waiting..."
                     } else if (isUploading) {
                         val uploaded = (progress * totalSize).toLong()
                         "${extPrefix}${FileUtils.formatFileSize(uploaded)} / ${FileUtils.formatFileSize(totalSize)}"
@@ -183,7 +191,7 @@ fun DocumentBubble(
                     } else {
                         "${extPrefix}${FileUtils.formatFileSize(totalSize)}"
                     },
-                    color = if (isQueued) PrimaryLight else textColor.copy(alpha = 0.6f),
+                    color = textColor.copy(alpha = 0.8f),
                     fontSize = 11.sp
                 )
             }

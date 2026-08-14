@@ -98,8 +98,9 @@ import com.mobile.superiorchat.core.call.CallState
 import java.io.File
 import java.util.Locale
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 private const val PAGE_SIZE = 50
 
@@ -183,6 +184,7 @@ fun ChatScreen(
     val coroutineScope = rememberCoroutineScope()
     var shouldScrollToBottomOnStart by remember(activeConversationId) { mutableStateOf(true) }
     var shouldScrollToBottom by remember { mutableStateOf(false) }
+    var highlightedMessageId by remember { mutableStateOf<Long?>(null) }
     val isScrolledUp by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 4 }
     }
@@ -383,6 +385,11 @@ fun ChatScreen(
                                 if (index != -1) {
                                     coroutineScope.launch {
                                         listState.scrollToItem(index)
+                                        highlightedMessageId = pinnedMsg.messageId
+                                        delay(2000)
+                                        if (highlightedMessageId == pinnedMsg.messageId) {
+                                            highlightedMessageId = null
+                                        }
                                     }
                                 }
                             },
@@ -503,6 +510,7 @@ fun ChatScreen(
                                 viewModel = viewModel,
                                 isSelectionMode = isInSelectionMode,
                                 isSelected = selectedMessageIds.contains(msg.messageId),
+                                isHighlighted = highlightedMessageId == msg.messageId,
                                 onSelectMessage = { viewModel.toggleMessageSelection(it) },
                                 onNavigateToCallHistory = onNavigateToCallHistory,
                                 repliedMessageText = if (!repliedMsg?.text.isNullOrBlank()) {
@@ -535,6 +543,19 @@ fun ChatScreen(
                                         viewModel.unpinMessage(msgToPin)
                                     } else {
                                         viewModel.pinMessage(msgToPin)
+                                    }
+                                },
+                                onReplyMessageClick = { replyToMessageId ->
+                                    val index = messages.reversed().indexOfFirst { it.messageId == replyToMessageId }
+                                    if (index != -1) {
+                                        coroutineScope.launch {
+                                            listState.scrollToItem(index)
+                                            highlightedMessageId = replyToMessageId
+                                            delay(2000)
+                                            if (highlightedMessageId == replyToMessageId) {
+                                                highlightedMessageId = null
+                                            }
+                                        }
                                     }
                                 }
                             )

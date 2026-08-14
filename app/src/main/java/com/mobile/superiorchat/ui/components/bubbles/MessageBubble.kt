@@ -52,6 +52,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.ui.text.style.TextAlign
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -164,9 +165,11 @@ fun MessageBubble(
     onSelectMessage: (MessageNode) -> Unit = {},
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
+    isHighlighted: Boolean = false,
     repliedMessageText: String? = null,
     repliedMessageAuthor: String? = null,
-    onNavigateToCallHistory: () -> Unit = {}
+    onNavigateToCallHistory: () -> Unit = {},
+    onReplyMessageClick: (Long) -> Unit = {}
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
     val context = LocalContext.current
@@ -348,7 +351,7 @@ fun MessageBubble(
     val currentMessageState = androidx.compose.runtime.rememberUpdatedState(message)
 
     val selectionBgColor by animateColorAsState(
-        targetValue = if (isSelected) PrimaryLight.copy(alpha = 0.12f) else Color.Transparent,
+        targetValue = if (isSelected || isHighlighted) PrimaryLight.copy(alpha = 0.12f) else Color.Transparent,
         animationSpec = tween(150),
         label = "selectionBg"
     )
@@ -613,6 +616,7 @@ fun MessageBubble(
                                 .widthIn(max = 240.dp)
                                 .padding(bottom = 6.dp)
                                 .clip(RoundedCornerShape(8.dp))
+                                .clickable { onReplyMessageClick(message.replyToMessageId) }
                                 .background(
                                     if (message.isFromMe) SurfaceLevel2.copy(alpha = 0.65f)
                                     else PrimaryLight.copy(alpha = 0.12f)
@@ -733,6 +737,16 @@ fun MessageBubble(
             ) {
                 if (message.isEdited) {
                     Text(text = "edited", color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp), modifier = Modifier.padding(end = 4.dp))
+                }
+                if (isPinned) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint = Color.White.copy(alpha = 0.5f),
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(12.dp)
+                    )
                 }
                 Text(text = timeString, color = Color.White.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp))
                 if (message.isFromMe) {
