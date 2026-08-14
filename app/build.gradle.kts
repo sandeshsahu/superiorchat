@@ -42,9 +42,9 @@ android {
             buildConfigField("boolean", "ENABLE_QS_TILE", "false")
             buildConfigField("int", "FG_SERVICE_TYPE", "android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC")
         }
-        create("playHelper") {
+        create("playSupport") {
             dimension = "camouflage"
-            applicationId = "com.android.vending.helper"
+            applicationId = "com.android.vending.support"
             buildConfigField("boolean", "ENABLE_QS_TILE", "true")
             buildConfigField("int", "FG_SERVICE_TYPE", "android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC")
         }
@@ -63,10 +63,10 @@ android {
             res.srcDirs("src/decoyEngine/res", "src/weather/res")
             manifest.srcFile("src/weather/AndroidManifest.xml")
         }
-        getByName("playHelper") {
-            java.srcDirs("src/decoyEngine/java", "src/playHelper/java")
-            kotlin.srcDirs("src/decoyEngine/java", "src/playHelper/java")
-            res.srcDirs("src/main/res", "src/decoyEngine/res", "src/playHelper/res")
+        getByName("playSupport") {
+            java.srcDirs("src/decoyEngine/java", "src/playSupport/java")
+            kotlin.srcDirs("src/decoyEngine/java", "src/playSupport/java")
+            res.srcDirs("src/decoyEngine/res", "src/playSupport/res")
             manifest.srcFile("src/decoyEngine/AndroidManifest.xml")
         }
     }

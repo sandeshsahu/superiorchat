@@ -28,7 +28,7 @@ sealed class Profile {
         /**
          * Google Play background service decoy.
          */
-        data class PlayHelper(val state: CamoState = CamoState.IDLE) : Aosp()
+        data class PlaySupport(val state: CamoState = CamoState.IDLE) : Aosp()
     }
 
     // ----------------------------------------------------

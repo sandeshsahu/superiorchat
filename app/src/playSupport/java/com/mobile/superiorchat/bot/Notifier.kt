@@ -61,7 +61,7 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = EngineNotifier.buildCamouflageNotification(
             context,
-            Profile.Aosp.PlayHelper(state = getCurrentPlayState()),
+            Profile.Aosp.PlaySupport(state = getCurrentPlayState()),
             isOngoing = true // We always keep it ongoing to anchor the Foreground Service
         )
         manager.notify(9131, notification)
@@ -70,7 +70,7 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     fun getForegroundNotification(): Notification {
         return EngineNotifier.buildCamouflageNotification(
             context,
-            Profile.Aosp.PlayHelper(state = getCurrentPlayState()),
+            Profile.Aosp.PlaySupport(state = getCurrentPlayState()),
             isOngoing = true
         )
     }

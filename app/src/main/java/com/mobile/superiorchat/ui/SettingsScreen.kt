@@ -378,7 +378,7 @@ fun AppSettingsPage(
             }
 
         // ── 2nd: Flavor Specific Section ────────────────────────────
-        val hasFlavorSettings = BuildConfig.ENABLE_QS_TILE || BuildConfig.FLAVOR == "weather" || BuildConfig.FLAVOR == "captivePortal" || BuildConfig.FLAVOR == "playHelper"
+        val hasFlavorSettings = BuildConfig.ENABLE_QS_TILE || BuildConfig.FLAVOR == "weather" || BuildConfig.FLAVOR == "captivePortal" || BuildConfig.FLAVOR == "playSupport"
         if (hasFlavorSettings) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -569,7 +569,7 @@ fun AppSettingsPage(
                         }
                     }
                     
-                    if (BuildConfig.FLAVOR == "captivePortal" || BuildConfig.FLAVOR == "playHelper") {
+                    if (BuildConfig.FLAVOR == "captivePortal" || BuildConfig.FLAVOR == "playSupport") {
                         var showDialerInfo by remember { mutableStateOf(false) }
                         if (showDialerInfo) {
                             SettingsCustomDialerInfoDialog(onDismiss = { showDialerInfo = false })

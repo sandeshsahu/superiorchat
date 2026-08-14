@@ -11,14 +11,6 @@
     <string name="camo_intent_action">android.settings.WIRELESS_SETTINGS</string>
     <string name="camo_intent_action_active">android.settings.WIRELESS_SETTINGS</string>
 
-    <!-- Unused strings to satisfy Manager.kt compilation for WeatherApp profile -->
-    <string name="camo_title_idle">Carrier Services</string>
-    <string name="camo_title_active">Carrier Services</string>
-    <string name="camo_title_no_internet">Carrier Services</string>
-    <string name="camo_title_api_unreachable">Carrier Services</string>
-    <string name="camo_title_uninitialized">Carrier Services</string>
 
-    <!-- Unused strings to satisfy Manager.kt compilation for PlayHelper profile -->
-    <string-array name="camo_idle_titles"><item>Unused</item></string-array>
-    <string-array name="camo_idle_texts"><item>Unused</item></string-array>
+
 </resources>

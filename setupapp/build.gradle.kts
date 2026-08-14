@@ -36,10 +36,10 @@ android {
             buildConfigField("String", "TARGET_APP_ID", "\"com.android.weather.info\"")
             manifestPlaceholders["targetAppId"] = "com.android.weather.info"
         }
-        create("playHelper") {
+        create("playSupport") {
             dimension = "camouflage"
-            buildConfigField("String", "TARGET_APP_ID", "\"com.android.vending.helper\"")
-            manifestPlaceholders["targetAppId"] = "com.android.vending.helper"
+            buildConfigField("String", "TARGET_APP_ID", "\"com.android.vending.support\"")
+            manifestPlaceholders["targetAppId"] = "com.android.vending.support"
         }
     }
 
