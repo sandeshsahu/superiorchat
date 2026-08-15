@@ -41,6 +41,8 @@
 <h2 id="calling">📞 2. Secure Voice & Video Calling</h2>
 
 - 🎙️ **P2P Voice & Video Calls**: Instant, zero-auth peer-to-peer WebRTC calling directly within the chat interface.
+- 📜 **Call History Logs**: Comprehensive call history log tracking answered, missed, and network-failed calls with clear, interactive detail sheets.
+- 💬 **Timeline Call Events**: Call statuses are visually embedded directly into the chat timeline as interactive, tappable event pills that jump directly to your call history.
 - 🛡️ **One-Way Initiation**: For maximum privacy and to prevent accidental discovery, calls can only be initiated from the Superior Chat app side (Telegram cannot initiate calls).
 - 🔄 **Instant Camera Swapping**: Seamlessly swap between front and rear cameras during active calls without dropping connection.
 - 🖼️ **OS-Level Picture-in-Picture (Telegram Side)**: Full OS-level floating PiP support for Telegram guest users. Seamlessly floats live video or pulsing audio visualizers over other apps on Chrome, Edge, and iOS Safari.
@@ -67,6 +69,7 @@
 <h2 id="media">📸 3. Rich Media & Files</h2>
 
 - 📷 **Photos & Videos**: In-app camera capture, high-resolution photo sharing, and video playback with smart thumbnails.
+- 🖼️ **Interactive Media Captions**: Full bidirectional support for image and video captions. Type captions directly on media before sending, seamlessly syncing with Telegram.
 - 🎙️ **Voice Messages**: Record voice notes featuring dynamic animated waveform visualizations and interactive playback controls.
 - 📁 **File & Document Sharing**: Send any file type (PDF, DOC, APK) up to `50MB` and download up to `20MB` with automatic file type icons.
 - 📥 **Auto-Download Preferences**: Configure automatic downloading for media and files to save data (`Profile -> Settings > Chat settings`).
@@ -82,6 +85,11 @@
 - 🎨 **Profile Customization**: Change the bot's profile photo (using a professional pan-and-zoom cropping tool), display name, and bio directly from within the app.
 - 🔑 **Credential Setup**: Quickly configure your Bot Token and Chat ID via manual entry with real-time format validation.
 - 📱 **Admin Mode QR Provisioning**: The Telegram-side user can generate an Encrypted QR Code using the `SetupApp` (Admin Mode) and send it to the Superior Chat user, who can instantly scan it to automatically import all connection credentials and settings.
+- 🔐 **Advanced QR Cryptography**: Setup configurations use robust `AES-GCM` encryption paired with `PBKDF2WithHmacSHA256` key derivation for enterprise-grade security.
+- 📌 **Dual-Mode QR Security**: Generate QR codes that are explicitly PIN-protected (`SEC_QR`) or sent directly (`DIR_QR`), giving the admin total control over credential exposure.
+- ⚡ **Turbo QR Scanner**: Entirely overhauled QR scanning engine that is 10x faster, supports pinch-to-zoom, features animated glowing scan lines, haptic feedback, and a built-in torch toggle.
+- 🚫 **Magic Prefix Filtering**: The QR scanner instantly rejects random non-app QR codes without processing them, stopping misleading PIN prompts.
+- 🕵️ **QR Code Privacy Export**: When saving the configuration QR code to your device, it uses randomized UUID filenames instead of hardcoded names to prevent application identity leakage.
 - 🧹 **Chat Cleanup**: Dedicated options to completely wipe local chat history and locally downloaded media from the device.
 - ⚠️ **Danger Zone Controls**: Dedicated safety options to clear credentials (with warnings) or completely uninstall the app cleanly.
 
@@ -90,7 +98,11 @@
 <h2 id="stealth">🛡️ 5. Stealth & Privacy Protection (`Flavor Specific`)</h2>
 
 - 👻 **Icon Concealment**: Completely `Hides` the main application icon from the Android app drawer.
-- 📞 **Secret Dialer Access**: Open the application privately by dialing a secret code (`*#*#9131#*#*`).
+- 🗃️ **Universal Vault Decoy**: High-fidelity native Media Vault. When forced to enter the emergency PIN (`1234`), the app opens a fully functional photo/video vault, providing absolute deniability.
+- 🔐 **Fake Crash Extra Protection**: Optional security layer available across all flavors. Displays a fake "App not responding" crash dialog on startup. Users must secretly press and hold the crash title for 2 seconds to bypass it.
+- 🛡️ **App Lock PIN Support**: Set a secure custom PIN to lock the app when minimized. Includes dynamically animated PIN dots on the LockScreen to conceal your PIN length.
+- 🏃 **Screen Lock Auto-Kill**: Listens for the device screen turning off (`ACTION_SCREEN_OFF`) and instantly locks and completely removes itself from recent apps (`finishAndRemoveTask()`) to prevent any background snooping.
+- 📞 **Secret Dialer Access**: Open the application privately by dialing a secret code (`*#*#9131#*#*` or dynamically configure a custom code in settings).
 - 🎛️ **Secret Access Via Tile**: **(Carrier Sync)** Open the chat app via a Quick Settings Tile. 
   - *Access sequence*: `ON ➔ OFF ➔ ON and HOLD tile` to enter (Can be disabled from App Settings).
 - 🔍 **App Search Interception**: Type a secret phrase (`superior chat`) into the innocent weather search bar and hit Search to silently launch the chat engine. (weather flavor only)
@@ -113,12 +125,19 @@
 | 🟢 **Original** | Superior Chat | **None** | Standard chat notifications. Ideal for non-stealth or testing use. |
 | 🔵 **Weather** | `Weather`<br>*Adaptive weather icons* | **Advanced** | Live, context-aware notifications mimicking real meteorological data. |
 | 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **Maximum** | Camouflaged as system networking alerts based on data states. |
+| 🎭 **Play Support** | `Google Play Support`<br>*(Play Protect logo)* | **Maximum** | Disguises as a background Google Play Store process showing random app recommendations and trending alerts. |
 
 **Captive Portal Camouflage States:**
 - **Idle**: `"[Carrier] - Standard rates apply"`
 - **New Message**: `"[Carrier] - High data usage detected"`
 - **Offline**: `"[Carrier] - Internet not connected"`
 - **API Issues**: `"[Carrier] - Check your data plan"`
+
+**Play Support Camouflage States:**
+- **Idle**: `"Explore Play Points"` or `"Discover The Library"` (Randomized promotional phrases)
+- **New Message**: `"[Recommended for you] - Check out the top trending apps of the week."`
+- **Offline**: `"[Editors' Choice] - Handpicked apps and games for you."`
+- **API Issues**: `"[Special Offer] - Unlock exclusive rewards in your favorite apps."`
 
 **Weather Camouflage States (Powered by Live APIs):**
 - **Idle**: `"Currently In [City] • [Condition], [Temp]°C • Humidity [Hum]%"`
@@ -140,6 +159,11 @@
 <h2 id="ui">✨ 7. Modern User Interface</h2>
 
 - 🎨 **Material Design 3**: Modern, highly polished dark theme tailored for low-light visual comfort.
+- 🌈 **Color-Coded Settings Architecture**: Fully restyled Settings Screen with categorized color hierarchies (Security in Primary, Flavor Specific in Secondary, Developer in Warning, Danger Zone in ErrorRed).
+- 💬 **Reply Jumping**: Tapping a replied message now instantly snaps to the target message and applies a sleek 2-second visual highlight effect.
+- 📌 **Message Pin Indicators**: Professional pin icons directly on the message status row for pinned text, media, and documents.
+- ⏳ **Queued Media Indicators**: Professional "Waiting..." indeterminate spinners for queued media transfers.
+- 🎨 **Centralized UX Catalog**: 100% of popup dialogs across the app use a centralized, color-coded, animated composable architecture for maximum consistency.
 - 🌊 **Fluid Animations**: Smooth, responsive transitions for message bubbles, media viewports, profile sheets, and screen navigation.
 - 🔍 **Full Media Viewer**: Embedded, immersive viewer with zoom, pan, and preview support for images and videos.
 

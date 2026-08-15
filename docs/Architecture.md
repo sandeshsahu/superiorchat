@@ -7,7 +7,7 @@ A stealth messaging app that uses Telegram Bot API as a serverless transport lay
 ## Table of Contents
 - [1. System Topology](#topology)
 - [2. Modules & Flavors](#modules)
-- [3. Component Architecture](#architecture)
+- [3. Component Architecture](#c_architecture)
 - [4. WebRTC Architecture](#webrtc)
 - [5. Directory Structure](#directory)
 - [6. Initialization Flow](#flow)
@@ -71,7 +71,7 @@ graph TD
 
 ---
 
-<h2 id="architecture">3. Component Architecture</h2>
+<h2 id="c_architecture">3. Component Architecture</h2>
 
 ```mermaid
 graph TB
@@ -169,7 +169,8 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── AudioRecorder.kt            # Voice note recording (M4A/AMR)
 │   ├── LocalDirs.kt                # Dynamic media directory management (flavor aware)
 │   ├── MediaSync.kt                # Concurrent-safe transfers + WorkManager
-│   └── MediaWorker.kt              # WorkManager CoroutineWorker
+│   ├── MediaWorker.kt              # WorkManager CoroutineWorker
+│   └── VaultManager.kt             # Handles media encryption and Vault UI bridging
 │
 ├── service/                        # Background services
 │   ├── BotService.kt               # Foreground Service wrapping BotSync
@@ -210,12 +211,15 @@ app/src/main/java/com/mobile/superiorchat/
 │   │   │   └── MediaViewer.kt      # Full-screen media viewer
 │   │   ├── popups/                 # Modals and Dialogs
 │   │   │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
+│   │   │   ├── PopupDialogs.kt     # Centralized animated dialog catalog
 │   │   │   ├── StatusPill.kt       # Future-proof global sync & transfer state pill
 │   │   │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
-│   │   └── profile/                # Profile UI fragments
+│   │   ├── profile/                # Profile UI fragments
 │   │       ├── EditInfoSheet.kt    # Modal sheet for editing profile details
 │   │       ├── PartnerProfile.kt   # Reusable profile header card
 │   │       └── ProfileSettings.kt  # Profile settings toggles
+│   │   └── vault/                  # Media Vault UI
+│   │       └── VaultScreen.kt      # Fake gallery/vault decoy screen
 │   └── profile/                    # Profile feature package
 │       ├── ProfileScreen.kt        # Bot's own profile display
 │       └── ProfileViewModel.kt     # Profile editing & photo state
@@ -245,6 +249,12 @@ app/src/
 │   ├── java/.../bot/
 │   │   └── Notifier.kt             # Carrier-specific camouflaged notifications
 │   └── res/                        # Disguised icons, camo_strings
+│
+├── playSupport/                    # Google Play Support disguise
+│   ├── AndroidManifest.xml
+│   ├── java/.../bot/
+│   │   └── Notifier.kt             # Play Store promotional spoofed notifications
+│   └── res/                        # Play Support icons, dynamic ad strings
 │
 ├── weather/                        # Weather App camouflage
 │   ├── AndroidManifest.xml         # taskAffinity isolation, Intent interception

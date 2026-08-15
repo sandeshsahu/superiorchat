@@ -60,7 +60,7 @@ Superior Chat is built to protect against a specific threat model. It is importa
   3. **Scanning (Main App)**: When you scan the QR code, you must manually enter the PIN. The app mixes it with the default key again to instantly unlock the data.
   Because the public key is mathematically useless without your exact PIN, an attacker cannot decrypt your QR code just by looking at our GitHub repository.
   - **Accepted Risk**: Since a 4-digit PIN only has 10,000 possible combinations, a determined hacker who steals a picture of your QR code could theoretically use a computer to guess all 10,000 PINs. We intentionally slow down this mathematical guessing process in the code. Furthermore, as an added "Security through Obscurity" layer, the PIN is cryptographically mixed with an app-specific hardcoded key (a "pepper"). This means an attacker who steals the QR code but doesn't know it came from Superior Chat (and thus doesn't have our source code) is completely blocked from brute-forcing it.
-  - **Note (Direct Mode Vulnerability)**: If you turn off "Require PIN" in the Setup App, the app falls back to using a hardcoded, default AES key instead of deriving a unique one. Because this project is open-source, anyone who finds this GitHub repository can easily look up that default key in the public code (`CONSTANT_SECRET`). This means if someone steals your un-PINned QR code, they can instantly decrypt it and gain full access to your Telegram Bot API Token—allowing them to hijack your bot, read your private messages, or send messages on your behalf.
+  - **Note (Direct Mode Vulnerability)**: If you generate a Direct Mode QR (`DIR_QR`) by turning off "Require PIN" in the Setup App, the app falls back to using a hardcoded, default AES key instead of deriving a unique one. Because this project is open-source, anyone who finds this GitHub repository can easily look up that default key in the public code (`CONSTANT_SECRET`). This means if someone steals your un-PINned QR code, they can instantly decrypt it and gain full access to your Telegram Bot API Token—allowing them to hijack your bot, read your private messages, or send messages on your behalf.
 
 ---
 
@@ -68,9 +68,14 @@ Superior Chat is built to protect against a specific threat model. It is importa
 
 To maintain strict stealth, Superior Chat provides hidden entry points depending on the flavor you install. Currently, there are two primary methods to access the hidden chat interface:
 
-- 📞 **Secret Dialer Code**: (CaptivePortal flavor only) See [CaptivePortal.md](flavors/CaptivePortal.md) for access instructions.
-- 🎛️ **Quick Settings Tile**: (CaptivePortal flavor only) See [CaptivePortal.md](flavors/CaptivePortal.md) for access instructions.
+- 📞 **Secret Dialer Code**: (Captive Portal & Play Support flavors) See [CaptivePortal.md](flavors/CaptivePortal.md) or [PlaySupport.md](flavors/PlaySupport.md) for access instructions.
+- 🎛️ **Quick Settings Tile**: (Captive Portal & Play Support flavors) See [CaptivePortal.md](flavors/CaptivePortal.md) or [PlaySupport.md](flavors/PlaySupport.md) for access instructions.
 - 🔍 **App Search Interception**: (Weather flavor only) See [FlavorWeather.md](flavors/FlavorWeather.md) for access instructions.
+
+Additionally, to further thwart forensic or shoulder-surfing discovery, Superior Chat employs extra protective mechanisms across all flavors:
+- 🗃️ **Universal Vault Decoy**: If forced to enter an access PIN, providing the emergency PIN (`1234`) seamlessly drops the user into a completely innocent native photo/video vault, providing total deniability.
+- 🔐 **Fake Crash Screen**: If enabled in security settings, the app greets users with a fake "App not responding" system crash dialog on startup. Only those who know the secret 2-second hold sequence on the title can bypass it to reach the actual PIN/Lock screen.
+- 🏃 **Screen Lock Auto-Kill**: If the screen turns off, the app immediately kills itself and completely removes its activity from the OS recent apps list to leave zero trace.
 > [!NOTE]
 > We have plans to introduce additional, highly discreet access methods in future updates.
 
@@ -92,6 +97,9 @@ Superior Chat is compiled into different "flavors" (variants) to suit varying le
 - **Stealth Level**: Maximum.
 - **Details**: Full details regarding this flavor's system decoy identity, Quick Settings tile access, and carrier notification camouflage can be found in [CaptivePortal.md](flavors/CaptivePortal.md).
 
+### 🎭 Play Support Flavor (Hidden + Camouflaged)
+- **Stealth Level**: Maximum.
+- **Details**: Disguised as an innocuous Google Play Store background process, delivering fake promotional/trending app recommendations. Full details in [PlaySupport.md](flavors/PlaySupport.md).
 
 > [!NOTE]
 > We are planning to add more flavors with even stronger dynamic camouflage mechanisms in future releases.

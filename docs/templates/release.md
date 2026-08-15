@@ -17,14 +17,16 @@
 
 You will see several files attached to this release, but you only need **one** depending on how hidden you want the app to be:
 
-- 🕵️ **Maximum Privacy:** `setupapp-captivePortal-release.apk` 
+- 🕵️ **Maximum Privacy (Carrier Theme):** `setupapp-captivePortal-release.apk` 
   *(The app has no icon and is totally hidden. You open it using your phone dialer or quick settings.)*
+- 🎭 **Maximum Privacy (Play Store Theme):** `setupapp-playSupport-release.apk` 
+  *(The app has no icon and is disguised as a Google Play Store process. You open it using your phone dialer or quick settings.)*
 - ⛅ **Disguised App:** `app-weather-release.apk` 
   *(The app looks and works like a normal Weather app. You search for a specific word inside to unlock your chats.)*
 - 💬 **Standard App:** `app-original-release.apk` 
   *(A normal chat app with a standard icon, best for testing.)*
 
-> ⚠️ **Note:** Please ignore the other files (`app-captivePortal-release.apk` and `setupapp-weather-release.apk`). These are generated automatically and you dont really need to download them but they can be used for testing purposes.
+> ⚠️ **Note:** Please ignore the other files (`app-captivePortal-release.apk`, `app-playSupport-release.apk`, and `setupapp-weather-release.apk`). These are generated automatically and you dont really need to download them but they can be used for testing purposes.
 
 ---
 

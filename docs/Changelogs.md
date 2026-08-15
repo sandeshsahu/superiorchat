@@ -14,8 +14,51 @@
 ---
 
 ## Table of Contents
+- [Version 1.0.3 (Aug 2026)](#v103)
 - [Version 1.0.2 (Aug 2026)](#v102)
 - [Version 1.0.1 (Jul 2026)](#v101)
+
+---
+
+<h2 id="v103">🏷️ Version 1.0.3 — UI Polish, Vault Decoy & Setup Security</h2>
+
+### 🚀 New Features
+- 📜 **Call History**: Added a comprehensive call history log with rich status reporting (Completed, Missed, Network Error), clear history options, and an interactive bottom sheet for call details.
+- 💬 **Timeline Call Events**: Call statuses are now visually embedded directly into the chat timeline as interactive, tappable event pills that jump to the Call History.
+- 🖼️ **Interactive Media Captions**: Added full bidirectional support for image and video captions. You can now type captions directly on media before sending them, seamlessly syncing with Telegram.
+- 🗃️ **Universal Vault Decoy**: Completely replaced flavor-specific decoys with a high-fidelity native Media Vault. When forced to enter the emergency PIN (1234), the app opens a fully functional photo/video vault, providing absolute deniability.
+
+---
+
+### 🛡️ Stealth & Privacy
+- 🔐 **Fake Crash Extra Protection**: An optional extra security layer available across all flavors. On startup, it displays a fake "App not responding" crash dialog. Users must secretly press and hold the crash title (e.g., "`Superior Chat isn't responding`") for 2 seconds to bypass it and enter the app. Rebuilt using a true transparent activity layer for seamless entry.
+- 🛡️ **App Lock PIN Support**: Added a built-in App Lock feature allowing you to set a secure custom PIN to lock the app when minimized. Includes dynamically animated PIN dots on the LockScreen to conceal your PIN length from snoopers.
+- 🔐 **Advanced QR Cryptography**: Upgraded SetupApp provisioning to use robust `AES-GCM` encryption paired with `PBKDF2WithHmacSHA256` key derivation.
+- 📌 **Dual-Mode QR Security**: Setup configurations can now be explicitly PIN-protected (`SEC_QR`) or sent directly (`DIR_QR`), giving the admin total control over credential exposure.
+- 🚫 **Magic Prefix Filtering**: The QR scanner instantly rejects random non-app QR codes without processing them, stopping misleading PIN prompts.
+- 🎭 **Play Support Disguise**: Introduced the new `playSupport` stealth flavor. Disguises the background sync engine as a "Google Play Support" process, showing randomized Play Store promotions or "Trending apps" instead of message alerts.
+- 📱 **Dynamic Dialer Codes**: Custom secret dialer codes can now be configured in the settings for `captivePortal` and `playSupport` flavors.
+- 🏃 **Screen Lock Auto-Kill**: The app now listens for the device screen turning off (`ACTION_SCREEN_OFF`) and instantly locks and completely removes itself from recent apps (`finishAndRemoveTask()`) to prevent any background snooping if you lock your phone mid-chat.
+- 🕵️ **QR Code Privacy Export**: When saving the configuration QR code to your device, it now uses randomized UUIDs for filenames instead of hardcoded name (e.g. `superiorchat_config.png`) to prevent application identity leakage.
+
+---
+
+### 🎨 UI Enhancements
+- ⚡ **Turbo QR Scanner**: Entirely overhauled the QR scanning engine. It is now 10x faster, supports pinch-to-zoom, features animated glowing scan lines, haptic feedback, and a built-in torch toggle.
+- 💬 **Reply Jumping**: Tapping a replied message now instantly snaps to the target message and applies a sleek 2-second visual highlight effect.
+- 📌 **Message Pin Indicators**: Added a professional pin icon directly to the message status row for pinned text, media, and documents.
+- ⏳ **Queued Media Indicators**: Replaced static cancel buttons with a professional "Waiting..." indeterminate spinner for queued media transfers.
+- 🌈 **Color-Coded Settings Architecture**: Fully restyled the Settings Screen with categorized color hierarchies (Security in Primary, Flavor Specific in Secondary, Developer in Warning, Danger Zone in ErrorRed) for a much cleaner UX.
+- 🎨 **Centralized UX Catalog**: 100% of popup dialogs across the app were rewritten using a centralized, color-coded, animated composable architecture for maximum consistency.
+
+---
+
+### 🛠️ Bug Fixes & Performance
+- 💥 **Call Engine Crash Fix**: Fixed a critical SQLite database constraint crash that occurred when a call failed validation before a conversation row was established.
+- 📷 **Scanner Memory Leaks**: Fixed severe memory leaks and frame drops when dealing with CameraX buffers and PIN entry overlays simultaneously.
+- ⚙️ **Flavor Architecture Cleanup**: Cleaned up AndroidManifest rules for Android 14. Foreground services and permissions (like `dataSync` and `remoteMessaging`) are now strictly isolated to their respective flavors to avoid manifest merging leaks.
+- 🚫 **Unnecessary Permissions Removed**: Removed redundant `READ_MEDIA_AUDIO` permission requests, as `MANAGE_EXTERNAL_STORAGE` inherently grants access.
+- 🎨 **Original Flavor Polish**: Replaced the ugly default Android system icons used in notifications with a professional Telegram-style paper plane vector icon.
 
 ---
 
