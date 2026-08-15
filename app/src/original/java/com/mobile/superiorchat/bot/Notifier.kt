@@ -108,7 +108,7 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
             messageHistory.forEach { messagingStyle.addMessage(it) }
 
             val notification = NotificationCompat.Builder(context, channelId)
-                .setSmallIcon(com.mobile.superiorchat.R.drawable.ic_telegram_notification)
+                .setSmallIcon(com.mobile.superiorchat.R.drawable.ic_notification)
                 .setStyle(messagingStyle)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
