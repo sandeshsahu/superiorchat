@@ -12,6 +12,8 @@ import com.mobile.superiorchat.utils.AppLog
 import java.io.File
 import java.io.FileOutputStream
 import coil.ImageLoaderFactory
+import coil.decode.ImageDecoderDecoder
+import coil.decode.GifDecoder
 import coil.decode.VideoFrameDecoder
 import coil.ImageLoader
 
@@ -20,6 +22,12 @@ class SuperiorChatApp : Application(), ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .components {
                 add(VideoFrameDecoder.Factory())
+                // Enables APNG animation playback (e.g. sleeping_miku.png — CC BY-NC 3.0, slubaru/DomEgCZ)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    add(ImageDecoderDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
             }
             .build()
     }

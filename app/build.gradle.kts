@@ -176,6 +176,7 @@ dependencies {
   // Coil
   implementation("io.coil-kt:coil-compose:2.6.0")
   implementation("io.coil-kt:coil-video:2.6.0")
+  implementation("io.coil-kt:coil-gif:2.6.0")   // APNG / GIF animation support (Sleeping Miku)
 
   // ZXing for QR Code generation & decoding
   implementation("com.google.zxing:core:3.5.3")

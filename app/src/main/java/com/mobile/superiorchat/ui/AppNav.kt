@@ -14,18 +14,28 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.ui.zIndex
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.layout.layout
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -35,18 +45,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.mobile.superiorchat.R
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.profile.ProfileScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,6 +105,39 @@ fun AppScreen(
 
     var currentScreen by remember { mutableStateOf(NavScreen.Chat) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
+    // ── Zen Mode (Sleeping Miku) ─────────────────────────────────────────────
+    // Two distinct modes:
+    // • Auto  — triggered by 3s inactivity, dismissed by any touch, no tip shown
+    // • Manual— triggered by tapping the title, persists for the session, shows tip
+    // sleeping_miku.png — CC BY-NC 3.0 — slubaru/DomEgCZ — fan art of Hatsune Miku © Crypton Future Media
+    var autoMikuMode by remember { mutableStateOf(false) }
+    var manualMikuMode by remember { mutableStateOf(false) }
+    val isMikuActive = autoMikuMode || manualMikuMode
+    var showMikuTip by remember { mutableStateOf(false) }
+    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+
+    // Auto inactivity timer — fires every 500ms, activates after 5s of no touch
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(500)
+            if (!manualMikuMode && !autoMikuMode) {
+                if (System.currentTimeMillis() - lastInteractionTime > 5000L) {
+                    autoMikuMode = true
+                }
+            }
+        }
+    }
+
+    // Tip auto-hide after 4s
+    LaunchedEffect(showMikuTip) {
+        if (showMikuTip) {
+            delay(4000)
+            showMikuTip = false
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
     
     val callViewModel: CallViewModel = viewModel()
     var isCallMinimized by remember { mutableStateOf(false) }
@@ -328,46 +378,123 @@ fun AppScreen(
         Scaffold(
             topBar = {
                 if (callState == CallState.IDLE || isCallMinimized) {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            Text(currentScreen.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                        },
-                        navigationIcon = {
-                            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
-                                IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
-                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    val statusBars = WindowInsets.statusBars
+                    val topPaddingPx = statusBars.getTop(density)
+                    val desiredHeightPx = with(density) { 52.dp.roundToPx() } + topPaddingPx
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Background)
+                            .clickable(
+                                indication = null, 
+                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                            ) {
+                                if (isMikuActive) {
+                                    manualMikuMode = false
+                                    autoMikuMode = false
+                                    showMikuTip = false
+                                    lastInteractionTime = System.currentTimeMillis()
+                                } else {
+                                    autoMikuMode = false
+                                    manualMikuMode = true
+                                    showMikuTip = true
                                 }
+                            }
+                            .layout { measurable, constraints ->
+                                val placeable = measurable.measure(constraints)
+                                layout(placeable.width, desiredHeightPx) {
+                                    placeable.place(0, 0)
+                                }
+                            }
+                    ) {
+                        AnimatedContent(
+                            targetState = isMikuActive,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
+                            },
+                            label = "topBarTransition",
+                            modifier = Modifier.fillMaxWidth()
+                        ) { mikuActive ->
+                            if (mikuActive) {
+                                TopAppBar(
+                                    title = {},
+                                    navigationIcon = {
+                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
+                                            IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
+                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                            }
+                                        } else {
+                                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
+                                            }
+                                        }
+                                    },
+                                    actions = {
+                                        AsyncImage(
+                                            model = R.drawable.sleeping_miku,
+                                            contentDescription = "Sleeping Miku",
+                                            contentScale = ContentScale.Fit,
+                                            filterQuality = FilterQuality.None,
+                                            modifier = Modifier
+                                                .height(56.dp)
+                                                .padding(end = 6.dp)
+                                        )
+                                    },
+                                    colors = TopAppBarDefaults.topAppBarColors(
+                                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        scrolledContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                    )
+                                )
                             } else {
-                                IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                    Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
-                                }
+                                CenterAlignedTopAppBar(
+                                    title = {
+                                        Text(
+                                            currentScreen.title,
+                                            fontSize = 24.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    },
+                                    navigationIcon = {
+                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
+                                            IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
+                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                            }
+                                        } else {
+                                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
+                                            }
+                                        }
+                                    },
+                                    actions = {
+                                        if (currentScreen == NavScreen.Chat) {
+                                            Row {
+                                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
+                                                if (canCall) {
+                                                    IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
+                                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                                                    }
+                                                }
+                                                IconButton(onClick = {
+                                                    permissionHandler.requestCamera {
+                                                        showScanPrompt = true
+                                                    }
+                                                }) {
+                                                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan QR", tint = MaterialTheme.colorScheme.onSurface)
+                                                }
+                                            }
+                                        }
+                                    },
+                                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
+                                        scrolledContainerColor = androidx.compose.ui.graphics.Color.Transparent
+                                    )
+                                )
                             }
-                        },
-                        actions = {
-                            if (currentScreen == NavScreen.Chat) {
-                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
-                                
-                                if (canCall) {
-                                    IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
-                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
-                                    }
-                                }
-
-                                // QR scanner button
-                                IconButton(onClick = { 
-                                    permissionHandler.requestCamera {
-                                        showScanPrompt = true
-                                    }
-                                }) {
-                                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan QR", tint = MaterialTheme.colorScheme.onSurface)
-                                }
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = Background,
-                            scrolledContainerColor = Background
-                        )
-                    )
+                        }
+                    }
                 }
             },
             snackbarHost = {
@@ -388,6 +515,19 @@ fun AppScreen(
                     .fillMaxSize()
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding)
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                    if (!manualMikuMode) {
+                                        lastInteractionTime = System.currentTimeMillis()
+                                        if (autoMikuMode) autoMikuMode = false
+                                    }
+                                }
+                            }
+                        }
+                    }
             ) {
                 val isGlobalVideoOn by CallManager.isVideoOn.collectAsState()
                 val isGlobalRemoteVideoOn by CallManager.isRemoteVideoOn.collectAsState()
@@ -704,9 +844,42 @@ fun AppScreen(
                         }
                     }
                 }
+
+                // ── Zen Mode Tip Card (Manual Mode only) ──────────────────────────────
+                AnimatedVisibility(
+                    visible = showMikuTip,
+                    enter = fadeIn(tween(300)) + slideInVertically(tween(350)) { -it },
+                    exit = fadeOut(tween(250)) + slideOutVertically(tween(300)) { -it },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
+                        .padding(horizontal = 40.dp)
+                        .zIndex(20f)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(24.dp),
+                        color = SurfaceLevel1,
+                        tonalElevation = 8.dp,
+                        shadowElevation = 12.dp
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .border(1.dp, PrimaryLight.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
+                                .padding(horizontal = 16.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Zen Mode", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Tap header to exit", fontSize = 12.sp, color = TextSecondary)
+                        }
+                    }
+                }
+                // ─────────────────────────────────────────────────────────────────────
             }
-                }
-                }
+        }
+    }
             }
         }
     }

@@ -127,7 +127,12 @@ For detailed technical references, explore the dedicated documentation in this d
 
 <h2 id="acknowledgments">🙌 Acknowledgments</h2>
 
-- The UI design for the `weather` flavor is adapted from the open-source **[WeatherAppUI](https://github.com/rudram837/WeatherAppUI)** repository by @rudram837.
+| Asset / Project | Author | License |
+|---|---|---|
+| `weather` flavor UI design | **[WeatherAppUI](https://github.com/rudram837/WeatherAppUI)** by @rudram837 | Open Source |
+| Sleeping Miku animated pixel art (`sleeping_miku.png`) | **[slubaru](https://addons.mozilla.org/en-US/firefox/addon/sleeping-miku-animated/)** / **[DomEgCZ](https://addons.mozilla.org/en-US/firefox/addon/sleeping-hatsune-miku-animated/)** | [CC BY-NC 3.0](https://creativecommons.org/licenses/by-nc/3.0/) |
+
+> Hatsune Miku is a character owned by [Crypton Future Media](https://www.crypton.co.jp/). This project is non-commercial fan work compliant with the [Piapro Character License](https://piapro.net/license/pcl/summary).
 
 ---
 
