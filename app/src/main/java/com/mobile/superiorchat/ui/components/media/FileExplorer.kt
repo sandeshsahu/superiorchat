@@ -145,7 +145,7 @@ fun FileExplorer(
                     } else {
                         Text(
                             text = if (isExploring) explorerDirectory!!.name else "Select Files",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = PrimaryLight,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,

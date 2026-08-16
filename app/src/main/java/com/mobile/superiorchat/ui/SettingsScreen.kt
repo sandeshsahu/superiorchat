@@ -61,6 +61,8 @@ fun AppSettingsPage(
     customDialerCode: String = "",
     onCustomDialerCodeChange: (String) -> Unit = {},
     webrtcBaseUrl: String,
+    appTheme: com.mobile.superiorchat.theme.AppTheme,
+    onAppThemeChange: (com.mobile.superiorchat.theme.AppTheme) -> Unit,
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
@@ -228,7 +230,78 @@ fun AppSettingsPage(
             .padding(top = 20.dp, bottom = 28.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        // ── 1st: Security Settings Section ────────────────────────────
+        // ── 1st: Theme Settings Section ───────────────────────────────
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)
+        ) {
+            HorizontalDivider(modifier = Modifier.weight(1f), color = PrimaryLight.copy(alpha = 0.25f))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Theme Settings",
+                color = PrimaryLight,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            HorizontalDivider(modifier = Modifier.weight(1f), color = PrimaryLight.copy(alpha = 0.25f))
+        }
+
+        SettingsCard {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp, horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                com.mobile.superiorchat.theme.AppTheme.values().forEach { themeOpt ->
+                    val isSelected = appTheme == themeOpt
+                    val dotColor = themeOpt.primaryLightColor
+                    val scale by androidx.compose.animation.core.animateFloatAsState(if (isSelected) 1.15f else 1.0f)
+                    val outlineAlpha by androidx.compose.animation.core.animateFloatAsState(if (isSelected) 0.5f else 0.0f)
+                    
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(46.dp)
+                            .scale(scale)
+                            .clip(CircleShape)
+                            .clickable { onAppThemeChange(themeOpt) }
+                    ) {
+                        // Outer glowing ring if selected
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .border(2.dp, dotColor.copy(alpha = outlineAlpha), CircleShape)
+                        )
+                        // Inner colored circle
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(dotColor),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = isSelected,
+                                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.scaleIn(),
+                                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.scaleOut()
+                            ) {
+                                androidx.compose.material3.Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                                    contentDescription = "Selected",
+                                    tint = com.mobile.superiorchat.theme.Background,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // ── 2nd: Security Settings Section ────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 2.dp)

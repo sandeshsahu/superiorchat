@@ -205,8 +205,8 @@ fun MessageContextMenu(
 fun ContextMenuItem(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    textColor: Color = Color.White,
-    iconColor: Color = PopupIcon,
+    textColor: Color = PrimaryLight,
+    iconColor: Color = PrimaryLight,
     onClick: () -> Unit
 ) {
     Row(

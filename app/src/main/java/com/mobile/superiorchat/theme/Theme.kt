@@ -13,15 +13,19 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 
 // ═══════════════════════════════════════════════════════════
 //  COLOR TOKENS (From Stitch Design)
 // ═══════════════════════════════════════════════════════════
 
 // ── Primary & Secondary ─────────────────────────────────
-val Secondary = Color(0xFFA855F7) // Rich Purple
-val PrimaryLight = Color(0xFFC0C1FF)
-val InversePrimary = Color(0xFF494BD6)
+var Secondary by mutableStateOf(Color(0xFFA855F7)) // Rich Purple
+var PrimaryLight by mutableStateOf(Color(0xFFC0C1FF))
+var InversePrimary by mutableStateOf(Color(0xFF494BD6))
+var OnPrimaryContainerDark by mutableStateOf(Color(0xFF1000A9))
 
 // ── Surfaces & Backgrounds ──────────────────────────────
 val Background = Color(0xFF000000)
@@ -152,27 +156,64 @@ val Typography = Typography(
 //  THEME
 // ═══════════════════════════════════════════════════════════
 
-private val SuperiorDarkScheme = darkColorScheme(
-    primary = PrimaryLight,
-    onPrimary = Color.White,
-    primaryContainer = PrimaryLight,
-    onPrimaryContainer = Color(0xFF1000A9),
-    inversePrimary = InversePrimary,
-    secondary = Secondary,
-    onSecondary = Color.White,
-    tertiary = WarningAmber,
-    onTertiary = Background,
-    background = Background,
-    onBackground = TextPrimary,
-    surface = SurfaceLevel1,
-    onSurface = TextPrimary,
-    surfaceVariant = SurfaceLevel2,
-    onSurfaceVariant = TextSecondary,
-    outline = DividerColor,
-    outlineVariant = DividerColor,
-    error = ErrorRed,
-    onError = Color(0xFF690005),
-)
+enum class AppTheme(val primaryLightColor: Color) { 
+    LAVENDER(Color(0xFFC0C1FF)), 
+    SAGE(Color(0xFFA5C7B2)), 
+    AMBER(Color(0xFFD89F6B)), 
+    ROSE(Color(0xFFE6A5C0)) 
+}
+
+fun applyTheme(theme: AppTheme) {
+    when (theme) {
+        AppTheme.LAVENDER -> {
+            PrimaryLight = theme.primaryLightColor
+            InversePrimary = Color(0xFF494BD6)
+            Secondary = Color(0xFFA855F7)
+            OnPrimaryContainerDark = Color(0xFF1000A9)
+        }
+        AppTheme.SAGE -> {
+            PrimaryLight = theme.primaryLightColor
+            InversePrimary = Color(0xFF4E7A5D)
+            Secondary = Color(0xFF7CB895)
+            OnPrimaryContainerDark = Color(0xFF0C2413)
+        }
+        AppTheme.AMBER -> {
+            PrimaryLight = theme.primaryLightColor
+            InversePrimary = Color(0xFF8A5D3B)
+            Secondary = Color(0xFFD69A73)
+            OnPrimaryContainerDark = Color(0xFF33190A)
+        }
+        AppTheme.ROSE -> {
+            PrimaryLight = theme.primaryLightColor
+            InversePrimary = Color(0xFF9E4B6E)
+            Secondary = Color(0xFFD9739D)
+            OnPrimaryContainerDark = Color(0xFF3B0B1D)
+        }
+    }
+}
+
+private val SuperiorDarkScheme 
+    @Composable get() = darkColorScheme(
+        primary = PrimaryLight,
+        onPrimary = Color.White,
+        primaryContainer = PrimaryLight,
+        onPrimaryContainer = OnPrimaryContainerDark,
+        inversePrimary = InversePrimary,
+        secondary = Secondary,
+        onSecondary = Color.White,
+        tertiary = WarningAmber,
+        onTertiary = Background,
+        background = Background,
+        onBackground = TextPrimary,
+        surface = SurfaceLevel1,
+        onSurface = TextPrimary,
+        surfaceVariant = SurfaceLevel2,
+        onSurfaceVariant = TextSecondary,
+        outline = DividerColor,
+        outlineVariant = DividerColor,
+        error = ErrorRed,
+        onError = Color(0xFF690005),
+    )
 
 @Composable
 fun SuperiorChatTheme(

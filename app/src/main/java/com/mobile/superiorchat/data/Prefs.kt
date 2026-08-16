@@ -225,4 +225,14 @@ class Prefs private constructor(context: Context) {
             _vaultPaths = value
             sharedPreferences.edit().putStringSet("vault_paths", value).apply()
         }
+
+    private var _appTheme: String = sharedPreferences.getString("app_theme", "LAVENDER") ?: "LAVENDER"
+    var appTheme: String
+        get() = _appTheme
+        set(value) {
+            if (_appTheme != value) {
+                _appTheme = value
+                sharedPreferences.edit().putString("app_theme", value).apply()
+            }
+        }
 }

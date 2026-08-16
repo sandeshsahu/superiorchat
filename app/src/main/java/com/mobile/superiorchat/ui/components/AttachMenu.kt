@@ -77,7 +77,7 @@ fun AttachMenu(
             ) {
                 Text(
                     text = "Share Media",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = PrimaryLight,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -199,7 +199,7 @@ fun AttachMenu(
                     Column {
                         Text(
                             text = "Gallery",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = PrimaryLight,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -239,7 +239,7 @@ fun AttachMenu(
                     Column {
                         Text(
                             text = "File",
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = PrimaryLight,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
                         )

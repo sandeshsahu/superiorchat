@@ -60,7 +60,7 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
         SyncState.SYNCING_PROFILE,
         SyncState.SYNCING_MESSAGES -> SyncUIConfig(
             bgColor = PrimaryLight,
-            textColor = PillTextBlue,
+            textColor = OnPrimaryContainerDark,
             isLoading = true
         )
         SyncState.TRANSFERRING -> SyncUIConfig(
@@ -72,7 +72,7 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
         )
         SyncState.SUCCESS -> SyncUIConfig(
             bgColor = PrimaryLight,
-            textColor = PillTextBlue,
+            textColor = OnPrimaryContainerDark,
             icon = Icons.Filled.CheckCircle
         )
         SyncState.ERROR,

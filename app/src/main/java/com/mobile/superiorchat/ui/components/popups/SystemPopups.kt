@@ -1065,7 +1065,7 @@ fun PinSetupPopup(onDismiss: () -> Unit, onSave: (String) -> Unit) {
             text = if (step == 1) "Set PIN" else "Confirm PIN",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = PrimaryLight
         )
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -1165,7 +1165,7 @@ fun PinVerifyPopup(errorMsg: String, onDismiss: () -> Unit, onVerify: (String) -
             text = "Enter Current PIN",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary
+            color = PrimaryLight
         )
         Spacer(modifier = Modifier.height(16.dp))
         

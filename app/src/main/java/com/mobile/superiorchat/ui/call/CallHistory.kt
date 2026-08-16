@@ -133,7 +133,7 @@ fun CallHistoryPage(viewModel: CallViewModel = viewModel()) {
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Recent Calls", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("Recent Calls", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
                     Spacer(modifier = Modifier.width(12.dp))
                     Icon(
                         Icons.Default.Info,
@@ -187,7 +187,7 @@ fun CallHistoryPage(viewModel: CallViewModel = viewModel()) {
                                 )
                             }
                             Spacer(modifier = Modifier.height(24.dp))
-                            Text("No calls yet", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                            Text("No calls yet", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                             Spacer(modifier = Modifier.height(8.dp))
                             Text("Your secure call logs will appear here.", color = TextSecondary, fontSize = 14.sp)
                         }
@@ -297,7 +297,7 @@ private fun CallDetailsSheetContent(call: CallHistoryNode, onDelete: () -> Unit)
             .padding(bottom = 40.dp, top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Call Details", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Text("Call Details", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
         
         Column(
             modifier = Modifier

@@ -24,6 +24,8 @@ import com.mobile.superiorchat.core.AppGraph
 import com.mobile.superiorchat.data.entity.MessageNode
 import com.mobile.superiorchat.data.entity.MessageStatus
 import com.mobile.superiorchat.media.MediaSync
+import com.mobile.superiorchat.theme.AppTheme
+import com.mobile.superiorchat.theme.applyTheme
 import com.mobile.superiorchat.utils.LogCategory
 import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.utils.LogLevel
@@ -81,6 +83,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var prefListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     init {
+        try {
+            applyTheme(AppTheme.valueOf(prefs.appTheme))
+        } catch (e: Exception) {
+            applyTheme(AppTheme.LAVENDER)
+        }
+        
         prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
             // Update preferences if needed
         }
@@ -120,6 +128,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var botToken by mutableStateOf(prefs.botToken)
     var chatId by mutableStateOf(prefs.chatId)
     var webrtcBaseUrl by mutableStateOf(prefs.webrtcBaseUrl)
+    
+    var appTheme by mutableStateOf(
+        try { AppTheme.valueOf(prefs.appTheme) } catch(e: Exception) { AppTheme.LAVENDER }
+    )
+        private set
+        
+    fun updateAppTheme(theme: AppTheme) {
+        prefs.appTheme = theme.name
+        appTheme = theme
+        applyTheme(theme)
+    }
 
     val hasCredentials: Boolean
         get() = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$")) && 

@@ -330,7 +330,7 @@ fun AppScreen(
                             .padding(horizontal = 20.dp)
                             .padding(bottom = 24.dp)
                     ) {
-                        Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("Author Sandesh", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -423,11 +423,11 @@ fun AppScreen(
                                     navigationIcon = {
                                         if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
                                             IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
-                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryLight)
                                             }
                                         } else {
                                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
+                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = PrimaryLight)
                                             }
                                         }
                                     },
@@ -454,17 +454,17 @@ fun AppScreen(
                                             currentScreen.title,
                                             fontSize = 24.sp,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                            color = PrimaryLight
                                         )
                                     },
                                     navigationIcon = {
                                         if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
                                             IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
-                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.onSurface)
+                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryLight)
                                             }
                                         } else {
                                             IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = MaterialTheme.colorScheme.onSurface)
+                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = PrimaryLight)
                                             }
                                         }
                                     },
@@ -474,7 +474,7 @@ fun AppScreen(
                                                 val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
                                                 if (canCall) {
                                                     IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
-                                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = MaterialTheme.colorScheme.onSurface)
+                                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = PrimaryLight)
                                                     }
                                                 }
                                                 IconButton(onClick = {
@@ -482,7 +482,7 @@ fun AppScreen(
                                                         showScanPrompt = true
                                                     }
                                                 }) {
-                                                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan QR", tint = MaterialTheme.colorScheme.onSurface)
+                                                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan QR", tint = PrimaryLight)
                                                 }
                                             }
                                         }
@@ -628,6 +628,8 @@ fun AppScreen(
                                 botToken = viewModel.botToken,
                                 chatId = viewModel.chatId,
                                 webrtcBaseUrl = viewModel.webrtcBaseUrl,
+                                appTheme = viewModel.appTheme,
+                                onAppThemeChange = { viewModel.updateAppTheme(it) },
                                 isTileAccessEnabled = viewModel.tileAccessEnabled,
                                 customAccessWord = viewModel.customAccessWord,
                                 customDialerCode = viewModel.customDialerCode,
