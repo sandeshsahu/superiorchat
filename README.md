@@ -123,6 +123,7 @@ For detailed technical references, explore the dedicated documentation in this d
 > For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:
 > - **[Captive Portal Details](docs/flavors/CaptivePortal.md)**
 > - **[Weather Details](docs/flavors/FlavorWeather.md)**
+> - **[Play Support Details](docs\flavors\PlaySupport.md)**
 ---
 
 <h2 id="acknowledgments">🙌 Acknowledgments</h2>

@@ -159,6 +159,8 @@
 <h2 id="ui">✨ 7. Modern User Interface</h2>
 
 - 🎨 **Material Design 3**: Modern, highly polished dark theme tailored for low-light visual comfort.
+- 🎨 **Dynamic Theme Engine**: Built-in theme selector in App Settings featuring 4 themes (Lavender, Sage, Amber, Rose). All UI components seamlessly synchronize with the active theme instantly without requiring an app restart.
+- 🧘 **Interactive Zen Mode**: A "Zen Mode" top bar state that replaces the standard Header & Icons with an animated character (Sleeping Miku). It triggers automatically after 5 seconds of inactivity or manually via tapping the header, providing a cleaner resting interface.
 - 🌈 **Color-Coded Settings Architecture**: Fully restyled Settings Screen with categorized color hierarchies (Security in Primary, Flavor Specific in Secondary, Developer in Warning, Danger Zone in ErrorRed).
 - 💬 **Reply Jumping**: Tapping a replied message now instantly snaps to the target message and applies a sleek 2-second visual highlight effect.
 - 📌 **Message Pin Indicators**: Professional pin icons directly on the message status row for pinned text, media, and documents.

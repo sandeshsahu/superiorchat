@@ -44,7 +44,10 @@
 ---
 
 ### 🎨 UI Enhancements
-- ⚡ **Turbo QR Scanner**: Entirely overhauled the QR scanning engine. It is now 10x faster, supports pinch-to-zoom, features animated glowing scan lines, haptic feedback, and a built-in torch toggle.
+- 🎨 **Dynamic Theme Engine**: Introduced theme selector in App Settings featuring 4 color themes (Lavender, Sage, Amber, Rose). All UI components (headers, dialogs, icons, attachment menus) now seamlessly synchronize with the active theme instantly without requiring an app restart.
+- 🧘 **Interactive Zen Mode**: Added a "Zen Mode" top bar state that replaces the standard Header & Icons with an animated character (Sleeping Miku). It triggers automatically after 5 seconds of inactivity or manually via tapping the header, providing a cleaner resting interface.
+- 🖌️ **Semantic Color Refactor**: Completely deprecated the static `Primary` color token and eliminated all hardcoded hex colors across the entire application in favor of 40+ specific semantic tokens, laying the groundwork for robust future UI customizations.
+- ⚡ **QR Scanner Enhancement**: Entirely overhauled the QR scanning engine. It is now 10x faster, supports pinch-to-zoom, features animated glowing scan lines, haptic feedback, and a built-in torch toggle.
 - 💬 **Reply Jumping**: Tapping a replied message now instantly snaps to the target message and applies a sleek 2-second visual highlight effect.
 - 📌 **Message Pin Indicators**: Added a professional pin icon directly to the message status row for pinned text, media, and documents.
 - ⏳ **Queued Media Indicators**: Replaced static cancel buttons with a professional "Waiting..." indeterminate spinner for queued media transfers.
