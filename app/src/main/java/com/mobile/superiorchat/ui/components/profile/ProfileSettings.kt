@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.theme.DividerColor
 import com.mobile.superiorchat.theme.ErrorRed
 import com.mobile.superiorchat.theme.InfoBlue
-import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2

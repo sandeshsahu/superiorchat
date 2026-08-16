@@ -93,7 +93,7 @@ fun MessageContextMenu(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp)
-                    .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
+                    .border(1.dp, PopupBorder, RoundedCornerShape(16.dp))
             ) {
                 Row(
                     modifier = Modifier
@@ -134,7 +134,7 @@ fun MessageContextMenu(
                 modifier = Modifier
                     .padding(horizontal = 8.dp)
                     .widthIn(min = 150.dp, max = 200.dp)
-                    .border(1.dp, Color(0xFF333333), RoundedCornerShape(16.dp))
+                    .border(1.dp, PopupBorder, RoundedCornerShape(16.dp))
             ) {
                 Column {
                     // Reply
@@ -206,7 +206,7 @@ fun ContextMenuItem(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     textColor: Color = Color.White,
-    iconColor: Color = Color(0xFF8E8E93),
+    iconColor: Color = PopupIcon,
     onClick: () -> Unit
 ) {
     Row(
@@ -354,7 +354,7 @@ fun SelectionActionBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = Color(0xFF1A1A1A),
+        color = PopupDark,
         shadowElevation = 4.dp
     ) {
         Row(
@@ -426,8 +426,8 @@ fun EmojiReactionTray(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(28.dp))
-                    .background(Color(0xFF1E1E2E))
-                    .border(1.dp, Color(0xFF3A3A4E), RoundedCornerShape(28.dp))
+                    .background(PopupNavBg)
+                    .border(1.dp, PopupNavBorder, RoundedCornerShape(28.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -438,7 +438,7 @@ fun EmojiReactionTray(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(
-                                if (isSelected) com.mobile.superiorchat.theme.PrimaryLight.copy(alpha = 0.25f)
+                                if (isSelected) PrimaryLight.copy(alpha = 0.25f)
                                 else Color.Transparent
                             )
                             .clickable { onReact(emoji); onDismiss() },

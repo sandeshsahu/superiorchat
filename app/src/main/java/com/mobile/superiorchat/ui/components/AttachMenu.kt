@@ -205,7 +205,7 @@ fun AttachMenu(
                         )
                         Text(
                             text = "Photos and Videos",
-                            color = Color(0xFF9E9E9E),
+                            color = com.mobile.superiorchat.theme.AttachMenuIcon,
                             fontSize = 12.sp
                         )
                     }
@@ -245,7 +245,7 @@ fun AttachMenu(
                         )
                         Text(
                             text = "Documents and raw files",
-                            color = Color(0xFF9E9E9E),
+                            color = com.mobile.superiorchat.theme.AttachMenuIcon,
                             fontSize = 12.sp
                         )
                     }

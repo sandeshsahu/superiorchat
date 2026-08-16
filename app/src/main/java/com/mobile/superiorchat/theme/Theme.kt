@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 // ═══════════════════════════════════════════════════════════
 
 // ── Primary & Secondary ─────────────────────────────────
-val Primary = Color(0xFF6366F1) // Violet-Indigo
 val Secondary = Color(0xFFA855F7) // Rich Purple
 val PrimaryLight = Color(0xFFC0C1FF)
 val InversePrimary = Color(0xFF494BD6)
@@ -52,6 +51,53 @@ val CallDanger = Color(0xFFEF4444)
 val CallSuccess = Color(0xFF10B981)
 val CallAccent = Color(0xFF6366F1)
 val CallGlass = Color(0x0DFFFFFF) // 5% white
+
+// ── File Type Colors ────────────────────────────────────
+val FilePdf = Color(0xFFFF8B8B)
+val FileApk = Color(0xFF8BFFB5)
+val FileArchive = Color(0xFFFFC08B)
+val FileDoc = Color(0xFF8BBAFF)
+val FileSheet = Color(0xFF8BFF9B)
+val FilePresentation = Color(0xFFFF9B8B)
+val FileAudio = Color(0xFFD68BFF)
+val FileVideo = Color(0xFFFF8B8B)
+val FileImage = Color(0xFFFFDB8B)
+val FileCode = Color(0xFF8BFFF0)
+
+// ── Scanner Colors ──────────────────────────────────────
+val ScannerError = Color(0xFFCF6679)
+val ScannerErrorBg = Color(0xFFB00020)
+
+// ── Pill Colors ─────────────────────────────────────────
+val PillTextBlue = Color(0xFF1000A9)
+val PillBgDark = Color(0xFF1E1E24)
+val PillBgError = Color(0xFF690005)
+val PillCallActive = Color(0xFF34D399)
+val PillCallWarning = Color(0xFFFBBF24)
+val PillAppleRed = Color(0xFFFF3B30)
+val PillMedia = Color(0xFF4CAF50)
+val PillDoc = Color(0xFF2196F3)
+val PillAudio = Color(0xFFFF9800)
+
+// ── Popup Colors ────────────────────────────────────────
+val PopupBorder = Color(0xFF333333)
+val PopupIcon = Color(0xFF8E8E93)
+val PopupDark = Color(0xFF1A1A1A)
+val PopupNavBg = Color(0xFF1E1E2E)
+val PopupNavBorder = Color(0xFF3A3A4E)
+val AttachMenuIcon = Color(0xFF9E9E9E)
+
+// ── Input & Bubble Colors ───────────────────────────────
+val InputRecordingRed = Color(0xCCEF4444)
+val InputCancelRed = Color(0xFFFF6B6B)
+val InputCancelRedTranslucent = Color(0xCCFF6B6B)
+val InputPrimaryTranslucent = Color(0x99C0C1FF)
+val AudioBubbleButtonBg = Color(0xFF353535)
+val BubbleUnselectedBorder = Color(0xFF8E8E93)
+
+// ── Call Screen Colors ──────────────────────────────────
+val CallEndingBg = Color(0xFF080C14)
+val CallGradientEnd = Color(0xFF7C3AED)
 
 // ═══════════════════════════════════════════════════════════
 //  TYPOGRAPHY (Inter-based)
@@ -107,7 +153,7 @@ val Typography = Typography(
 // ═══════════════════════════════════════════════════════════
 
 private val SuperiorDarkScheme = darkColorScheme(
-    primary = Primary,
+    primary = PrimaryLight,
     onPrimary = Color.White,
     primaryContainer = PrimaryLight,
     onPrimaryContainer = Color(0xFF1000A9),

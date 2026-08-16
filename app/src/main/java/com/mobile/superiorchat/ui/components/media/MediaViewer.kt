@@ -51,7 +51,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
-import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.PrimaryLight
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -597,8 +597,8 @@ private fun VideoPlayerComponent(
                             }
                         },
                         colors = SliderDefaults.colors(
-                            thumbColor = Primary,
-                            activeTrackColor = Primary,
+                            thumbColor = PrimaryLight,
+                            activeTrackColor = PrimaryLight,
                             inactiveTrackColor = Color.White.copy(alpha = 0.24f)
                         ),
                         modifier = Modifier

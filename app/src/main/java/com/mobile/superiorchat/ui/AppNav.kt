@@ -503,7 +503,7 @@ fun AppScreen(
                         snackbarData = data,
                         containerColor = SurfaceLevel1,
                         contentColor = TextPrimary,
-                        actionColor = Primary
+                        actionColor = PrimaryLight
                     )
                 }
             },

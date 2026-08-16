@@ -30,8 +30,7 @@ import com.mobile.superiorchat.core.ActiveTransfer
 import com.mobile.superiorchat.core.StatusFlow
 import com.mobile.superiorchat.core.SyncState
 import com.mobile.superiorchat.media.MediaSync
-import com.mobile.superiorchat.theme.PrimaryLight
-import com.mobile.superiorchat.theme.SurfaceLevel1
+import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.core.call.CallManager
 import com.mobile.superiorchat.core.call.CallState
 import java.io.File
@@ -61,11 +60,11 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
         SyncState.SYNCING_PROFILE,
         SyncState.SYNCING_MESSAGES -> SyncUIConfig(
             bgColor = PrimaryLight,
-            textColor = Color(0xFF1000A9),
+            textColor = PillTextBlue,
             isLoading = true
         )
         SyncState.TRANSFERRING -> SyncUIConfig(
-            bgColor = Color(0xFF1E1E24),
+            bgColor = PillBgDark,
             textColor = Color.White,
             icon = if (hasUploads) Icons.Filled.FileUpload else Icons.Filled.FileDownload,
             isTransfer = true,
@@ -73,13 +72,13 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
         )
         SyncState.SUCCESS -> SyncUIConfig(
             bgColor = PrimaryLight,
-            textColor = Color(0xFF1000A9),
+            textColor = PillTextBlue,
             icon = Icons.Filled.CheckCircle
         )
         SyncState.ERROR,
         SyncState.OFFLINE,
         SyncState.AUTH_ERROR -> SyncUIConfig(
-            bgColor = Color(0xFF690005),
+            bgColor = PillBgError,
             textColor = Color.White,
             icon = Icons.Filled.Error
         )
@@ -173,7 +172,7 @@ fun StatusPill(
                         Icon(
                             imageVector = Icons.Filled.Call,
                             contentDescription = null,
-                            tint = if (callState == CallState.ACTIVE) Color(0xFF34D399).copy(alpha = pulseAlpha) else Color(0xFFFBBF24).copy(alpha = pulseAlpha),
+                            tint = if (callState == CallState.ACTIVE) PillCallActive.copy(alpha = pulseAlpha) else PillCallWarning.copy(alpha = pulseAlpha),
                             modifier = Modifier.size(16.dp)
                         )
                         
@@ -191,14 +190,14 @@ fun StatusPill(
                             modifier = Modifier.widthIn(min = 42.dp)
                         )
                         
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFF3B30)) // Apple-like red
-                                .clickable { CallManager.endCall() },
-                            contentAlignment = Alignment.Center
-                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape)
+                                    .background(PillAppleRed)
+                                    .clickable { CallManager.endCall() },
+                                contentAlignment = Alignment.Center
+                            ) {
                             Icon(
                                 imageVector = Icons.Filled.CallEnd,
                                 contentDescription = "End Call",
@@ -285,9 +284,9 @@ fun StatusPill(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            if (mediaCount > 0) CategoryPill("$mediaCount Media", Color(0xFF4CAF50))
-                            if (docCount > 0) CategoryPill("$docCount Document${if (docCount > 1) "s" else ""}", Color(0xFF2196F3))
-                            if (audioCount > 0) CategoryPill("$audioCount Audio", Color(0xFFFF9800))
+                            if (mediaCount > 0) CategoryPill("$mediaCount Media", PillMedia)
+                            if (docCount > 0) CategoryPill("$docCount Document${if (docCount > 1) "s" else ""}", PillDoc)
+                            if (audioCount > 0) CategoryPill("$audioCount Audio", PillAudio)
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))

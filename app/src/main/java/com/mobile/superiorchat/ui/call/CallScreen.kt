@@ -117,7 +117,7 @@ fun CallScreen(
     // ENDING state: very subtle darkening — NOT blood red.
     // Premium apps keep dark/neutral bg; color comes from text, not the whole screen.
     val screenBgColor by animateColorAsState(
-        targetValue = if (callState == CallState.ENDING) Color(0xFF080C14) else CallBackground,
+        targetValue = if (callState == CallState.ENDING) CallEndingBg else CallBackground,
         animationSpec = tween(600, easing = FastOutSlowInEasing),
         label = "screenBg"
     )
@@ -471,7 +471,7 @@ private fun ConnectingInfoBanner() {
             modifier = Modifier
                 .width(3.dp)
                 .matchParentSize()
-                .background(Brush.verticalGradient(listOf(CallAccent, Color(0xFF7C3AED))))
+                .background(Brush.verticalGradient(listOf(CallAccent, CallGradientEnd)))
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -641,7 +641,7 @@ private fun CallAvatar(
                 .clip(CircleShape)
                 .then(
                     if (isConnecting) Modifier.skeletonEffect()
-                    else Modifier.background(Brush.linearGradient(colors = listOf(CallAccent, Color(0xFF7C3AED))))
+                    else Modifier.background(Brush.linearGradient(colors = listOf(CallAccent, CallGradientEnd)))
                 ),
             contentAlignment = Alignment.Center
         ) {

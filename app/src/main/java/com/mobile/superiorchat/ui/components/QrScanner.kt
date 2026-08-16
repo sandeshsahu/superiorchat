@@ -47,8 +47,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
-import com.mobile.superiorchat.theme.Primary
-import com.mobile.superiorchat.theme.PrimaryLight
+import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.theme.Success
 import com.mobile.superiorchat.ui.components.media.GalleryGrid
 import com.mobile.superiorchat.utils.QrManager
@@ -336,7 +335,7 @@ fun QrScanner(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(16.dp))
-                                            .background(Color(0xFFB00020).copy(alpha = 0.85f))
+                                            .background(ScannerErrorBg.copy(alpha = 0.85f))
                                             .padding(horizontal = 20.dp, vertical = 14.dp)
                                     ) {
                                         Icon(
@@ -496,8 +495,8 @@ fun ScannerOverlay(modifier: Modifier = Modifier, state: ScannerState = ScannerS
     val cornerColor by animateColorAsState(
         targetValue = when (state) {
             is ScannerState.Success, is ScannerState.Detected -> Success
-            is ScannerState.Error -> Color(0xFFCF6679)
-            else -> Primary
+            is ScannerState.Error -> ScannerError
+            else -> PrimaryLight
         },
         animationSpec = tween(300),
         label = "CornerColor"
@@ -591,13 +590,13 @@ fun ScannerOverlay(modifier: Modifier = Modifier, state: ScannerState = ScannerS
 
             // Glow line — draw twice for bloom effect
             drawLine(
-                color = Primary.copy(alpha = gradientAlpha * 0.3f),
+                color = PrimaryLight.copy(alpha = gradientAlpha * 0.3f),
                 start = Offset(left + 2.dp.toPx(), lineY),
                 end = Offset(right - 2.dp.toPx(), lineY),
                 strokeWidth = 8.dp.toPx()
             )
             drawLine(
-                color = Primary.copy(alpha = gradientAlpha),
+                color = PrimaryLight.copy(alpha = gradientAlpha),
                 start = Offset(left + 2.dp.toPx(), lineY),
                 end = Offset(right - 2.dp.toPx(), lineY),
                 strokeWidth = 2.dp.toPx()

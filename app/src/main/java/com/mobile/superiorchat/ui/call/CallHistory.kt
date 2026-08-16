@@ -174,7 +174,7 @@ fun CallHistoryPage(viewModel: CallViewModel = viewModel()) {
                             Box(
                                 modifier = Modifier
                                     .size(72.dp)
-                                    .glow(color = Primary, radius = 40f, dx = 0f, dy = 0f)
+                                    .glow(color = PrimaryLight, radius = 40f, dx = 0f, dy = 0f)
                                     .background(PrimaryLight, CircleShape)
                                     .border(1.dp, PrimaryLight.copy(alpha = 0.5f), CircleShape),
                                 contentAlignment = Alignment.Center

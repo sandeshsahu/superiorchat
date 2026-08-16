@@ -656,7 +656,7 @@ fun CredentialsPopup(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Key, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Bot Token", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
@@ -670,7 +670,7 @@ fun CredentialsPopup(
                             unfocusedContainerColor = SurfaceLevel2,
                             focusedContainerColor = SurfaceLevel2,
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Primary,
+                            focusedBorderColor = PrimaryLight,
                             unfocusedTextColor = TextPrimary,
                             focusedTextColor = TextPrimary,
                             errorBorderColor = ErrorRed
@@ -697,7 +697,7 @@ fun CredentialsPopup(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Chat ID", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
@@ -711,7 +711,7 @@ fun CredentialsPopup(
                             unfocusedContainerColor = SurfaceLevel2,
                             focusedContainerColor = SurfaceLevel2,
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Primary,
+                            focusedBorderColor = PrimaryLight,
                             unfocusedTextColor = TextPrimary,
                             focusedTextColor = TextPrimary,
                             errorBorderColor = ErrorRed
@@ -804,7 +804,7 @@ fun WebRtcConfigPopup(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Phone, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Phone, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Base URL", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
@@ -821,7 +821,7 @@ fun WebRtcConfigPopup(
                             unfocusedContainerColor = SurfaceLevel2,
                             focusedContainerColor = SurfaceLevel2,
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Primary,
+                            focusedBorderColor = PrimaryLight,
                             unfocusedTextColor = TextPrimary,
                             focusedTextColor = TextPrimary,
                             errorBorderColor = ErrorRed
@@ -1368,7 +1368,7 @@ fun PinEntryDialog(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Key, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Filled.Key, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Security PIN", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
@@ -1383,7 +1383,7 @@ fun PinEntryDialog(
                             unfocusedContainerColor = SurfaceLevel2,
                             focusedContainerColor = SurfaceLevel2,
                             unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = Primary,
+                            focusedBorderColor = PrimaryLight,
                             unfocusedTextColor = TextPrimary,
                             focusedTextColor = TextPrimary,
                             errorBorderColor = ErrorRed

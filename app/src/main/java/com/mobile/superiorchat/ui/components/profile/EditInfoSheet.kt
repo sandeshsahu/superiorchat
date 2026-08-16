@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.theme.DividerColor
 import com.mobile.superiorchat.theme.ErrorRed
-import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
@@ -151,7 +151,7 @@ private fun EditSheetField(
                 unfocusedContainerColor = SurfaceLevel2,
                 focusedContainerColor = SurfaceLevel2,
                 unfocusedBorderColor = DividerColor,
-                focusedBorderColor = Primary,
+                focusedBorderColor = PrimaryLight,
                 unfocusedTextColor = TextPrimary,
                 focusedTextColor = TextPrimary,
                 cursorColor = PrimaryLight

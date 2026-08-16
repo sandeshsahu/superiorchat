@@ -167,13 +167,14 @@ fun AudioBubble(
         }
     }
 
-    val playedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFFC0C1FF)
-    val unplayedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f) else Color(0xFFC0C1FF).copy(alpha = 0.3f)
+    val playedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else PrimaryLight
+    val unplayedColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f) else PrimaryLight.copy(alpha = 0.3f)
     val textDurationColor = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
     val textDurationWeight = if (isFromMe) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal
-
-    val buttonBg = if (isFromMe) Color.White else Color(0xFF353535)
-    val buttonIconTint = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFFC0C1FF)
+    
+    val buttonSize = if (mediaType == "voice_note") 48.dp else 40.dp
+    val buttonBg = if (isFromMe) Color.White else AudioBubbleButtonBg
+    val buttonIconTint = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer else PrimaryLight
     val isDownloading = status == MessageStatus.SENDING
     val isQueued = isFromMe && status == MessageStatus.QUEUED
     val isFailed = status == MessageStatus.FAILED

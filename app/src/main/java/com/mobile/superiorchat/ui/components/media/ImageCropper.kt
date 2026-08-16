@@ -34,7 +34,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.Secondary
 import com.mobile.superiorchat.ui.components.bounceClick
 
@@ -234,7 +234,7 @@ fun ImageCropper(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(Primary, Secondary)))
+                        .background(Brush.linearGradient(listOf(PrimaryLight, Secondary)))
                         .bounceClick(onClick = {
                             if (imageSize == Size.Zero) return@bounceClick
                             

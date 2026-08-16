@@ -61,7 +61,7 @@ import com.mobile.superiorchat.data.entity.MessageNode
 import com.mobile.superiorchat.data.entity.MessageStatus
 import com.mobile.superiorchat.theme.DividerColor
 import com.mobile.superiorchat.theme.PrimaryLight
-import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.theme.InfoBlue
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
@@ -260,7 +260,7 @@ fun MessageBubble(
     }
     
     val glowModifier = if (message.isFromMe) {
-        Modifier.glow(color = Color(0xFFC0C1FF), radius = 30f, dy = 10f, cornerRadius = 20.dp)
+        Modifier.glow(color = PrimaryLight, radius = 30f, dy = 10f, cornerRadius = 20.dp)
     } else {
         Modifier
     }
@@ -468,7 +468,7 @@ fun MessageBubble(
                 .size(24.dp)
                 .clip(CircleShape)
                 .background(if (isSelected) PrimaryLight else Color.Transparent)
-                .border(2.dp, if (isSelected) PrimaryLight else Color(0xFF8E8E93), CircleShape)
+                .border(2.dp, if (isSelected) PrimaryLight else BubbleUnselectedBorder, CircleShape)
                 .clickable(enabled = isSelectionMode) { onSelectMessage(currentMessageState.value) },
             contentAlignment = Alignment.Center
         ) {
@@ -706,8 +706,23 @@ fun MessageBubble(
                                         visibleState = state,
                                         enter = androidx.compose.animation.scaleIn() + androidx.compose.animation.fadeIn()
                                     ) {
-                                        val pillBgColor = if (isMe) Primary.copy(alpha = 0.8f) else (if (message.isFromMe) Color.Black.copy(alpha = 0.2f) else PrimaryLight.copy(alpha = 0.18f))
-                                        val pillBorderColor = if (isMe) Primary else (if (message.isFromMe) Color.Black.copy(alpha = 0.1f) else PrimaryLight.copy(alpha = 0.35f))
+                                        val pillBgColor = when {
+                                            isMe && message.isFromMe -> textColor.copy(alpha = 0.8f) // Dark inverted pill for strong highlight
+                                            isMe && !message.isFromMe -> PrimaryLight.copy(alpha = 0.8f) // Light highlighted pill on dark bubble
+                                            !isMe && message.isFromMe -> textColor.copy(alpha = 0.15f) // Subtle dark pill on light bubble
+                                            else -> Color.White.copy(alpha = 0.05f) // Subtle light pill on dark bubble
+                                        }
+                                        val pillBorderColor = when {
+                                            isMe && message.isFromMe -> textColor.copy(alpha = 0.9f)
+                                            isMe && !message.isFromMe -> PrimaryLight
+                                            !isMe && message.isFromMe -> textColor.copy(alpha = 0.2f)
+                                            else -> Color.White.copy(alpha = 0.1f)
+                                        }
+                                        val countColor = when {
+                                            isMe && message.isFromMe -> PrimaryLight // Inverted text color inside dark pill
+                                            isMe && !message.isFromMe -> SurfaceLevel1
+                                            else -> textColor.copy(alpha = 0.8f)
+                                        }
                                         Box(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(12.dp))
@@ -719,7 +734,7 @@ fun MessageBubble(
                                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 Text(text = emoji, fontSize = 14.sp)
                                                 if (count > 1) {
-                                                    Text(text = count.toString(), fontSize = 12.sp, color = if(isMe) Color.White else textColor.copy(alpha = 0.8f), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                    Text(text = count.toString(), fontSize = 12.sp, color = countColor, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                                                 }
                                             }
                                         }

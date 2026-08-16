@@ -135,7 +135,7 @@ fun LogsScreen() {
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = SurfaceLevel2,
                 unfocusedContainerColor = SurfaceLevel1,
-                focusedBorderColor = Primary,
+                focusedBorderColor = PrimaryLight,
                 unfocusedBorderColor = DividerColor,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary

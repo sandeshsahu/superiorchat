@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.mobile.superiorchat.theme.PrimaryLight
+import com.mobile.superiorchat.theme.*
 
 object FileUtils {
 
@@ -135,16 +135,16 @@ object FileUtils {
     fun resolveFileIconColor(filename: String): Color {
         val ext = filename.substringAfterLast(".", "").lowercase(Locale.ROOT)
         return when (ext) {
-            "pdf" -> Color(0xFFFF8B8B) // Light Red
-            "apk" -> Color(0xFF8BFFB5) // Android Green
-            "zip", "rar", "7z", "tar", "gz" -> Color(0xFFFFC08B) // Archive Orange
-            "doc", "docx", "txt", "rtf", "log" -> Color(0xFF8BBAFF) // Light Blue
-            "xls", "xlsx", "csv" -> Color(0xFF8BFF9B) // Light Green
-            "ppt", "pptx" -> Color(0xFFFF9B8B) // Presentation Red/Orange
-            "mp3", "wav", "ogg", "flac" -> Color(0xFFD68BFF) // Audio Purple
-            "mp4", "mkv", "avi", "mov" -> Color(0xFFFF8B8B) // Video Red
-            "jpg", "jpeg", "png", "gif", "webp" -> Color(0xFFFFDB8B) // Image Yellow
-            "kt", "java", "py", "json", "xml", "html", "js", "css" -> Color(0xFF8BFFF0) // Code Teal
+            "pdf" -> FilePdf // Light Red
+            "apk" -> FileApk // Android Green
+            "zip", "rar", "7z", "tar", "gz" -> FileArchive // Archive Orange
+            "doc", "docx", "txt", "rtf", "log" -> FileDoc // Light Blue
+            "xls", "xlsx", "csv" -> FileSheet // Light Green
+            "ppt", "pptx" -> FilePresentation // Presentation Red/Orange
+            "mp3", "wav", "ogg", "flac" -> FileAudio // Audio Purple
+            "mp4", "mkv", "avi", "mov" -> FileVideo // Video Red
+            "jpg", "jpeg", "png", "gif", "webp" -> FileImage // Image Yellow
+            "kt", "java", "py", "json", "xml", "html", "js", "css" -> FileCode // Code Teal
             else -> PrimaryLight
         }
     }

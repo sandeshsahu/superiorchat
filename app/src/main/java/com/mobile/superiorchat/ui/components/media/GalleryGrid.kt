@@ -57,7 +57,7 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.painter.ColorPainter
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
-import com.mobile.superiorchat.theme.Primary
+import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.Secondary
 import com.mobile.superiorchat.theme.SurfaceLevel1
@@ -401,12 +401,12 @@ private fun CameraGridTile(onCameraClick: () -> Unit) {
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        Primary.copy(alpha = 0.15f),
+                        PrimaryLight.copy(alpha = 0.15f),
                         Secondary.copy(alpha = 0.15f)
                     )
                 )
             )
-            .border(1.dp, Primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            .border(1.dp, PrimaryLight.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clickable { onCameraClick() },
         contentAlignment = Alignment.Center
     ) {

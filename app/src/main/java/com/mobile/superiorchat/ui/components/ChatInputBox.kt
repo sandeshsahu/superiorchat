@@ -360,7 +360,7 @@ fun ChatInputBox(
                                 .size(48.dp)
                                 .scale(glowScale)
                                 .glow(
-                                    color = Color(0xCCEF4444),
+                                    color = InputRecordingRed,
                                     radius = 60f,
                                     dx = 0f,
                                     dy = 0f,
@@ -376,10 +376,10 @@ fun ChatInputBox(
                             .size(48.dp)
                             .scale(buttonScale)
                             .glow(
-                                color = if (isRecording) Color(0xCCFF6B6B) else Color(0x99C0C1FF),
+                                color = if (isRecording) InputCancelRedTranslucent else InputPrimaryTranslucent,
                                 radius = if (isRecording) 50f else 40f,
                                 dy = 8f,
-                                shapeColor = if (isRecording) Color(0xFFFF6B6B) else Color(0xFFC0C1FF)
+                                shapeColor = if (isRecording) InputCancelRed else PrimaryLight
                             )
                             .clip(CircleShape)
                             .background(buttonColor)
@@ -479,7 +479,7 @@ private fun RecordingIndicator(
 
     // Smooth color transition for cancel zone
     val indicatorColor by animateColorAsState(
-        targetValue = if (isCancelZone) Color(0xFFFF6B6B) else MaterialTheme.colorScheme.error,
+        targetValue = if (isCancelZone) InputCancelRed else MaterialTheme.colorScheme.error,
         animationSpec = tween(200),
         label = "cancel_color"
     )
@@ -524,7 +524,7 @@ private fun RecordingIndicator(
             // Cancel zone: show cancel message prominently
             Text(
                 text = "← Release to cancel",
-                color = Color(0xFFFF6B6B).copy(alpha = hintTextAlpha),
+                color = InputCancelRed.copy(alpha = hintTextAlpha),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
