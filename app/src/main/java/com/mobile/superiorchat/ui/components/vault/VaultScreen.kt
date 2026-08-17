@@ -170,7 +170,7 @@ fun VaultScreen(
                     Icon(
                         imageVector = if (isSelectMode) Icons.Default.Close else Icons.Default.ArrowBack, 
                         contentDescription = "Close", 
-                        tint = TextPrimary
+                        tint = PrimaryLight
                     )
                 }
                 
@@ -187,7 +187,7 @@ fun VaultScreen(
                     ) { title ->
                         Text(
                             text = title,
-                            color = TextPrimary,
+                            color = PrimaryLight,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = (-0.5).sp
@@ -206,7 +206,7 @@ fun VaultScreen(
                 // Actions
                 if (!isSelectMode && vaultItems.isNotEmpty()) {
                     IconButton(onClick = { isSelectMode = true; selectedPaths.clear() }) {
-                        Icon(Icons.Default.Checklist, contentDescription = "Select", tint = TextPrimary)
+                        Icon(Icons.Default.Checklist, contentDescription = "Select", tint = PrimaryLight)
                     }
                 }
                 
@@ -266,7 +266,7 @@ fun VaultScreen(
                             Icon(
                                 Icons.Default.Lock,
                                 contentDescription = null,
-                                tint = TextSecondary,
+                                tint = PrimaryLight,
                                 modifier = Modifier.size(28.dp)
                             )
                         }

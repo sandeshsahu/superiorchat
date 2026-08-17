@@ -210,14 +210,15 @@ app/src/main/java/com/mobile/superiorchat/
 │   │   │   ├── MediaPicker.kt      # Media selection orchestrator
 │   │   │   └── MediaViewer.kt      # Full-screen media viewer
 │   │   ├── popups/                 # Modals and Dialogs
+│   │   │   ├── AnimPreviews.kt     # Stealth access visual interaction previews
 │   │   │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
 │   │   │   ├── PopupDialogs.kt     # Centralized animated dialog catalog
 │   │   │   ├── StatusPill.kt       # Future-proof global sync & transfer state pill
 │   │   │   └── SystemPopups.kt     # Global app dialogs (Warnings, credentials)
 │   │   ├── profile/                # Profile UI fragments
-│   │       ├── EditInfoSheet.kt    # Modal sheet for editing profile details
-│   │       ├── PartnerProfile.kt   # Reusable profile header card
-│   │       └── ProfileSettings.kt  # Profile settings toggles
+│   │   │   ├── EditInfoSheet.kt    # Modal sheet for editing profile details
+│   │   │   ├── PartnerProfile.kt   # Reusable profile header card
+│   │   │   └── ProfileSettings.kt  # Profile settings toggles
 │   │   └── vault/                  # Media Vault UI
 │   │       └── VaultScreen.kt      # Fake gallery/vault decoy screen
 │   └── profile/                    # Profile feature package

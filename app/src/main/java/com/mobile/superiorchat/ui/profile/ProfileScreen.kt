@@ -480,7 +480,7 @@ private fun ProfileActionButton(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Icon(icon, contentDescription = label, tint = PrimaryLight.copy(alpha = if (isLoading) 0.5f else 1f), modifier = Modifier.size(22.dp))
-        Text(label, color = TextPrimary.copy(alpha = if (isLoading) 0.5f else 1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+        Text(label, color = PrimaryLight.copy(alpha = if (isLoading) 0.5f else 1f), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
     }
 }
 

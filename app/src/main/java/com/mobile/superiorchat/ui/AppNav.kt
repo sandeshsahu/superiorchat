@@ -332,7 +332,7 @@ fun AppScreen(
                     ) {
                         Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Author Sandesh", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Author Sandesh", fontSize = 14.sp, color = PrimaryLight.copy(alpha = 0.55f))
                     }
 
                     // Navigation Items — only top level entries shown
@@ -362,7 +362,7 @@ fun AppScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    HorizontalDivider(color = DividerColor, modifier = Modifier.padding(horizontal = 24.dp))
+                    HorizontalDivider(color = PrimaryLight.copy(alpha = 0.55f), modifier = Modifier.padding(horizontal = 24.dp))
 
                     // External Links
                     Spacer(modifier = Modifier.height(16.dp))
@@ -703,6 +703,11 @@ fun AppScreen(
                             data.callServer?.let { 
                                 viewModel.webrtcBaseUrl = it
                             }
+                            data.theme?.let {
+                                try {
+                                    viewModel.updateAppTheme(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
+                                } catch (e: Exception) {}
+                            }
                             
                             viewModel.saveCredentials()
                             viewModel.showAppLevelQrScanner = false
@@ -903,8 +908,8 @@ private fun ExternalLinkItem(title: String, icon: ImageVector, url: String) {
             }
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Icon(icon, contentDescription = title, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = title, tint = PrimaryLight.copy(alpha = 0.55f), modifier = Modifier.size(24.dp))
         Spacer(modifier = Modifier.width(16.dp))
-        Text(title, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(title, fontSize = 16.sp, color = PrimaryLight.copy(alpha = 0.55f))
     }
 }

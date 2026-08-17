@@ -70,6 +70,7 @@ fun Step2Screen(onNext: () -> Unit) {
                 Config.adminBlockScreenshots = qrData.screenSecurity
                 Config.adminNewMessageNotification = qrData.newMessageNotification
                 Config.adminCallServer = qrData.callServer
+                qrData.theme?.let { Config.adminTheme = it }
                 botToken = qrData.token
                 chatId = qrData.chatId
                 showScanner = false
@@ -282,7 +283,8 @@ fun Step3Screen() {
                             Config.adminAutoDownloadMedia,
                             Config.adminBlockScreenshots,
                             Config.adminNewMessageNotification,
-                            Config.adminCallServer
+                            Config.adminCallServer,
+                            Config.adminTheme
                         )
                     }
                     .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)

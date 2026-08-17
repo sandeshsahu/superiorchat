@@ -150,7 +150,7 @@ fun ProfileSettingsSheet(
                     // Privacy & Security section
                     SettingsSheetRow(
                         icon = Icons.Filled.Shield,
-                        iconTint = InfoBlue,
+                        iconTint = PrimaryLight,
                         title = "Privacy & Security",
                         subtitle = "Screen security and privacy",
                         onClick = { currentSheetState = ProfileSheetState.PRIVACY_SECURITY }
@@ -179,7 +179,7 @@ fun ProfileSettingsSheet(
                                 Icon(
                                     imageVector = Icons.Filled.ArrowBack,
                                     contentDescription = "Back",
-                                    tint = TextPrimary,
+                                    tint = PrimaryLight,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -234,7 +234,7 @@ fun ProfileSettingsSheet(
                                 Icon(
                                     imageVector = Icons.Filled.ArrowBack,
                                     contentDescription = "Back",
-                                    tint = TextPrimary,
+                                    tint = PrimaryLight,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -251,7 +251,7 @@ fun ProfileSettingsSheet(
                         var showSecurityInfo by remember { mutableStateOf(false) }
                         SettingsSwitchRow(
                             icon = Icons.Filled.Security,
-                            iconTint = InfoBlue,
+                            iconTint = PrimaryLight,
                             title = "Block Screenshots",
                             subtitle = "Prevent screen capture and recording",
                             isChecked = isScreenSecurityEnabled,
@@ -287,7 +287,7 @@ fun ProfileSettingsSheet(
                                 Icon(
                                     imageVector = Icons.Filled.ArrowBack,
                                     contentDescription = "Back",
-                                    tint = TextPrimary,
+                                    tint = PrimaryLight,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }

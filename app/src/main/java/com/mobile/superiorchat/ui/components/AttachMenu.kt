@@ -88,7 +88,7 @@ fun AttachMenu(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close share menu",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = PrimaryLight,
                         modifier = Modifier.size(14.dp)
                     )
                 }
@@ -124,13 +124,13 @@ fun AttachMenu(
                             Icon(
                                 imageVector = Icons.Default.PhotoCamera,
                                 contentDescription = "Camera",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = PrimaryLight,
                                 modifier = Modifier.size(28.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = "Camera",
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = PrimaryLight,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -185,13 +185,13 @@ fun AttachMenu(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(CircleShape)
-                            .background(Success.copy(alpha = 0.15f)),
+                            .background(PrimaryLight.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.PhotoLibrary,
                             contentDescription = "Gallery",
-                            tint = Success,
+                            tint = PrimaryLight,
                             modifier = Modifier.size(22.dp)
                         )
                     }

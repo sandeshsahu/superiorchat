@@ -95,6 +95,13 @@ val Typography = Typography(
 //  THEME
 // ═══════════════════════════════════════════════════════════
 
+enum class AppTheme(val primaryLightColor: Color) { 
+    LAVENDER(Color(0xFFC0C1FF)), 
+    SAGE(Color(0xFFA5C7B2)), 
+    AMBER(Color(0xFFD89F6B)), 
+    ROSE(Color(0xFFE6A5C0)) 
+}
+
 private val SuperiorDarkScheme = darkColorScheme(
     primary = Primary,
     onPrimary = Color.White,

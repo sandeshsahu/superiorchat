@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -199,6 +200,8 @@ fun InfoDialog(
     title: String,
     message: String,
     customContent: @Composable (() -> Unit)? = null,
+    extraButtonText: String? = null,
+    onExtraButtonClick: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
@@ -279,6 +282,21 @@ fun InfoDialog(
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        if (extraButtonText != null && onExtraButtonClick != null) {
+                            TextButton(
+                                onClick = onExtraButtonClick,
+                                modifier = Modifier.height(40.dp),
+                                shape = RoundedCornerShape(24.dp)
+                            ) {
+                                Text(
+                                    text = extraButtonText,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    color = PrimaryLight
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
                         Button(
                             onClick = {
                                 isVisible = false
@@ -839,7 +857,7 @@ fun WebRtcConfigPopup(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "Instructions:\n• Enter only the Base URL (e.g., https://your-server.com)\n• Do NOT include /#join= or /#host=\n• Ensure your server is accessible publicly",
+                        text = "Instructions:\nâ€¢ Enter only the Base URL (e.g., https://your-server.com)\nâ€¢ Do NOT include /#join= or /#host=\nâ€¢ Ensure your server is accessible publicly",
                         color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium,
@@ -1221,119 +1239,6 @@ fun PinVerifyPopup(errorMsg: String, onDismiss: () -> Unit, onVerify: (String) -
 }
 
 @Composable
-fun FakeCrashAnimPreview() {
-    val infiniteTransition = rememberInfiniteTransition(label = "anim")
-    val progress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "progress"
-    )
-
-    val isPressing = progress in 0.2f..0.8f
-    val pressProgress = if (progress < 0.2f) 0f else if (progress > 0.8f) 1f else (progress - 0.2f) / 0.6f
-    
-    val touchScale = if (isPressing) 1f + (pressProgress * 0.2f) else 1f
-    val touchAlpha = if (isPressing) 0.8f else 0f
-    
-    val rippleAlpha = if (isPressing) (1f - pressProgress) * 0.5f else 0f
-    val rippleScale = if (isPressing) 1f + pressProgress else 1f
-
-    val appName = androidx.compose.ui.res.stringResource(id = com.mobile.superiorchat.R.string.app_name)
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Visibility, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(14.dp))
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("PREVIEW", fontSize = 11.sp, color = PrimaryLight, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-        }
-        
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Surface(
-            color = SurfaceLevel2,
-            shape = RoundedCornerShape(12.dp),
-            border = BorderStroke(1.dp, DividerColor),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                Column {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .drawBehind {
-                                if (pressProgress > 0f && progress < 0.9f) {
-                                    drawRect(
-                                        color = Color.White.copy(alpha = 0.15f),
-                                        size = Size(size.width * pressProgress, size.height)
-                                    )
-                                }
-                                if (progress in 0.8f..0.9f) {
-                                    drawRect(
-                                        color = PrimaryLight.copy(alpha = 0.3f),
-                                        size = size
-                                    )
-                                }
-                            }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "$appName keeps stopping",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Text(
-                        text = "A system error caused the application to stop responding.",
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        lineHeight = 16.sp
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Text("Close app", fontSize = 13.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-                    }
-                }
-                
-                if (isPressing || progress in 0.8f..0.9f) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = 60.dp, y = (-4).dp)
-                    ) {
-                        // Ripple
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp * rippleScale)
-                                .align(Alignment.Center)
-                                .background(PrimaryLight.copy(alpha = rippleAlpha), androidx.compose.foundation.shape.CircleShape)
-                        )
-                        // Touch Icon
-                        Icon(
-                            imageVector = Icons.Filled.TouchApp,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = if (progress > 0.8f) 0f else touchAlpha),
-                            modifier = Modifier
-                                .size(32.dp * touchScale)
-                                .align(Alignment.Center)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun PinEntryDialog(
     errorMessage: String? = null,
     onDismiss: () -> Unit,
@@ -1465,3 +1370,4 @@ fun PinEntryDialog(
         }
     }
 }
+

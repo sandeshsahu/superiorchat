@@ -71,4 +71,8 @@ object Config {
     var adminRequirePin: Boolean
         get() = prefs?.getBoolean("admin_require_pin", true) ?: true
         set(value) { prefs?.edit()?.putBoolean("admin_require_pin", value)?.apply() }
+        
+    var adminTheme: String
+        get() = prefs?.getString("admin_theme", "LAVENDER") ?: "LAVENDER"
+        set(value) { prefs?.edit()?.putString("admin_theme", value)?.apply() }
 }

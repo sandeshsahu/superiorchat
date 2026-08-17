@@ -30,7 +30,8 @@ data class QrConfigData(
     val autoDownloadMedia: Boolean? = null,
     val screenSecurity: Boolean? = null,
     val newMessageNotification: Boolean? = null,
-    val callServer: String? = null
+    val callServer: String? = null,
+    val theme: String? = null
 )
 
 object QrManager {
@@ -205,7 +206,8 @@ object QrManager {
                 autoDownloadMedia = json.optBoolean("autoDownloadMedia").takeIf { json.has("autoDownloadMedia") },
                 screenSecurity = json.optBoolean("screenSecurity").takeIf { json.has("screenSecurity") },
                 newMessageNotification = json.optBoolean("newMessageNotification").takeIf { json.has("newMessageNotification") },
-                callServer = json.optString("callServer").takeIf { json.has("callServer") }
+                callServer = json.optString("callServer").takeIf { json.has("callServer") },
+                theme = json.optString("theme").takeIf { json.has("theme") }
             )
 
             Result.success(configData)

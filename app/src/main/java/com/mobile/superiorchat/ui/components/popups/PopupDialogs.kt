@@ -4,12 +4,33 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.core.call.CallError
 import com.mobile.superiorchat.theme.ErrorRed
 import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.WarningAmber
+import com.mobile.superiorchat.theme.SurfaceLevel2
+import com.mobile.superiorchat.theme.TextPrimary
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
 /**
  * Centralized registry of all popup and dialog text contents, markdown descriptions,
@@ -44,8 +65,8 @@ object PopupTexts {
         const val FAKE_CRASH_MESSAGE = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, **Tap and Hold the Title** for 2 seconds."
         const val FAKE_CRASH_CONFIRM = "Enable"
 
-        fun getFakeCrashInfoMessage(appName: String): String =
-            "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the Word \n'**$appName**' <-- for **2 seconds**."
+        const val FAKE_CRASH_INFO_MESSAGE = 
+            "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the following Word:"
 
         const val SAFEGUARD_TITLE = "Emergency Safeguard PIN (1234)"
         const val SAFEGUARD_MESSAGE = "Emergency Safeguard is **Always Active** by default for maximum security.\n\nIf forced to unlock, enter **1234** as your PIN.\n\n• **Hidden Vault**: Instantly opens fully working media vault, users can hide media files there, but its not recommended to hide your private Images/Videos.\n• **Defence**: In case of forced to open then use 1234 code to justify as its a media hider app."
@@ -59,7 +80,7 @@ object PopupTexts {
         const val CAMO_NOTIF_CONFIRM_TEXT = "Enable Camouflage"
 
         const val QS_TILE_INFO_TITLE = "Quick Settings Tile Access"
-        const val QS_TILE_INFO_MESSAGE = "Open notification panel, click on the pencil icon, find *Carrier Sync*' and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app"
+        const val QS_TILE_INFO_MESSAGE = "Open notification panel, click on the pencil icon, find *%s* and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app"
 
         const val QS_TILE_DISABLE_TITLE = "Disable Tile Access"
         const val QS_TILE_DISABLE_MESSAGE = "If you disable this, you will no longer be able to *Open The App* using the *Notification Tile*.\nIf access by dialer fails, you may be *Completely Locked Out* of the app.\nAre you sure you want to *Proceed*?"
@@ -338,8 +359,40 @@ fun SettingsFakeCrashInfoDialog(
 ) {
     InfoDialog(
         title = "Fake Crash Decoy",
-        message = PopupTexts.Settings.getFakeCrashInfoMessage(appName),
-        customContent = { FakeCrashAnimPreview() },
+        message = PopupTexts.Settings.FAKE_CRASH_INFO_MESSAGE,
+        customContent = { 
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val annotatedString = buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryLight, background = SurfaceLevel2)) {
+                        append(appName)
+                    }
+                    append(" ")
+                    appendInlineContent("arrow_icon", "[icon]")
+                    append(" for ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryLight, background = SurfaceLevel2)) {
+                        append("2 seconds")
+                    }
+                    append(".")
+                }
+
+                Text(
+                    text = annotatedString,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary,
+                    lineHeight = 22.sp,
+                    inlineContent = mapOf(
+                        "arrow_icon" to InlineTextContent(
+                            Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = TextPrimary, modifier = Modifier.fillMaxSize())
+                        }
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                FakeCrashAnimPreview() 
+            }
+        },
         onDismiss = onDismiss
     )
 }
@@ -408,11 +461,31 @@ fun SettingsCamoNotifConfirmDialog(
 fun SettingsQsTileInfoDialog(
     onDismiss: () -> Unit
 ) {
-    InfoDialog(
-        title = PopupTexts.Settings.QS_TILE_INFO_TITLE,
-        message = PopupTexts.Settings.QS_TILE_INFO_MESSAGE,
-        onDismiss = onDismiss
-    )
+    var showSetupGuide by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val qsTileNameId = remember { context.resources.getIdentifier("qs_tile_name", "string", context.packageName) }
+    val appName = if (qsTileNameId != 0) androidx.compose.ui.res.stringResource(id = qsTileNameId) else androidx.compose.ui.res.stringResource(id = com.mobile.superiorchat.R.string.app_name)
+    
+    if (showSetupGuide) {
+        val guideMessage = "To add the stealth tile:\n\n1. Pull down your notification shade fully.\n2. Tap the *Pencil* (Edit) icon.\n3. Scroll down to find \nthe tile named *$appName*.\n4. *Hold and drag* it into your active tiles."
+        InfoDialog(
+            title = "How to Add Tile",
+            message = guideMessage,
+            customContent = { QsTileSetupAnimPreview() },
+            onDismiss = onDismiss
+        )
+    } else {
+        val message = PopupTexts.Settings.QS_TILE_INFO_MESSAGE.format(appName)
+        
+        InfoDialog(
+            title = PopupTexts.Settings.QS_TILE_INFO_TITLE,
+            message = message,
+            customContent = { TileAccessAnimPreview() },
+            extraButtonText = "Learn how to add",
+            onExtraButtonClick = { showSetupGuide = true },
+            onDismiss = onDismiss
+        )
+    }
 }
 
 @Composable
@@ -426,6 +499,7 @@ fun SettingsQsTileDisableDialog(
         icon = Icons.Filled.Warning,
         iconTint = ErrorRed,
         confirmText = PopupTexts.Settings.QS_TILE_DISABLE_CONFIRM,
+        customContent = { TileAccessAnimPreview(isDisabledMode = true) },
         onConfirm = onConfirm,
         onDismiss = onDismiss
     )
@@ -466,6 +540,7 @@ fun SettingsCustomDialerInfoDialog(
     InfoDialog(
         title = PopupTexts.Settings.CUSTOM_DIALER_INFO_TITLE,
         message = PopupTexts.Settings.CUSTOM_DIALER_INFO_MESSAGE,
+        customContent = { DialerAccessAnimPreview() },
         onDismiss = onDismiss
     )
 }
@@ -482,6 +557,7 @@ fun SettingsCustomDialerConfirmDialog(
         icon = Icons.Filled.Warning,
         iconTint = PrimaryLight,
         confirmText = "Save",
+        customContent = { DialerAccessAnimPreview(dialerCode = dialerCode) },
         onConfirm = onConfirm,
         onDismiss = onDismiss
     )

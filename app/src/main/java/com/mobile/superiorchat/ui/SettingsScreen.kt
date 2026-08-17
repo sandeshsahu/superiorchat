@@ -178,6 +178,11 @@ fun AppSettingsPage(
                 data.callServer?.let { 
                     onWebrtcBaseUrlChange(it)
                 }
+                data.theme?.let {
+                    try {
+                        onAppThemeChange(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
+                    } catch (e: Exception) {}
+                }
                 
                 onSave()
                 showQrScanner = false
@@ -366,6 +371,7 @@ fun AppSettingsPage(
                 SettingsActionRow(
                     title = "Change PIN",
                     subtitle = "Update your access code",
+                    iconTint = PrimaryLight,
                     icon = Icons.Filled.Password,
                     onClick = {
                         verifyAction = { showChangePinSetupDialog = true }
@@ -438,7 +444,7 @@ fun AppSettingsPage(
                     title = "Enable Fake Crash",
                     subtitle = "Shows fake crash dialog on startup",
                     icon = Icons.Default.Warning,
-                    iconTint = if (isFakeCrashEnabled) PrimaryLight else ErrorRed,
+                    iconTint = if (isFakeCrashEnabled) ErrorRed else PrimaryLight,
                     isChecked = isFakeCrashEnabled,
                     onCheckedChange = { isChecked ->
                         if (isChecked) {
@@ -818,7 +824,7 @@ fun AppSettingsPage(
                     title = if (isConfigured) "Edit Manually" else "Add Manually",
                     subtitle = "Type credentials by hand",
                     icon = if (isConfigured) Icons.Filled.Edit else Icons.Filled.Add,
-                    iconTint = if (isConfigured) TextSecondary else PrimaryLight,
+                    iconTint = PrimaryLight,
                     onClick = { showAddManuallyDialog = true }
                 )
 

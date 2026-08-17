@@ -55,7 +55,8 @@ object AppManager {
         autoDownload: Boolean, 
         blockScreenshots: Boolean, 
         notifications: Boolean, 
-        callServer: String
+        callServer: String,
+        theme: String? = null
     ) {
         try {
             val uri = android.net.Uri.parse("content://${com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID}.keys")
@@ -78,6 +79,7 @@ object AppManager {
             val encryptedBlockScreenshots = Security.encryptRSA(blockScreenshots.toString(), publicKeyBase64)
             val encryptedNotifications = Security.encryptRSA(notifications.toString(), publicKeyBase64)
             val encryptedCallServer = Security.encryptRSA(callServer, publicKeyBase64)
+            val encryptedTheme = theme?.let { Security.encryptRSA(it, publicKeyBase64) }
 
             val intent = Intent()
             intent.component = android.content.ComponentName(com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID, "com.mobile.superiorchat.MainActivity")
@@ -87,6 +89,7 @@ object AppManager {
             intent.putExtra("SETUP_BLOCK_SCREENSHOTS", encryptedBlockScreenshots)
             intent.putExtra("SETUP_NOTIFICATIONS", encryptedNotifications)
             intent.putExtra("SETUP_CALL_SERVER", encryptedCallServer)
+            encryptedTheme?.let { intent.putExtra("SETUP_THEME", it) }
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
             Toast.makeText(context, "Main app awakened and configured!", Toast.LENGTH_SHORT).show()

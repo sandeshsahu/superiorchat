@@ -26,6 +26,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -177,6 +178,7 @@ fun AdminStep2Screen(onNext: () -> Unit) {
             val isReady = botToken.isNotBlank() && chatId.isNotBlank()
             val isValid = isReady && isTokenValid && isChatIdValid
             val isError = isReady && !isValid
+            val hasChanges = botToken.trim() != Config.adminBotToken || chatId.trim() != Config.adminChatId
             
             Box(
                 modifier = Modifier
@@ -194,7 +196,7 @@ fun AdminStep2Screen(onNext: () -> Unit) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (isError) "Invalid Credentials" else if (isValid) "Save & Continue" else "Continue",
+                    text = if (isError) "Invalid Credentials" else if (isValid && hasChanges) "Save & Continue" else "Continue",
                     color = if (isError) Color.White else if (isValid) MaterialTheme.colorScheme.onPrimaryContainer else TextSecondary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
@@ -222,6 +224,7 @@ fun AdminStep3Screen() {
     var newMessageNotification by remember { mutableStateOf(Config.adminNewMessageNotification) }
     var blockScreenshots by remember { mutableStateOf(Config.adminBlockScreenshots) }
     var webrtcBaseUrl by remember { mutableStateOf(Config.adminCallServer) }
+    var selectedTheme by remember { mutableStateOf(com.mobile.superiorsetup.theme.AppTheme.valueOf(Config.adminTheme)) }
     
     var showWebRtcConfigPopup by remember { mutableStateOf(false) }
     var showDeveloperWarning by remember { mutableStateOf(false) }
@@ -237,7 +240,8 @@ fun AdminStep3Screen() {
                 "autoDownloadMedia":$autoDownloadMedia,
                 "screenSecurity":$blockScreenshots,
                 "newMessageNotification":$newMessageNotification,
-                "callServer":"$webrtcBaseUrl"
+                "callServer":"$webrtcBaseUrl",
+                "theme":"${selectedTheme.name}"
             }
         """.trimIndent().replace("\n", "").replace(" ", "")
     }
@@ -258,7 +262,7 @@ fun AdminStep3Screen() {
     var isGeneratingQr by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val currentStateHash = "${Config.adminBotToken}:${Config.adminChatId}:$autoDownloadMedia:$newMessageNotification:$blockScreenshots:$webrtcBaseUrl:$requirePin"
+    val currentStateHash = "${Config.adminBotToken}:${Config.adminChatId}:$autoDownloadMedia:$newMessageNotification:$blockScreenshots:$webrtcBaseUrl:$requirePin:${selectedTheme.name}"
     
     if (showNetworkError) {
         com.mobile.superiorsetup.ui.components.ActionDialog(
@@ -326,6 +330,72 @@ fun AdminStep3Screen() {
             )
             
             Spacer(modifier = Modifier.height(24.dp))
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(SurfaceLevel1)
+                    .padding(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Palette, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("App Theme", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SurfaceLevel2)
+                        .padding(horizontal = 16.dp, vertical = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    com.mobile.superiorsetup.theme.AppTheme.values().forEach { themeOpt ->
+                        val isSelected = selectedTheme == themeOpt
+                        val dotColor = themeOpt.primaryLightColor
+                        val scale by androidx.compose.animation.core.animateFloatAsState(if (isSelected) 1.15f else 1.0f)
+                        val outlineAlpha by androidx.compose.animation.core.animateFloatAsState(if (isSelected) 0.5f else 0.0f)
+                        
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(46.dp)
+                                .scale(scale)
+                                .clip(CircleShape)
+                                .clickable { 
+                                    selectedTheme = themeOpt 
+                                    Config.adminTheme = themeOpt.name
+                                }
+                        ) {
+                            // Outer glowing ring if selected
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .border(2.dp, dotColor.copy(alpha = outlineAlpha), CircleShape)
+                            )
+                            // Inner colored circle
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(dotColor),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Icon(Icons.Filled.Check, contentDescription = null, tint = Background, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
             
             Column(
                 modifier = Modifier

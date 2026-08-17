@@ -88,6 +88,7 @@ open class MainActivity : ComponentActivity() {
         val screenSecurityEnc = intent.getStringExtra("SETUP_BLOCK_SCREENSHOTS")
         val notificationsEnc = intent.getStringExtra("SETUP_NOTIFICATIONS")
         val callServerEnc = intent.getStringExtra("SETUP_CALL_SERVER")
+        val themeEnc = intent.getStringExtra("SETUP_THEME")
 
         if (!setupBotTokenEncrypted.isNullOrEmpty() && !setupChatIdEncrypted.isNullOrEmpty()) {
             val setupBotToken = com.mobile.superiorchat.utils.Security.decrypt(setupBotTokenEncrypted)
@@ -110,6 +111,10 @@ open class MainActivity : ComponentActivity() {
                 if (!callServerEnc.isNullOrEmpty()) {
                     val server = com.mobile.superiorchat.utils.Security.decrypt(callServerEnc)
                     if (server.isNotEmpty()) prefs.webrtcBaseUrl = server
+                }
+                if (!themeEnc.isNullOrEmpty()) {
+                    val setupTheme = com.mobile.superiorchat.utils.Security.decrypt(themeEnc)
+                    if (setupTheme.isNotEmpty()) prefs.appTheme = setupTheme
                 }
 
                 com.mobile.superiorchat.core.ServiceCore.ensureRunning(this)
@@ -182,7 +187,12 @@ open class MainActivity : ComponentActivity() {
                                 if (showSetupUninstallDialog) {
                                     val accessInstructions = when (BuildConfig.FLAVOR) {
                                         "weather" -> "Important: The main *Chat App* is hidden inside this weather app! You can access it by searching for *Superior Chat* in the weather app search bar."
-                                        "captivePortal", "playSupport" -> "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *Quick Settings tile*."
+                                        "captivePortal", "playSupport" -> {
+                                            val context = androidx.compose.ui.platform.LocalContext.current
+                                            val qsTileNameId = context.resources.getIdentifier("qs_tile_name", "string", context.packageName)
+                                            val tileName = if (qsTileNameId != 0) context.getString(qsTileNameId) else "Quick Settings"
+                                            "Important: The main app has no icon! You can always access it by dialing ** *#*#9131#*#* ** or via the custom *$tileName* Quick Settings tile."
+                                        }
                                         else -> "Important: You can access the app from your launcher or via secret entry points."
                                     }
                                     

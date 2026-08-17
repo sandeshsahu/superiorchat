@@ -69,7 +69,7 @@ fun LockScreen(
         
         Text(
             text = PopupTexts.Security.ENTER_PIN_TITLE,
-            color = TextPrimary,
+            color = PrimaryLight,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )

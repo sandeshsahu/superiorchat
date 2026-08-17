@@ -131,7 +131,7 @@ private fun EditSheetField(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(label, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            Text(label, color = PrimaryLight.copy(alpha = 0.85f), fontSize = 12.sp, fontWeight = FontWeight.Medium)
             Text(
                 "${value.length}/$maxLength",
                 color = if (value.length >= maxLength) ErrorRed else TextSecondary,

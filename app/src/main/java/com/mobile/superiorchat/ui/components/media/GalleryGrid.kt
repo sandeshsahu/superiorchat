@@ -58,7 +58,6 @@ import androidx.compose.ui.graphics.painter.ColorPainter
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.mobile.superiorchat.theme.PrimaryLight
-import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.Secondary
 import com.mobile.superiorchat.theme.SurfaceLevel1
 import com.mobile.superiorchat.theme.SurfaceLevel2
@@ -186,7 +185,7 @@ fun GalleryGrid(
                 },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = PrimaryLight)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Black)
