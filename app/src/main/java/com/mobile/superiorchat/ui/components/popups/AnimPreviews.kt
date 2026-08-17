@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Phone
+
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.Bluetooth
@@ -63,22 +64,24 @@ fun FakeCrashAnimPreview() {
     val infiniteTransition = rememberInfiniteTransition(label = "anim")
     val progress by infiniteTransition.animateFloat(
         initialValue = 0f,
-        targetValue = 1f,
+        targetValue = 4f,
         animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = LinearEasing),
+            animation = tween(4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "progress"
     )
 
-    val isPressing = progress in 0.2f..0.8f
-    val pressProgress = if (progress < 0.2f) 0f else if (progress > 0.8f) 1f else (progress - 0.2f) / 0.6f
+    val isPressing = progress in 0.5f..2.0f
+    val pressProgress = if (progress < 0.5f) 0f else if (progress > 2.0f) 1f else (progress - 0.5f) / 1.5f
     
     val touchScale = if (isPressing) 1f + (pressProgress * 0.2f) else 1f
     val touchAlpha = if (isPressing) 0.8f else 0f
     
     val rippleAlpha = if (isPressing) (1f - pressProgress) * 0.5f else 0f
     val rippleScale = if (isPressing) 1f + pressProgress else 1f
+    
+    val showSuccess = progress in 2.2f..3.8f
 
     val appName = androidx.compose.ui.res.stringResource(id = com.mobile.superiorchat.R.string.app_name)
 
@@ -97,19 +100,20 @@ fun FakeCrashAnimPreview() {
             border = BorderStroke(1.dp, DividerColor),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Box {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Column {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .drawBehind {
-                                if (pressProgress > 0f && progress < 0.9f) {
+                                if (pressProgress > 0f && progress < 2.2f) {
                                     drawRect(
                                         color = Color.White.copy(alpha = 0.15f),
                                         size = Size(size.width * pressProgress, size.height)
                                     )
                                 }
-                                if (progress in 0.8f..0.9f) {
+                                if (progress in 2.0f..2.2f) {
                                     drawRect(
                                         color = PrimaryLight.copy(alpha = 0.3f),
                                         size = size
@@ -142,7 +146,7 @@ fun FakeCrashAnimPreview() {
                     }
                 }
                 
-                if (isPressing || progress in 0.8f..0.9f) {
+                if (isPressing || progress in 2.0f..2.2f) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -160,13 +164,53 @@ fun FakeCrashAnimPreview() {
                         Icon(
                             imageVector = Icons.Filled.TouchApp,
                             contentDescription = null,
-                            tint = Color.White.copy(alpha = if (progress > 0.8f) 0f else touchAlpha),
+                            tint = Color.White.copy(alpha = if (progress > 2.0f) 0f else touchAlpha),
                             modifier = Modifier
                                 .size(32.dp * touchScale)
                                 .align(Alignment.Center)
                         )
                     }
                 }
+            }
+            
+            // Success Overlay
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showSuccess,
+                enter = fadeIn(tween(400)) + scaleIn(tween(400), initialScale = 0.8f),
+                exit = fadeOut(tween(200)),
+                modifier = Modifier.matchParentSize()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xE6000000)), // Dark blur effect
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Surface(
+                            color = PrimaryLight,
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "App Opened",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
             }
         }
     }
@@ -572,7 +616,7 @@ fun DialerAccessAnimPreview(dialerCode: String = "9131") {
                             keys.forEach { row ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                    horizontalArrangement = Arrangement.SpaceAround
                                 ) {
                                     row.forEach { key ->
                                         val isActive = activeKey == key
@@ -710,7 +754,9 @@ fun QsTileSetupAnimPreview() {
             color = Color(0xFF1A1A1A),
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(1.dp, DividerColor),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 220.dp)
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val innerWidth = maxWidth - 24.dp

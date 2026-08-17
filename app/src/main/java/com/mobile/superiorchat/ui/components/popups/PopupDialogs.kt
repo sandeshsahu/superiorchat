@@ -6,8 +6,10 @@ import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.*
@@ -44,6 +46,15 @@ object PopupTexts {
             "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions"
         const val SETUP_UNINSTALL_CONFIRM = "Uninstall"
         const val SETUP_UNINSTALL_DISMISS = "Keep"
+
+        const val DIALER_ACCESS_TITLE = "Open App Via Dialer"
+        const val DIALER_ACCESS_MESSAGE = "The application icon is completely hidden from your phone's app drawer.\n\nTo secretly open the app, \nSimply go to your phone's *Dialer* and type the secret code ** *#*#9131#*#* **."
+
+        const val QS_SETUP_TITLE = "Add Tile To Panel"
+        const val QS_SETUP_MESSAGE = "You can add a stealth tile to your notification panel for quick access.\n\nOpen your *Notification Panel*, click the *Pencil Icon* (Edit), find the stealth tile, and drag it to add it."
+
+        const val QS_ACCESS_TITLE = "Open App Via Tile"
+        const val QS_ACCESS_MESSAGE = "When you want to open the chat application, perform the following sequence on the tile:\n\n1. *Tap* to Enable\n2. *Tap* to Disable\n3. *Tap* to Enable\n4. *Hold Tile* under 3 seconds to instantly launch the app"
     }
 
     // ── Settings Screen Popups ──
@@ -62,7 +73,7 @@ object PopupTexts {
         const val APP_LOCK_INFO_MESSAGE = "App Lock secures your chats by requiring a PIN code every time you open the app or return from the background."
 
         const val FAKE_CRASH_TITLE = "Fake Crash Protection"
-        const val FAKE_CRASH_MESSAGE = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, **Tap and Hold the Title** for 2 seconds."
+        const val FAKE_CRASH_MESSAGE = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, you must **Hold** the following Word:"
         const val FAKE_CRASH_CONFIRM = "Enable"
 
         const val FAKE_CRASH_INFO_MESSAGE = 
@@ -79,7 +90,7 @@ object PopupTexts {
         const val CAMO_NOTIF_CONFIRM_MESSAGE = "This will replace standard chat notifications with stealth camouflage alerts."
         const val CAMO_NOTIF_CONFIRM_TEXT = "Enable Camouflage"
 
-        const val QS_TILE_INFO_TITLE = "Quick Settings Tile Access"
+        const val QS_TILE_INFO_TITLE = "How To Open Via Tile"
         const val QS_TILE_INFO_MESSAGE = "Open notification panel, click on the pencil icon, find *%s* and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app"
 
         const val QS_TILE_DISABLE_TITLE = "Disable Tile Access"
@@ -264,6 +275,16 @@ object PopupTexts {
         const val LOGOUT_MESSAGE = "Are you sure you want to logout? Active background service will be stopped."
         const val LOGOUT_CONFIRM = "Logout"
     }
+
+    // ── First Launch Terms & Conditions ──
+    // Text is derived directly from docs/Notes.md, webrtc/docs/Security.md, and webrtc/docs/Notes.md
+    object Terms {
+        const val TITLE = "Terms & Conditions"
+        const val SUBTITLE = "Please read carefully before continuing"
+
+        const val CHECKBOX_LABEL =
+            "I have read and understood all terms above. I accept full legal responsibility for my use of this application."
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,18 +295,55 @@ object PopupTexts {
 
 @Composable
 fun SetupUninstallDialog(
+    flavor: String,
     accessInstructions: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    ActionDialog(
-        title = PopupTexts.Main.SETUP_UNINSTALL_TITLE,
-        message = PopupTexts.Main.getSetupUninstallMessage(accessInstructions),
-        icon = Icons.Filled.Delete,
-        iconTint = ErrorRed,
-        confirmText = PopupTexts.Main.SETUP_UNINSTALL_CONFIRM,
-        dismissText = PopupTexts.Main.SETUP_UNINSTALL_DISMISS,
-        onConfirm = onConfirm,
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appName = remember { context.packageManager.getApplicationLabel(context.applicationInfo).toString() }
+    val isStealth = flavor == "captivePortal" || flavor == "playSupport" || flavor == "decoyEngine"
+    
+    val steps = listOf(
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = PopupTexts.Main.DIALER_ACCESS_TITLE,
+            message = PopupTexts.Main.DIALER_ACCESS_MESSAGE,
+            icon = Icons.Filled.Phone,
+            iconTint = PrimaryLight,
+            confirmText = "Next",
+            customContent = { com.mobile.superiorchat.ui.components.popups.DialerAccessAnimPreview(dialerCode = "9131") }
+        ),
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = PopupTexts.Main.QS_SETUP_TITLE,
+            message = PopupTexts.Main.QS_SETUP_MESSAGE,
+            icon = Icons.Filled.Info,
+            iconTint = PrimaryLight,
+            confirmText = "Next",
+            customContent = { com.mobile.superiorchat.ui.components.popups.QsTileSetupAnimPreview() }
+        ),
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = PopupTexts.Main.QS_ACCESS_TITLE,
+            message = PopupTexts.Main.QS_ACCESS_MESSAGE,
+            icon = Icons.Filled.TouchApp,
+            iconTint = PrimaryLight,
+            confirmText = "Next",
+            customContent = { com.mobile.superiorchat.ui.components.popups.TileAccessAnimPreview(isDisabledMode = false) }
+        ),
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = PopupTexts.Main.SETUP_UNINSTALL_TITLE,
+            message = PopupTexts.Main.getSetupUninstallMessage(accessInstructions),
+            icon = Icons.Filled.Delete,
+            iconTint = ErrorRed,
+            confirmText = PopupTexts.Main.SETUP_UNINSTALL_CONFIRM,
+            dismissText = PopupTexts.Main.SETUP_UNINSTALL_DISMISS
+        )
+    )
+
+    com.mobile.superiorchat.ui.components.popups.MultiStepActionDialog(
+        steps = if (isStealth) steps else listOf(steps.last()),
+        initialStep = 0,
+        cancellable = false,
+        onComplete = onConfirm,
         onDismiss = onDismiss
     )
 }
@@ -402,13 +460,48 @@ fun SettingsFakeCrashDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val appName = context.getString(com.mobile.superiorchat.R.string.app_name)
+
     ActionDialog(
         title = PopupTexts.Settings.FAKE_CRASH_TITLE,
         message = PopupTexts.Settings.FAKE_CRASH_MESSAGE,
         icon = Icons.Filled.Warning,
         iconTint = ErrorRed,
         confirmText = PopupTexts.Settings.FAKE_CRASH_CONFIRM,
-        customContent = { FakeCrashAnimPreview() },
+        customContent = { 
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val annotatedString = buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ErrorRed, background = SurfaceLevel2)) {
+                        append(appName)
+                    }
+                    append(" ")
+                    appendInlineContent("arrow_icon", "[icon]")
+                    append(" for ")
+                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ErrorRed, background = SurfaceLevel2)) {
+                        append("2 seconds")
+                    }
+                    append(".")
+                }
+
+                Text(
+                    text = annotatedString,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary,
+                    lineHeight = 22.sp,
+                    inlineContent = mapOf(
+                        "arrow_icon" to InlineTextContent(
+                            Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = TextPrimary, modifier = Modifier.fillMaxSize())
+                        }
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                FakeCrashAnimPreview() 
+            }
+        },
         onConfirm = onConfirm,
         onDismiss = onDismiss
     )

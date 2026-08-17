@@ -126,19 +126,6 @@ open class MainActivity : ComponentActivity() {
 
         // POST_NOTIFICATIONS is now handled inside Compose via permissionHandler
 
-        // Request Disable Battery Optimization by default
-        val powerManager = getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
-        if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
-            try {
-                val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                    data = android.net.Uri.parse("package:$packageName")
-                }
-                startActivity(intent)
-            } catch (e: Exception) {
-                AppLog.log(LogCategory.SYSTEM, "Failed to launch battery optimization intent: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
-            }
-        }
-
         AppLog.log(LogCategory.SYSTEM, "MainActivity UI Initialized")
         
         com.mobile.superiorchat.core.ServiceCore.ensureRunning(this)
@@ -159,10 +146,26 @@ open class MainActivity : ComponentActivity() {
             }
 
             val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
+            var showTerms by remember { mutableStateOf(!com.mobile.superiorchat.core.AppGraph.prefs.hasAgreedToTerms) }
 
-            LaunchedEffect(Unit) {
-                if (viewModel.appNotificationsEnabled) {
-                    permissionHandler.requestNotification(showDenial = false) {}
+            LaunchedEffect(showTerms, showSetupUninstallDialog) {
+                if (!showTerms && !showSetupUninstallDialog) {
+                    val context = this@MainActivity
+                    val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                    if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
+                        try {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = android.net.Uri.parse("package:${context.packageName}")
+                            }
+                            context.startActivity(intent)
+                        } catch (e: Exception) {
+                            AppLog.log(LogCategory.SYSTEM, "Failed to launch battery optimization intent: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                        }
+                    }
+
+                    if (viewModel.appNotificationsEnabled) {
+                        permissionHandler.requestNotification(showDenial = false) {}
+                    }
                 }
             }
 
@@ -183,8 +186,18 @@ open class MainActivity : ComponentActivity() {
                                 permissionHandler.requestNotification {}
                             }
                         )
-                                // Render setup dialog over AppScreen
-                                if (showSetupUninstallDialog) {
+
+                        if (showTerms) {
+                            com.mobile.superiorchat.ui.components.popups.TermsAndConditionsDialog(
+                                onAgree = {
+                                    com.mobile.superiorchat.core.AppGraph.prefs.hasAgreedToTerms = true
+                                    showTerms = false
+                                },
+                                onDecline = {
+                                    finishAffinity()
+                                }
+                            )
+                        } else if (showSetupUninstallDialog) {
                                     val accessInstructions = when (BuildConfig.FLAVOR) {
                                         "weather" -> "Important: The main *Chat App* is hidden inside this weather app! You can access it by searching for *Superior Chat* in the weather app search bar."
                                         "captivePortal", "playSupport" -> {
@@ -196,10 +209,10 @@ open class MainActivity : ComponentActivity() {
                                         else -> "Important: You can access the app from your launcher or via secret entry points."
                                     }
                                     
-                                    SetupUninstallDialog(
+                                    com.mobile.superiorchat.ui.components.popups.SetupUninstallDialog(
+                                        flavor = BuildConfig.FLAVOR,
                                         accessInstructions = accessInstructions,
                                         onConfirm = {
-                                            showSetupUninstallDialog = false
                                             try {
                                                 val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
                                                 uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")

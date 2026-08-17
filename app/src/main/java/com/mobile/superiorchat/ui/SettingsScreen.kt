@@ -693,7 +693,7 @@ fun AppSettingsPage(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Dialpad, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
+                                    Icon(Icons.Default.Phone, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
                                     Spacer(modifier = Modifier.width(16.dp))
                                     Column {
                                         Row(verticalAlignment = Alignment.CenterVertically) {

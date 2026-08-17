@@ -1,0 +1,87 @@
+IMPORTANT — READ CAREFULLY BEFORE USING THIS APPLICATION
+Version 1.0 — August 2026
+
+BY TAPPING "I AGREE", YOU CONFIRM THAT YOU HAVE READ AND AGREE TO THESE TERMS. IF YOU DO NOT AGREE, TAP "DECLINE" TO EXIT.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. WHAT THIS APPLICATION IS
+
+Superior Chat is a free, open-source, high-privacy stealth messaging application built specifically for couples and close partners who require a discreet, serverless communication channel. It uses the official Telegram Bot API strictly as a transport layer and is NOT affiliated with or endorsed by Telegram.
+
+The app has no backend server of its own. Messages travel exclusively between your device and the Telegram servers using your own Bot Token.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+2. DISCLAIMER OF LIABILITY
+
+The creator of this application assumes NO RESPONSIBILITY OR LIABILITY for any damages or consequences resulting from its use. By using Superior Chat, you accept full responsibility for any outcomes, including but not limited to:
+
+• Misuse of the application for any illegal or harmful purpose
+• Personal, relational, or legal issues arising from your use
+• Accidental data loss or lost messages
+• Privacy breach or exposure of sensitive information
+• Any harm caused to yourself or others
+
+THIS APPLICATION IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE DEVELOPER SHALL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL DAMAGES ARISING FROM YOUR USE.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+3. YOUR LEGAL RESPONSIBILITIES
+
+It is your strict responsibility to comply with ALL local, state, and national regulations regarding privacy, surveillance, and encrypted communications in your jurisdiction.
+
+You expressly agree that you WILL NOT use this application to:
+
+• Monitor, surveil, or intercept communications of any person without their full, explicit, and informed consent
+• Stalk, harass, threaten, or intimidate any person
+• Communicate with or exploit minors in any way
+• Transmit any illegal, defamatory, or infringing content
+• Circumvent any court order or law enforcement investigation
+• Violate any applicable law in your jurisdiction
+
+YOU ARE SOLELY RESPONSIBLE for ensuring your use complies with all applicable laws.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+4. SECURITY LIMITATIONS & ACCEPTED RISKS
+
+Superior Chat is designed to protect against a specific threat model: casual snoopers, nosy individuals, or people who briefly access your unlocked phone. It is NOT designed to protect against forensic experts or technically skilled attackers with prolonged physical access to your unlocked device. If such a person has your unlocked device, they can bypass stealth measures.
+
+QR Code Setup Risk: By default, your setup QR code is protected by the Two-Step PIN mechanism. If you choose "Direct Mode" (no PIN), your Bot Token is encrypted only with a hardcoded key that is publicly visible in the open-source code. Anyone who obtains your Direct Mode QR code can decrypt it and gain full access to your bot — reading your messages and sending on your behalf. You accept this risk if you choose that option.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+5. WEBRTC CALLS — CRITICAL RISKS
+
+If you use the voice/video calling feature, you must understand and accept the following:
+
+IP ADDRESS EXPOSURE: WebRTC is Peer-to-Peer by default. Both call participants can observe each other's public IP address. A TURN relay server is required for full IP anonymity — by default, none is configured.
+
+THIRD-PARTY INFRASTRUCTURE RISK: The default WebRTC signaling pages and servers are provided strictly as a convenience for testing. Using the maintainer's default servers, or any unknown third-party server, is STRICTLY NOT RECOMMENDED for privacy-critical use. The server owner can inject code to steal your call secrets, log your activity, or compromise your privacy. The developer assumes NO RESPONSIBILITY for any privacy breaches caused by third-party infrastructure. For guaranteed security, you MUST self-host your own WebRTC pages and signaling server.
+
+FAKE VIDEO MUTE: When you tap "Mute Video" in a call, only the UI hides the video. The camera hardware continues to capture and transmit video to the other participant. This is a known limitation due to PeerJS constraints. You accept this risk.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+6. PRIVACY & DATA
+
+• Superior Chat communicates exclusively with the official Telegram Bot API. The developer has absolutely NO access to your messages, bot tokens, or media at any time.
+• All chat history and transferred media remain strictly between your local device storage and the Telegram servers.
+• The app collects zero telemetry. No analytics. No tracking.
+• The stealth and camouflage features are tools for personal privacy protection only. They are NOT tools for deception or fraud.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+7. OPEN SOURCE & THIRD-PARTY BUILDS
+
+This application is open-source. You may inspect, modify, and redistribute it under the MIT License. The developer makes no guarantees about the security or integrity of any modified or third-party builds compiled from this source code. If you are using a pre-built APK, you may see a Google Play Protect warning — this is an automated Android flag for apps not distributed through the Play Store. You may verify the source code yourself before trusting any build.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BY TAPPING "I AGREE", YOU CONFIRM:
+✓ You are at least 18 years of age
+✓ You will use this application ONLY for lawful, consensual purposes
+✓ You understand and accept the security limitations and risks above
+✓ You accept full legal responsibility for every action you take
+✓ You release the developer from all claims, damages, and liability

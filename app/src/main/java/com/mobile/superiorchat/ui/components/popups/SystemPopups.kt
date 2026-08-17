@@ -2,7 +2,10 @@ package com.mobile.superiorchat.ui.components.popups
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -53,9 +56,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.bounceClick
+import androidx.compose.animation.animateContentSize
 
 @Composable
 fun BaseAppDialog(
+    cancellable: Boolean = true,
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -68,12 +73,14 @@ fun BaseAppDialog(
 
     Dialog(
         onDismissRequest = {
-            isVisible = false
-            onDismiss()
+            if (cancellable) {
+                isVisible = false
+                onDismiss()
+            }
         },
         properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
+            dismissOnBackPress = cancellable,
+            dismissOnClickOutside = cancellable,
             usePlatformDefaultWidth = false
         )
     ) {
@@ -138,6 +145,18 @@ fun parseAnnotatedMessage(text: String, tint: Color = PrimaryLight, isWarning: B
         // Append remaining text
         if (lastIndex < text.length) {
             append(text.substring(lastIndex))
+        }
+    }
+}
+
+@Composable
+fun rememberTermsText(): String {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    return remember {
+        try {
+            context.assets.open("terms.txt").bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            "Failed to load terms and conditions."
         }
     }
 }
@@ -334,12 +353,13 @@ fun ActionDialog(
     neutralText: String? = null,
     onNeutral: (() -> Unit)? = null,
     autoDismiss: Boolean = true,
+    cancellable: Boolean = true,
     isLoading: Boolean = false,
     isSuccess: Boolean = false,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    BaseAppDialog(onDismiss = onDismiss) {
+    BaseAppDialog(cancellable = cancellable, onDismiss = onDismiss) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -470,6 +490,140 @@ fun ActionDialog(
                     )
                 } else {
                     Text(confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                }
+            }
+        }
+    }
+}
+
+data class DialogStep(
+    val title: String,
+    val message: String,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    val iconTint: Color = PrimaryLight,
+    val confirmText: String = "Next",
+    val dismissText: String? = null,
+    val customContent: @Composable (() -> Unit)? = null
+)
+
+@Composable
+fun MultiStepActionDialog(
+    steps: List<DialogStep>,
+    initialStep: Int = 0,
+    cancellable: Boolean = true,
+    onComplete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var stepIndex by remember { mutableIntStateOf(initialStep) }
+
+    LaunchedEffect(initialStep) {
+        if (initialStep in steps.indices) stepIndex = initialStep
+    }
+
+    BaseAppDialog(cancellable = cancellable, onDismiss = onDismiss) {
+        // Professional wizard slide transition:
+        // Size snaps instantly (tween 0) to prevent native Window WRAP_CONTENT jumping (CRT effect)
+        // Content slides and fades inside the new snapped bounds.
+        AnimatedContent(
+            targetState = stepIndex,
+            transitionSpec = {
+                val duration = 240
+                if (targetState > initialState) {
+                    // Moving forward: new content comes from right, old goes left
+                    (slideInHorizontally(animationSpec = tween(duration, easing = FastOutSlowInEasing)) { width -> width / 3 } + fadeIn(animationSpec = tween(duration))) togetherWith
+                            (slideOutHorizontally(animationSpec = tween(duration, easing = FastOutSlowInEasing)) { width -> -width / 3 } + fadeOut(animationSpec = tween(duration)))
+                } else {
+                    // Moving backward: new content comes from left, old goes right
+                    (slideInHorizontally(animationSpec = tween(duration, easing = FastOutSlowInEasing)) { width -> -width / 3 } + fadeIn(animationSpec = tween(duration))) togetherWith
+                            (slideOutHorizontally(animationSpec = tween(duration, easing = FastOutSlowInEasing)) { width -> width / 3 } + fadeOut(animationSpec = tween(duration)))
+                }.using(
+                    SizeTransform(clip = false) { _, _ -> tween(0) } // Snap size instantly to avoid window resizing dancing
+                )
+            },
+            label = "stepTransition"
+        ) { currentIndex ->
+            val stepDef = steps.getOrNull(currentIndex) ?: return@AnimatedContent
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // ── Header ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (stepDef.icon != null) {
+                        Icon(
+                            imageVector = stepDef.icon,
+                            contentDescription = null,
+                            tint = stepDef.iconTint,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                    }
+                    Text(
+                        text = stepDef.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = stepDef.iconTint,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ── Message ──
+                Text(
+                    text = parseAnnotatedMessage(stepDef.message, tint = stepDef.iconTint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextPrimary,
+                    textAlign = TextAlign.Start,
+                    lineHeight = 22.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // ── Custom content ──
+                if (stepDef.customContent != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    stepDef.customContent.invoke()
+                }
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                // ── Buttons ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (currentIndex > 0) {
+                        TextButton(onClick = { stepIndex-- }, modifier = Modifier.height(40.dp)) {
+                            Text(text = "Back", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextSecondary)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    if (stepDef.dismissText != null) {
+                        TextButton(onClick = onDismiss, modifier = Modifier.height(40.dp)) {
+                            Text(text = stepDef.dismissText, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextSecondary)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    Button(
+                        onClick = {
+                            if (currentIndex < steps.lastIndex) stepIndex++
+                            else onComplete()
+                        },
+                        modifier = Modifier.height(40.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (stepDef.iconTint == PrimaryLight) PrimaryLight else stepDef.iconTint.copy(alpha = 0.15f),
+                            contentColor = if (stepDef.iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else stepDef.iconTint
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+                    ) {
+                        Text(text = stepDef.confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
                 }
             }
         }
@@ -1264,7 +1418,7 @@ fun PinEntryDialog(
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(20.dp))
-            
+
             Surface(
                 color = SurfaceLevel1,
                 shape = RoundedCornerShape(16.dp),
@@ -1306,7 +1460,7 @@ fun PinEntryDialog(
                             }
                         }
                     )
-                    
+
                     if (errorMessage != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -1366,6 +1520,226 @@ fun PinEntryDialog(
                 shape = RoundedCornerShape(16.dp)
             ) {
                 Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Single-step Terms & Conditions dialog — normal first launch.
+ * Shown when [Prefs.hasAgreedToTerms] is false on a fresh install or after data clear.
+ * NOT dismissible via outside tap or back press.
+ * "Decline" exits the app via [Activity.finishAffinity].
+ * "I Agree" calls [onAgree] which must save [Prefs.hasAgreedToTerms] = true.
+ */
+@Composable
+fun TermsAndConditionsDialog(
+    subtitle: String? = null,
+    onAgree: () -> Unit,
+    onDecline: () -> Unit
+) {
+    val activity = LocalContext.current as? android.app.Activity
+    var hasScrolledToBottom by remember { mutableStateOf(false) }
+    var isChecked by remember { mutableStateOf(false) }
+    val scrollState = rememberScrollState()
+    LaunchedEffect(scrollState.value) {
+        if (scrollState.maxValue > 0 && scrollState.value >= scrollState.maxValue - 20) {
+            hasScrolledToBottom = true
+        }
+    }
+
+    Dialog(
+        onDismissRequest = { /* Intentionally blocked — user must actively choose */ },
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        val view = LocalView.current
+        val dialogWindow = (view.parent as? DialogWindowProvider)?.window
+        LaunchedEffect(dialogWindow) {
+            dialogWindow?.setDimAmount(0.82f)
+            dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+        }
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.93f)
+                .fillMaxHeight(0.88f)
+                .clip(RoundedCornerShape(24.dp)),
+            color = SurfaceLevel1,
+            shape = RoundedCornerShape(24.dp),
+            border = BorderStroke(1.dp, DividerColor)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 24.dp, start = 24.dp, end = 24.dp, bottom = 20.dp)
+            ) {
+                // ── Header ──
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = PrimaryLight.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = PrimaryLight,
+                            modifier = Modifier.padding(8.dp).size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = PopupTexts.Terms.TITLE,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = PrimaryLight,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (subtitle != null) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        } else {
+                            Text(
+                                text = PopupTexts.Terms.SUBTITLE,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(SurfaceContainerHighest))
+                Spacer(modifier = Modifier.height(12.dp))
+                // ── Scrollable Agreement Body ──
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceLevel2)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(scrollState)
+                            .padding(16.dp)
+                    ) {
+                        val termsText = rememberTermsText()
+                        Text(
+                            text = termsText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextPrimary,
+                            lineHeight = 19.sp,
+                            fontSize = 12.sp
+                        )
+                    }
+                    // Fade-out gradient scroll hint
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !hasScrolledToBottom,
+                        enter = fadeIn(),
+                        exit = fadeOut(tween(400)),
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(64.dp),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, SurfaceLevel2)
+                                        )
+                                    )
+                            )
+                            Text(
+                                text = "↓ Scroll to read all",
+                                color = PrimaryLight.copy(alpha = 0.7f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(bottom = 10.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                // ── Checkbox Agreement Row ──
+                Surface(
+                    color = if (isChecked) PrimaryLight.copy(alpha = 0.08f) else SurfaceLevel2,
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isChecked) PrimaryLight.copy(alpha = 0.35f) else DividerColor
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isChecked = !isChecked }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isChecked,
+                            onCheckedChange = { isChecked = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = PrimaryLight,
+                                uncheckedColor = TextSecondary,
+                                checkmarkColor = SurfaceLevel1
+                            )
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = PopupTexts.Terms.CHECKBOX_LABEL,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (isChecked) TextPrimary else TextSecondary,
+                            lineHeight = 18.sp,
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                // ── Action Buttons ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDecline,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, DividerColor),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary)
+                    ) {
+                        Text("Decline", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    }
+                    Button(
+                        onClick = { if (isChecked) onAgree() },
+                        enabled = isChecked,
+                        modifier = Modifier.weight(1f).height(48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryLight,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            disabledContainerColor = PrimaryLight.copy(alpha = 0.22f),
+                            disabledContentColor = TextSecondary
+                        )
+                    ) {
+                        Text("I Agree", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
             }
         }
     }

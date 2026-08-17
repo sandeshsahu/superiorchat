@@ -235,4 +235,17 @@ class Prefs private constructor(context: Context) {
                 sharedPreferences.edit().putString("app_theme", value).apply()
             }
         }
+
+    // Tracks whether the user has agreed to Terms & Conditions.
+    // Stored in EncryptedSharedPreferences — automatically resets if user clears app data,
+    // which is intentional: T&C must be shown again on fresh install or data wipe.
+    private var _hasAgreedToTerms: Boolean = sharedPreferences.getBoolean("has_agreed_to_terms", false)
+    var hasAgreedToTerms: Boolean
+        get() = _hasAgreedToTerms
+        set(value) {
+            if (_hasAgreedToTerms != value) {
+                _hasAgreedToTerms = value
+                sharedPreferences.edit().putBoolean("has_agreed_to_terms", value).apply()
+            }
+        }
 }
