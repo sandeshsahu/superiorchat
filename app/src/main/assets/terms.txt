@@ -50,6 +50,8 @@ Superior Chat is designed to protect against a specific threat model: casual sno
 
 QR Code Setup Risk: By default, your setup QR code is protected by the Two-Step PIN mechanism. If you choose "Direct Mode" (no PIN), your Bot Token is encrypted only with a hardcoded key that is publicly visible in the open-source code. Anyone who obtains your Direct Mode QR code can decrypt it and gain full access to your bot — reading your messages and sending on your behalf. You accept this risk if you choose that option.
 
+Group Chat Exposure Risk: You must only communicate with your bot in a private 1-on-1 Telegram chat. Adding the bot to a group chat or public channel will instantly expose all your private messages to everyone in that group. You assume full responsibility for securing the bot's Telegram environment.
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 5. WEBRTC CALLS — CRITICAL RISKS
@@ -75,7 +77,7 @@ FAKE VIDEO MUTE: When you tap "Mute Video" in a call, only the UI hides the vide
 
 7. OPEN SOURCE & THIRD-PARTY BUILDS
 
-This application is open-source. You may inspect, modify, and redistribute it under the MIT License. The developer makes no guarantees about the security or integrity of any modified or third-party builds compiled from this source code. If you are using a pre-built APK, you may see a Google Play Protect warning — this is an automated Android flag for apps not distributed through the Play Store. You may verify the source code yourself before trusting any build.
+This application is open-source. You may inspect, modify, and redistribute it under the Apache License 2.0. The developer makes no guarantees about the security or integrity of any modified or third-party builds compiled from this source code. If you are using a pre-built APK, you may see a Google Play Protect warning — this is an automated Android flag for apps not distributed through the Play Store. You may verify the source code yourself before trusting any build.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 

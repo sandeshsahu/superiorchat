@@ -79,7 +79,11 @@ Person A uses the Superior Setup App to safely pack these credentials into an en
 1. Download and open the **Setup App** on your device.
 2. Tap the **Admin Mode** toggle located at the top right (below the step indicator).
 3. Proceed to **Step 2** and enter the Bot Token and User ID you got from Telegram.
-4. Save the generated encrypted QR code or scan it directly on Person B's phone.
+4. **Enable PIN Protection (Recommended)**: If you keep the PIN enabled, the QR code is securely encrypted using the app's default public key combined with a random 4-digit PIN. You must share this 4-digit PIN with Person B so they can import the QR code.
+5. Save the generated encrypted QR code or scan it directly on Person B's phone.
+
+> [!WARNING]
+> **Direct Mode Vulnerability**: If you disable "Require PIN" to generate a Direct Mode QR (`DIR_QR`), the app falls back to using a hardcoded default key. Because this project is open-source, anyone who steals your un-PINned QR code can use the public source code to easily decrypt it and gain full control over your Telegram bot. Always use the PIN! See the [Threat Model in Notes.md](Notes.md#threat-model) for details.
 
 <br>
 <p align="center">
@@ -87,7 +91,10 @@ Person A uses the Superior Setup App to safely pack these credentials into an en
   &nbsp;
   <img src="images/setupapp/admin_mode/adminmode_step2.jpg" width="30%" alt="Admin Mode Step 2">
   &nbsp;
-  <img src="images/setupapp/admin_mode/adminmode_generateqr.jpg" width="30%" alt="Generated QR Code">
+  <img src="images\setupapp\admin_mode\adminmode_step3.jpg" width="30%" alt="Generated QR Code">
+</p>
+<p align="center">
+  <b>📂 <a href="images/setupapp/admin_mode/">View Admin Mode Screenshots Directory</a></b>
 </p>
 
 ---
@@ -115,6 +122,9 @@ These versions hide themselves entirely and require the Setup App to install and
   &nbsp;
   <img src="images/setupapp/client_mode/clientmode_step3.jpg" width="30%" alt="Client Mode Step 3">
 </p>
+<p align="center">
+  <b>📂 <a href="images/setupapp/client_mode/">View Client Mode Screenshots Directory</a></b>
+</p>
 
 ### Option B: Weather Flavor (App Camouflage)
 This version perfectly mimics a functional weather application and does not require the Setup App.
@@ -132,6 +142,9 @@ This version perfectly mimics a functional weather application and does not requ
   <img src="flavors/images/flavor_weather/2.jpg" width="30%" alt="7-Day Forecast">
   &nbsp;
   <img src="flavors/images/flavor_weather/3.jpg" width="30%" alt="Search Interception">
+</p>
+<p align="center">
+  <b>📂 <a href="flavors/images/flavor_weather/">View Weather Flavor Screenshots Directory</a></b>
 </p>
 
 ### Option C: Original Flavor (Non-Camouflage)

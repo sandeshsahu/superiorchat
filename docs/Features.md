@@ -154,6 +154,7 @@
 > For complete technical details on how the disguises, entry points, and fake notifications are implemented for each variant, please refer to the specific flavor documentation:
 > - **[Captive Portal Details](flavors/CaptivePortal.md)**
 > - **[Weather Details](flavors/FlavorWeather.md)**
+> - **[Play Support Details](flavors\PlaySupport.md)**
 ---
 
 <h2 id="ui">✨ 7. Modern User Interface</h2>
@@ -162,6 +163,11 @@
 - 🎨 **Dynamic Theme Engine**: Built-in theme selector in App Settings featuring 4 themes (Lavender, Sage, Amber, Rose). All UI components seamlessly synchronize with the active theme instantly without requiring an app restart.
 - 🧘 **Interactive Zen Mode**: A "Zen Mode" top bar state that replaces the standard Header & Icons with an animated character (Sleeping Miku). It triggers automatically after 5 seconds of inactivity or manually via tapping the header, providing a cleaner resting interface.
 - 🌈 **Color-Coded Settings Architecture**: Fully restyled Settings Screen with categorized color hierarchies (Security in Primary, Flavor Specific in Secondary, Developer in Warning, Danger Zone in ErrorRed).
+- 📺 **Interactive Stealth Previews**: Built-in animated visual tutorials in App Settings that teach the user exactly how to configure and execute the secret entry sequences. Includes high-fidelity animated previews for:
+  - 📞 **Dialer Access**: Visual demonstration of typing the secret code in the phone dialer.
+  - 🎛️ **Tile Setup**: Visual demonstration of how to drag and drop the hidden tile into the active quick settings panel.
+  - 🎛️ **Tile Sequence**: Visual demonstration of the `ON ➔ OFF ➔ ON and HOLD` Quick Settings Tile unlock sequence.
+  - 🔐 **Fake Crash Decoy**: Visual demonstration of the secret 2-second hold on the title to safely bypass the fake crash screen.
 - 💬 **Reply Jumping**: Tapping a replied message now instantly snaps to the target message and applies a sleek 2-second visual highlight effect.
 - 📌 **Message Pin Indicators**: Professional pin icons directly on the message status row for pinned text, media, and documents.
 - ⏳ **Queued Media Indicators**: Professional "Waiting..." indeterminate spinners for queued media transfers.

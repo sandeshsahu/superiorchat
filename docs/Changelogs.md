@@ -52,6 +52,7 @@
 - 📌 **Message Pin Indicators**: Added a professional pin icon directly to the message status row for pinned text, media, and documents.
 - ⏳ **Queued Media Indicators**: Replaced static cancel buttons with a professional "Waiting..." indeterminate spinner for queued media transfers.
 - 🌈 **Color-Coded Settings Architecture**: Fully restyled the Settings Screen with categorized color hierarchies (Security in Primary, Flavor Specific in Secondary, Developer in Warning, Danger Zone in ErrorRed) for a much cleaner UX.
+- 📺 **Interactive Stealth Previews**: Added built-in animated visual tutorials in App Settings that demonstrate exactly how to configure and execute the secret entry sequences (features high-fidelity animations for the Dialer code, Tile setup, Tile sequence, and Fake Crash bypass).
 - 🎨 **Centralized UX Catalog**: 100% of popup dialogs across the app were rewritten using a centralized, color-coded, animated composable architecture for maximum consistency.
 
 ---
