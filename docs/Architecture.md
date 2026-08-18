@@ -45,12 +45,14 @@ graph TD
     subgraph "Product Flavors (:app)"
         O["original<br/>Standard launcher icon"]
         CP["captivePortal<br/>Disguised as Carrier Services"]
+        PS["playSupport<br/>Disguised as Google Play Support"]
         DE["decoyEngine<br/>Dynamic app camouflage"]
         WE["weather<br/>Disguised as Weather App"]
     end
 
     APP --> O
     APP --> CP
+    APP --> PS
     APP --> DE
     APP --> WE
     SETUP -->|"RSA-2048 encrypted handover"| APP
@@ -66,6 +68,7 @@ graph TD
 |--------|----------|---------------|
 | `original` | Standard app with launcher icon | None (dev/debug) |
 | `captivePortal` | Disguised as "Carrier Services" | See [CaptivePortal.md](flavors/CaptivePortal.md) for details. |
+| `playSupport` | Disguised as "Google Play Support" | See [PlaySupport.md](flavors/PlaySupport.md) for details. |
 | `decoyEngine` | Impersonates installed system apps | Dynamic notification spoofing, DecoyActivity tap targets |
 | `weather` | Disguised as "Weather" App | See [FlavorWeather.md](flavors/FlavorWeather.md) for details. |
 
@@ -130,6 +133,7 @@ For detailed sequence diagrams, signaling flow, and ICE negotiation architecture
 app/src/main/java/com/mobile/superiorchat/
 ├── SuperiorChatApp.kt              # Application initialization
 ├── MainActivity.kt                 # Entry point & intent handling
+├── TransparentActivity.kt          # used via Fake Crash Decoy popup
 │
 ├── bot/                            # Telegram API integration
 │   ├── TelegramApi.kt              # OkHttp client, rate limiting, all Bot API methods
@@ -151,11 +155,13 @@ app/src/main/java/com/mobile/superiorchat/
 ├── data/                           # Persistence
 │   ├── Prefs.kt                    # EncryptedSharedPreferences (AES-256-GCM)
 │   ├── dao/                        # Room DAOs
+│   │   ├── CallHistoryDao.kt
 │   │   ├── EmojiDao.kt
 │   │   ├── MessageDao.kt
 │   │   ├── ProfileDao.kt
 │   │   └── ThreadDao.kt
 │   ├── entity/                     # Room entities
+│   │   ├── CallHistoryNode.kt      # Call logs & metadata
 │   │   ├── ChatNode.kt             # Conversation metadata
 │   │   ├── EmojiUsage.kt           # Reaction frequency tracking
 │   │   ├── MessageNode.kt          # Message with status tracking
@@ -185,11 +191,13 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── ChatScreen.kt               # Chat interface with message bubbles
 │   ├── ChatViewModel.kt            # Chat state management
 │   ├── GhostSkeleton.kt            # Skeleton loading animation
+│   ├── LockScreen.kt               # lockscreen design
 │   ├── LogsScreen.kt               # Diagnostic logs viewer
 │   ├── MainViewModel.kt            # Global app state
 │   ├── PermissionsScreen.kt        # Runtime permission handler
 │   ├── SettingsScreen.kt           # Credential config & advanced toggles
 │   ├── call/                       # WebRTC Call UI
+│   │   ├── CallHistory.kt          # Call logs interface
 │   │   ├── CallScreen.kt           # Immersive calling interface
 │   │   └── CallViewModel.kt        # Call state management
 │   ├── components/                 # Reusable UI components
@@ -313,7 +321,7 @@ sequenceDiagram
     participant Main as Main App
     participant Bot as BotService
 
-    Setup->>Setup: Collect credentials (QR scan / manual)
+    Setup->>Setup: Collect credentials (PIN-protected QR / manual)
     Setup->>KS: Request Main App's RSA public key<br/>(via signature-protected ContentProvider)
     KS-->>Setup: Public Key
     Setup->>Setup: Encrypt credentials with RSA-2048
@@ -334,7 +342,7 @@ The app has **no launcher icon** in stealth flavors. Access methods:
 | Method | Flavor | How |
 |--------|--------|-----|
 | **Dialer Code** | All (via decoyEngine) | Dial `*#*#9131#*#*` → `CodeReceiver` intercepts → launches `MainActivity` |
-| **QS Tile** | captivePortal | See [CaptivePortal.md](flavors/CaptivePortal.md) for access sequence |
+| **QS Tile** | captivePortal, playSupport | See flavor docs for access sequence |
 | **App Search** | weather | See [FlavorWeather.md](flavors/FlavorWeather.md) for interception details |
 | **Boot** | All | `BootReceiver` starts `BotService` on `BOOT_COMPLETED` |
 | **Launcher** | original, weather | Standard app drawer icon (debug/dev or weather disguise) |
@@ -348,7 +356,8 @@ graph LR
     subgraph "At Rest"
         A1["Credentials → AES-256-GCM<br/>(EncryptedSharedPreferences)"]
         A2["Master Key → Android Keystore"]
-        A3["QR Payloads → AES-256-GCM"]
+        A3["QR Payloads → AES-256-GCM<br/>(Optional PIN Key)"]
+        A4["App Lock State → AES-256-GCM"]
     end
 
     subgraph "In Transit"
@@ -368,9 +377,10 @@ graph LR
 |-------|-----------|-------|
 | **Credential Storage** | AES-256-GCM via EncryptedSharedPreferences | Bot token, chat ID, settings |
 | **Setup IPC** | RSA-2048, signature-protected ContentProvider | One-time credential transfer |
-| **QR Codes** | AES-256-GCM (static key) | Prevents accidental scanning |
+| **QR Codes** | AES-256-GCM (Optional 2-step PIN-derived key) | Prevents unauthorized credential decryption |
 | **Transport** | Standard HTTPS/TLS to Telegram | All network communication |
 | **Notifications** | Dynamic spoofing (carrier/system app mimicry) | captivePortal & decoyEngine flavors |
+| **App Lock** | AES-256-GCM (PIN-derived secret verification) | Prevents unauthorized app UI access |
 | **Screen** | FLAG_SECURE (user toggle) | Prevents screenshots |
 
 ---

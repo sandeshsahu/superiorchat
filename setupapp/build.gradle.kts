@@ -14,8 +14,8 @@ android {
         applicationId = "com.mobile.superiorsetup"
         minSdk = 24
         targetSdk = 36
-        versionCode = 3
-        versionName = "v1.0.2"
+        versionCode = 4
+        versionName = "v1.0.3"
     }
 
     flavorDimensions += "camouflage"

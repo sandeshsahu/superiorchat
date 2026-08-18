@@ -33,8 +33,7 @@
 - 📌 **Replies & Pinning**: Swipe to reply to specific messages or pin critical messages to the top banner.
 - 🏷️ **Status Indicators**: Real-time delivery status updates (`Sending`, `Sent`, `Failed`) and `Edited` labels.
 - ✅ **Multi-Selection Mode**: Select multiple messages at once for bulk self-delete or "Delete for everyone".
-- 🕰️ **Message Timestamps**: Clear 12-hour (AM/PM) timestamps for all chat messages and system logs.
-- 💬 **Multi-line Input**: Smoothly expanding chat input box supporting multi-line text drafting.
+- 🕰️ **Message Timestamps**: Clear 12-hour (AM/PM) timestamps for all chat messages and system logs. 
 
 ---
 
@@ -50,7 +49,7 @@
 - 📱 **Telegram Bot Integration**: Calls trigger an instant "Join Call" inline button via the Telegram Bot, allowing the recipient to join from any browser.
 - 🔒 **Cryptographic Call Rooms**: Generates random UUID rooms with secret cryptographic parameters to prevent zero-click mass-surveillance and link scraping.
 - ⚡ **Auto-Fallback Engine**: Employs a "Race to Connect" algorithm that dynamically shuffles and tests backup signaling server URLs to ensure calls always connect even if the primary server goes offline.
-- ⚙️ **Custom TURN/STUN Servers**: Option to change the default WebRTC servers with your own custom servers for guaranteed reliability (`Application Page -> App Settings > Call Configuration`).
+- ⚙️ **Custom TURN/STUN Servers**: Option to change the default WebRTC servers with your own custom servers for guaranteed reliability (`Application Page -> App Settings > Call Configuration` and **Repo's** `/webrtc` folder).
 
 > [!IMPORTANT]
 > **Browser Recommendation**: For optimal call performance, zero-lag video rendering, and full hardware support, always use the **Google Chrome** browser.
@@ -108,9 +107,9 @@
 - 🔍 **App Search Interception**: Type a secret phrase (`superior chat`) into the innocent weather search bar and hit Search to silently launch the chat engine. (weather flavor only)
 - 🔔 **Camouflage Notifications**: Incoming messages appear as harmless system, carrier, or weather alerts to prevent shoulder-surfing.
 - 🔕 **Notification Controls**: Dedicated toggles to disable all app notifications completely, or selectively disable new message notifications.
-- 🔄 **Decoy Redirects**: If a snooper clicks the camouflaged notification or taps the Quick Settings tile without the correct sequence, they are instantly redirected to the native Android Network Settings to completely avoid suspicion.
+- 🔄 **Decoy Redirects**: If a snooper clicks the camouflaged notification or taps the Quick Settings tile without the correct sequence, they are instantly redirected to the native Android Network Settings or Play Store (`Depends on flavor`) to completely avoid suspicion.
 - 🗑️ **Recent Apps Protection**: Automatically hidden and excluded from the phone's recent apps menu to leave zero trace when switching screens.
-- 🏃 **Panic & Auto-Kill Mechanisms**: Automatically disconnects active calls and stops any playing music/voice notes the exact moment the app is closed or the home button is pressed.
+- 🏃 **Panic & Auto-Kill Mechanisms**: Automatically disconnects active calls and stops any playing music/voice notes the exact moment the app is closed, device locks or the home button is pressed.
 - 🔒 **Screen Security**: Option to enable/disable blocking of screenshots and screen recording throughout the entire application (`Profile -> Settings > Privacy and Security`).
 
 > [!NOTE]
@@ -125,7 +124,7 @@
 | 🟢 **Original** | Superior Chat | **None** | Standard chat notifications. Ideal for non-stealth or testing use. |
 | 🔵 **Weather** | `Weather`<br>*Adaptive weather icons* | **Advanced** | Live, context-aware notifications mimicking real meteorological data. |
 | 🔴 **Captive Portal** | `Android System`<br>*(Gear Icon)* | **Maximum** | Camouflaged as system networking alerts based on data states. |
-| 🎭 **Play Support** | `Google Play Support`<br>*(Play Protect logo)* | **Maximum** | Disguises as a background Google Play Store process showing random app recommendations and trending alerts. |
+| 🔴 **Play Support** | `Google Play Support`<br>*(Play Protect logo)* | **Maximum** | Disguises as a background Google Play Store process showing random app recommendations and trending alerts. |
 
 **Captive Portal Camouflage States:**
 - **Idle**: `"[Carrier] - Standard rates apply"`

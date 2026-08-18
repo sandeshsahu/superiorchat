@@ -43,6 +43,7 @@ jobs:
                     :app:assembleOriginalRelease \
                     :app:assembleWeatherRelease \
                     :app:assembleCaptivePortalRelease \
+                    :app:assemblePlaySupportRelease \
                     -Pandroid.injected.signing.store.file=$(pwd)/app/keystore/release.jks \
                     -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
                     -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
@@ -65,16 +66,16 @@ jobs:
                     -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
       # -------------------------------------------------------------
-      # 3. BUILD WEATHER SETUP APP
+      # 3. BUILD PLAY SUPPORT SETUP APP
       # -------------------------------------------------------------
-      - name: Prepare & Build Weather SetupApp
+      - name: Prepare & Build Play Support SetupApp
         run: |
           mkdir -p setupapp/src/main/assets
-          # 1. Overwrite asset with Weather APK
-          cp app/build/outputs/apk/weather/release/app-weather-release.apk setupapp/src/main/assets/superiorchat.apk
+          # 1. Overwrite asset with Play Support APK
+          cp app/build/outputs/apk/playSupport/release/app-playSupport-release.apk setupapp/src/main/assets/superiorchat.apk
           
-          # 2. Build Weather SetupApp
-          ./gradlew :setupapp:assembleWeatherRelease \
+          # 2. Build Play Support SetupApp
+          ./gradlew :setupapp:assemblePlaySupportRelease \
                     -Pandroid.injected.signing.store.file=$(pwd)/app/keystore/release.jks \
                     -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
                     -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
@@ -86,8 +87,14 @@ jobs:
       - name: Generate SHA-256 Checksums
         run: |
           mkdir -p release-artifacts
-          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release-artifacts/ \;
-          find setupapp/build/outputs/apk/ -name "*.apk" -exec cp {} release-artifacts/ \;
+          
+          # Copy standalone apps
+          cp app/build/outputs/apk/original/release/app-original-release.apk release-artifacts/
+          cp app/build/outputs/apk/weather/release/app-weather-release.apk release-artifacts/
+          
+          # Copy bundled SetupApps
+          cp setupapp/build/outputs/apk/captivePortal/release/setupapp-captivePortal-release.apk release-artifacts/
+          cp setupapp/build/outputs/apk/playSupport/release/setupapp-playSupport-release.apk release-artifacts/
           cd release-artifacts
           sha256sum *.apk > checksums.txt
           
@@ -98,7 +105,29 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       # -------------------------------------------------------------
-      # 5. PREPARE RELEASE NOTES
+      # 5. SEND ALL APKS TO TELEGRAM CHANNEL
+      # -------------------------------------------------------------
+      - name: Send APKs to Telegram 
+        continue-on-error: true # Prevents CI crash if Telegram upload fails
+        run: |
+          CHAT_ID="-${{ secrets.TELEGRAM_CHAT_ID }}"
+          API_URL="https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}"
+          
+          # 1. Send Header Message (Bulletproof Bash Single-Quote Splicing)
+          curl -s -X POST "$API_URL/sendMessage" \
+            -H "Content-Type: application/json" \
+            -d '{"chat_id": "'"$CHAT_ID"'", "text": "🚀 *Superior Chat* | `'"${{ github.ref_name }}"'`\n\n📦 Automated CI/CD Builds", "parse_mode": "Markdown"}'
+          
+          # 2. Upload APKs Individually (1 by 1)
+          curl -s -X POST "$API_URL/sendDocument" -F chat_id="$CHAT_ID" -F document="@app/build/outputs/apk/original/release/app-original-release.apk"
+          curl -s -X POST "$API_URL/sendDocument" -F chat_id="$CHAT_ID" -F document="@app/build/outputs/apk/weather/release/app-weather-release.apk"
+          curl -s -X POST "$API_URL/sendDocument" -F chat_id="$CHAT_ID" -F document="@app/build/outputs/apk/captivePortal/release/app-captivePortal-release.apk"
+          curl -s -X POST "$API_URL/sendDocument" -F chat_id="$CHAT_ID" -F document="@app/build/outputs/apk/playSupport/release/app-playSupport-release.apk"
+          curl -s -X POST "$API_URL/sendDocument" -F chat_id="$CHAT_ID" -F document="@setupapp/build/outputs/apk/captivePortal/release/setupapp-captivePortal-release.apk"
+          curl -s -X POST "$API_URL/sendDocument" -F chat_id="$CHAT_ID" -F document="@setupapp/build/outputs/apk/playSupport/release/setupapp-playSupport-release.apk"
+
+      # -------------------------------------------------------------
+      # 6. PREPARE RELEASE NOTES
       # -------------------------------------------------------------
       - name: Prepare Release Notes
         run: |
@@ -106,7 +135,7 @@ jobs:
             docs/templates/release.md > final_release_notes.md
 
       # -------------------------------------------------------------
-      # 6. CREATE GITHUB RELEASE & UPLOAD ASSETS
+      # 7. CREATE GITHUB RELEASE & UPLOAD ASSETS
       # -------------------------------------------------------------
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

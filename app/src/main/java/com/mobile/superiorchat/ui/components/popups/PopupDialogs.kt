@@ -964,6 +964,7 @@ fun CallInitiationDialog(
         confirmText = if (isFailed) "Retry" else "Start Call",
         dismissText = "Cancel",
         autoDismiss = false,
+        cancellable = false,
         isLoading = isLoading,
         isSuccess = isSuccess,
         onConfirm = onConfirm,

@@ -26,7 +26,6 @@ You will see several files attached to this release, but you only need **one** d
 - 💬 **Standard App:** `app-original-release.apk` 
   *(A normal chat app with a standard icon, best for testing.)*
 
-> ⚠️ **Note:** Please ignore the other files (`app-captivePortal-release.apk`, `app-playSupport-release.apk`, and `setupapp-weather-release.apk`). These are generated automatically and you dont really need to download them but they can be used for testing purposes.
 
 ---
 
