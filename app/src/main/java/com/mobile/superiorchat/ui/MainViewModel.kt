@@ -143,7 +143,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val hasCredentials: Boolean
         get() {
             val validToken = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$"))
-            val targetChatId = if (isPeerLinkEnabled) peerLinkGroupChatId else chatId
+            val targetChatId = if (isAdminModeEnabled) peerLinkGroupChatId else chatId
             val validChatId = targetChatId.trim().matches(Regex("^-?[0-9]+$"))
             return validToken && validChatId
         }

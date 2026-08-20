@@ -224,7 +224,7 @@ class BotSync(private val context: Context) {
             if (editedMsg.text != null) {
                 var text = editedMsg.text
                 if (AppGraph.prefs.isPeerLinkEnabled) {
-                    text = text.replaceFirst(Regex("^@[\\w_]+\\s+"), "")
+                    text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
                 }
                 repository.updateMessageText(editedMsg.message_id, text)
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${text.take(50)}")
@@ -275,7 +275,7 @@ class BotSync(private val context: Context) {
         var text = message.text ?: message.caption ?: ""
         
         if (prefs.isPeerLinkEnabled) {
-            text = text.replaceFirst(Regex("^@[\\w_]+\\s+"), "")
+            text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
         }
 
         // All incoming messages from polling are from Client B (isFromMe = false)

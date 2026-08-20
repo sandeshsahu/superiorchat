@@ -58,8 +58,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
 
     fun routeUpdate(update: Update): String? {
         val message = update.message ?: return null
-        val text = message.text ?: return null
-        
+        var text = message.text ?: message.caption ?: ""
+        if (com.mobile.superiorchat.core.AppGraph.prefs.isPeerLinkEnabled) {
+            text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
+        }
+        if (text.isEmpty()) text = "📷 Media Message"
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "IncomingMessageChannel"
         
