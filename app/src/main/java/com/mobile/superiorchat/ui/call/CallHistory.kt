@@ -377,6 +377,8 @@ private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
         "FAILED_NETWORK" -> StatusInfo("Network Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_HARDWARE" -> StatusInfo("Hardware Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_CONFIG" -> StatusInfo("Server Error", ErrorRed, Icons.Filled.ErrorOutline)
+        "DECLINED" -> StatusInfo("Declined", WarningAmber, Icons.Filled.CallMissed)
+        "MISSED" -> StatusInfo("Missed", WarningAmber, Icons.Filled.CallMissed)
         else -> if (call.isMissed) {
             StatusInfo("Unanswered", WarningAmber, Icons.Filled.CallMissed)
         } else {

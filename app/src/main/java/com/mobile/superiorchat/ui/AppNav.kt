@@ -782,7 +782,11 @@ fun AppScreen(
                 
                 val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
                 
-                if (callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && callState == CallState.IDLE) {
+                val shouldShowError = callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && 
+                                      !(callFailedError == com.mobile.superiorchat.core.call.CallError.DECLINED && CallManager.isIncomingCall) &&
+                                      callState == CallState.IDLE
+                                      
+                if (shouldShowError) {
                     CallErrorDialog(
                         callError = callFailedError,
                         onConfirm = {

@@ -336,7 +336,6 @@ object CallManager {
         _lastCallFailedDueToError.value = CallError.DECLINED
         currentCallUrl = null
         incomingCallerName = ""
-        isIncomingCall = false
         
         sendPeerLinkDeclineSignal()
     }

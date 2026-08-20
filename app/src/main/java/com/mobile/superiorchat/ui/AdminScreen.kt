@@ -63,12 +63,12 @@ fun AdminScreen(
                 isChecked = viewModel.isPeerLinkLocked,
                 onCheckedChange = { viewModel.togglePeerLinkLocked(it) }
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             SettingsSwitchRow(
                 title = "Route Messages",
-                subtitle = "enable app to app chat via group bots",
+                subtitle = "Enable app to app chat via group bots",
                 icon = Icons.Filled.SwapHoriz,
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isPeerLinkEnabled,
@@ -90,11 +90,11 @@ fun AdminScreen(
 
             SettingsSwitchRow(
                 title = "I will chat here",
-                subtitle = "Enable PeerLink (App-to-App)",
+                subtitle = "Enable this and fill Admin bot's credentials",
                 icon = Icons.Filled.AdminPanelSettings,
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isAdminModeEnabled,
-                onCheckedChange = { 
+                onCheckedChange = {
                     if (!isLocked && viewModel.isPeerLinkEnabled) {
                         viewModel.toggleAdminMode(it)
                     }
@@ -136,7 +136,7 @@ fun AdminScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(30.dp)) // Bottom padding
     }
 }

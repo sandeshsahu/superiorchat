@@ -236,12 +236,19 @@ class BotSync(private val context: Context) {
                     
                     // Edit the message
                     query.message?.let { msg ->
+                        val endTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
+                        val formattedText = "===================\n" +
+                                            "❌ *Call Declined*\n" +
+                                            "===================\n" +
+                                            "*Call was declined by receiver*\n\n" +
+                                            "*Time* : $endTime"
+                                            
                         TelegramApi.editMessageText(
                             token = token,
                             chatId = msg.chat.id.toString(),
                             messageId = msg.message_id,
-                            text = "❌ Call Declined",
-                            parseMode = "HTML",
+                            text = formattedText,
+                            parseMode = "Markdown",
                             replyMarkup = TelegramApi.json.encodeToString(com.mobile.superiorchat.bot.InlineKeyboardMarkup(emptyList()))
                         )
                         // Update local DB to make it render as a missed call natively
@@ -352,7 +359,16 @@ class BotSync(private val context: Context) {
         if (match != null) {
             val joinUrl = match.value + "&isApp=true"
             val callerName = message.from?.first_name ?: "Partner"
-            com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerName, message.message_id)
+            
+            val msgTimestamp = message.date * 1000L
+            val now = System.currentTimeMillis()
+            val isStale = (now - msgTimestamp) > 45000L // 45 seconds
+            
+            if (isStale) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Received stale call request (Offline for ${(now - msgTimestamp) / 1000}s). Skipping ringing.")
+            } else {
+                com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerName, message.message_id)
+            }
             
             if (prefs.isPeerLinkEnabled) {
                 text = "Incoming Call"
@@ -542,9 +558,8 @@ class BotSync(private val context: Context) {
                 val localText = if (isMissed) {
                     when (lastError) {
                         com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> "Network Error"
-                        com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> "Unanswered Call"
                         com.mobile.superiorchat.core.call.CallError.DECLINED -> "Call Declined"
-                        else -> "Call Cancelled"
+                        else -> "Call Missed"
                     }
                 } else {
                     "Call Ended - ${com.mobile.superiorchat.core.call.CallManager.formatDurationText(duration)}"
@@ -555,9 +570,8 @@ class BotSync(private val context: Context) {
                 val status = when {
                     duration > 0L -> "COMPLETED"
                     lastError == com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> "FAILED_NETWORK"
-                    lastError == com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> "NO_ANSWER"
                     lastError == com.mobile.superiorchat.core.call.CallError.DECLINED -> "DECLINED"
-                    else -> "FAILED_CONFIG"
+                    else -> "MISSED"
                 }
                 
                 val profile = AppGraph.database.profileDao().getProfileSync(chatId)
