@@ -16,6 +16,8 @@ import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.utils.LogCategory
 import com.mobile.superiorchat.core.StatusFlow
 import com.mobile.superiorchat.core.SyncState
+import com.mobile.superiorchat.core.AppGraph
+import com.mobile.superiorchat.bot.TelegramApi
 import com.mobile.superiorchat.data.Prefs
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -28,7 +30,7 @@ import androidx.annotation.RequiresApi
 
 enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING, RINGING }
 
-enum class CallError { NONE, INVALID_URL, NETWORK_ERROR, NO_ANSWER, HARDWARE_ERROR }
+enum class CallError { NONE, INVALID_URL, NETWORK_ERROR, NO_ANSWER, HARDWARE_ERROR, DECLINED }
 
 /**
  * Singleton managing the full call lifecycle: state machine, audio hardware,
@@ -111,6 +113,9 @@ object CallManager {
         private set
 
     var isIncomingCall: Boolean = false
+        private set
+        
+    var incomingTelegramMsgId: Long? = null
         private set
 
     /** Timeout before auto-ending an unanswered call. */
@@ -292,15 +297,23 @@ object CallManager {
     }
 
     /**
-     * Called when BotSync detects an incoming call URL via PeerLink.
+     * Called when we receive a peer link join URL.
      */
-    fun receiveIncomingCall(joinUrl: String, callerName: String) {
-        if (_callState.value != CallState.IDLE) return
-        
-        currentCallUrl = joinUrl
-        currentBaseUrl = joinUrl.substringBefore("/call.html")
+    fun receiveIncomingCall(url: String, callerName: String, msgId: Long? = null) {
+        if (_callState.value != CallState.IDLE) {
+            // Glare resolution: if we are trying to connect an outgoing call and receive an incoming one simultaneously
+            if (_callState.value == CallState.CONNECTING && !isIncomingCall) {
+                com.mobile.superiorchat.utils.AppLog.log(LogCategory.SYSTEM, "Call Collision detected! Failing outgoing call.")
+                markFailed(CallError.NONE)
+            }
+            return
+        }
+
+        currentCallUrl = url
+        currentBaseUrl = url.substringBefore("/call.html")
         incomingCallerName = callerName
         isIncomingCall = true
+        incomingTelegramMsgId = msgId
         _callState.value = CallState.RINGING
     }
 
@@ -320,11 +333,34 @@ object CallManager {
      */
     fun declineIncomingCall() {
         _callState.value = CallState.IDLE
+        _lastCallFailedDueToError.value = CallError.DECLINED
         currentCallUrl = null
         incomingCallerName = ""
         isIncomingCall = false
+        
+        sendPeerLinkDeclineSignal()
     }
 
+    private fun sendPeerLinkDeclineSignal() {
+        // PeerLink Silent Rejection
+        val prefs = AppGraph.prefs
+        if (prefs.isPeerLinkEnabled) {
+            val token = prefs.botToken
+            val chatId = if (prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else prefs.activeChatId
+            val replyTo = incomingTelegramMsgId
+            if (token.isNotBlank() && chatId.isNotBlank()) {
+                GlobalScope.launch(Dispatchers.IO) {
+                    TelegramApi.sendMessage(
+                        token = token,
+                        chatId = chatId,
+                        text = "[SYS-CALL-DECLINED]",
+                        parseMode = null,
+                        replyToMessageId = replyTo
+                    )
+                }
+            }
+        }
+    }
 
     /**
      * Ends the call gracefully. Transitions through ENDING → IDLE
@@ -334,11 +370,18 @@ object CallManager {
         if (_callState.value == CallState.ENDING || _callState.value == CallState.IDLE) return
 
         val wasActive = _callState.value == CallState.ACTIVE
+        val wasConnecting = _callState.value == CallState.CONNECTING
         val finalDuration = _callDuration.value
         _callState.value = CallState.ENDING
         timeoutJob?.cancel()
         timerJob?.cancel()
         AppLog.log(LogCategory.SYSTEM, "Call Ended")
+
+        // If we were the receiver and aborted while CONNECTING (hardware init), tell caller we declined.
+        if (isIncomingCall && wasConnecting) {
+            _lastCallFailedDueToError.value = CallError.DECLINED
+            sendPeerLinkDeclineSignal()
+        }
 
         if (wasActive) {
             lastCompletedDuration = finalDuration

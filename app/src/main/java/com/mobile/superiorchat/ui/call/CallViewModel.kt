@@ -185,7 +185,10 @@ class CallViewModel : ViewModel() {
                         }
                     }
                     
-                    val markup = InlineKeyboardMarkup(listOf(listOf(InlineKeyboardButton(text = "🔰 Connect", url = telegramUrl))))
+                    val markup = InlineKeyboardMarkup(listOf(listOf(
+                        InlineKeyboardButton(text = "🔰 Connect", url = telegramUrl),
+                        InlineKeyboardButton(text = "❌ Decline Call", callbackData = "decline_call")
+                    )))
                     val replyMarkup = TelegramApi.json.encodeToString(markup)
                     
                     if (CallManager.callState.value != CallState.IDLE) {
@@ -262,6 +265,7 @@ class CallViewModel : ViewModel() {
                     lastError == com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> "FAILED_NO_ANSWER"
                     lastError == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR -> "FAILED_HARDWARE"
                     lastError == com.mobile.superiorchat.core.call.CallError.INVALID_URL -> "FAILED_CONFIG"
+                    lastError == com.mobile.superiorchat.core.call.CallError.DECLINED -> "DECLINED"
                     else -> "CANCELLED"
                 }
 
@@ -271,7 +275,7 @@ class CallViewModel : ViewModel() {
                 val profile = AppGraph.database.profileDao().getProfileSync(chatId)
                 val partnerName = profile?.title ?: "Unknown"
 
-                val node = CallHistoryNode(
+                val node = com.mobile.superiorchat.data.entity.CallHistoryNode(
                     timestamp = System.currentTimeMillis(),
                     durationSeconds = duration,
                     isMissed = isMissed,
@@ -286,6 +290,7 @@ class CallViewModel : ViewModel() {
                     when (lastError) {
                         com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> "Network Error"
                         com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> "Unanswered Call"
+                        com.mobile.superiorchat.core.call.CallError.DECLINED -> "Call Declined"
                         else -> "Call Cancelled"
                     }
                 } else {
@@ -294,9 +299,12 @@ class CallViewModel : ViewModel() {
                 }
                 AppGraph.appRepository.updateMessageText(localEventMsgId, localText)
 
-                val header = if (lastError == com.mobile.superiorchat.core.call.CallError.NONE) "❌ *Call Cancelled*" else "❌ *Call Missed*"
+                val header = if (lastError == com.mobile.superiorchat.core.call.CallError.NONE) "❌ *Call Cancelled*" 
+                             else if (lastError == com.mobile.superiorchat.core.call.CallError.DECLINED) "❌ *Call Declined*"
+                             else "❌ *Call Missed*"
                 val detail = when (lastError) {
                     com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> "*Call Failed due to Network Error*"
+                    com.mobile.superiorchat.core.call.CallError.DECLINED -> "*Call was declined by receiver*"
                     else -> "*$botName tried connecting with you*"
                 }
 

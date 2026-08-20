@@ -67,7 +67,7 @@ object TelegramApi {
      * over reachability tracking and error handling.
      */
     fun getUpdatesRaw(token: String, offset: Long, timeout: Int = 30): Response {
-        val allowedUpdates = "%5B%22message%22%2C%22edited_message%22%2C%22message_reaction%22%5D"
+        val allowedUpdates = "%5B%22message%22%2C%22edited_message%22%2C%22message_reaction%22%2C%22callback_query%22%5D"
         val url = apiUrl(token, "getUpdates") + "?offset=$offset&timeout=$timeout&allowed_updates=$allowedUpdates"
         val request = Request.Builder().url(url).build()
         return client.newCall(request).execute()
@@ -680,6 +680,36 @@ object TelegramApi {
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "setMessageReaction error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
+    suspend fun answerCallbackQuery(
+        token: String,
+        callbackQueryId: String,
+        text: String? = null,
+        showAlert: Boolean = false
+    ): Boolean {
+        return try {
+            val req = AnswerCallbackQueryRequest(callbackQueryId, text, showAlert)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "answerCallbackQuery"))
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string()
+                    AppLog.log(LogCategory.NETWORK, "answerCallbackQuery failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "answerCallbackQuery error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
             false
         }
     }

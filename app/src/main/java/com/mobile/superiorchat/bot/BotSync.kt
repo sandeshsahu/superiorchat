@@ -16,8 +16,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import com.mobile.superiorchat.media.MediaSync
@@ -219,6 +221,37 @@ class BotSync(private val context: Context) {
     }
 
     private suspend fun handleUpdate(update: Update) {
+        if (update.callback_query != null) {
+            val query = update.callback_query
+            if (query.data == "decline_call") {
+                // If it's a call decline, act immediately
+                if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
+                    com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                }
+                
+                val token = AppGraph.prefs.botToken
+                if (token.isNotBlank()) {
+                    // Acknowledge the callback query to stop the loading spinner
+                    TelegramApi.answerCallbackQuery(token, query.id, text = "Call Declined", showAlert = false)
+                    
+                    // Edit the message
+                    query.message?.let { msg ->
+                        TelegramApi.editMessageText(
+                            token = token,
+                            chatId = msg.chat.id.toString(),
+                            messageId = msg.message_id,
+                            text = "❌ Call Declined",
+                            parseMode = "HTML",
+                            replyMarkup = TelegramApi.json.encodeToString(com.mobile.superiorchat.bot.InlineKeyboardMarkup(emptyList()))
+                        )
+                        // Update local DB to make it render as a missed call natively
+                        repository.updateMessageText(msg.message_id, "Call Declined")
+                    }
+                }
+            }
+            return
+        }
+
         if (update.edited_message != null) {
             val editedMsg = update.edited_message
             if (editedMsg.text != null) {
@@ -226,6 +259,19 @@ class BotSync(private val context: Context) {
                 if (AppGraph.prefs.isPeerLinkEnabled) {
                     text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
                 }
+                val existingMsg = repository.getMessageById(editedMsg.message_id)
+                if (existingMsg?.mediaType == "call_event" && prefs.isPeerLinkEnabled) {
+                    // Check if the caller aborted the call
+                    if (com.mobile.superiorchat.core.call.CallManager.isIncomingCall && 
+                        com.mobile.superiorchat.core.call.CallManager.incomingTelegramMsgId == editedMsg.message_id) {
+                        if (text.contains("Call Cancelled") || text.contains("Call Ended") || text.contains("Call Missed")) {
+                            AppLog.log(LogCategory.BOT_ACTIVITY, "Caller aborted the call. Ending local ringing.")
+                            com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.NONE)
+                        }
+                    }
+                    return // Ignore edited message from Telegram; we manage call UI locally
+                }
+                
                 repository.updateMessageText(editedMsg.message_id, text)
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${text.take(50)}")
             }
@@ -276,24 +322,50 @@ class BotSync(private val context: Context) {
         
         if (prefs.isPeerLinkEnabled) {
             text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
+            
+            if (text.trim() == "[SYS-CALL-DECLINED]" || text.trim() == "[SYS_CALL_DECLINED]") {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink decline signal")
+                
+                // Retroactively update history if user was offline or call ended
+                message.reply_to_message?.message_id?.let { repliedMsgId ->
+                    val existing = repository.getMessageById(repliedMsgId)
+                    if (existing != null && existing.mediaType == "call_event") {
+                        repository.updateMessageText(repliedMsgId, "Call Declined")
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "Retroactively updated call event message $repliedMsgId to Declined")
+                    }
+                }
+
+                if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
+                    com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                }
+                return // Do not process this as a normal message
+            }
         }
 
         val replyMarkupStr = message.reply_markup?.toString() ?: ""
         val callRegex = Regex("(https?://[^\"]+call\\.html#join=[^\"]+)")
         val match = callRegex.find(replyMarkupStr)
-        if (match != null) {
-            val joinUrl = match.value + "&isApp=true"
-            val callerName = message.from?.first_name ?: "Partner"
-            com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerName)
-            text = "📞 Incoming Call"
-        }
-
+        
         // All incoming messages from polling are from Client B (isFromMe = false)
         var mediaType: String? = null
         var fileId: String? = null
         var fileSize: Long? = null
         var fileName: String? = null
         var fileUniqueId: String? = null
+
+        if (match != null) {
+            val joinUrl = match.value + "&isApp=true"
+            val callerName = message.from?.first_name ?: "Partner"
+            com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerName, message.message_id)
+            
+            if (prefs.isPeerLinkEnabled) {
+                text = "Incoming Call"
+                mediaType = "call_event"
+                monitorLocalIncomingCall(chatId, message.message_id)
+            } else {
+                text = "📞 Incoming Call"
+            }
+        }
 
         if (!message.photo.isNullOrEmpty()) {
             mediaType = "photo"
@@ -453,6 +525,59 @@ class BotSync(private val context: Context) {
             val chatId = prefs.activeChatId
             if (token.isEmpty() || chatId.isEmpty()) return@launch
             MediaSync.syncTargetProfile(context, token, chatId)
+        }
+    }
+
+    private fun monitorLocalIncomingCall(chatId: String, telegramMsgId: Long) {
+        coroutineScope.launch(Dispatchers.IO) {
+            try {
+                // Wait for the call to transition to a finished state (ENDING or IDLE)
+                com.mobile.superiorchat.core.call.CallManager.callState.first { it == com.mobile.superiorchat.core.call.CallState.ENDING || it == com.mobile.superiorchat.core.call.CallState.IDLE }
+                
+                val duration = if (com.mobile.superiorchat.core.call.CallManager.callDuration.value > 0) com.mobile.superiorchat.core.call.CallManager.callDuration.value else com.mobile.superiorchat.core.call.CallManager.lastCompletedDuration
+                val isMissed = duration == 0L
+                val lastError = com.mobile.superiorchat.core.call.CallManager.lastCallFailedDueToError.value
+                val domain = com.mobile.superiorchat.core.call.CallManager.currentBaseUrl ?: ""
+                val peerJsId = com.mobile.superiorchat.core.call.CallManager.currentRoomId ?: ""
+                
+                val localText = if (isMissed) {
+                    when (lastError) {
+                        com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> "Network Error"
+                        com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> "Unanswered Call"
+                        com.mobile.superiorchat.core.call.CallError.DECLINED -> "Call Declined"
+                        else -> "Call Cancelled"
+                    }
+                } else {
+                    "Call Ended - ${com.mobile.superiorchat.core.call.CallManager.formatDurationText(duration)}"
+                }
+                
+                repository.updateMessageText(telegramMsgId, localText)
+                
+                val status = when {
+                    duration > 0L -> "COMPLETED"
+                    lastError == com.mobile.superiorchat.core.call.CallError.NETWORK_ERROR -> "FAILED_NETWORK"
+                    lastError == com.mobile.superiorchat.core.call.CallError.NO_ANSWER -> "NO_ANSWER"
+                    lastError == com.mobile.superiorchat.core.call.CallError.DECLINED -> "DECLINED"
+                    else -> "FAILED_CONFIG"
+                }
+                
+                val profile = AppGraph.database.profileDao().getProfileSync(chatId)
+                val partnerName = profile?.title ?: "Unknown"
+                
+                val node = com.mobile.superiorchat.data.entity.CallHistoryNode(
+                    timestamp = System.currentTimeMillis(),
+                    durationSeconds = duration,
+                    isMissed = isMissed,
+                    callStatus = status,
+                    peerJsId = peerJsId,
+                    domain = domain,
+                    partnerName = partnerName
+                )
+                AppGraph.database.callHistoryDao().insertCall(node)
+                
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.ERROR, "Failed to monitor incoming call termination: ${e.message}")
+            }
         }
     }
 }

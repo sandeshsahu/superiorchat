@@ -302,6 +302,12 @@ object PopupTexts {
                     "Go to Settings"
                 )
 
+                CallError.DECLINED -> Triple(
+                    "Call Declined",
+                    "The call was *Declined*\n\nYour friend declined the call, they might be *Busy* right now.\nTry again later.",
+                    "Okay"
+                )
+
                 else -> Triple(
                     "Call Failed",
                     "The call failed to connect. This is often caused by an *Invalid*, *Unreachable* Server URL. Would you like to check your Settings and *Reset to Default*?",
@@ -1299,27 +1305,27 @@ fun IncomingCallDialog(
                     modifier = Modifier.padding(20.dp)
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(20.dp))
-            
+
             Text(
                 text = "Incoming Call",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             Text(
                 text = "$callerName is inviting you to a secure call",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(36.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -1328,7 +1334,7 @@ fun IncomingCallDialog(
                     onClick = onDecline,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = ErrorRed,
-                        contentColor = Color.White
+                        contentColor = Color.Black
                     ),
                     modifier = Modifier.weight(1f).height(52.dp),
                     shape = RoundedCornerShape(26.dp)
@@ -1337,9 +1343,9 @@ fun IncomingCallDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Decline", fontWeight = FontWeight.Bold)
                 }
-                
+
                 Spacer(modifier = Modifier.width(16.dp))
-                
+
                 Button(
                     onClick = onAccept,
                     colors = ButtonDefaults.buttonColors(
@@ -1354,7 +1360,7 @@ fun IncomingCallDialog(
                     Text("Accept", fontWeight = FontWeight.Bold)
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
         }
     }

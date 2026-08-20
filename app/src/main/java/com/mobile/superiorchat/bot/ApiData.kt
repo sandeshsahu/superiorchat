@@ -34,11 +34,20 @@ data class ReactionType(
 )
 
 @Serializable
+data class CallbackQuery(
+    val id: String,
+    val from: User,
+    val message: Message? = null,
+    val data: String? = null
+)
+
+@Serializable
 data class Update(
     val update_id: Long,
     val message: Message? = null,
     val edited_message: Message? = null,
-    val message_reaction: MessageReactionUpdated? = null
+    val message_reaction: MessageReactionUpdated? = null,
+    val callback_query: CallbackQuery? = null
 )
 
 @Serializable
@@ -210,4 +219,11 @@ data class EditMessageRequest(
 data class DeleteMessageRequest(
     @SerialName("chat_id") val chatId: String,
     @SerialName("message_id") val messageId: Long
+)
+
+@Serializable
+data class AnswerCallbackQueryRequest(
+    val callback_query_id: String,
+    val text: String? = null,
+    val show_alert: Boolean = false
 )
