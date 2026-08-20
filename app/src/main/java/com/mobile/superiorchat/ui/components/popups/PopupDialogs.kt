@@ -1275,3 +1275,87 @@ fun PeerLinkSetupFlowDialog(
         onDismiss = onDismiss
     )
 }
+
+@Composable
+fun IncomingCallDialog(
+    callerName: String,
+    onAccept: () -> Unit,
+    onDecline: () -> Unit
+) {
+    BaseAppDialog(cancellable = false, onDismiss = onDecline) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier.size(72.dp),
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = com.mobile.superiorchat.theme.CallSuccess.copy(alpha = 0.15f)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Call,
+                    contentDescription = null,
+                    tint = com.mobile.superiorchat.theme.CallSuccess,
+                    modifier = Modifier.padding(20.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Text(
+                text = "Incoming Call",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "$callerName is inviting you to a secure call",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            
+            Spacer(modifier = Modifier.height(36.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(
+                    onClick = onDecline,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ErrorRed,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(26.dp)
+                ) {
+                    Icon(Icons.Filled.CallEnd, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Decline", fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                Button(
+                    onClick = onAccept,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = com.mobile.superiorchat.theme.CallSuccess,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(26.dp)
+                ) {
+                    Icon(Icons.Filled.Call, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Accept", fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}

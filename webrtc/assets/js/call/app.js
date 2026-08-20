@@ -28,13 +28,15 @@ const params = new URLSearchParams(hashString);
 const hostId = params.get('host');   // Android WebView: #host=UUID
 const joinId = params.get('join');   // Telegram browser: #join=UUID
 const secret = params.get('secret'); // Cryptographic call password
+const isApp = params.get('isApp') === 'true'; // Android App as Guest
+const isAndroidApp = !!hostId || isApp;
 
 // ─────────────────────────────────────────────────────────────
 //  Wire WebRTC Events → UI + Android Bridge
 // ─────────────────────────────────────────────────────────────
 
 rtc.on.ready = (peerId) => {
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('ready', peerId);
     } else {
         ui.setStatus('Connection ready. Tap to join.');
@@ -42,7 +44,7 @@ rtc.on.ready = (peerId) => {
 };
 
 rtc.on.connected = () => {
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('connected', '');
     } else {
         ui.setStatus('Connected');
@@ -50,7 +52,7 @@ rtc.on.connected = () => {
 };
 
 rtc.on.reconnecting = () => {
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('reconnecting', '');
     } else {
         ui.setStatus('Reconnecting...');
@@ -62,7 +64,7 @@ rtc.on.remoteVideo = (enabled) => {
     ui.setRemoteVideoVisible(enabled, rtc.isHost);
     // Auto-switch OS PiP between real video and audio canvas (no-op if PiP not active)
     ui.pip.syncRemoteVideoState(enabled);
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('remote_video', enabled ? 'on' : 'off');
     } else {
         ui.showToast(enabled ? 'Remote camera enabled' : 'Remote camera disabled');
@@ -83,7 +85,7 @@ rtc.on.stream = (remoteStream) => {
 };
 
 rtc.on.error = (msg) => {
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('error', msg);
     } else {
         ui.setStatus(msg);
@@ -91,7 +93,7 @@ rtc.on.error = (msg) => {
 };
 
 rtc.on.ended = () => {
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('ended', '');
     } else {
         const finalDuration = ui.durationText ? ui.durationText.textContent : '00:00';
@@ -107,7 +109,7 @@ rtc.on.audioLevel = (level) => {
     ui.updateAudioLevel(level);
     // Feed level to PiP canvas so the avatar pulses to voice in OS PiP
     ui.pip.updateAudioLevel(level);
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('audio_level', level.toString());
     }
 };
@@ -131,14 +133,17 @@ ui.btnJoin.addEventListener('click', async () => {
         const stream = await rtc.acquireMedia();
         if (!stream || !stream.getAudioTracks()[0] || stream.getAudioTracks()[0].readyState !== 'live') {
             ui.setJoinError('Microphone not ready. Please check permissions.');
+            if (isAndroidApp) notifyAndroid('error', 'Microphone not ready. Please check permissions.');
             return;
         }
         ui.attachLocalStream(stream, rtc.currentFacingMode);
+        if (isAndroidApp) notifyAndroid('hardware_ready', '');
 
         rtc.placeCall(joinId, secret);
         ui.showActiveCallUI();
     } catch (err) {
         ui.setJoinError('Camera/Mic permission required');
+        if (isAndroidApp) notifyAndroid('error', 'Camera/Mic permission required');
     }
 });
 
@@ -195,7 +200,7 @@ window.androidToggleMute = () => {
 window.androidToggleVideo = () => {
     const videoOn = rtc.toggleVideo();
     ui.setLocalVideoVisible(videoOn);
-    if (rtc.isHost) {
+    if (isAndroidApp) {
         notifyAndroid('local_video', videoOn ? 'on' : 'off');
     }
     return videoOn;
@@ -277,6 +282,8 @@ async function init() {
         // ── Telegram User (Guest) ────────────────────────────
         rtc.isHost = false;
 
+        if (isAndroidApp) ui.enterHostMode();
+
         ui.setStatus('Validating secure link...');
         if (ui.btnJoin) ui.btnJoin.style.display = 'none';
 
@@ -286,9 +293,14 @@ async function init() {
             }).then(isValid => {
                 if (isValid) {
                     ui.setStatus('Connection ready. Tap to join.');
-                    if (ui.btnJoin) ui.btnJoin.style.display = 'block';
+                    if (isAndroidApp) {
+                        if (ui.btnJoin) ui.btnJoin.click();
+                    } else if (ui.btnJoin) {
+                        ui.btnJoin.style.display = 'block';
+                    }
                 } else {
                     ui.showCallFailed();
+                    if (isAndroidApp) notifyAndroid('error', 'Host unreachable or link expired');
                 }
             });
         };

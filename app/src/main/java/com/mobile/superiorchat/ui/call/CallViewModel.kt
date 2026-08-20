@@ -171,12 +171,19 @@ class CallViewModel : ViewModel() {
                     val botName = me?.result?.first_name ?: "Superiorchat"
                     val initiateTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
 
-                    val replyText = "===================\n" +
-                                    "🔔 *New Call Incoming*\n" +
+                    var replyText = "===================\n" +
+                                    "🔔 <b>New Call Incoming</b>\n" +
                                     "===================\n" +
-                                    "*$botName is inviting you for call*\n\n" +
-                                    "*Time* : $initiateTime\n\n" +
-                                    "*Click Below Button To Join*"
+                                    "<b>$botName is inviting you for call</b>\n\n" +
+                                    "<b>Time</b> : $initiateTime\n\n" +
+                                    "<b>Click Below Button To Join</b>"
+                    
+                    if (prefs.isPeerLinkEnabled) {
+                        val targetBot = prefs.peerLinkPartnerBotUsername.removePrefix("@")
+                        if (targetBot.isNotEmpty()) {
+                            replyText = "@$targetBot $replyText"
+                        }
+                    }
                     
                     val markup = InlineKeyboardMarkup(listOf(listOf(InlineKeyboardButton(text = "🔰 Connect", url = telegramUrl))))
                     val replyMarkup = TelegramApi.json.encodeToString(markup)
@@ -186,7 +193,7 @@ class CallViewModel : ViewModel() {
                             token = token,
                             chatId = chat,
                             text = replyText,
-                            parseMode = "Markdown",
+                            parseMode = "HTML",
                             replyMarkup = replyMarkup
                         )
                         

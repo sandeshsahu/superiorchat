@@ -55,7 +55,8 @@ data class Message(
     val audio: JsonElement? = null,
     val voice: JsonElement? = null,
     val reply_to_message: Message? = null,
-    val pinned_message: Message? = null
+    val pinned_message: Message? = null,
+    val reply_markup: JsonElement? = null
 )
 
 

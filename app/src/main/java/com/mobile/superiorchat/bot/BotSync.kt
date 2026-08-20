@@ -278,6 +278,16 @@ class BotSync(private val context: Context) {
             text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
         }
 
+        val replyMarkupStr = message.reply_markup?.toString() ?: ""
+        val callRegex = Regex("(https?://[^\"]+call\\.html#join=[^\"]+)")
+        val match = callRegex.find(replyMarkupStr)
+        if (match != null) {
+            val joinUrl = match.value + "&isApp=true"
+            val callerName = message.from?.first_name ?: "Partner"
+            com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerName)
+            text = "📞 Incoming Call"
+        }
+
         // All incoming messages from polling are from Client B (isFromMe = false)
         var mediaType: String? = null
         var fileId: String? = null

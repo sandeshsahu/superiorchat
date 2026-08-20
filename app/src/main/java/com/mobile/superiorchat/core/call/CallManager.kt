@@ -26,7 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 import androidx.annotation.RequiresApi
 
-enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING }
+enum class CallState { IDLE, CONNECTING, ACTIVE, ENDING, RINGING }
 
 enum class CallError { NONE, INVALID_URL, NETWORK_ERROR, NO_ANSWER, HARDWARE_ERROR }
 
@@ -102,6 +102,15 @@ object CallManager {
         private set
 
     var currentBaseUrl: String? = null
+        private set
+
+    var currentCallUrl: String? = null
+        private set
+
+    var incomingCallerName: String = ""
+        private set
+
+    var isIncomingCall: Boolean = false
         private set
 
     /** Timeout before auto-ending an unanswered call. */
@@ -215,6 +224,9 @@ object CallManager {
 
         val vercelUrl = "$workingBaseUrl/call.html#host=$roomId&secret=$secret"
         val telegramUrl = "$workingBaseUrl/call.html#join=$roomId&secret=$secret"
+        
+        currentCallUrl = vercelUrl
+        isIncomingCall = false
 
         AppLog.log(LogCategory.SYSTEM, "Initiated PeerJS call with room $roomId on host $workingBaseUrl")
         StatusFlow.reportStatus(SyncState.SUCCESS, "Secure Call Initiated")
@@ -280,6 +292,41 @@ object CallManager {
     }
 
     /**
+     * Called when BotSync detects an incoming call URL via PeerLink.
+     */
+    fun receiveIncomingCall(joinUrl: String, callerName: String) {
+        if (_callState.value != CallState.IDLE) return
+        
+        currentCallUrl = joinUrl
+        currentBaseUrl = joinUrl.substringBefore("/call.html")
+        incomingCallerName = callerName
+        isIncomingCall = true
+        _callState.value = CallState.RINGING
+    }
+
+    /**
+     * Called when user taps 'Accept' on the incoming call popup.
+     */
+    fun acceptIncomingCall(context: Context) {
+        AudioPlayer.stop()
+        setupHardware(context.applicationContext)
+        _callState.value = CallState.CONNECTING
+        _callDuration.value = 0L
+        startTimeout()
+    }
+
+    /**
+     * Called when user taps 'Decline' on the incoming call popup.
+     */
+    fun declineIncomingCall() {
+        _callState.value = CallState.IDLE
+        currentCallUrl = null
+        incomingCallerName = ""
+        isIncomingCall = false
+    }
+
+
+    /**
      * Ends the call gracefully. Transitions through ENDING → IDLE
      * with a brief delay for the UI "Call Ended" label to display.
      */
@@ -307,6 +354,8 @@ object CallManager {
             _callDuration.value = 0
             currentRoomId = null
             currentSecret = null
+            currentCallUrl = null
+            incomingCallerName = ""
             releaseHardware()
         }
     }

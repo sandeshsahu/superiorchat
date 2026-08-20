@@ -732,12 +732,35 @@ fun AppScreen(
                 val callState by CallManager.callState.collectAsState()
                 
                 // Show Call Screen Overlay (Kept in composition even when minimized or during popup)
-                if (callState != CallState.IDLE) {
-                    val roomId = CallManager.currentRoomId
-                    if (roomId != null) {
-                        val secret = CallManager.currentSecret
+                if (callState == CallState.RINGING) {
+                    IncomingCallDialog(
+                        callerName = CallManager.incomingCallerName,
+                        onAccept = { 
+                            permissionHandler.requestAudioAndCamera {
+                                callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
+                                CallManager.acceptIncomingCall(context)
+                                hardwareInitTimer = 0
+                                scope.launch {
+                                    while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                        kotlinx.coroutines.delay(1000)
+                                        hardwareInitTimer++
+                                    }
+                                    if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                        com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                        CallManager.endCall()
+                                        CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                        callConfirmationState = CallInitiationState.IDLE
+                                    }
+                                }
+                            }
+                        },
+                        onDecline = { CallManager.declineIncomingCall() }
+                    )
+                } else if (callState != CallState.IDLE) {
+                    val callUrl = CallManager.currentCallUrl
+                    if (callUrl != null) {
                         CallScreen(
-                            url = "${CallManager.currentBaseUrl}/call.html#host=$roomId&secret=$secret",
+                            url = callUrl,
                             isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE,
                             onMinimize = { isCallMinimized = true },
                             onMaximize = { 
@@ -846,18 +869,25 @@ fun AppScreen(
                 LaunchedEffect(Unit) {
                     callViewModel.hardwareReadyEvent.collectLatest { 
                         if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                            callConfirmationState = CallInitiationState.SENDING_LINK
-                            val result = callViewModel.sendTelegramLink()
-                            
-                            // Check if user cancelled while sending link
-                            if (callConfirmationState == CallInitiationState.SENDING_LINK) {
-                                if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
-                                    callConfirmationState = CallInitiationState.SUCCESS
-                                    kotlinx.coroutines.delay(500)
-                                    callConfirmationState = CallInitiationState.IDLE
-                                    isCallMinimized = false
-                                } else {
-                                    callConfirmationState = CallInitiationState.FAILED_SENDING
+                            if (CallManager.isIncomingCall) {
+                                callConfirmationState = CallInitiationState.SUCCESS
+                                kotlinx.coroutines.delay(500)
+                                callConfirmationState = CallInitiationState.IDLE
+                                isCallMinimized = false
+                            } else {
+                                callConfirmationState = CallInitiationState.SENDING_LINK
+                                val result = callViewModel.sendTelegramLink()
+                                
+                                // Check if user cancelled while sending link
+                                if (callConfirmationState == CallInitiationState.SENDING_LINK) {
+                                    if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
+                                        callConfirmationState = CallInitiationState.SUCCESS
+                                        kotlinx.coroutines.delay(500)
+                                        callConfirmationState = CallInitiationState.IDLE
+                                        isCallMinimized = false
+                                    } else {
+                                        callConfirmationState = CallInitiationState.FAILED_SENDING
+                                    }
                                 }
                             }
                         }

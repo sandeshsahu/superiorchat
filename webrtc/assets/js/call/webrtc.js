@@ -383,10 +383,12 @@ class WebRTCManager {
 
     _handleCallStream(call) {
         if (!call) return;
+        
+        this._monitorICE(call);
+        
         call.on('stream', (remoteStream) => {
             this.on.stream(remoteStream);
             this._startAudioVisualizer(remoteStream);
-            this._monitorICE(call);
         });
 
         call.on('close', () => {
