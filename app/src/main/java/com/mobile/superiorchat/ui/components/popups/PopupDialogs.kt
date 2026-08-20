@@ -26,6 +26,10 @@ import com.mobile.superiorchat.theme.PrimaryLight
 import com.mobile.superiorchat.theme.WarningAmber
 import com.mobile.superiorchat.theme.SurfaceLevel2
 import com.mobile.superiorchat.theme.TextPrimary
+import com.mobile.superiorchat.theme.TextSecondary
+import com.mobile.superiorchat.theme.Background
+import com.mobile.superiorchat.theme.SurfaceLevel1
+import com.mobile.superiorchat.theme.DividerColor
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.Placeholder
@@ -44,97 +48,121 @@ object PopupTexts {
         const val SETUP_UNINSTALL_TITLE = "Uninstall Setup App"
         fun getSetupUninstallMessage(accessInstructions: String): String =
             "The main app is now configured and hidden. It is highly recommended to uninstall the Setup application to maintain absolute stealth.\n\n$accessInstructions"
+
         const val SETUP_UNINSTALL_CONFIRM = "Uninstall"
         const val SETUP_UNINSTALL_DISMISS = "Keep"
 
         const val DIALER_ACCESS_TITLE = "Open App Via Dialer"
-        const val DIALER_ACCESS_MESSAGE = "The application icon is completely hidden from your phone's app drawer.\n\nTo secretly open the app, \nSimply go to your phone's *Dialer* and type the secret code ** *#*#9131#*#* **."
+        const val DIALER_ACCESS_MESSAGE =
+            "The application icon is completely hidden from your phone's app drawer.\n\nTo secretly open the app, \nSimply go to your phone's *Dialer* and type the secret code ** *#*#9131#*#* **."
 
         const val QS_SETUP_TITLE = "Add Tile To Panel"
-        const val QS_SETUP_MESSAGE = "You can add a stealth tile to your notification panel for quick access.\n\nOpen your *Notification Panel*, click the *Pencil Icon* (Edit), find the stealth tile, and drag it to add it."
+        const val QS_SETUP_MESSAGE =
+            "You can add a stealth tile to your notification panel for quick access.\n\nOpen your *Notification Panel*, click the *Pencil Icon* (Edit), find the stealth tile, and drag it to add it."
 
         const val QS_ACCESS_TITLE = "Open App Via Tile"
-        const val QS_ACCESS_MESSAGE = "When you want to open the chat application, perform the following sequence on the tile:\n\n1. *Tap* to Enable\n2. *Tap* to Disable\n3. *Tap* to Enable\n4. *Hold Tile* under 3 seconds to instantly launch the app"
+        const val QS_ACCESS_MESSAGE =
+            "When you want to open the chat application, perform the following sequence on the tile:\n\n1. *Tap* to Enable\n2. *Tap* to Disable\n3. *Tap* to Enable\n4. *Hold Tile* under 3 seconds to instantly launch the app"
     }
 
     // ── Settings Screen Popups ──
     object Settings {
         const val DEVELOPER_WARNING_TITLE = "Developer Setting"
-        const val DEVELOPER_WARNING_MESSAGE = "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this."
+        const val DEVELOPER_WARNING_MESSAGE =
+            "This setting is strictly for *Developers*! Changing the *Server URL* can permanently *Break* the Calling feature. If you are not a developer, please *Cancel* this."
         const val DEVELOPER_WARNING_CONFIRM = "I Understand"
 
         const val SERVERS_UNAVAILABLE_TITLE = "Servers Unavailable"
-        const val SERVERS_UNAVAILABLE_MESSAGE = "All working servers are currently *Unavailable*.\nPlease contact the *Developer* or check the GitHub page to learn how to deploy your own static *PeerJS signaling server*."
+        const val SERVERS_UNAVAILABLE_MESSAGE =
+            "All working servers are currently *Unavailable*.\nPlease contact the *Developer* or check the GitHub page to learn how to deploy your own static *PeerJS signaling server*."
 
         const val NETWORK_ERROR_TITLE = "No Internet Connection"
         const val NETWORK_ERROR_MESSAGE = "Please check your network connection and try again."
 
         const val APP_LOCK_INFO_TITLE = "App Lock"
-        const val APP_LOCK_INFO_MESSAGE = "App Lock secures your chats by requiring a PIN code every time you open the app or return from the background."
+        const val APP_LOCK_INFO_MESSAGE =
+            "App Lock secures your chats by requiring a PIN code every time you open the app or return from the background."
 
         const val FAKE_CRASH_TITLE = "Fake Crash Protection"
-        const val FAKE_CRASH_MESSAGE = "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, you must **Hold** the following Word:"
+        const val FAKE_CRASH_MESSAGE =
+            "You are about to enable Fake Crash. This displays a fake **Crash Dialog** on startup to fool intruders.\n\nTo safely bypass it and open the app, you must **Hold** the following Word:"
         const val FAKE_CRASH_CONFIRM = "Enable"
 
-        const val FAKE_CRASH_INFO_MESSAGE = 
+        const val FAKE_CRASH_INFO_MESSAGE =
             "When enabled, an authentic-looking system fake crash dialog will appear when opening app.\n\nTo open the Chat, you must **Hold** the following Word:"
 
         const val SAFEGUARD_TITLE = "Emergency Safeguard PIN (1234)"
-        const val SAFEGUARD_MESSAGE = "Emergency Safeguard is **Always Active** by default for maximum security.\n\nIf forced to unlock, enter **1234** as your PIN.\n\n• **Hidden Vault**: Instantly opens fully working media vault, users can hide media files there, but its not recommended to hide your private Images/Videos.\n• **Defence**: In case of forced to open then use 1234 code to justify as its a media hider app."
-        const val SAFEGUARD_NOTE = "Do NOT set 1234 as your normal PIN! It is reserved exclusively for emergency stealth mode."
+        const val SAFEGUARD_MESSAGE =
+            "Emergency Safeguard is **Always Active** by default for maximum security.\n\nIf forced to unlock, enter **1234** as your PIN.\n\n• **Hidden Vault**: Instantly opens fully working media vault, users can hide media files there, but its not recommended to hide your private Images/Videos.\n• **Defence**: In case of forced to open then use 1234 code to justify as its a media hider app."
+        const val SAFEGUARD_NOTE =
+            "Do NOT set 1234 as your normal PIN! It is reserved exclusively for emergency stealth mode."
 
         const val CAMO_NOTIF_INFO_TITLE = "Notification Camouflage"
-        const val CAMO_NOTIF_INFO_MESSAGE = "Camouflage Notifications disguise incoming Telegram messages as innocent system or weather alerts.\n\nWhen enabled, sensitive chat text and sender names are completely hidden from lock screen notifications."
+        const val CAMO_NOTIF_INFO_MESSAGE =
+            "Camouflage Notifications disguise incoming Telegram messages as innocent system or weather alerts.\n\nWhen enabled, sensitive chat text and sender names are completely hidden from lock screen notifications."
 
         const val CAMO_NOTIF_CONFIRM_TITLE = "Enable Camouflage Notifications"
-        const val CAMO_NOTIF_CONFIRM_MESSAGE = "This will replace standard chat notifications with stealth camouflage alerts."
+        const val CAMO_NOTIF_CONFIRM_MESSAGE =
+            "This will replace standard chat notifications with stealth camouflage alerts."
         const val CAMO_NOTIF_CONFIRM_TEXT = "Enable Camouflage"
 
         const val QS_TILE_INFO_TITLE = "How To Open Via Tile"
-        const val QS_TILE_INFO_MESSAGE = "Open notification panel, click on the pencil icon, find *%s* and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app"
+        const val QS_TILE_INFO_MESSAGE =
+            "Open notification panel, click on the pencil icon, find *%s* and add it.\n\nThen when you want to open chat:\n1. *Enable*\n2. *Disable*\n3. *Enable*\n4. *Hold Tile* to open chat app"
 
         const val QS_TILE_DISABLE_TITLE = "Disable Tile Access"
-        const val QS_TILE_DISABLE_MESSAGE = "If you disable this, you will no longer be able to *Open The App* using the *Notification Tile*.\nIf access by dialer fails, you may be *Completely Locked Out* of the app.\nAre you sure you want to *Proceed*?"
+        const val QS_TILE_DISABLE_MESSAGE =
+            "If you disable this, you will no longer be able to *Open The App* using the *Notification Tile*.\nIf access by dialer fails, you may be *Completely Locked Out* of the app.\nAre you sure you want to *Proceed*?"
         const val QS_TILE_DISABLE_CONFIRM = "Disable"
 
         const val PERSISTENT_NOTIF_INFO_TITLE = "Persistent Notification"
-        const val PERSISTENT_NOTIF_INFO_MESSAGE = "Foreground service keeps the Telegram bot polling active continuously in the background.\n\nDisabling this may cause background message sync delays on some Android devices."
+        const val PERSISTENT_NOTIF_INFO_MESSAGE =
+            "Foreground service keeps the Telegram bot polling active continuously in the background.\n\nDisabling this may cause background message sync delays on some Android devices."
 
         const val WEBRTC_INFO_TITLE = "WebRTC Calling Server"
-        const val WEBRTC_INFO_MESSAGE = "You can configure your custom *WebRTC Server* URL for voice calls, or reset it to the default server if you experience connection issues.\n\nCheck developer's *Github Page* for more information"
+        const val WEBRTC_INFO_MESSAGE =
+            "You can configure your custom *WebRTC Server* URL for voice calls, or reset it to the default server if you experience connection issues.\n\nCheck developer's *Github Page* for more information"
 
         const val CUSTOM_ACCESS_INFO_TITLE = "Custom Access Word"
-        const val CUSTOM_ACCESS_INFO_MESSAGE = "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *Superior Chat* will always work as a fallback."
+        const val CUSTOM_ACCESS_INFO_MESSAGE =
+            "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *Superior Chat* will always work as a fallback."
 
         fun getCustomAccessConfirmMessage(word: String): String =
             "Are you sure you want to set your access word to *$word*? If you forget this word, you can always use the default *Superior Chat* fallback to regain access."
 
         const val CUSTOM_DIALER_INFO_TITLE = "Custom Dialer Code"
-        const val CUSTOM_DIALER_INFO_MESSAGE = "Set a custom secret code that you can type into your phone's dialer to open the app. The default ** *#*#9131#*#* ** will always work as a fallback."
+        const val CUSTOM_DIALER_INFO_MESSAGE =
+            "Set a custom secret code that you can type into your phone's dialer to open the app. The default ** *#*#9131#*#* ** will always work as a fallback."
 
         fun getCustomDialerConfirmMessage(code: String): String =
             "Are you sure you want to set your custom dialer code to *$code*? (You will dial ** *#*#$code#*#* **). If you forget it, you can always use the default ** *#*#9131#*#* ** fallback."
 
         const val BOT_INFO_TITLE = "Bot Credentials"
-        const val BOT_INFO_MESSAGE = "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*."
+        const val BOT_INFO_MESSAGE =
+            "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*."
 
         const val INVALID_CREDENTIALS_TITLE = "Invalid Credentials"
 
         const val CLEAR_CREDENTIALS_TITLE = "Clear Credentials"
-        const val CLEAR_CREDENTIALS_MESSAGE = "This will disconnect the bot and stop the end-to-end chat. *Both Users* will lose access\nto the current *Chat Session*. Do you want to proceed?"
+        const val CLEAR_CREDENTIALS_MESSAGE =
+            "This will disconnect the bot and stop the end-to-end chat. *Both Users* will lose access\nto the current *Chat Session*. Do you want to proceed?"
 
         const val UNINSTALL_TITLE = "Uninstall App"
-        const val UNINSTALL_MESSAGE = "This will *permanently remove* the application from your device. Do you want to proceed?"
+        const val UNINSTALL_MESSAGE =
+            "This will *permanently remove* the application from your device. Do you want to proceed?"
 
         const val BG_POLLING_INFO_TITLE = "Background Polling"
-        const val BG_POLLING_INFO_MESSAGE = "Background polling periodically checks for new Telegram updates using WorkManager when the app is minimized."
+        const val BG_POLLING_INFO_MESSAGE =
+            "Background polling periodically checks for new Telegram updates using WorkManager when the app is minimized."
 
         const val CLEAR_DB_TITLE = "Clear Database"
-        const val CLEAR_DB_MESSAGE = "Are you sure you want to clear local database records? All stored messages and chat history will be removed from this device."
+        const val CLEAR_DB_MESSAGE =
+            "Are you sure you want to clear local database records? All stored messages and chat history will be removed from this device."
         const val CLEAR_DB_CONFIRM = "Clear Database"
 
         const val RESET_APP_TITLE = "Reset Application"
-        const val RESET_APP_MESSAGE = "Are you sure you want to reset all app settings and credentials? You will need to setup the application again."
+        const val RESET_APP_MESSAGE =
+            "Are you sure you want to reset all app settings and credentials? You will need to setup the application again."
         const val RESET_APP_CONFIRM = "Reset Everything"
 
         const val QR_PROMPT_TITLE = "Scan Configuration"
@@ -142,19 +170,28 @@ object PopupTexts {
         const val QR_PROMPT_CONFIRM = "Scan"
 
         const val AUTO_DOWNLOAD_INFO_TITLE = "Auto-Download Media"
-        const val AUTO_DOWNLOAD_INFO_MESSAGE = "When enabled, photos and videos will automatically download when you receive them in chat. \n\nTurn this off to save mobile data."
+        const val AUTO_DOWNLOAD_INFO_MESSAGE =
+            "When enabled, photos and videos will automatically download when you receive them in chat. \n\nTurn this off to save mobile data."
 
         const val SCREEN_SECURITY_INFO_TITLE = "Screen Security"
-        const val SCREEN_SECURITY_INFO_MESSAGE = "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\n*Screenshots* will appear pure black."
+        const val SCREEN_SECURITY_INFO_MESSAGE =
+            "This prevents any app, screen recorder, or screen cast from capturing the chat. \n\n*Screenshots* will appear pure black."
 
         const val APP_NOTIFICATIONS_INFO_TITLE = "App Notifications"
-        const val APP_NOTIFICATIONS_INFO_MESSAGE = "Controls the underlying Android System notification permissions.\n\nWhen disabled, the app is completely blocked from showing *Any background notifications*, making it ultra-stealthy. *Background sync* will still work perfectly."
+        const val APP_NOTIFICATIONS_INFO_MESSAGE =
+            "Controls the underlying Android System notification permissions.\n\nWhen disabled, the app is completely blocked from showing *Any background notifications*, making it ultra-stealthy. *Background sync* will still work perfectly."
 
         const val DISABLE_NOTIFICATIONS_TITLE = "Disable App Notifications"
-        const val DISABLE_NOTIFICATIONS_MESSAGE = "To completely disable notifications without crashing the background service, you must turn them off from Android's System Settings.\n\nClick Proceed to open the *App Info* page, then tap *Notifications* and turn them off."
+        const val DISABLE_NOTIFICATIONS_MESSAGE =
+            "To completely disable notifications without crashing the background service, you must turn them off from Android's System Settings.\n\nClick Proceed to open the *App Info* page, then tap *Notifications* and turn them off."
 
         const val NEW_MESSAGE_NOTIF_INFO_TITLE = "New Message Notifications"
-        const val NEW_MESSAGE_NOTIF_INFO_MESSAGE = "When *Enabled*, the stealth app's background service notification will visually change states (e.g., \"*Live Update*\" or \"*Heavy data usage detected*\") to alert you of new incoming messages.\n\nWhen *Disabled*, messages will still sync silently in the background, but the decoy *notification* will never change its idle state."
+        const val NEW_MESSAGE_NOTIF_INFO_MESSAGE =
+            "When *Enabled*, the stealth app's background service notification will visually change states (e.g., \"*Live Update*\" or \"*Heavy data usage detected*\") to alert you of new incoming messages.\n\nWhen *Disabled*, messages will still sync silently in the background, but the decoy *notification* will never change its idle state."
+
+        const val ADMIN_MODE_ACTIVE_TITLE = "Admin Mode Active"
+        const val ADMIN_MODE_ACTIVE_MESSAGE =
+            "You currently have *I am Admin* turned on.\n\nPlease configure your bot credentials inside the *Admin Settings* screen instead. Turn off Admin Mode if you want to configure regular client credentials."
     }
 
     // ── PIN & Security Popups ──
@@ -169,12 +206,15 @@ object PopupTexts {
     // ── Profile Screen Popups ──
     object Profile {
         const val RATE_LIMIT_WARNING_TITLE = "Warning: Rate Limits"
-        const val RATE_LIMIT_WARNING_MESSAGE = "Telegram strictly limits how often you can change your bot's name and description. Frequent updates will result in a 24-hour ban. Are you sure you want to proceed?"
+        const val RATE_LIMIT_WARNING_MESSAGE =
+            "Telegram strictly limits how often you can change your bot's name and description. Frequent updates will result in a 24-hour ban. Are you sure you want to proceed?"
         const val RATE_LIMIT_WARNING_CONFIRM = "Proceed"
         fun getRateLimitErrorMessage(timeStr: String): String =
             "Telegram rate limit reached. Please try again in $timeStr."
+
         const val DEFAULT_UPDATE_FAILED_ERROR = "Failed to update profile info."
-        const val REMOVE_PHOTO_NOT_SUPPORTED_ERROR = "Removing profile photos is only supported via @BotFather in Telegram."
+        const val REMOVE_PHOTO_NOT_SUPPORTED_ERROR =
+            "Removing profile photos is only supported via @BotFather in Telegram."
     }
 
     // ── Chat & Media Popups ──
@@ -185,10 +225,12 @@ object PopupTexts {
         const val DELETE_BULK_MESSAGE = "Are you sure you want to delete all selected messages?"
 
         const val CLEAR_CHAT_TITLE = "Clear Chat History"
-        const val CLEAR_CHAT_MESSAGE = "Are you sure you want to clear all chat history? This will delete messages from local database."
+        const val CLEAR_CHAT_MESSAGE =
+            "Are you sure you want to clear all chat history? This will delete messages from local database."
 
         const val APK_INSTALL_PERMISSION_TITLE = "Installation Permission Required"
-        const val APK_INSTALL_PERMISSION_MESSAGE = "To install this app, you need to allow SuperiorChat to install unknown apps."
+        const val APK_INSTALL_PERMISSION_MESSAGE =
+            "To install this app, you need to allow SuperiorChat to install unknown apps."
 
         fun getSaveMediaMessage(typeName: String, storageType: String): String =
             "Do you want to save this *$typeName* to your device's *$storageType folder*?"
@@ -200,16 +242,20 @@ object PopupTexts {
     // ── Global System Permissions Popups ──
     object GlobalPermissions {
         const val PERMISSION_DENIED_TITLE = "Permission Denied"
-        const val PERMISSION_DENIED_MESSAGE = "This permission has been permanently denied. Please enable it in the App Settings."
+        const val PERMISSION_DENIED_MESSAGE =
+            "This permission has been permanently denied. Please enable it in the App Settings."
 
         const val MEDIA_DENIED_TITLE = "Media Access Denied"
-        const val MEDIA_DENIED_MESSAGE = "You have previously denied full access to your media. To allow full access or select more photos, please go to Settings."
+        const val MEDIA_DENIED_MESSAGE =
+            "You have previously denied full access to your media. To allow full access or select more photos, please go to Settings."
 
         const val ALL_FILES_REQUIRED_TITLE = "All Files Access Required"
-        const val ALL_FILES_REQUIRED_MESSAGE = "The file explorer requires full access to your device storage to view and attach documents."
+        const val ALL_FILES_REQUIRED_MESSAGE =
+            "The file explorer requires full access to your device storage to view and attach documents."
 
         const val LIMITED_ACCESS_TITLE = "Limited Access Granted"
-        const val LIMITED_ACCESS_MESSAGE = "You have granted limited access to your media. Would you like to grant full access so you can easily select any photo?"
+        const val LIMITED_ACCESS_MESSAGE =
+            "You have granted limited access to your media. Would you like to grant full access so you can easily select any photo?"
 
         const val CAMERA_RATIONALE_TITLE = "Camera Permission"
         const val CAMERA_RATIONALE_MESSAGE = "We need access to your camera to take photos."
@@ -221,17 +267,20 @@ object PopupTexts {
         const val STORAGE_RATIONALE_MESSAGE = "We need access to your device storage to view and attach documents."
 
         const val CALL_RATIONALE_TITLE = "Camera & Microphone Required"
-        const val CALL_RATIONALE_MESSAGE = "We need access to both your camera and microphone to initiate the secure WebRTC call."
+        const val CALL_RATIONALE_MESSAGE =
+            "We need access to both your camera and microphone to initiate the secure WebRTC call."
     }
 
     // ── Call Engine Popups ──
     object Call {
         const val CLEAR_LOGS_TITLE = "Clear History"
-        const val CLEAR_LOGS_MESSAGE = "Are you sure you want to clear your entire call history? This will delete all logs."
+        const val CLEAR_LOGS_MESSAGE =
+            "Are you sure you want to clear your entire call history? This will delete all logs."
         const val CLEAR_LOGS_CONFIRM = "Clear"
 
         const val CALL_HISTORY_INFO_TITLE = "Recent Calls"
-        const val CALL_HISTORY_INFO_MESSAGE = "A history of all secure peer-to-peer WebRTC calls initiated from this device."
+        const val CALL_HISTORY_INFO_MESSAGE =
+            "A history of all secure peer-to-peer WebRTC calls initiated from this device."
 
         fun getErrorSpec(error: CallError): Triple<String, String, String> {
             return when (error) {
@@ -240,16 +289,19 @@ object PopupTexts {
                     "The call *Failed to Connect*.\nYour internet connection might be *Unstable* or device is completely *Offline*.\n\nPlease check your *Internet Connection*.",
                     "Okay"
                 )
+
                 CallError.NO_ANSWER -> Triple(
                     "No Answer",
                     "The call was *Not Answered*\n\nYour friend is *Busy* or *Not Available*.\nTry Later.",
                     "Okay"
                 )
+
                 CallError.HARDWARE_ERROR -> Triple(
                     "Hardware Initialization Failed",
                     "The secure WebRTC environment failed to load properly.\nThis is usually caused by an *Invalid Server Path* blocking necessary Javascript files, or a camera/microphone hardware lock.\n\nPlease check application permissions or would you like to *Reset to Default*?",
                     "Go to Settings"
                 )
+
                 else -> Triple(
                     "Call Failed",
                     "The call failed to connect. This is often caused by an *Invalid*, *Unreachable* Server URL. Would you like to check your Settings and *Reset to Default*?",
@@ -262,7 +314,8 @@ object PopupTexts {
     // ── Logs Screen Popups ──
     object Logs {
         const val LOGS_INFO_TITLE = "Live Logs"
-        const val LOGS_INFO_MESSAGE = "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly *Last 150 Logs* will be displayed."
+        const val LOGS_INFO_MESSAGE =
+            "These logs record system background activity, network requests, and bot interactions for troubleshooting.\n\nOnly *Last 150 Logs* will be displayed."
         const val LOG_DETAIL_TITLE = "Log Details"
         const val CLEAR_LOGS_TITLE = "Clear Diagnostics"
         const val CLEAR_LOGS_MESSAGE = "Are you sure you want to clear all recorded diagnostic logs?"
@@ -303,7 +356,7 @@ fun SetupUninstallDialog(
     val context = androidx.compose.ui.platform.LocalContext.current
     val appName = remember { context.packageManager.getApplicationLabel(context.applicationInfo).toString() }
     val isStealth = flavor == "captivePortal" || flavor == "playSupport" || flavor == "decoyEngine"
-    
+
     val steps = listOf(
         com.mobile.superiorchat.ui.components.popups.DialogStep(
             title = PopupTexts.Main.DIALER_ACCESS_TITLE,
@@ -418,16 +471,28 @@ fun SettingsFakeCrashInfoDialog(
     InfoDialog(
         title = "Fake Crash Decoy",
         message = PopupTexts.Settings.FAKE_CRASH_INFO_MESSAGE,
-        customContent = { 
+        customContent = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 val annotatedString = buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryLight, background = SurfaceLevel2)) {
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryLight,
+                            background = SurfaceLevel2
+                        )
+                    ) {
                         append(appName)
                     }
                     append(" ")
                     appendInlineContent("arrow_icon", "[icon]")
                     append(" for ")
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = PrimaryLight, background = SurfaceLevel2)) {
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            color = PrimaryLight,
+                            background = SurfaceLevel2
+                        )
+                    ) {
                         append("2 seconds")
                     }
                     append(".")
@@ -442,13 +507,18 @@ fun SettingsFakeCrashInfoDialog(
                         "arrow_icon" to InlineTextContent(
                             Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = TextPrimary, modifier = Modifier.fillMaxSize())
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = TextPrimary,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                     )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                FakeCrashAnimPreview() 
+                FakeCrashAnimPreview()
             }
         },
         onDismiss = onDismiss
@@ -469,7 +539,7 @@ fun SettingsFakeCrashDialog(
         icon = Icons.Filled.Warning,
         iconTint = ErrorRed,
         confirmText = PopupTexts.Settings.FAKE_CRASH_CONFIRM,
-        customContent = { 
+        customContent = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 val annotatedString = buildAnnotatedString {
                     withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ErrorRed, background = SurfaceLevel2)) {
@@ -493,13 +563,18 @@ fun SettingsFakeCrashDialog(
                         "arrow_icon" to InlineTextContent(
                             Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = TextPrimary, modifier = Modifier.fillMaxSize())
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = TextPrimary,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         }
                     )
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                FakeCrashAnimPreview() 
+                FakeCrashAnimPreview()
             }
         },
         onConfirm = onConfirm,
@@ -557,10 +632,14 @@ fun SettingsQsTileInfoDialog(
     var showSetupGuide by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val qsTileNameId = remember { context.resources.getIdentifier("qs_tile_name", "string", context.packageName) }
-    val appName = if (qsTileNameId != 0) androidx.compose.ui.res.stringResource(id = qsTileNameId) else androidx.compose.ui.res.stringResource(id = com.mobile.superiorchat.R.string.app_name)
-    
+    val appName =
+        if (qsTileNameId != 0) androidx.compose.ui.res.stringResource(id = qsTileNameId) else androidx.compose.ui.res.stringResource(
+            id = com.mobile.superiorchat.R.string.app_name
+        )
+
     if (showSetupGuide) {
-        val guideMessage = "To add the stealth tile:\n\n1. Pull down your notification shade fully.\n2. Tap the *Pencil* (Edit) icon.\n3. Scroll down to find \nthe tile named *$appName*.\n4. *Hold and drag* it into your active tiles."
+        val guideMessage =
+            "To add the stealth tile:\n\n1. Pull down your notification shade fully.\n2. Tap the *Pencil* (Edit) icon.\n3. Scroll down to find \nthe tile named *$appName*.\n4. *Hold and drag* it into your active tiles."
         InfoDialog(
             title = "How to Add Tile",
             message = guideMessage,
@@ -569,7 +648,7 @@ fun SettingsQsTileInfoDialog(
         )
     } else {
         val message = PopupTexts.Settings.QS_TILE_INFO_MESSAGE.format(appName)
-        
+
         InfoDialog(
             title = PopupTexts.Settings.QS_TILE_INFO_TITLE,
             message = message,
@@ -652,6 +731,26 @@ fun SettingsCustomDialerConfirmDialog(
         confirmText = "Save",
         customContent = { DialerAccessAnimPreview(dialerCode = dialerCode) },
         onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsAdminModeActiveDialog(
+    onDismiss: () -> Unit,
+    onNavigateToAdmin: () -> Unit
+) {
+    com.mobile.superiorchat.ui.components.popups.ActionDialog(
+        title = PopupTexts.Settings.ADMIN_MODE_ACTIVE_TITLE,
+        message = PopupTexts.Settings.ADMIN_MODE_ACTIVE_MESSAGE,
+        icon = androidx.compose.material.icons.Icons.Default.AdminPanelSettings,
+        iconTint = com.mobile.superiorchat.theme.WarningAmber,
+        confirmText = "Go to Settings",
+        onConfirm = {
+            onNavigateToAdmin()
+            onDismiss()
+        },
+        dismissText = "Dismiss",
         onDismiss = onDismiss
     )
 }
@@ -1075,6 +1174,104 @@ fun AppLogoutConfirmDialog(
         iconTint = ErrorRed,
         confirmText = PopupTexts.Nav.LOGOUT_CONFIRM,
         onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+// ── Admin Domain Dialogs ──
+
+@Composable
+fun PeerLinkSetupFlowDialog(
+    initialBotToken: String,
+    initialGroupChatId: String,
+    initialPartnerUsername: String,
+    onComplete: (botToken: String, groupChatId: String, partnerUsername: String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var botToken by remember { mutableStateOf(initialBotToken) }
+    var groupChatId by remember { mutableStateOf(initialGroupChatId) }
+    var partnerUsername by remember { mutableStateOf(initialPartnerUsername) }
+
+    val steps = listOf(
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = "Admin Bot Token",
+            message = "Enter the standard Telegram Bot Token. This bot will be used to route all messages.",
+            icon = Icons.Filled.SmartToy,
+            iconTint = PrimaryLight,
+            confirmText = "Next",
+            customContent = {
+                OutlinedTextField(
+                    value = botToken,
+                    onValueChange = { botToken = it },
+                    placeholder = { Text("123456789:ABCdefGHIjklMNOpqrSTUvwxYZ") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryLight,
+                        unfocusedBorderColor = DividerColor,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = PrimaryLight
+                    )
+                )
+            }
+        ),
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = "Group Chat ID",
+            message = "Enter the ID of the Telegram Group that will act as the bridge between both bots.",
+            icon = Icons.Filled.Groups,
+            iconTint = PrimaryLight,
+            confirmText = "Next",
+            customContent = {
+                OutlinedTextField(
+                    value = groupChatId,
+                    onValueChange = { groupChatId = it },
+                    placeholder = { Text("-100123456789") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryLight,
+                        unfocusedBorderColor = DividerColor,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = PrimaryLight
+                    )
+                )
+            }
+        ),
+        com.mobile.superiorchat.ui.components.popups.DialogStep(
+            title = "Partner Bot Username",
+            message = "Enter the @username of the partner's bot. This ensures we only process messages from the correct source in the group.",
+            icon = Icons.Filled.PersonSearch,
+            iconTint = PrimaryLight,
+            confirmText = "Save",
+            customContent = {
+                OutlinedTextField(
+                    value = partnerUsername,
+                    onValueChange = { partnerUsername = it },
+                    placeholder = { Text("@partner_bot") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryLight,
+                        unfocusedBorderColor = DividerColor,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = PrimaryLight
+                    )
+                )
+            }
+        )
+    )
+
+    com.mobile.superiorchat.ui.components.popups.MultiStepActionDialog(
+        steps = steps,
+        initialStep = 0,
+        cancellable = true,
+        onComplete = { onComplete(botToken, groupChatId, partnerUsername) },
         onDismiss = onDismiss
     )
 }

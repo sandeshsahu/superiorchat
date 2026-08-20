@@ -135,7 +135,17 @@ class AppRepository(
     }
 
     suspend fun sendTextMessage(token: String, chatId: String, text: String, tempMessageId: Long, replyToMessageId: Long? = null): Boolean {
-        val sentId = TelegramApi.sendMessage(token, chatId, text, replyToMessageId = replyToMessageId)
+        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+        val targetChatId = prefs.activeChatId
+        
+        val targetText = if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) {
+            val safeUsername = prefs.peerLinkPartnerBotUsername.replace("_", "\\_").replace("*", "\\*")
+            "${safeUsername} $text"
+        } else {
+            text
+        }
+
+        val sentId = TelegramApi.sendMessage(token, targetChatId, targetText, replyToMessageId = replyToMessageId)
         return if (sentId != null) {
             messageDao.updateMessageIdAndStatus(tempMessageId, sentId, MessageStatus.SENT)
             true

@@ -131,7 +131,7 @@ class CallViewModel : ViewModel() {
         resetState()
         return kotlinx.coroutines.withContext(Dispatchers.IO) {
             val prefs = AppGraph.prefs
-            val chat = prefs.chatId
+            val chat = prefs.activeChatId
             
             // Fetch cached profile image for the UI avatar
             val profile = AppGraph.database.profileDao().getProfileSync(chat)
@@ -161,7 +161,7 @@ class CallViewModel : ViewModel() {
     suspend fun sendTelegramLink(): CallInitiationResult {
         return kotlinx.coroutines.withContext(Dispatchers.IO) {
             val prefs = AppGraph.prefs
-            val chat = prefs.chatId
+            val chat = prefs.activeChatId
             val token = prefs.botToken
             val telegramUrl = currentTelegramUrl
             
@@ -326,7 +326,7 @@ class CallViewModel : ViewModel() {
 
     fun recordLocalCallFailure(errorText: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            val chat = AppGraph.prefs.chatId
+            val chat = AppGraph.prefs.activeChatId
             if (chat.isEmpty()) return@launch
 
             val now = System.currentTimeMillis()

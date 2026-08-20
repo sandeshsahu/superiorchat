@@ -35,7 +35,7 @@ class MediaWorker(
 
         val prefs = Prefs.getInstance(context)
         val token = prefs.botToken
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         if (token.isEmpty() || chatId.isEmpty()) return@withContext Result.failure()
 
         // Check if the transfer has already completed, failed, or been cancelled by the user.

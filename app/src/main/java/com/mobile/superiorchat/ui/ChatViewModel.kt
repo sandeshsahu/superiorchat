@@ -72,7 +72,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val isTelegramApiReachable = AppLog.isTelegramApiReachable
     val isBotTokenInvalid = AppLog.isBotTokenInvalid
     
-    var isCredentialsEmpty by mutableStateOf(prefs.botToken.isBlank() || prefs.chatId.isBlank())
+    var isCredentialsEmpty by mutableStateOf(prefs.botToken.isBlank() || prefs.activeChatId.isBlank())
         private set
     
     var isRetryingConnection by mutableStateOf(false)
@@ -148,7 +148,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         lastReactionTime = now
 
         val token = prefs.botToken
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         if (token.isBlank() || chatId.isBlank()) return
 
         // Parse current reactions using structured JSON model
@@ -179,7 +179,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             if (NetState.isOnline.value) {
                 // Send only the last/most recent emoji to the API
                 val apiEmoji = myReactions.lastOrNull() ?: ""
-                val success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
+                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
+                val success = TelegramApi.setMessageReaction(token, targetChatId, message.messageId, apiEmoji)
                 if (!success) {
                     // Telegram has strict rate limits for reactions (429 Too Many Requests).
                     // We DO NOT roll back the local database anymore to keep the UI feeling fluid.
@@ -309,7 +310,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteSelectedMessages(messagesToDelete: List<MessageNode>) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
         val selected = messagesToDelete.filter { selectedMessageIds.contains(it.messageId) }
@@ -319,8 +320,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             selected.forEach { message ->
                 repository.deleteMessage(message.messageId)
                 var success = false
-                if (NetState.isOnline.value) {
-                    success = TelegramApi.deleteMessage(token, chatId, message.messageId)
+                if (isOnline.value) {
+                    val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
+                    success = TelegramApi.deleteMessage(token, targetChatId, message.messageId)
                 }
                 if (!success) {
                     AppLog.log(LogCategory.ERROR, "Failed to bulk-delete message ${message.messageId} via API")
@@ -367,7 +369,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
         if (key == "bot_token" || key == "chat_id") {
-            isCredentialsEmpty = prefs.botToken.isBlank() || prefs.chatId.isBlank()
+            isCredentialsEmpty = prefs.botToken.isBlank() || prefs.activeChatId.isBlank()
         }
         if (key == "chat_id") {
             loadMessages()
@@ -393,7 +395,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadMessages() {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         if (chatId.isBlank()) {
             _messages.value = emptyList()
             _isLoadingInitial.value = false
@@ -450,7 +452,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun forceSyncProfile(context: Context) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
@@ -459,7 +461,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun pinMessage(message: MessageNode) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
 
@@ -472,7 +474,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             
             if (isOnline.value) {
-                val success = TelegramApi.pinChatMessage(token, chatId, message.messageId)
+                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
+                val success = TelegramApi.pinChatMessage(token, targetChatId, message.messageId)
                 if (success) {
                     StatusFlow.reportStatus(SyncState.SUCCESS, "Message pinned")
                 } else {
@@ -497,7 +500,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun unpinMessage(message: MessageNode) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
 
@@ -510,7 +513,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             if (isOnline.value) {
-                val success = TelegramApi.unpinChatMessage(token, chatId, message.messageId)
+                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
+                val success = TelegramApi.unpinChatMessage(token, targetChatId, message.messageId)
                 if (success) {
                     StatusFlow.reportStatus(SyncState.SUCCESS, "Message unpinned")
                 } else {
@@ -535,7 +539,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendMessage(text: String) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         
         if (chatId.isBlank() || token.isBlank()) {
@@ -551,7 +555,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 repository.updateMessageText(msgToEdit.messageId, text)
                 var success = false
                 if (isOnline.value) {
-                    success = TelegramApi.editMessageText(token, chatId, msgToEdit.messageId, text)
+                    val targetChatId = prefs.activeChatId
+                    val targetText = if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) {
+                        val safeUsername = prefs.peerLinkPartnerBotUsername.replace("_", "\\_").replace("*", "\\*")
+                        "${safeUsername} $text"
+                    } else {
+                        text
+                    }
+                    success = TelegramApi.editMessageText(token, targetChatId, msgToEdit.messageId, targetText)
                 }
                 if (!success) {
                     AppLog.log(LogCategory.ERROR, "Failed to edit message via API")
@@ -591,7 +602,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendMedia(context: Context, uri: Uri, mediaType: String, caption: String? = null): Boolean {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         
         if (chatId.isBlank()) return false
 
@@ -657,7 +668,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun sendMediaBatch(context: Context, items: List<Pair<Uri, String>>, caption: String? = null): Boolean {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         if (chatId.isBlank()) return false
 
         val validItems = mutableListOf<Triple<Long, Uri, String>>()
@@ -737,7 +748,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun retryMessage(message: MessageNode) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
 
@@ -831,14 +842,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteMessage(message: MessageNode) {
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
             repository.deleteMessage(message.messageId)
             var success = false
             if (NetState.isOnline.value) {
-                success = TelegramApi.deleteMessage(token, chatId, message.messageId)
+                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
+                success = TelegramApi.deleteMessage(token, targetChatId, message.messageId)
             }
             if (!success) {
                 AppLog.log(LogCategory.ERROR, "Failed to delete message via API")

@@ -141,8 +141,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     val hasCredentials: Boolean
-        get() = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$")) && 
-                chatId.trim().matches(Regex("^-?[0-9]+$"))
+        get() {
+            val validToken = botToken.trim().matches(Regex("^[0-9]+:[a-zA-Z0-9_-]+$"))
+            val targetChatId = if (isPeerLinkEnabled) peerLinkGroupChatId else chatId
+            val validChatId = targetChatId.trim().matches(Regex("^-?[0-9]+$"))
+            return validToken && validChatId
+        }
 
     // -- App Lock State --
     var isDuressModeActive by mutableStateOf(false)
@@ -277,6 +281,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateAppNotificationsState(enabled: Boolean) {
         prefs.isAppNotificationsEnabled = enabled
         appNotificationsEnabled = enabled
+    }
+
+    // -- PeerLink State --
+    var isPeerLinkEnabled by mutableStateOf(prefs.isPeerLinkEnabled)
+        private set
+
+    fun togglePeerLink(enabled: Boolean) {
+        prefs.isPeerLinkEnabled = enabled
+        isPeerLinkEnabled = enabled
+    }
+
+    var peerLinkGroupChatId by mutableStateOf(prefs.peerLinkGroupChatId)
+        private set
+
+    fun updatePeerLinkGroupId(id: String) {
+        prefs.peerLinkGroupChatId = id
+        peerLinkGroupChatId = id
+    }
+
+    var peerLinkPartnerBotUsername by mutableStateOf(prefs.peerLinkPartnerBotUsername)
+        private set
+
+    fun updatePeerLinkPartnerUsername(username: String) {
+        prefs.peerLinkPartnerBotUsername = username
+        peerLinkPartnerBotUsername = username
+    }
+
+    var isPeerLinkLocked by mutableStateOf(prefs.isPeerLinkLocked)
+        private set
+
+    fun togglePeerLinkLocked(locked: Boolean) {
+        prefs.isPeerLinkLocked = locked
+        isPeerLinkLocked = locked
+        if (locked) {
+            // When locking, we should probably not turn off admin mode automatically?
+            // User requested no complex logic here, it just locks UI interaction.
+        }
+    }
+
+    var isAdminModeEnabled by mutableStateOf(prefs.isAdminModeEnabled)
+        private set
+
+    fun toggleAdminMode(enabled: Boolean) {
+        prefs.isAdminModeEnabled = enabled
+        isAdminModeEnabled = enabled
     }
 
     // -- Permissions State --

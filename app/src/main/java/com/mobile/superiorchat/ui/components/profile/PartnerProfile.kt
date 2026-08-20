@@ -48,7 +48,7 @@ fun PartnerProfile(
     val title = userProfile?.title?.ifEmpty { "Unknown" } ?: "Unknown"
     val username = userProfile?.username ?: ""
     val type = userProfile?.type ?: "private"
-    val chatId = userProfile?.chatId ?: prefs.chatId
+    val chatId = userProfile?.chatId ?: prefs.activeChatId
     val bio = userProfile?.bio ?: ""
     val inviteLink = userProfile?.inviteLink ?: ""
     val hasProtectedContent = userProfile?.hasProtectedContent ?: false

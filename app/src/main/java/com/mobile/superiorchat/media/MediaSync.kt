@@ -149,7 +149,7 @@ object MediaSync {
         cancelledTransfers.remove(messageId)
         val prefs = com.mobile.superiorchat.core.AppGraph.prefs
         val token = prefs.botToken
-        val chatId = prefs.chatId
+        val chatId = prefs.activeChatId
         if (token.isEmpty() || chatId.isEmpty()) {
             AppLog.log(LogCategory.SYSTEM, "startUploadImmediate: Missing token or chatId, skipping.", LogLevel.WARN)
             return
@@ -393,14 +393,23 @@ object MediaSync {
                         StatusFlow.updateProgress(messageId, prog)
                     }
                 }
-                val caption = msg?.text?.takeIf { it.isNotBlank() }
+                val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+                val targetChatId = prefs.activeChatId
+                var baseCaption = msg?.text?.takeIf { it.isNotBlank() } ?: ""
+                val targetCaption = if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) {
+                    val safeUsername = prefs.peerLinkPartnerBotUsername.replace("_", "\\_").replace("*", "\\*")
+                    if (baseCaption.isNotBlank()) "${safeUsername} $baseCaption" else safeUsername
+                } else {
+                    baseCaption.takeIf { it.isNotBlank() }
+                }
+
                 when (mediaType) {
-                    "photo" -> TelegramApi.sendPhoto(token, chatId, file, caption = caption, onProgress = progressListener)
-                    "video" -> TelegramApi.sendVideo(token, chatId, file, caption = caption, onProgress = progressListener)
-                    "voice" -> TelegramApi.sendVoice(token, chatId, file, caption = caption, onProgress = progressListener)
-                    "audio" -> TelegramApi.sendAudio(token, chatId, file, caption = caption, onProgress = progressListener)
+                    "photo" -> TelegramApi.sendPhoto(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
+                    "video" -> TelegramApi.sendVideo(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
+                    "voice" -> TelegramApi.sendVoice(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
+                    "audio" -> TelegramApi.sendAudio(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
                     "document" -> {
-                        TelegramApi.sendDocument(token, chatId, file, caption = caption ?: "", displayName = displayName, onProgress = progressListener)
+                        TelegramApi.sendDocument(token, targetChatId, file, caption = targetCaption ?: "", displayName = displayName, onProgress = progressListener)
                     }
                     else -> null
                 }

@@ -79,7 +79,7 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         scope.launch {
-            val profile = AppGraph.database.profileDao().getProfileSync(AppGraph.prefs.chatId)
+            val profile = AppGraph.database.profileDao().getProfileSync(AppGraph.prefs.activeChatId)
             val senderName = profile?.title ?: message.from?.first_name ?: "Unknown"
             
             val personBuilder = Person.Builder().setName(senderName)

@@ -87,6 +87,7 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
     Permissions("Permissions", Icons.Filled.Lock),
     Logs("App Logs", Icons.Filled.Terminal),
     AppSettings("App Settings", Icons.Filled.Settings),
+    AdminSettings("Admin Settings", Icons.Filled.AdminPanelSettings),
     CallHistory("Call History", Icons.Filled.History)
 }
 
@@ -257,7 +258,7 @@ fun AppScreen(
 
     if (currentScreen != NavScreen.Chat) {
         BackHandler {
-            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
+            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory, NavScreen.AdminSettings)) {
                 currentScreen = NavScreen.AppInformation
             } else {
                 currentScreen = NavScreen.Chat
@@ -458,7 +459,7 @@ fun AppScreen(
                                         )
                                     },
                                     navigationIcon = {
-                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
+                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory, NavScreen.AdminSettings)) {
                                             IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
                                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryLight)
                                             }
@@ -633,6 +634,10 @@ fun AppScreen(
                                 isTileAccessEnabled = viewModel.tileAccessEnabled,
                                 customAccessWord = viewModel.customAccessWord,
                                 customDialerCode = viewModel.customDialerCode,
+                                isPeerLinkEnabled = viewModel.isPeerLinkEnabled,
+                                isAdminModeEnabled = viewModel.isAdminModeEnabled,
+                                peerLinkPartnerBotUsername = viewModel.peerLinkPartnerBotUsername,
+                                onPeerLinkPartnerBotUsernameChange = { viewModel.updatePeerLinkPartnerUsername(it) },
                                 onBotTokenChange = { viewModel.botToken = it },
                                 onChatIdChange = { viewModel.chatId = it },
                                 onTileAccessChange = { viewModel.toggleTileAccess(it) },
@@ -665,6 +670,7 @@ fun AppScreen(
                                     prefs.appLockPinLength = pin.length
                                 },
                                 verifyPin = { pin -> viewModel.verifyPin(pin) },
+                                onNavigateToAdmin = { currentScreen = NavScreen.AdminSettings },
                                 onSave = { viewModel.saveCredentials() },
                                 onClearCredentials = {
                                     viewModel.botToken = ""
@@ -672,6 +678,12 @@ fun AppScreen(
                                     viewModel.saveCredentials()
                                 },
                                 onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) },
+                                onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+                            )
+                        }
+                        NavScreen.AdminSettings -> {
+                            AdminScreen(
+                                viewModel = viewModel,
                                 onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                             )
                         }

@@ -60,6 +60,10 @@ fun AppSettingsPage(
     customAccessWord: String = "",
     customDialerCode: String = "",
     onCustomDialerCodeChange: (String) -> Unit = {},
+    isPeerLinkEnabled: Boolean = false,
+    isAdminModeEnabled: Boolean = false,
+    peerLinkPartnerBotUsername: String = "",
+    onPeerLinkPartnerBotUsernameChange: (String) -> Unit = {},
     webrtcBaseUrl: String,
     appTheme: com.mobile.superiorchat.theme.AppTheme,
     onAppThemeChange: (com.mobile.superiorchat.theme.AppTheme) -> Unit,
@@ -80,7 +84,8 @@ fun AppSettingsPage(
     onSave: () -> Unit,
     onClearCredentials: () -> Unit,
     onClearChat: (Boolean) -> Unit,
-    onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {}
+    onShowGlobalDialog: (com.mobile.superiorchat.ui.GlobalDialogState) -> Unit = {},
+    onNavigateToAdmin: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -93,6 +98,7 @@ fun AppSettingsPage(
     var showNetworkError by remember { mutableStateOf(false) }
     var showDangerZone by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showAdminModeActiveWarning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
     val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
@@ -155,10 +161,13 @@ fun AppSettingsPage(
         com.mobile.superiorchat.ui.components.popups.CredentialsPopup(
             initialToken = botToken,
             initialChatId = chatId,
+            initialPartnerUsername = peerLinkPartnerBotUsername,
+            isPeerLinkEnabled = isPeerLinkEnabled,
             onDismiss = { showAddManuallyDialog = false },
-            onSave = { token, chat ->
+            onSave = { token, chat, partner ->
                 onBotTokenChange(token)
                 onChatIdChange(chat)
+                onPeerLinkPartnerBotUsernameChange(partner)
                 onSave()
                 showAddManuallyDialog = false
                 com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
@@ -223,6 +232,13 @@ fun AppSettingsPage(
                 showWebRtcConfigPopup = false
                 com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "WebRTC URL Updated")
             }
+        )
+    }
+
+    if (showAdminModeActiveWarning) {
+        SettingsAdminModeActiveDialog(
+            onDismiss = { showAdminModeActiveWarning = false },
+            onNavigateToAdmin = onNavigateToAdmin
         )
     }
 
@@ -825,7 +841,13 @@ fun AppSettingsPage(
                     subtitle = "Type credentials by hand",
                     icon = if (isConfigured) Icons.Filled.Edit else Icons.Filled.Add,
                     iconTint = PrimaryLight,
-                    onClick = { showAddManuallyDialog = true }
+                    onClick = {
+                        if (isAdminModeEnabled) {
+                            showAdminModeActiveWarning = true
+                        } else {
+                            showAddManuallyDialog = true
+                        }
+                    }
                 )
 
                 SettingsActionRow(
@@ -836,9 +858,13 @@ fun AppSettingsPage(
                     background = PrimaryLight,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     isGlow = true,
-                    onClick = { 
-                        permissionHandler.requestCamera {
-                            showQrScanner = true
+                    onClick = {
+                        if (isAdminModeEnabled) {
+                            showAdminModeActiveWarning = true
+                        } else {
+                            permissionHandler.requestCamera {
+                                showQrScanner = true
+                            }
                         }
                     }
                 )
@@ -986,7 +1012,7 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
-private fun SettingsActionRow(
+fun SettingsActionRow(
     title: String,
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1025,7 +1051,7 @@ private fun SettingsActionRow(
 }
 
 @Composable
-private fun SettingsSwitchRow(
+fun SettingsSwitchRow(
     title: String,
     subtitle: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -1312,7 +1338,7 @@ private fun DangerRow(
 }
 
 @Composable
-private fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
+fun SettingsCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()

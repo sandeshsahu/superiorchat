@@ -85,6 +85,9 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    val activeChatId: String
+        get() = if (isPeerLinkEnabled && isAdminModeEnabled && peerLinkGroupChatId.isNotBlank()) peerLinkGroupChatId else chatId
+
     private var _lastUpdateId: Long = sharedPreferences.getLong("last_update_id", 0L)
     var lastUpdateId: Long
         get() = _lastUpdateId
@@ -216,7 +219,7 @@ class Prefs private constructor(context: Context) {
         }
 
     val isConfigured: Boolean
-        get() = botToken.isNotEmpty() && chatId.isNotEmpty()
+        get() = botToken.isNotEmpty() && activeChatId.isNotEmpty()
 
     private var _vaultPaths: Set<String> = sharedPreferences.getStringSet("vault_paths", emptySet<String>()) ?: emptySet()
     var vaultPaths: Set<String>
@@ -233,6 +236,56 @@ class Prefs private constructor(context: Context) {
             if (_appTheme != value) {
                 _appTheme = value
                 sharedPreferences.edit().putString("app_theme", value).apply()
+            }
+        }
+
+    private var _isPeerLinkEnabled: Boolean = sharedPreferences.getBoolean("is_peerlink_enabled", false)
+    var isPeerLinkEnabled: Boolean
+        get() = _isPeerLinkEnabled
+        set(value) {
+            if (_isPeerLinkEnabled != value) {
+                _isPeerLinkEnabled = value
+                sharedPreferences.edit().putBoolean("is_peerlink_enabled", value).apply()
+            }
+        }
+
+    private var _peerLinkGroupChatId: String = sharedPreferences.getString("peerlink_group_chat_id", "").orEmpty()
+    var peerLinkGroupChatId: String
+        get() = _peerLinkGroupChatId
+        set(value) {
+            if (_peerLinkGroupChatId != value) {
+                _peerLinkGroupChatId = value
+                sharedPreferences.edit().putString("peerlink_group_chat_id", value).apply()
+            }
+        }
+
+    private var _peerLinkPartnerBotUsername: String = sharedPreferences.getString("peerlink_partner_bot_username", "").orEmpty()
+    var peerLinkPartnerBotUsername: String
+        get() = _peerLinkPartnerBotUsername
+        set(value) {
+            if (_peerLinkPartnerBotUsername != value) {
+                _peerLinkPartnerBotUsername = value
+                sharedPreferences.edit().putString("peerlink_partner_bot_username", value).apply()
+            }
+        }
+
+    private var _isPeerLinkLocked: Boolean = sharedPreferences.getBoolean("is_peerlink_locked", false)
+    var isPeerLinkLocked: Boolean
+        get() = _isPeerLinkLocked
+        set(value) {
+            if (_isPeerLinkLocked != value) {
+                _isPeerLinkLocked = value
+                sharedPreferences.edit().putBoolean("is_peerlink_locked", value).apply()
+            }
+        }
+
+    private var _isAdminModeEnabled: Boolean = sharedPreferences.getBoolean("is_admin_mode_enabled", false)
+    var isAdminModeEnabled: Boolean
+        get() = _isAdminModeEnabled
+        set(value) {
+            if (_isAdminModeEnabled != value) {
+                _isAdminModeEnabled = value
+                sharedPreferences.edit().putBoolean("is_admin_mode_enabled", value).apply()
             }
         }
 

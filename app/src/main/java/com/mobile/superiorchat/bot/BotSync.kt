@@ -222,8 +222,12 @@ class BotSync(private val context: Context) {
         if (update.edited_message != null) {
             val editedMsg = update.edited_message
             if (editedMsg.text != null) {
-                repository.updateMessageText(editedMsg.message_id, editedMsg.text)
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${editedMsg.text.take(50)}")
+                var text = editedMsg.text
+                if (AppGraph.prefs.isPeerLinkEnabled) {
+                    text = text.replaceFirst(Regex("^@[\\w_]+\\s+"), "")
+                }
+                repository.updateMessageText(editedMsg.message_id, text)
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${text.take(50)}")
             }
             return
         }
@@ -250,14 +254,29 @@ class BotSync(private val context: Context) {
 
         // Intruder filtering: only accept messages from the target chat
         val senderId = message.from?.id?.toString() ?: ""
-        val targetChatId = AppGraph.prefs.chatId
-        if (targetChatId.isNotEmpty() && message.chat.id.toString() != targetChatId) {
-            AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected! Ignored message from chat ${message.chat.id}", LogLevel.WARN)
-            return
+        val prefs = AppGraph.prefs
+        if (prefs.isPeerLinkEnabled) {
+            val expectedGroupId = prefs.activeChatId
+            val expectedPartner = prefs.peerLinkPartnerBotUsername.removePrefix("@")
+            val fromUser = message.from?.username ?: ""
+            if (expectedGroupId.isEmpty() || message.chat.id.toString() != expectedGroupId || fromUser != expectedPartner) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from chat ${message.chat.id}, user $fromUser", LogLevel.WARN)
+                return
+            }
+        } else {
+            val targetChatId = prefs.activeChatId
+            if (targetChatId.isEmpty() || message.chat.id.toString() != targetChatId) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected! Ignored message from chat ${message.chat.id}", LogLevel.WARN)
+                return
+            }
         }
 
         val chatId = message.chat.id.toString()
-        val text = message.text ?: message.caption ?: ""
+        var text = message.text ?: message.caption ?: ""
+        
+        if (prefs.isPeerLinkEnabled) {
+            text = text.replaceFirst(Regex("^@[\\w_]+\\s+"), "")
+        }
 
         // All incoming messages from polling are from Client B (isFromMe = false)
         var mediaType: String? = null
@@ -421,7 +440,7 @@ class BotSync(private val context: Context) {
         coroutineScope.launch(Dispatchers.IO) {
             if (!isNetworkAvailable) return@launch
             val token = prefs.botToken
-            val chatId = prefs.chatId
+            val chatId = prefs.activeChatId
             if (token.isEmpty() || chatId.isEmpty()) return@launch
             MediaSync.syncTargetProfile(context, token, chatId)
         }

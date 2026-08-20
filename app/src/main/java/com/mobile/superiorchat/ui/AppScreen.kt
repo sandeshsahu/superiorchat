@@ -121,6 +121,13 @@ fun AppScreenPage(
                     iconTint = PrimaryLight,
                     onClick = { onNavigate(NavScreen.AppSettings) }
                 )
+                AppScreenActionRow(
+                    title = "Admin Settings",
+                    subtitle = "Advanced configuration",
+                    icon = Icons.Filled.AdminPanelSettings,
+                    iconTint = PrimaryLight,
+                    onClick = { onNavigate(NavScreen.AdminSettings) }
+                )
             }
         }
 

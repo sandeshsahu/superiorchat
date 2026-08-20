@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
@@ -797,16 +798,24 @@ fun BlurredPopup(
 fun CredentialsPopup(
     initialToken: String = "",
     initialChatId: String = "",
+    initialPartnerUsername: String = "",
+    isPeerLinkEnabled: Boolean = false,
     onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
+    onSave: (String, String, String) -> Unit
 ) {
     var botToken by remember { mutableStateOf(initialToken) }
     var chatId by remember { mutableStateOf(initialChatId) }
+    var partnerUsername by remember { mutableStateOf(initialPartnerUsername) }
     var tokenVisible by remember { mutableStateOf(false) }
 
     val isTokenValid by remember(botToken) { derivedStateOf { botToken.isBlank() || com.mobile.superiorchat.utils.Validator.isValidBotToken(botToken.trim()) } }
     val isChatIdValid by remember(chatId) { derivedStateOf { chatId.isBlank() || com.mobile.superiorchat.utils.Validator.isValidChatId(chatId.trim()) } }
-    val canSave by remember(botToken, chatId, isTokenValid, isChatIdValid) { derivedStateOf { botToken.isNotBlank() && chatId.isNotBlank() && isTokenValid && isChatIdValid } }
+    val canSave by remember(botToken, chatId, partnerUsername, isTokenValid, isChatIdValid, isPeerLinkEnabled) { 
+        derivedStateOf { 
+            botToken.isNotBlank() && chatId.isNotBlank() && isTokenValid && isChatIdValid && 
+            (!isPeerLinkEnabled || partnerUsername.isNotBlank())
+        } 
+    }
 
     val title = if (initialToken.isNotBlank()) "Edit Credentials" else "Add Credentials"
 
@@ -894,12 +903,47 @@ fun CredentialsPopup(
                 }
             }
             
+            if (isPeerLinkEnabled) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Surface(
+                    color = SurfaceLevel1,
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, DividerColor),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Partner Bot Username", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        OutlinedTextField(
+                            value = partnerUsername,
+                            onValueChange = { partnerUsername = it },
+                            placeholder = { Text("e.g. @partner_bot", color = TextSecondary, fontSize = 13.sp) },
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = SurfaceLevel2,
+                                focusedContainerColor = SurfaceLevel2,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedBorderColor = PrimaryLight,
+                                unfocusedTextColor = TextPrimary,
+                                focusedTextColor = TextPrimary
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        )
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(16.dp))
             
             Button(
                 onClick = {
                     if (canSave) {
-                        onSave(botToken.trim(), chatId.trim())
+                        onSave(botToken.trim(), chatId.trim(), partnerUsername.trim())
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
