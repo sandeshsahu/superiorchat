@@ -138,12 +138,7 @@ class AppRepository(
         val prefs = com.mobile.superiorchat.core.AppGraph.prefs
         val targetChatId = prefs.activeChatId
         
-        val targetText = if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) {
-            val safeUsername = prefs.peerLinkPartnerBotUsername.replace("_", "\\_").replace("*", "\\*")
-            "${safeUsername} $text"
-        } else {
-            text
-        }
+        val targetText = text
 
         val sentId = TelegramApi.sendMessage(token, targetChatId, targetText, replyToMessageId = replyToMessageId)
         return if (sentId != null) {

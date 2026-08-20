@@ -256,9 +256,6 @@ class BotSync(private val context: Context) {
             val editedMsg = update.edited_message
             if (editedMsg.text != null) {
                 var text = editedMsg.text
-                if (AppGraph.prefs.isPeerLinkEnabled) {
-                    text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
-                }
                 val existingMsg = repository.getMessageById(editedMsg.message_id)
                 if (existingMsg?.mediaType == "call_event" && prefs.isPeerLinkEnabled) {
                     // Check if the caller aborted the call
@@ -321,7 +318,6 @@ class BotSync(private val context: Context) {
         var text = message.text ?: message.caption ?: ""
         
         if (prefs.isPeerLinkEnabled) {
-            text = text.replaceFirst(Regex("^@[\\w_]+(?:\\s+|$)"), "")
             
             if (text.trim() == "[SYS-CALL-DECLINED]" || text.trim() == "[SYS_CALL_DECLINED]") {
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink decline signal")
@@ -487,8 +483,11 @@ class BotSync(private val context: Context) {
         AppLog.log(LogCategory.BOT_ACTIVITY, "Received message: ${text.take(50)}")
 
         // Route for notification
-        if (prefs.isNewMessageNotificationEnabled) {
-            notifier.routeUpdate(update)
+        if (message.chat.id.toString() == prefs.activeChatId && !isAlreadyOnDisk) {
+            // Don't show push notifications for incoming peerlink calls, the ringer handles it!
+            if (!(prefs.isPeerLinkEnabled && mediaType == "call_event")) {
+                notifier.routeUpdate(update)
+            }
         }
     }
 

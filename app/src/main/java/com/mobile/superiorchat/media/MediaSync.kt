@@ -396,12 +396,7 @@ object MediaSync {
                 val prefs = com.mobile.superiorchat.core.AppGraph.prefs
                 val targetChatId = prefs.activeChatId
                 var baseCaption = msg?.text?.takeIf { it.isNotBlank() } ?: ""
-                val targetCaption = if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) {
-                    val safeUsername = prefs.peerLinkPartnerBotUsername.replace("_", "\\_").replace("*", "\\*")
-                    if (baseCaption.isNotBlank()) "${safeUsername} $baseCaption" else safeUsername
-                } else {
-                    baseCaption.takeIf { it.isNotBlank() }
-                }
+                val targetCaption = baseCaption.takeIf { it.isNotBlank() }
 
                 when (mediaType) {
                     "photo" -> TelegramApi.sendPhoto(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)

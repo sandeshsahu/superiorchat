@@ -556,12 +556,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 var success = false
                 if (isOnline.value) {
                     val targetChatId = prefs.activeChatId
-                    val targetText = if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) {
-                        val safeUsername = prefs.peerLinkPartnerBotUsername.replace("_", "\\_").replace("*", "\\*")
-                        "${safeUsername} $text"
-                    } else {
-                        text
-                    }
+                    val targetText = text
                     success = TelegramApi.editMessageText(token, targetChatId, msgToEdit.messageId, targetText)
                 }
                 if (!success) {
