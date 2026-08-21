@@ -92,6 +92,7 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
 }
 
 enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, INITIALIZING_HARDWARE, SENDING_LINK, FAILED_SENDING, SUCCESS }
+enum class ReceiverConnectionState { IDLE, VALIDATING, INITIALIZING_HARDWARE, FAILED_VALIDATING, FAILED_HARDWARE }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -143,7 +144,9 @@ fun AppScreen(
     val callViewModel: CallViewModel = viewModel()
     var isCallMinimized by remember { mutableStateOf(false) }
     var callConfirmationState by remember { mutableStateOf(CallInitiationState.IDLE) }
+    var receiverConnectionState by remember { mutableStateOf(ReceiverConnectionState.IDLE) }
     var hardwareInitTimer by remember { mutableIntStateOf(0) }
+    var receiverHardwareTimer by remember { mutableIntStateOf(0) }
     var showScanPrompt by remember { mutableStateOf(false) }
 
     val activity = context as? android.app.Activity
@@ -737,19 +740,23 @@ fun AppScreen(
                         callerName = CallManager.incomingCallerName,
                         onAccept = { 
                             permissionHandler.requestAudioAndCamera {
-                                callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
+                                receiverConnectionState = ReceiverConnectionState.VALIDATING
                                 CallManager.acceptIncomingCall(context)
-                                hardwareInitTimer = 0
+                                receiverHardwareTimer = 0
                                 scope.launch {
-                                    while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                    while (receiverHardwareTimer < 30 && (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
                                         kotlinx.coroutines.delay(1000)
-                                        hardwareInitTimer++
+                                        receiverHardwareTimer++
                                     }
-                                    if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                    if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
+                                        com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
+                                        CallManager.endCall()
+                                        receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
+                                    } else if (receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
                                         com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
                                         CallManager.endCall()
                                         CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                        callConfirmationState = CallInitiationState.IDLE
+                                        receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
                                     }
                                 }
                             }
@@ -761,13 +768,16 @@ fun AppScreen(
                     if (callUrl != null) {
                         CallScreen(
                             url = callUrl,
-                            isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE,
+                            isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE || receiverConnectionState != ReceiverConnectionState.IDLE,
                             onMinimize = { isCallMinimized = true },
                             onMaximize = { 
                                 keyboardController?.hide()
                                 isCallMinimized = false 
                             },
-                            onEndCall = { isCallMinimized = false },
+                            onEndCall = { 
+                                isCallMinimized = false
+                                receiverConnectionState = ReceiverConnectionState.IDLE
+                            },
                             modifier = Modifier
                         )
                     }
@@ -784,6 +794,8 @@ fun AppScreen(
                 
                 val shouldShowError = callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && 
                                       !(callFailedError == com.mobile.superiorchat.core.call.CallError.DECLINED && CallManager.isIncomingCall) &&
+                                      receiverConnectionState == ReceiverConnectionState.IDLE &&
+                                      callConfirmationState == CallInitiationState.IDLE &&
                                       callState == CallState.IDLE
                                       
                 if (shouldShowError) {
@@ -869,30 +881,84 @@ fun AppScreen(
                     )
                 }
 
+                if (receiverConnectionState != ReceiverConnectionState.IDLE) {
+                    val isFailed = receiverConnectionState == ReceiverConnectionState.FAILED_VALIDATING || receiverConnectionState == ReceiverConnectionState.FAILED_HARDWARE
+                    val isLoading = receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE
+                    
+                    CallInitiationDialog(
+                        title = when (receiverConnectionState) {
+                            ReceiverConnectionState.VALIDATING -> "Validating Host..."
+                            ReceiverConnectionState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
+                            ReceiverConnectionState.FAILED_VALIDATING -> "Host Unreachable"
+                            ReceiverConnectionState.FAILED_HARDWARE -> "Hardware Error"
+                            else -> ""
+                        },
+                        message = when (receiverConnectionState) {
+                            ReceiverConnectionState.VALIDATING -> "Connecting to caller...\nWaiting: $receiverHardwareTimer / 30 seconds"
+                            ReceiverConnectionState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $receiverHardwareTimer / 30 seconds"
+                            ReceiverConnectionState.FAILED_VALIDATING -> "The host is no longer calling or your network connection dropped."
+                            ReceiverConnectionState.FAILED_HARDWARE -> "Could not acquire media permissions or hardware failed to start."
+                            else -> ""
+                        },
+                        note = null,
+                        isFailed = isFailed,
+                        isLoading = isLoading,
+                        isSuccess = false,
+                        onConfirm = { 
+                            receiverConnectionState = ReceiverConnectionState.IDLE 
+                            CallManager.clearCallError()
+                        },
+                        onDismiss = {
+                            CallManager.endCall()
+                            CallManager.clearCallError()
+                            receiverConnectionState = ReceiverConnectionState.IDLE
+                        }
+                    )
+                }
+
+                // Handle Validation Passed Callback from ViewModel (Receiver)
+                LaunchedEffect(Unit) {
+                    callViewModel.validationPassedEvent.collectLatest {
+                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
+                            receiverConnectionState = ReceiverConnectionState.INITIALIZING_HARDWARE
+                            receiverHardwareTimer = 0
+                        }
+                    }
+                }
+
                 // Handle Hardware Ready Callback from ViewModel
                 LaunchedEffect(Unit) {
                     callViewModel.hardwareReadyEvent.collectLatest { 
-                        if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                            if (CallManager.isIncomingCall) {
-                                callConfirmationState = CallInitiationState.SUCCESS
-                                kotlinx.coroutines.delay(500)
-                                callConfirmationState = CallInitiationState.IDLE
-                                isCallMinimized = false
-                            } else {
-                                callConfirmationState = CallInitiationState.SENDING_LINK
-                                val result = callViewModel.sendTelegramLink()
-                                
-                                // Check if user cancelled while sending link
-                                if (callConfirmationState == CallInitiationState.SENDING_LINK) {
-                                    if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
-                                        callConfirmationState = CallInitiationState.SUCCESS
-                                        kotlinx.coroutines.delay(500)
-                                        callConfirmationState = CallInitiationState.IDLE
-                                        isCallMinimized = false
-                                    } else {
-                                        callConfirmationState = CallInitiationState.FAILED_SENDING
-                                    }
+                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                            receiverConnectionState = ReceiverConnectionState.IDLE
+                            isCallMinimized = false
+                        } else if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                            callConfirmationState = CallInitiationState.SENDING_LINK
+                            val result = callViewModel.sendTelegramLink()
+                            
+                            // Check if user cancelled while sending link
+                            if (callConfirmationState == CallInitiationState.SENDING_LINK) {
+                                if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
+                                    callConfirmationState = CallInitiationState.SUCCESS
+                                    kotlinx.coroutines.delay(500)
+                                    callConfirmationState = CallInitiationState.IDLE
+                                    isCallMinimized = false
+                                } else {
+                                    callConfirmationState = CallInitiationState.FAILED_SENDING
                                 }
+                            }
+                        }
+                    }
+                }
+
+                // Handle WebRTC/CallEngine Error Callbacks
+                LaunchedEffect(Unit) {
+                    callViewModel.errorEvent.collectLatest { errorMsg ->
+                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                            if (errorMsg.contains("Host unreachable", ignoreCase = true) || errorMsg.contains("expired", ignoreCase = true) || errorMsg.contains("unreachable", ignoreCase = true)) {
+                                receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
+                            } else {
+                                receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
                             }
                         }
                     }

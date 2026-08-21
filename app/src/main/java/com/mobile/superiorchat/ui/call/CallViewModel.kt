@@ -43,8 +43,14 @@ class CallViewModel : ViewModel() {
     val isRemoteVideoOn: StateFlow<Boolean> = _isRemoteVideoOn.asStateFlow()
 
     private val _isControlsVisible = MutableStateFlow(true)
+    private val _validationPassedEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
+    val validationPassedEvent = _validationPassedEvent.asSharedFlow()
+
     private val _hardwareReadyEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>()
     val hardwareReadyEvent = _hardwareReadyEvent.asSharedFlow()
+
+    private val _errorEvent = kotlinx.coroutines.flow.MutableSharedFlow<String>()
+    val errorEvent = _errorEvent.asSharedFlow()
 
     private var currentTelegramUrl: String? = null
 
@@ -115,6 +121,12 @@ class CallViewModel : ViewModel() {
     }
     fun setRemoteAudioLevel(level: Float) { _remoteAudioLevel.value = level }
 
+    fun onValidationPassed() {
+        viewModelScope.launch {
+            _validationPassedEvent.emit(Unit)
+        }
+    }
+
     private fun resetState() {
         _isMuted.value = false
         _isVideoOn.value = false
@@ -155,6 +167,12 @@ class CallViewModel : ViewModel() {
     fun onHardwareReady() {
         viewModelScope.launch {
             _hardwareReadyEvent.emit(Unit)
+        }
+    }
+
+    fun onError(errorMsg: String) {
+        viewModelScope.launch {
+            _errorEvent.emit(errorMsg)
         }
     }
 

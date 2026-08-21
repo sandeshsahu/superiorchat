@@ -290,11 +290,25 @@ async function init() {
         rtc.on.ready = () => {
             rtc.checkHostActive(joinId, secret, 5, (attempt, max) => {
                 ui.setStatus(`Validating Link.. (Attempt ${attempt}/${max})`);
-            }).then(isValid => {
+            }).then(async (isValid) => {
                 if (isValid) {
                     ui.setStatus('Connection ready. Tap to join.');
                     if (isAndroidApp) {
-                        if (ui.btnJoin) ui.btnJoin.click();
+                        notifyAndroid('validation_passed', '');
+                        try {
+                            const stream = await rtc.acquireMedia();
+                            if (!stream || !stream.getAudioTracks()[0] || stream.getAudioTracks()[0].readyState !== 'live') {
+                                notifyAndroid('error', 'Microphone not ready. Please check permissions.');
+                                return;
+                            }
+                            ui.attachLocalStream(stream, rtc.currentFacingMode);
+                            notifyAndroid('hardware_ready', '');
+
+                            rtc.placeCall(joinId, secret);
+                            ui.showActiveCallUI();
+                        } catch (err) {
+                            notifyAndroid('error', 'Media Error: ' + err.name + ' - ' + err.message);
+                        }
                     } else if (ui.btnJoin) {
                         ui.btnJoin.style.display = 'block';
                     }

@@ -99,7 +99,9 @@ fun CallScreen(
         CallEngine(
             onRemoteVideoStateChanged = { viewModel.setRemoteVideo(it) },
             onLocalVideoStateChanged = { viewModel.setLocalVideo(it) },
+            onValidationPassed = { viewModel.onValidationPassed() },
             onHardwareReady = { viewModel.onHardwareReady() },
+            onError = { viewModel.onError(it) },
             onAudioLevelChanged = { viewModel.setRemoteAudioLevel(it) },
             onVideoSwapped = { viewModel.setSwappedVideo(it) }
         )

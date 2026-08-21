@@ -16,7 +16,9 @@ import com.mobile.superiorchat.utils.LogCategory
 class CallEngine(
     private val onRemoteVideoStateChanged: (Boolean) -> Unit,
     private val onLocalVideoStateChanged: (Boolean) -> Unit,
+    private val onValidationPassed: (() -> Unit)? = null,
     private val onHardwareReady: (() -> Unit)? = null,
+    private val onError: ((String) -> Unit)? = null,
     private val onAudioLevelChanged: ((Float) -> Unit)? = null,
     private val onVideoSwapped: ((Boolean) -> Unit)? = null
 ) {
@@ -88,6 +90,7 @@ class CallEngine(
             "reconnecting" -> AppLog.log(LogCategory.SYSTEM, "WebRTC reconnecting...")
             "error" -> {
                 AppLog.log(LogCategory.SYSTEM, "PeerJS Error: $data")
+                onError?.invoke(data)
                 if (CallManager.callState.value != CallState.ACTIVE) {
                     CallManager.endCall()
                 }
@@ -95,6 +98,7 @@ class CallEngine(
             "ended" -> CallManager.endCall()
             "remote_video" -> { onRemoteVideoStateChanged(data == "on") }
             "local_video" -> { onLocalVideoStateChanged(data == "on") }
+            "validation_passed" -> { onValidationPassed?.invoke() }
             "hardware_ready" -> { onHardwareReady?.invoke() }
             "audio_level" -> { onAudioLevelChanged?.invoke(data.toFloatOrNull() ?: 0f) }
             "video_swapped" -> { onVideoSwapped?.invoke(data == "true") }

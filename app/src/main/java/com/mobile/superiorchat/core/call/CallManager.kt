@@ -309,8 +309,12 @@ object CallManager {
             return
         }
 
-        currentCallUrl = url
-        currentBaseUrl = url.substringBefore("/call.html")
+        val formattedUrl = if (!url.contains("isApp=true")) {
+            if (url.contains("#")) "$url&isApp=true" else "$url#isApp=true"
+        } else url
+
+        currentCallUrl = formattedUrl
+        currentBaseUrl = formattedUrl.substringBefore("/call.html")
         incomingCallerName = callerName
         isIncomingCall = true
         incomingTelegramMsgId = msgId
