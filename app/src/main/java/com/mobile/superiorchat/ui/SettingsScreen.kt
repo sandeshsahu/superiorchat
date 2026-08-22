@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -1020,21 +1021,28 @@ fun SettingsActionRow(
     background: androidx.compose.ui.graphics.Color = SurfaceLevel2,
     contentColor: androidx.compose.ui.graphics.Color = TextPrimary,
     isGlow: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    var modifier = Modifier
-        .fillMaxWidth()
-        .bounceClick(scaleDown = 0.95f) { onClick() }
-        
-    if (isGlow) {
-        modifier = modifier.glow(color = background, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 14.dp)
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.4f,
+        label = "action_row_alpha"
+    )
+
+    var modifier = Modifier.fillMaxWidth()
+    if (enabled) {
+        modifier = modifier.bounceClick(scaleDown = 0.95f) { onClick() }
+        if (isGlow) {
+            modifier = modifier.glow(color = background, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 14.dp)
+        }
     }
     
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(background)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .graphicsLayer { alpha = animatedAlpha },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1058,12 +1066,17 @@ fun SettingsSwitchRow(
     iconTint: androidx.compose.ui.graphics.Color = TextPrimary,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    onInfoClick: (() -> Unit)? = null
+    onInfoClick: (() -> Unit)? = null,
+    enabled: Boolean = true
 ) {
     val scale by animateFloatAsState(
         targetValue = if (isChecked) 1.05f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
         label = "switch_scale"
+    )
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.4f,
+        label = "switch_row_alpha"
     )
 
     Row(
@@ -1075,7 +1088,12 @@ fun SettingsSwitchRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .graphicsLayer { alpha = animatedAlpha },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(16.dp))
             Column {
@@ -1101,7 +1119,8 @@ fun SettingsSwitchRow(
         Switch(
             modifier = Modifier.scale(scale),
             checked = isChecked,
-            onCheckedChange = onCheckedChange,
+            onCheckedChange = if (enabled) onCheckedChange else null,
+            enabled = enabled,
             thumbContent = if (isChecked) {
                 {
                     Icon(

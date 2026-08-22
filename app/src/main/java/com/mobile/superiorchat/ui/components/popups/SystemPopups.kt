@@ -26,6 +26,9 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
@@ -807,13 +810,18 @@ fun CredentialsPopup(
     var chatId by remember { mutableStateOf(initialChatId) }
     var partnerUsername by remember { mutableStateOf(initialPartnerUsername) }
     var tokenVisible by remember { mutableStateOf(false) }
+    var isPartnerExpanded by remember { mutableStateOf(false) }
 
     val isTokenValid by remember(botToken) { derivedStateOf { botToken.isBlank() || com.mobile.superiorchat.utils.Validator.isValidBotToken(botToken.trim()) } }
     val isChatIdValid by remember(chatId) { derivedStateOf { chatId.isBlank() || com.mobile.superiorchat.utils.Validator.isValidChatId(chatId.trim()) } }
-    val canSave by remember(botToken, chatId, partnerUsername, isTokenValid, isChatIdValid, isPeerLinkEnabled) { 
+    val isPartnerValid by remember(partnerUsername) { derivedStateOf { partnerUsername.isBlank() || com.mobile.superiorchat.utils.Validator.isValidPartnerBotUsername(partnerUsername.trim()) } }
+
+    val isAnyInvalid by remember(isTokenValid, isChatIdValid, isPartnerValid) {
+        derivedStateOf { !isTokenValid || !isChatIdValid || !isPartnerValid }
+    }
+    val canSave by remember(botToken, chatId, isAnyInvalid) { 
         derivedStateOf { 
-            botToken.isNotBlank() && chatId.isNotBlank() && isTokenValid && isChatIdValid && 
-            (!isPeerLinkEnabled || partnerUsername.isNotBlank())
+            botToken.isNotBlank() && chatId.isNotBlank() && !isAnyInvalid
         } 
     }
 
@@ -904,36 +912,98 @@ fun CredentialsPopup(
             }
             
             if (isPeerLinkEnabled) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
                 
-                Surface(
-                    color = SurfaceLevel1,
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, DividerColor),
-                    modifier = Modifier.fillMaxWidth()
+                // Slidable Divider Header "App To App Support"
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { isPartnerExpanded = !isPartnerExpanded }
+                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Partner Bot Username", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        OutlinedTextField(
-                            value = partnerUsername,
-                            onValueChange = { partnerUsername = it },
-                            placeholder = { Text("e.g. @partner_bot", color = TextSecondary, fontSize = 13.sp) },
-                            modifier = Modifier.fillMaxWidth().height(52.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedContainerColor = SurfaceLevel2,
-                                focusedContainerColor = SurfaceLevel2,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedBorderColor = PrimaryLight,
-                                unfocusedTextColor = TextPrimary,
-                                focusedTextColor = TextPrimary
-                            ),
-                            shape = RoundedCornerShape(10.dp)
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        thickness = 1.dp,
+                        color = DividerColor
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "App To App Support",
+                            color = if (isPartnerExpanded) PrimaryLight else TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
+                        Icon(
+                            if (isPartnerExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = if (isPartnerExpanded) PrimaryLight else TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        thickness = 1.dp,
+                        color = DividerColor
+                    )
+                }
+                
+                AnimatedVisibility(
+                    visible = isPartnerExpanded,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Column {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            color = SurfaceLevel1,
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, if (!isPartnerValid) ErrorRed else DividerColor),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Partner Bot Username", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text("Required", color = TextSecondary, fontSize = 11.sp)
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                OutlinedTextField(
+                                    value = partnerUsername,
+                                    onValueChange = { partnerUsername = it },
+                                    placeholder = { Text("e.g. @partner_bot", color = TextSecondary, fontSize = 13.sp) },
+                                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        unfocusedContainerColor = SurfaceLevel2,
+                                        focusedContainerColor = SurfaceLevel2,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        focusedBorderColor = PrimaryLight,
+                                        unfocusedTextColor = TextPrimary,
+                                        focusedTextColor = TextPrimary,
+                                        errorBorderColor = ErrorRed
+                                    ),
+                                    isError = !isPartnerValid,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                if (!isPartnerValid) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Must start with @ (e.g. @bot_username)",
+                                        color = ErrorRed,
+                                        fontSize = 11.sp,
+                                        modifier = Modifier.padding(start = 4.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -948,16 +1018,16 @@ fun CredentialsPopup(
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (!isTokenValid || !isChatIdValid) ErrorRed else PrimaryLight,
-                    contentColor = if (!isTokenValid || !isChatIdValid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
-                    disabledContainerColor = PrimaryLight.copy(alpha = 0.3f),
-                    disabledContentColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
+                    containerColor = if (isAnyInvalid) ErrorRed else PrimaryLight,
+                    contentColor = if (isAnyInvalid) Color.White else MaterialTheme.colorScheme.onPrimaryContainer,
+                    disabledContainerColor = if (isAnyInvalid) ErrorRed.copy(alpha = 0.22f) else SurfaceLevel2,
+                    disabledContentColor = if (isAnyInvalid) ErrorRed else TextSecondary
                 ),
                 shape = RoundedCornerShape(16.dp),
-                enabled = botToken.isNotBlank() && chatId.isNotBlank()
+                enabled = canSave
             ) {
                 Text(
-                    text = if (!isTokenValid || !isChatIdValid) "Credentials invalid" else "Save Credentials",
+                    text = if (isAnyInvalid) "Credentials Invalid" else "Save Credentials",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold
                 )

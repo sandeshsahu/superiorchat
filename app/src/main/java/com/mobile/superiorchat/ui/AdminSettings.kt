@@ -1,19 +1,27 @@
 package com.mobile.superiorchat.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.popups.PeerLinkSetupFlowDialog
+import com.mobile.superiorchat.ui.components.popups.AdminReadOnlyInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminRouteMessagesInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminIAmAdminInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminAppToAppGuideDialog
+import com.mobile.superiorchat.ui.components.popups.AdminCredentialsInfoDialog
 
 @Composable
 fun AdminSettingsScreen(
@@ -21,6 +29,31 @@ fun AdminSettingsScreen(
     onShowGlobalDialog: (GlobalDialogState) -> Unit
 ) {
     var showSetupDialog by remember { mutableStateOf(false) }
+    var showReadOnlyInfo by remember { mutableStateOf(false) }
+    var showRouteMessagesInfo by remember { mutableStateOf(false) }
+    var showIAmAdminInfo by remember { mutableStateOf(false) }
+    var showSetupGuideDialog by remember { mutableStateOf(false) }
+    var showCredentialsInfo by remember { mutableStateOf(false) }
+
+    if (showReadOnlyInfo) {
+        AdminReadOnlyInfoDialog(onDismiss = { showReadOnlyInfo = false })
+    }
+
+    if (showRouteMessagesInfo) {
+        AdminRouteMessagesInfoDialog(onDismiss = { showRouteMessagesInfo = false })
+    }
+
+    if (showIAmAdminInfo) {
+        AdminIAmAdminInfoDialog(onDismiss = { showIAmAdminInfo = false })
+    }
+
+    if (showSetupGuideDialog) {
+        AdminAppToAppGuideDialog(onDismiss = { showSetupGuideDialog = false })
+    }
+
+    if (showCredentialsInfo) {
+        AdminCredentialsInfoDialog(onDismiss = { showCredentialsInfo = false })
+    }
 
     if (showSetupDialog) {
         PeerLinkSetupFlowDialog(
@@ -46,6 +79,8 @@ fun AdminSettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Section 1: Security Lock
+        val isLocked = viewModel.isPeerLinkLocked
+
         SettingsCard {
             Text(
                 text = "Security Lock",
@@ -61,8 +96,42 @@ fun AdminSettingsScreen(
                 icon = Icons.Filled.Lock,
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isPeerLinkLocked,
-                onCheckedChange = { viewModel.togglePeerLinkLocked(it) }
+                onCheckedChange = { viewModel.togglePeerLinkLocked(it) },
+                onInfoClick = { showReadOnlyInfo = true }
             )
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isLocked,
+                enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
+                exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
+            ) {
+                Surface(
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                    color = PrimaryLight.copy(alpha = 0.12f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = PrimaryLight,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Admin options are locked (Read-Only)",
+                            color = PrimaryLight,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -72,13 +141,13 @@ fun AdminSettingsScreen(
                 icon = Icons.Filled.SwapHoriz,
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isPeerLinkEnabled,
-                onCheckedChange = { if (!viewModel.isPeerLinkLocked) viewModel.togglePeerLink(it) }
+                enabled = !isLocked,
+                onCheckedChange = { viewModel.togglePeerLink(it) },
+                onInfoClick = { showRouteMessagesInfo = true }
             )
         }
 
         // Section 2: I Am Admin
-        val isLocked = viewModel.isPeerLinkLocked
-
         SettingsCard {
             Text(
                 text = "I Am Admin",
@@ -94,24 +163,50 @@ fun AdminSettingsScreen(
                 icon = Icons.Filled.AdminPanelSettings,
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isAdminModeEnabled,
-                onCheckedChange = {
-                    if (!isLocked && viewModel.isPeerLinkEnabled) {
-                        viewModel.toggleAdminMode(it)
-                    }
-                }
+                enabled = !isLocked && viewModel.isPeerLinkEnabled,
+                onCheckedChange = { viewModel.toggleAdminMode(it) },
+                onInfoClick = { showIAmAdminInfo = true }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingsActionRow(
+                title = "App-to-App Setup Guide",
+                subtitle = "Tap to learn how to configure two bots",
+                icon = Icons.AutoMirrored.Filled.MenuBook,
+                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                background = PrimaryLight,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                isGlow = true,
+                onClick = { showSetupGuideDialog = true }
             )
         }
 
         // Section 3: Credentials (Only visible if isAdminModeEnabled is true)
         if (viewModel.isAdminModeEnabled) {
             SettingsCard {
-                Text(
-                    text = "Credentials",
-                    fontSize = 14.sp,
-                    color = PrimaryLight,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp, start = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Credentials",
+                        fontSize = 14.sp,
+                        color = PrimaryLight,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = "Info",
+                        tint = TextSecondary,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable { showCredentialsInfo = true }
+                    )
+                }
 
                 val isConfigured = viewModel.botToken.isNotEmpty()
                 SettingsActionRow(
@@ -119,7 +214,8 @@ fun AdminSettingsScreen(
                     subtitle = "Configure Bot, Group & Partner",
                     icon = if (isConfigured) Icons.Filled.Edit else Icons.Filled.Add,
                     iconTint = PrimaryLight,
-                    onClick = { if (!isLocked) showSetupDialog = true }
+                    enabled = !isLocked,
+                    onClick = { showSetupDialog = true }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -132,6 +228,7 @@ fun AdminSettingsScreen(
                     background = PrimaryLight,
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     isGlow = true,
+                    enabled = !isLocked,
                     onClick = { /* Disabled/No-op for now as per plan */ }
                 )
             }

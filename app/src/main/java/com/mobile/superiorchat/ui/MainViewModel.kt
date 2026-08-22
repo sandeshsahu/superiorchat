@@ -307,6 +307,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun togglePeerLink(enabled: Boolean) {
         prefs.isPeerLinkEnabled = enabled
         isPeerLinkEnabled = enabled
+        if (!enabled) {
+            prefs.peerLinkPartnerBotUsername = ""
+            peerLinkPartnerBotUsername = ""
+        }
     }
 
     var peerLinkGroupChatId by mutableStateOf(prefs.peerLinkGroupChatId)

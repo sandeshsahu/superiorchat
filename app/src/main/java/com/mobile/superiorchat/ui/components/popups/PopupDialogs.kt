@@ -9,6 +9,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -192,6 +197,36 @@ object PopupTexts {
         const val ADMIN_MODE_ACTIVE_TITLE = "Admin Mode Active"
         const val ADMIN_MODE_ACTIVE_MESSAGE =
             "You currently have *I am Admin* turned on.\n\nPlease configure your bot credentials inside the *Admin Settings* screen instead. Turn off Admin Mode if you want to configure regular client credentials."
+    }
+
+    // ── Admin Settings Popups ──
+    object Admin {
+        const val READ_ONLY_INFO_TITLE = "Read Only Lock"
+        const val READ_ONLY_INFO_MESSAGE =
+            "When *Enabled*, all administrative settings are locked.\n\nThis prevents accidental toggling or modifying of *Routing* and *Admin Mode*, ensuring your chat configuration remains protected."
+
+        const val ROUTE_MESSAGES_INFO_TITLE = "Route Messages"
+        const val ROUTE_MESSAGES_INFO_MESSAGE =
+            "Enables *App-to-App Chat* using Telegram's bot-to-bot communication in a private group.\n\n• **Direct Chat & Calls**: Both partners can chat and make calls directly inside the Superior Chat app.\n• **Intruder Shield**: Verifies sender usernames so the app strictly accepts messages from your partner's bot and ignores unauthorized intruders.\n• **Partner Setup**: On your partner's app, enable *Route Messages*, enter the same *Group Chat ID*, and provide *Your Bot Username* in Credentials.\n• **Direct DM Fallback**: When disabled, the app operates in standard 1-on-1 direct bot mode."
+
+        const val I_AM_ADMIN_INFO_TITLE = "I Am Admin"
+        const val I_AM_ADMIN_INFO_MESSAGE =
+            "Turn this on if you are the *Admin (User B)* who will also be chatting directly inside this app.\n\n• **Admin Bot Configuration**: Unlocks the *Credentials* section where you can enter your bot token, private group chat ID, and partner's bot username.\n• **Bridge Mode**: Messages you send are dispatched via your admin bot to the shared group, where your partner's bot receives them securely."
+
+        const val APP_TO_APP_GUIDE_TITLE = "App-to-App Setup Guide"
+        const val APP_TO_APP_GUIDE_MESSAGE =
+            "To chat directly on this app, two bots communicate inside a private Telegram group:\n\n" +
+            "1. **Create Two Bots**:\nCreate a bot for yourself and another for your partner via @BotFather.\n" +
+            "2. **Enable Bot-to-Bot Communication**:\nIn @BotFather, Click on **Open** button then select your bot -> Bot Settings -> **Enable** the **Bot-to-Bot Communication Mode** and do same for partner's bot. This is required.\n" +
+            "3. **Create Private Group**:\nCreate a private Telegram group and add *Both Bots* to it.\n" +
+            "4. **Configure This Device (Admin)**:\nEnter your *Credentials* and *Partner's Bot Username* here only.\n" +
+            "5. **Configure Partner Device**:\nOn your partner's app, enable *Route Messages*, enter the same *Group Chat ID*, and enter *Your Bot Username* on APP Settings Page under *Credentials* section."
+        const val APP_TO_APP_GUIDE_NOTE =
+            "Setup App QR Shortcut: Generate a setup QR code in the Setup App and scan it on your partner's device to configure everything automatically!"
+
+        const val CREDENTIALS_INFO_TITLE = "Admin Credentials"
+        const val CREDENTIALS_INFO_MESSAGE =
+            "Configure your own *Bot Token*, *Private Group Chat ID*, and your *Partner's Bot Username* manually, or scan the configuration *QR Code* from the Setup App."
     }
 
     // ── PIN & Security Popups ──
@@ -1206,12 +1241,21 @@ fun PeerLinkSetupFlowDialog(
             iconTint = PrimaryLight,
             confirmText = "Next",
             customContent = {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(100)
+                    try { focusRequester.requestFocus() } catch (e: Exception) {}
+                }
                 OutlinedTextField(
                     value = botToken,
                     onValueChange = { botToken = it },
-                    placeholder = { Text("123456789:ABCdefGHIjklMNOpqrSTUvwxYZ") },
+                    placeholder = { Text("123456789:ABCdefGHIjklMNOpqrSTUvwxYZ", color = TextSecondary, fontSize = 13.sp) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .focusRequester(focusRequester),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryLight,
@@ -1230,12 +1274,21 @@ fun PeerLinkSetupFlowDialog(
             iconTint = PrimaryLight,
             confirmText = "Next",
             customContent = {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(100)
+                    try { focusRequester.requestFocus() } catch (e: Exception) {}
+                }
                 OutlinedTextField(
                     value = groupChatId,
                     onValueChange = { groupChatId = it },
-                    placeholder = { Text("-100123456789") },
+                    placeholder = { Text("-100123456789", color = TextSecondary, fontSize = 13.sp) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .focusRequester(focusRequester),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryLight,
@@ -1254,12 +1307,21 @@ fun PeerLinkSetupFlowDialog(
             iconTint = PrimaryLight,
             confirmText = "Save",
             customContent = {
+                val focusRequester = remember { FocusRequester() }
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(100)
+                    try { focusRequester.requestFocus() } catch (e: Exception) {}
+                }
                 OutlinedTextField(
                     value = partnerUsername,
                     onValueChange = { partnerUsername = it },
-                    placeholder = { Text("@partner_bot") },
+                    placeholder = { Text("@partner_bot", color = TextSecondary, fontSize = 13.sp) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp)
+                        .focusRequester(focusRequester),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PrimaryLight,
@@ -1364,4 +1426,65 @@ fun IncomingCallDialog(
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
+}
+
+@Composable
+fun AdminReadOnlyInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Admin.READ_ONLY_INFO_TITLE,
+        message = PopupTexts.Admin.READ_ONLY_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminRouteMessagesInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Admin.ROUTE_MESSAGES_INFO_TITLE,
+        message = PopupTexts.Admin.ROUTE_MESSAGES_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminIAmAdminInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Admin.I_AM_ADMIN_INFO_TITLE,
+        message = PopupTexts.Admin.I_AM_ADMIN_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminAppToAppGuideDialog(
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Admin.APP_TO_APP_GUIDE_TITLE,
+        message = PopupTexts.Admin.APP_TO_APP_GUIDE_MESSAGE,
+        note = PopupTexts.Admin.APP_TO_APP_GUIDE_NOTE,
+        noteIcon = Icons.Filled.QrCodeScanner,
+        icon = Icons.AutoMirrored.Filled.MenuBook,
+        iconTint = PrimaryLight,
+        confirmText = "Got it",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminCredentialsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Admin.CREDENTIALS_INFO_TITLE,
+        message = PopupTexts.Admin.CREDENTIALS_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
 }
