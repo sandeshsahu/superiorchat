@@ -224,35 +224,46 @@ class BotSync(private val context: Context) {
         if (update.callback_query != null) {
             val query = update.callback_query
             if (query.data == "decline_call") {
-                // If it's a call decline, act immediately
-                if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
-                    com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
-                }
-                
+                val callState = com.mobile.superiorchat.core.call.CallManager.callState.value
                 val token = AppGraph.prefs.botToken
-                if (token.isNotBlank()) {
-                    // Acknowledge the callback query to stop the loading spinner
-                    TelegramApi.answerCallbackQuery(token, query.id, text = "Call Declined", showAlert = false)
+
+                if (callState == com.mobile.superiorchat.core.call.CallState.CONNECTING || 
+                    callState == com.mobile.superiorchat.core.call.CallState.RINGING) {
+                    // Only decline if the call is still ringing or connecting
+                    com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
                     
-                    // Edit the message
-                    query.message?.let { msg ->
-                        val endTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
-                        val formattedText = "===================\n" +
-                                            "❌ *Call Declined*\n" +
-                                            "===================\n" +
-                                            "*Call was declined by receiver*\n\n" +
-                                            "*Time* : $endTime"
-                                            
-                        TelegramApi.editMessageText(
-                            token = token,
-                            chatId = msg.chat.id.toString(),
-                            messageId = msg.message_id,
-                            text = formattedText,
-                            parseMode = "Markdown",
-                            replyMarkup = TelegramApi.json.encodeToString(com.mobile.superiorchat.bot.InlineKeyboardMarkup(emptyList()))
-                        )
-                        // Update local DB to make it render as a missed call natively
-                        repository.updateMessageText(msg.message_id, "Call Declined")
+                    if (token.isNotBlank()) {
+                        TelegramApi.answerCallbackQuery(token, query.id, text = "Call Declined", showAlert = false)
+                        
+                        query.message?.let { msg ->
+                            val endTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
+                            val formattedText = "===================\n" +
+                                                "❌ *Call Declined*\n" +
+                                                "===================\n" +
+                                                "*Call was declined by receiver*\n\n" +
+                                                "*Time* : $endTime"
+                                                
+                            TelegramApi.editMessageText(
+                                token = token,
+                                chatId = msg.chat.id.toString(),
+                                messageId = msg.message_id,
+                                text = formattedText,
+                                parseMode = "Markdown",
+                                replyMarkup = TelegramApi.json.encodeToString(com.mobile.superiorchat.bot.InlineKeyboardMarkup(emptyList()))
+                            )
+                            // Update local DB to make it render as a missed call natively
+                            repository.updateMessageText(msg.message_id, "Call Declined")
+                        }
+                    }
+                } else if (callState == com.mobile.superiorchat.core.call.CallState.ACTIVE) {
+                    // Call is already connected and ongoing — ignore decline and inform the user
+                    if (token.isNotBlank()) {
+                        TelegramApi.answerCallbackQuery(token, query.id, text = "Call is already in progress", showAlert = false)
+                    }
+                } else {
+                    // Call is already IDLE or ENDING
+                    if (token.isNotBlank()) {
+                        TelegramApi.answerCallbackQuery(token, query.id, text = "Call already ended", showAlert = false)
                     }
                 }
             }

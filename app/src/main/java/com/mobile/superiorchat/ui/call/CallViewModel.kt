@@ -245,7 +245,7 @@ class CallViewModel : ViewModel() {
                                 )
                                 AppGraph.appRepository.insertMessage(eventNode)
                             }
-                            monitorCallTermination(token, chat, msgId, botName, localEventMsgId)
+                            monitorCallLifecycle(token, chat, msgId, botName, localEventMsgId)
                             CallInitiationResult.SUCCESS
                         } else {
                             AppLog.log(LogCategory.ERROR, "Failed to deliver call link to Telegram.")
@@ -266,10 +266,39 @@ class CallViewModel : ViewModel() {
         }
     }
 
-    private fun monitorCallTermination(token: String, chatId: String, messageId: Long, botName: String, localEventMsgId: Long) {
+    private fun monitorCallLifecycle(token: String, chatId: String, messageId: Long, botName: String, localEventMsgId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // 1. Observe when call transitions to ACTIVE (Caller has joined)
+                val activeJob = launch {
+                    CallManager.callState.first { it == CallState.ACTIVE }
+                    try {
+                        val connectedTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
+                        val ongoingText = "===================\n" +
+                                          "📞 *Call in Progress*\n" +
+                                          "===================\n" +
+                                          "*Your call is now in progress*\n\n" +
+                                          "*Started at* : $connectedTime"
+                        
+                        val emptyMarkup = TelegramApi.json.encodeToString(InlineKeyboardMarkup(emptyList()))
+                        
+                        TelegramApi.editMessageText(
+                            token = token,
+                            chatId = chatId,
+                            messageId = messageId,
+                            text = ongoingText,
+                            parseMode = "Markdown",
+                            replyMarkup = emptyMarkup
+                        )
+                        AppLog.log(LogCategory.SYSTEM, "Telegram call message updated to Call in Progress (Buttons stripped)")
+                    } catch (e: Exception) {
+                        AppLog.log(LogCategory.ERROR, "Failed to update Telegram message on call connect: ${e.message}")
+                    }
+                }
+
+                // 2. Observe when call transitions to ENDING / IDLE
                 CallManager.callState.first { it == CallState.ENDING || it == CallState.IDLE }
+                activeJob.cancel()
                 
                 val duration = if (CallManager.callDuration.value > 0) CallManager.callDuration.value else CallManager.lastCompletedDuration
                 val isMissed = duration == 0L
