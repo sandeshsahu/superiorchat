@@ -111,6 +111,105 @@ object TelegramApi {
         } catch (e: Exception) { null }
     }
 
+    suspend fun getMeSuspend(token: String): GetMeResponse? {
+        val request = Request.Builder().url(apiUrl(token, "getMe")).build()
+        val response = client.executeCancellable(request)
+        return response.use { resp ->
+            val body = resp.body?.string() ?: ""
+            if (resp.isSuccessful) {
+                try {
+                    json.decodeFromString<GetMeResponse>(body)
+                } catch (e: Exception) {
+                    AppLog.log(LogCategory.NETWORK, "getMe json decode error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    null
+                }
+            } else {
+                AppLog.log(LogCategory.NETWORK, "getMe HTTP error: ${resp.code} $body", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                null
+            }
+        }
+    }
+
+    suspend fun getChatSuspend(token: String, chatId: String): ChatResponse? {
+        val request = Request.Builder().url(apiUrl(token, "getChat") + "?chat_id=$chatId").build()
+        val response = client.executeCancellable(request)
+        return response.use { resp ->
+            val body = resp.body?.string() ?: ""
+            if (resp.isSuccessful) {
+                try {
+                    json.decodeFromString<ChatResponse>(body)
+                } catch (e: Exception) {
+                    AppLog.log(LogCategory.NETWORK, "getChat json decode error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    null
+                }
+            } else {
+                AppLog.log(LogCategory.NETWORK, "getChat HTTP error: ${resp.code} $body", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                null
+            }
+        }
+    }
+
+    suspend fun getChatMember(token: String, chatId: String, userId: Long): ChatMember? {
+        val request = Request.Builder().url(apiUrl(token, "getChatMember") + "?chat_id=$chatId&user_id=$userId").build()
+        val response = client.executeCancellable(request)
+        return response.use { resp ->
+            val body = resp.body?.string() ?: ""
+            if (resp.isSuccessful) {
+                try {
+                    json.decodeFromString<ChatMemberResponse>(body).result
+                } catch (e: Exception) {
+                    AppLog.log(LogCategory.NETWORK, "getChatMember json decode error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    null
+                }
+            } else {
+                AppLog.log(LogCategory.NETWORK, "getChatMember HTTP error: ${resp.code} $body", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                null
+            }
+        }
+    }
+
+    suspend fun getChatAdministrators(token: String, chatId: String): List<ChatMember>? {
+        val request = Request.Builder().url(apiUrl(token, "getChatAdministrators") + "?chat_id=$chatId").build()
+        val response = client.executeCancellable(request)
+        return response.use { resp ->
+            val body = resp.body?.string() ?: ""
+            if (resp.isSuccessful) {
+                try {
+                    json.decodeFromString<ChatAdministratorsResponse>(body).result
+                } catch (e: Exception) {
+                    AppLog.log(LogCategory.NETWORK, "getChatAdministrators json decode error: ${e.message}, body: $body", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    try {
+                        val root = org.json.JSONObject(body)
+                        val arr = root.optJSONArray("result")
+                        val list = mutableListOf<ChatMember>()
+                        if (arr != null) {
+                            for (i in 0 until arr.length()) {
+                                val item = arr.optJSONObject(i) ?: continue
+                                val status = item.optString("status", "")
+                                val userObj = item.optJSONObject("user")
+                                val user = if (userObj != null) {
+                                    User(
+                                        id = userObj.optLong("id", 0),
+                                        is_bot = userObj.optBoolean("is_bot", false),
+                                        first_name = userObj.optString("first_name", ""),
+                                        username = if (userObj.has("username")) userObj.optString("username") else null
+                                    )
+                                } else null
+                                list.add(ChatMember(status = status, user = user))
+                            }
+                        }
+                        list
+                    } catch (fallbackEx: Exception) {
+                        null
+                    }
+                }
+            } else {
+                AppLog.log(LogCategory.NETWORK, "getChatAdministrators HTTP error: ${resp.code} $body", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                null
+            }
+        }
+    }
+
     fun downloadFileToLocal(url: String, destFile: File): Boolean {
         return try {
             val request = Request.Builder().url(url).build()

@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.text.KeyboardOptions
@@ -17,6 +18,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.animation.togetherWith
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -25,6 +28,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import com.mobile.superiorchat.utils.Validator
+import com.mobile.superiorchat.bot.TelegramApi
+import com.mobile.superiorchat.bot.User
 import com.mobile.superiorchat.core.call.CallError
 import com.mobile.superiorchat.theme.ErrorRed
 import com.mobile.superiorchat.theme.PrimaryLight
@@ -220,7 +229,7 @@ object PopupTexts {
             "2. **Enable Bot-to-Bot Communication**:\nIn @BotFather, Click on **Open** button then select your bot -> Bot Settings -> **Enable** the **Bot-to-Bot Communication Mode** and do same for partner's bot. This is required.\n" +
             "3. **Create Private Group**:\nCreate a private Telegram group and add *Both Bots* to it.\n" +
             "4. **Configure This Device (Admin)**:\nEnter your *Credentials* and *Partner's Bot Username* here only.\n" +
-            "5. **Configure Partner Device**:\nOn your partner's app, enable *Route Messages*, enter the same *Group Chat ID*, and enter *Your Bot Username* on APP Settings Page under *Credentials* section."
+            "5. **Configure Partner Device**:\nOn your partner's app, enable *Route Messages*"
         const val APP_TO_APP_GUIDE_NOTE =
             "Setup App QR Shortcut: Generate a setup QR code in the Setup App and scan it on your partner's device to configure everything automatically!"
 
@@ -1229,108 +1238,419 @@ fun PeerLinkSetupFlowDialog(
     onComplete: (botToken: String, groupChatId: String, partnerUsername: String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    var currentStep by remember { mutableIntStateOf(0) }
+
     var botToken by remember { mutableStateOf(initialBotToken) }
     var groupChatId by remember { mutableStateOf(initialGroupChatId) }
     var partnerUsername by remember { mutableStateOf(initialPartnerUsername) }
 
+    // Step 1 states
+    var step1Loading by remember { mutableStateOf(false) }
+    var step1Error by remember { mutableStateOf<String?>(null) }
+    var step1VerifiedBot by remember { mutableStateOf<User?>(null) }
+
+    // Step 2 states
+    var step2Loading by remember { mutableStateOf(false) }
+    var step2Error by remember { mutableStateOf<String?>(null) }
+    var step2VerifiedGroup by remember { mutableStateOf<String?>(null) }
+
+    // Step 3 states
+    var step3Error by remember { mutableStateOf<String?>(null) }
+
     val steps = listOf(
         com.mobile.superiorchat.ui.components.popups.DialogStep(
             title = "Admin Bot Token",
-            message = "Enter the standard Telegram Bot Token. This bot will be used to route all messages.",
+            message = "Enter the Telegram Bot Token for your Admin bot. This bot routes messages and syncs state.",
             icon = Icons.Filled.SmartToy,
             iconTint = PrimaryLight,
             confirmText = "Next",
+            isConfirmEnabled = botToken.isNotBlank() && !step1Loading,
+            isConfirmLoading = step1Loading,
+            onConfirmClick = {
+                val trimmedToken = botToken.trim()
+                if (trimmedToken.isBlank()) {
+                    step1Error = "Please enter your Telegram Bot Token."
+                    return@DialogStep
+                }
+                if (!Validator.isValidBotToken(trimmedToken)) {
+                    step1Error = "Invalid Bot Token format. It should look like 1234567890:AAH..."
+                    return@DialogStep
+                }
+                step1Loading = true
+                step1Error = null
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val getMeResp = TelegramApi.getMeSuspend(trimmedToken)
+                        if (getMeResp == null || !getMeResp.ok || getMeResp.result == null) {
+                            withContext(Dispatchers.Main) {
+                                step1Error = "Invalid bot token or token has been revoked by @BotFather."
+                                step1Loading = false
+                            }
+                            return@launch
+                        }
+                        val user = getMeResp.result
+                        if (user.can_read_all_group_messages == false) {
+                            withContext(Dispatchers.Main) {
+                                step1Error = "Group Privacy is Enabled in @BotFather. You must disable Group Privacy and enable Bot-to-Bot Communication Mode for this bot in @BotFather."
+                                step1Loading = false
+                            }
+                            return@launch
+                        }
+                        withContext(Dispatchers.Main) {
+                            step1VerifiedBot = user
+                            step1Loading = false
+                            currentStep = 1
+                        }
+                    } catch (e: java.io.IOException) {
+                        withContext(Dispatchers.Main) {
+                            step1Error = "Cannot connect to Telegram servers. Please check your internet connection."
+                            step1Loading = false
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            step1Error = "Validation failed: ${e.localizedMessage ?: "Unknown error"}"
+                            step1Loading = false
+                        }
+                    }
+                }
+            },
             customContent = {
                 val focusRequester = remember { FocusRequester() }
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(100)
                     try { focusRequester.requestFocus() } catch (e: Exception) {}
                 }
-                OutlinedTextField(
-                    value = botToken,
-                    onValueChange = { botToken = it },
-                    placeholder = { Text("123456789:ABCdefGHIjklMNOpqrSTUvwxYZ", color = TextSecondary, fontSize = 13.sp) },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .focusRequester(focusRequester),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryLight,
-                        unfocusedBorderColor = DividerColor,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = PrimaryLight
+                Column {
+                    OutlinedTextField(
+                        value = botToken,
+                        onValueChange = {
+                            botToken = it
+                            step1Error = null
+                            step1VerifiedBot = null
+                        },
+                        placeholder = { Text("123456789:ABCdefGHIjklMNOpqrSTUvwxYZ", color = TextSecondary, fontSize = 13.sp) },
+                        singleLine = true,
+                        isError = step1Error != null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .focusRequester(focusRequester),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryLight,
+                            unfocusedBorderColor = DividerColor,
+                            errorBorderColor = ErrorRed,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = PrimaryLight
+                        )
                     )
-                )
+
+                    if (step1Error != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = ErrorRed.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Error, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(step1Error!!, color = ErrorRed, fontSize = 12.sp, lineHeight = 16.sp)
+                            }
+                        }
+                    }
+
+                    if (step1VerifiedBot != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = PrimaryLight.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, PrimaryLight.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Verified: @${step1VerifiedBot?.username ?: step1VerifiedBot?.first_name}",
+                                    color = PrimaryLight,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
             }
         ),
         com.mobile.superiorchat.ui.components.popups.DialogStep(
             title = "Group Chat ID",
-            message = "Enter the ID of the Telegram Group that will act as the bridge between both bots.",
+            message = "Enter the ID of the private Telegram Group connecting both bots. Admin Bot must be in this group with Admin rights.",
             icon = Icons.Filled.Groups,
             iconTint = PrimaryLight,
             confirmText = "Next",
+            isConfirmEnabled = groupChatId.isNotBlank() && !step2Loading,
+            isConfirmLoading = step2Loading,
+            onConfirmClick = {
+                val trimmedChatId = groupChatId.trim()
+                if (trimmedChatId.isBlank()) {
+                    step2Error = "Please enter the Group Chat ID."
+                    return@DialogStep
+                }
+                if (!Validator.isValidGroupChatId(trimmedChatId)) {
+                    step2Error = "Must be a negative Group ID (e.g. -100123456789). Positive IDs (private 1-on-1 user chats) are not supported."
+                    return@DialogStep
+                }
+                val token = botToken.trim()
+                val botUser = step1VerifiedBot
+                step2Loading = true
+                step2Error = null
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val chatResp = TelegramApi.getChatSuspend(token, trimmedChatId)
+                        if (chatResp == null || !chatResp.ok || chatResp.result == null) {
+                            withContext(Dispatchers.Main) {
+                                step2Error = "Bot has not joined this group. Please make sure 'Allow Groups' is enabled in @BotFather, then add @${botUser?.username ?: "bot"} to your group."
+                                step2Loading = false
+                            }
+                            return@launch
+                        }
+                        val chat = chatResp.result
+                        if (chat.type == "private" || chat.type == "channel") {
+                            withContext(Dispatchers.Main) {
+                                step2Error = "This ID belongs to a ${chat.type}. App-to-App routing requires a private Group or Supergroup ID."
+                                step2Loading = false
+                            }
+                            return@launch
+                        }
+                        if (botUser != null) {
+                            val member = TelegramApi.getChatMember(token, trimmedChatId, botUser.id)
+                            if (member == null || member.status in listOf("left", "kicked")) {
+                                withContext(Dispatchers.Main) {
+                                    step2Error = "Admin Bot (@${botUser.username ?: "bot"}) is not in this group.\n\nPlease invite @${botUser.username ?: "bot"} to this group."
+                                    step2Loading = false
+                                }
+                                return@launch
+                            }
+                            if (member.status !in listOf("administrator", "creator")) {
+                                withContext(Dispatchers.Main) {
+                                    step2Error = "Admin Bot (@${botUser.username ?: "bot"}) is a regular member, NOT an Admin (Status: ${member.status}).\n\nPlease promote @${botUser.username ?: "bot"} to Administrator in Group Settings > Administrators."
+                                    step2Loading = false
+                                }
+                                return@launch
+                            }
+                        }
+                        withContext(Dispatchers.Main) {
+                            step2VerifiedGroup = chat.title ?: "Private Group"
+                            step2Loading = false
+                            currentStep = 2
+                        }
+                    } catch (e: java.io.IOException) {
+                        withContext(Dispatchers.Main) {
+                            step2Error = "Cannot connect to Telegram servers. Please check your internet connection."
+                            step2Loading = false
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            step2Error = "Validation failed: ${e.localizedMessage ?: "Unknown error"}"
+                            step2Loading = false
+                        }
+                    }
+                }
+            },
             customContent = {
                 val focusRequester = remember { FocusRequester() }
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(100)
                     try { focusRequester.requestFocus() } catch (e: Exception) {}
                 }
-                OutlinedTextField(
-                    value = groupChatId,
-                    onValueChange = { groupChatId = it },
-                    placeholder = { Text("-100123456789", color = TextSecondary, fontSize = 13.sp) },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .focusRequester(focusRequester),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryLight,
-                        unfocusedBorderColor = DividerColor,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = PrimaryLight
+                Column {
+                    OutlinedTextField(
+                        value = groupChatId,
+                        onValueChange = {
+                            groupChatId = it
+                            step2Error = null
+                            step2VerifiedGroup = null
+                        },
+                        placeholder = { Text("-100123456789", color = TextSecondary, fontSize = 13.sp) },
+                        singleLine = true,
+                        isError = step2Error != null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .focusRequester(focusRequester),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryLight,
+                            unfocusedBorderColor = DividerColor,
+                            errorBorderColor = ErrorRed,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = PrimaryLight
+                        )
                     )
-                )
+
+                    if (step2Error != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = ErrorRed.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Error, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(step2Error!!, color = ErrorRed, fontSize = 12.sp, lineHeight = 16.sp)
+                            }
+                        }
+                    }
+
+                    if (step2VerifiedGroup != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = PrimaryLight.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, PrimaryLight.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Connected: $step2VerifiedGroup (Admin rights verified)",
+                                    color = PrimaryLight,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
             }
         ),
         com.mobile.superiorchat.ui.components.popups.DialogStep(
             title = "Partner Bot Username",
-            message = "Enter the @username of the partner's bot. This ensures we only process messages from the correct source in the group.",
+            message = "Enter the @username of your partner's bot to route messages and filter intruders.",
             icon = Icons.Filled.PersonSearch,
             iconTint = PrimaryLight,
             confirmText = "Save",
+            isConfirmEnabled = partnerUsername.isNotBlank(),
+            isConfirmLoading = false,
+            onConfirmClick = {
+                val trimmedPartner = partnerUsername.trim()
+                if (trimmedPartner.isBlank()) {
+                    step3Error = "Please enter your partner's bot username."
+                    return@DialogStep
+                }
+                if (!Validator.isValidPartnerBotUsername(trimmedPartner)) {
+                    step3Error = "Must start with @ (e.g. @partner_bot) and be between 4 and 32 characters."
+                    return@DialogStep
+                }
+                val myBotUsername = step1VerifiedBot?.username
+                if (myBotUsername != null && trimmedPartner.equals("@$myBotUsername", ignoreCase = true)) {
+                    step3Error = "Partner Bot Username cannot be your own Admin Bot (@$myBotUsername). Enter your partner's bot username."
+                    return@DialogStep
+                }
+                val token = botToken.trim()
+                val chatId = groupChatId.trim()
+                onComplete(token, chatId, trimmedPartner)
+            },
             customContent = {
                 val focusRequester = remember { FocusRequester() }
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(100)
                     try { focusRequester.requestFocus() } catch (e: Exception) {}
                 }
-                OutlinedTextField(
-                    value = partnerUsername,
-                    onValueChange = { partnerUsername = it },
-                    placeholder = { Text("@partner_bot", color = TextSecondary, fontSize = 13.sp) },
-                    singleLine = true,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp)
-                        .focusRequester(focusRequester),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryLight,
-                        unfocusedBorderColor = DividerColor,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        cursorColor = PrimaryLight
+                Column {
+                    OutlinedTextField(
+                        value = partnerUsername,
+                        onValueChange = {
+                            partnerUsername = it
+                            step3Error = null
+                        },
+                        placeholder = { Text("@partner_bot", color = TextSecondary, fontSize = 13.sp) },
+                        singleLine = true,
+                        isError = step3Error != null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp)
+                            .focusRequester(focusRequester),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryLight,
+                            unfocusedBorderColor = DividerColor,
+                            errorBorderColor = ErrorRed,
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            cursorColor = PrimaryLight
+                        )
                     )
-                )
+
+                    if (step3Error != null) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            color = ErrorRed.copy(alpha = 0.12f),
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.Error, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(step3Error!!, color = ErrorRed, fontSize = 12.sp, lineHeight = 16.sp)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Surface(
+                        color = PrimaryLight.copy(alpha = 0.08f),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, PrimaryLight.copy(alpha = 0.22f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(
+                                Icons.Filled.Info,
+                                contentDescription = null,
+                                tint = PrimaryLight,
+                                modifier = Modifier.size(18.dp).padding(top = 2.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Please ensure your partner bot has also joined the same group. Adding a username in this field will strictly check and allow messages only from that bot; others will not be able to chat with your partner.",
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+                }
             }
         )
     )
@@ -1338,8 +1658,10 @@ fun PeerLinkSetupFlowDialog(
     com.mobile.superiorchat.ui.components.popups.MultiStepActionDialog(
         steps = steps,
         initialStep = 0,
+        currentStep = currentStep,
+        onStepChange = { currentStep = it },
         cancellable = true,
-        onComplete = { onComplete(botToken, groupChatId, partnerUsername) },
+        onComplete = { onComplete(botToken.trim(), groupChatId.trim(), partnerUsername.trim()) },
         onDismiss = onDismiss
     )
 }

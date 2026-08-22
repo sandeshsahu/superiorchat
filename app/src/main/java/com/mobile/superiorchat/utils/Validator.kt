@@ -3,6 +3,7 @@ package com.mobile.superiorchat.utils
 object Validator {
     private val BOT_TOKEN_REGEX = Regex("^\\d{8,10}:[A-Za-z0-9_-]{35}\$")
     private val CHAT_ID_REGEX = Regex("^-?\\d{7,15}\$")
+    private val GROUP_CHAT_ID_REGEX = Regex("^-(?:100\\d{9,13}|\\d{6,12})\$")
     private val WEBRTC_URL_REGEX = Regex("^https?://([a-zA-Z0-9.-]+)(:\\d+)?/?\$")
     private val PARTNER_BOT_USERNAME_REGEX = Regex("^@[a-zA-Z0-9_]{3,32}\$")
 
@@ -12,6 +13,10 @@ object Validator {
 
     fun isValidChatId(chatId: String): Boolean {
         return CHAT_ID_REGEX.matches(chatId)
+    }
+
+    fun isValidGroupChatId(chatId: String): Boolean {
+        return GROUP_CHAT_ID_REGEX.matches(chatId.trim())
     }
 
     fun isValidWebRtcUrl(url: String): Boolean {

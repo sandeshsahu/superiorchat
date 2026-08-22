@@ -71,10 +71,12 @@ data class Message(
 
 @Serializable
 data class User(
-    val id: Long,
+    val id: Long = 0,
     val is_bot: Boolean = false,
-    val first_name: String,
-    val username: String? = null
+    val first_name: String = "",
+    val username: String? = null,
+    val can_join_groups: Boolean? = null,
+    val can_read_all_group_messages: Boolean? = null
 )
 
 @Serializable
@@ -105,6 +107,24 @@ data class ChatPhoto(
 data class ChatResponse(
     val ok: Boolean,
     val result: Chat? = null
+)
+
+@Serializable
+data class ChatMember(
+    val status: String = "",
+    val user: User? = null
+)
+
+@Serializable
+data class ChatMemberResponse(
+    val ok: Boolean,
+    val result: ChatMember? = null
+)
+
+@Serializable
+data class ChatAdministratorsResponse(
+    val ok: Boolean,
+    val result: List<ChatMember> = emptyList()
 )
 
 @Serializable

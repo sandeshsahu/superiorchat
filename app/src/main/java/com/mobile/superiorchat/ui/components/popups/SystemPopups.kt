@@ -507,6 +507,9 @@ data class DialogStep(
     val iconTint: Color = PrimaryLight,
     val confirmText: String = "Next",
     val dismissText: String? = null,
+    val isConfirmEnabled: Boolean = true,
+    val isConfirmLoading: Boolean = false,
+    val onConfirmClick: (() -> Unit)? = null,
     val customContent: @Composable (() -> Unit)? = null
 )
 
@@ -514,14 +517,17 @@ data class DialogStep(
 fun MultiStepActionDialog(
     steps: List<DialogStep>,
     initialStep: Int = 0,
+    currentStep: Int? = null,
+    onStepChange: ((Int) -> Unit)? = null,
     cancellable: Boolean = true,
     onComplete: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var stepIndex by remember { mutableIntStateOf(initialStep) }
+    var internalStepIndex by remember { mutableIntStateOf(initialStep) }
+    val stepIndex = currentStep ?: internalStepIndex
 
     LaunchedEffect(initialStep) {
-        if (initialStep in steps.indices) stepIndex = initialStep
+        if (currentStep == null && initialStep in steps.indices) internalStepIndex = initialStep
     }
 
     BaseAppDialog(cancellable = cancellable, onDismiss = onDismiss) {
@@ -600,14 +606,25 @@ fun MultiStepActionDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (currentIndex > 0) {
-                        TextButton(onClick = { stepIndex-- }, modifier = Modifier.height(40.dp)) {
+                        TextButton(
+                            onClick = {
+                                if (onStepChange != null) onStepChange(stepIndex - 1)
+                                else internalStepIndex--
+                            },
+                            enabled = !stepDef.isConfirmLoading,
+                            modifier = Modifier.height(40.dp)
+                        ) {
                             Text(text = "Back", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextSecondary)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     if (stepDef.dismissText != null) {
-                        TextButton(onClick = onDismiss, modifier = Modifier.height(40.dp)) {
+                        TextButton(
+                            onClick = onDismiss,
+                            enabled = !stepDef.isConfirmLoading,
+                            modifier = Modifier.height(40.dp)
+                        ) {
                             Text(text = stepDef.dismissText, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextSecondary)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -615,18 +632,38 @@ fun MultiStepActionDialog(
 
                     Button(
                         onClick = {
-                            if (currentIndex < steps.lastIndex) stepIndex++
-                            else onComplete()
+                            if (stepDef.isConfirmLoading) return@Button
+                            if (stepDef.onConfirmClick != null) {
+                                stepDef.onConfirmClick.invoke()
+                            } else {
+                                if (currentIndex < steps.lastIndex) {
+                                    if (onStepChange != null) onStepChange(stepIndex + 1)
+                                    else internalStepIndex++
+                                } else {
+                                    onComplete()
+                                }
+                            }
                         },
+                        enabled = stepDef.isConfirmEnabled,
                         modifier = Modifier.height(40.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (stepDef.iconTint == PrimaryLight) PrimaryLight else stepDef.iconTint.copy(alpha = 0.15f),
-                            contentColor = if (stepDef.iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else stepDef.iconTint
+                            containerColor = if (stepDef.isConfirmLoading) SurfaceLevel2 else if (stepDef.iconTint == PrimaryLight) PrimaryLight else stepDef.iconTint.copy(alpha = 0.15f),
+                            contentColor = if (stepDef.iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else stepDef.iconTint,
+                            disabledContainerColor = SurfaceLevel2,
+                            disabledContentColor = TextSecondary
                         ),
                         shape = RoundedCornerShape(24.dp),
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
                     ) {
-                        Text(text = stepDef.confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        if (stepDef.isConfirmLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = PrimaryLight,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(text = stepDef.confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        }
                     }
                 }
             }

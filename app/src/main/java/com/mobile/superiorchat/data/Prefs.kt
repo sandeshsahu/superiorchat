@@ -269,7 +269,7 @@ class Prefs private constructor(context: Context) {
             }
         }
 
-    private var _isPeerLinkLocked: Boolean = sharedPreferences.getBoolean("is_peerlink_locked", false)
+    private var _isPeerLinkLocked: Boolean = sharedPreferences.getBoolean("is_peerlink_locked", true)
     var isPeerLinkLocked: Boolean
         get() = _isPeerLinkLocked
         set(value) {
