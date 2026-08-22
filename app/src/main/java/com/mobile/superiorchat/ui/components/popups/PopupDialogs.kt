@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -285,6 +286,11 @@ object PopupTexts {
         const val CALL_HISTORY_INFO_TITLE = "Recent Calls"
         const val CALL_HISTORY_INFO_MESSAGE =
             "A history of all secure peer-to-peer WebRTC calls initiated from this device."
+
+        const val INCOMING_CALL_TITLE = "Incoming Call"
+        const val MINIMIZE_BUTTON = "Minimize"
+        fun getIncomingCallMessage(callerName: String): String =
+            "${callerName.ifBlank { "Caller" }} is inviting you to a secure call"
 
         fun getErrorSpec(error: CallError): Triple<String, String, String> {
             return when (error) {
@@ -1174,11 +1180,14 @@ fun AppLogoutConfirmDialog(
 fun IncomingCallDialog(
     callerName: String,
     onAccept: () -> Unit,
-    onDecline: () -> Unit
+    onDecline: () -> Unit,
+    onMinimize: () -> Unit
 ) {
     BaseAppDialog(cancellable = false, onDismiss = onDecline) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
@@ -1197,7 +1206,7 @@ fun IncomingCallDialog(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = "Incoming Call",
+                text = PopupTexts.Call.INCOMING_CALL_TITLE,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -1206,7 +1215,7 @@ fun IncomingCallDialog(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "$callerName is inviting you to a secure call",
+                text = PopupTexts.Call.getIncomingCallMessage(callerName),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1249,7 +1258,24 @@ fun IncomingCallDialog(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            IconButton(
+                onClick = onMinimize,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(Color.White.copy(alpha = 0.08f))
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Minimize",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }

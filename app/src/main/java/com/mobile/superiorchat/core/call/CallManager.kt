@@ -319,6 +319,7 @@ object CallManager {
         isIncomingCall = true
         incomingTelegramMsgId = msgId
         _callState.value = CallState.RINGING
+        StatusFlow.reportStatus(SyncState.SUCCESS, "Incoming Call: ${callerName.ifBlank { "Caller" }}")
     }
 
     /**
@@ -340,6 +341,7 @@ object CallManager {
         _lastCallFailedDueToError.value = CallError.DECLINED
         currentCallUrl = null
         incomingCallerName = ""
+        StatusFlow.reportStatus(SyncState.IDLE, "")
         
         sendPeerLinkDeclineSignal()
     }

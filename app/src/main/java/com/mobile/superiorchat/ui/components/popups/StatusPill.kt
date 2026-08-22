@@ -102,7 +102,7 @@ fun StatusPill(
     val callState by CallManager.callState.collectAsState()
     val callDuration by CallManager.callDuration.collectAsState()
     
-    val isCallActive = callState == CallState.ACTIVE || callState == CallState.CONNECTING
+    val isCallActive = callState == CallState.ACTIVE || callState == CallState.CONNECTING || callState == CallState.RINGING
     val showCallUi = isCallActive && isCallMinimized
     val showSyncUi = syncState != SyncState.IDLE && !showCallUi // Hide sync if call pill is showing
     
@@ -172,14 +172,22 @@ fun StatusPill(
                         Icon(
                             imageVector = Icons.Filled.Call,
                             contentDescription = null,
-                            tint = if (callState == CallState.ACTIVE) PillCallActive.copy(alpha = pulseAlpha) else PillCallWarning.copy(alpha = pulseAlpha),
+                            tint = when (callState) {
+                                CallState.ACTIVE -> PillCallActive.copy(alpha = pulseAlpha)
+                                CallState.RINGING -> CallSuccess.copy(alpha = pulseAlpha)
+                                else -> PillCallWarning.copy(alpha = pulseAlpha)
+                            },
                             modifier = Modifier.size(16.dp)
                         )
                         
-                        val text = if (callState == CallState.CONNECTING) "Connecting" else {
-                            val mins = (callDuration / 60).toString().padStart(2, '0')
-                            val secs = (callDuration % 60).toString().padStart(2, '0')
-                            "$mins:$secs"
+                        val text = when (callState) {
+                            CallState.CONNECTING -> "Connecting"
+                            CallState.RINGING -> "Incoming Call..."
+                            else -> {
+                                val mins = (callDuration / 60).toString().padStart(2, '0')
+                                val secs = (callDuration % 60).toString().padStart(2, '0')
+                                "$mins:$secs"
+                            }
                         }
                         
                         Text(
@@ -190,17 +198,23 @@ fun StatusPill(
                             modifier = Modifier.widthIn(min = 42.dp)
                         )
                         
-                            Box(
-                                modifier = Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(PillAppleRed)
-                                    .clickable { CallManager.endCall() },
-                                contentAlignment = Alignment.Center
-                            ) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(PillAppleRed)
+                                .clickable {
+                                    if (callState == CallState.RINGING) {
+                                        CallManager.declineIncomingCall()
+                                    } else {
+                                        CallManager.endCall()
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
                             Icon(
                                 imageVector = Icons.Filled.CallEnd,
-                                contentDescription = "End Call",
+                                contentDescription = if (callState == CallState.RINGING) "Decline Call" else "End Call",
                                 tint = Color.White,
                                 modifier = Modifier.size(14.dp)
                             )

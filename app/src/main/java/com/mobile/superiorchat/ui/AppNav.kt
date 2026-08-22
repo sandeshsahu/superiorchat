@@ -732,33 +732,36 @@ fun AppScreen(
                 
                 // Show Call Screen Overlay (Kept in composition even when minimized or during popup)
                 if (callState == CallState.RINGING) {
-                    IncomingCallDialog(
-                        callerName = CallManager.incomingCallerName,
-                        onAccept = { 
-                            permissionHandler.requestAudioAndCamera {
-                                receiverConnectionState = ReceiverConnectionState.VALIDATING
-                                CallManager.acceptIncomingCall(context)
-                                receiverHardwareTimer = 0
-                                scope.launch {
-                                    while (receiverHardwareTimer < 30 && (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
-                                        kotlinx.coroutines.delay(1000)
-                                        receiverHardwareTimer++
-                                    }
-                                    if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
-                                        com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
-                                        CallManager.endCall()
-                                        receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
-                                    } else if (receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                                        com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
-                                        CallManager.endCall()
-                                        CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                        receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
+                    if (!isCallMinimized) {
+                        IncomingCallDialog(
+                            callerName = CallManager.incomingCallerName,
+                            onAccept = { 
+                                permissionHandler.requestAudioAndCamera {
+                                    receiverConnectionState = ReceiverConnectionState.VALIDATING
+                                    CallManager.acceptIncomingCall(context)
+                                    receiverHardwareTimer = 0
+                                    scope.launch {
+                                        while (receiverHardwareTimer < 30 && (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
+                                            kotlinx.coroutines.delay(1000)
+                                            receiverHardwareTimer++
+                                        }
+                                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
+                                            com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
+                                            CallManager.endCall()
+                                            receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
+                                        } else if (receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                                            com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                            CallManager.endCall()
+                                            CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                            receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
+                                        }
                                     }
                                 }
-                            }
-                        },
-                        onDecline = { CallManager.declineIncomingCall() }
-                    )
+                            },
+                            onDecline = { CallManager.declineIncomingCall() },
+                            onMinimize = { isCallMinimized = true }
+                        )
+                    }
                 } else if (callState != CallState.IDLE) {
                     val callUrl = CallManager.currentCallUrl
                     if (callUrl != null) {
