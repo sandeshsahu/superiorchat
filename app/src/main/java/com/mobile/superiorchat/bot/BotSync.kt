@@ -307,10 +307,14 @@ class BotSync(private val context: Context) {
         val prefs = AppGraph.prefs
         if (prefs.isPeerLinkEnabled) {
             val expectedGroupId = prefs.activeChatId
-            val expectedPartner = prefs.peerLinkPartnerBotUsername.removePrefix("@")
+            val expectedPartner = prefs.peerLinkPartnerBotUsername.trim().removePrefix("@")
             val fromUser = message.from?.username ?: ""
-            if (expectedGroupId.isEmpty() || message.chat.id.toString() != expectedGroupId || fromUser != expectedPartner) {
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from chat ${message.chat.id}, user $fromUser", LogLevel.WARN)
+            if (expectedGroupId.isEmpty() || message.chat.id.toString() != expectedGroupId) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from chat ${message.chat.id}", LogLevel.WARN)
+                return
+            }
+            if (expectedPartner.isNotEmpty() && !fromUser.equals(expectedPartner, ignoreCase = true)) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from user $fromUser (expected $expectedPartner)", LogLevel.WARN)
                 return
             }
         } else {
@@ -491,6 +495,21 @@ class BotSync(private val context: Context) {
         )
 
         repository.insertMessage(messageEntity)
+
+        // Trigger profile sync for sender if missing or out of date
+        if (senderId.isNotEmpty()) {
+            val senderName = message.from?.first_name
+            val senderUsername = message.from?.username
+            coroutineScope.launch(Dispatchers.IO) {
+                if (isNetworkAvailable) {
+                    val token = prefs.botToken
+                    val cached = repository.getProfileSync(senderId)
+                    if (cached == null || (senderName != null && cached.title != senderName) || (senderUsername != null && cached.username != senderUsername)) {
+                        MediaSync.syncSenderProfile(context, token, senderId, senderName, senderUsername)
+                    }
+                }
+            }
+        }
 
         if (!isAlreadyOnDisk && isAutoDownload && fileId != null && mediaType != null) {
             MediaSync.enqueueDownload(context, messageEntity.messageId, fileId, mediaType)

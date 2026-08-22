@@ -39,4 +39,15 @@ object ServiceCore {
             }
         }
     }
+
+    fun stop(context: Context) {
+        try {
+            val serviceIntent = Intent(context, BotService::class.java)
+            context.stopService(serviceIntent)
+            AppLog.setServiceRunning(false)
+            AppLog.log(LogCategory.SYSTEM, "ServiceCore: Stopped BotService")
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "ServiceCore: Failed to stop service: ${e.message}", LogLevel.ERROR)
+        }
+    }
 }

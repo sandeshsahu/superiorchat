@@ -199,21 +199,31 @@ fun PartnerProfile(
                         .background(SurfaceLevel2)
                         .padding(16.dp)
                 ) {
-                    DetailRow(label = "Chat ID", value = chatId)
+                    val idLabel = if (type == "group" || type == "supergroup") "Group ID" else if (type == "bot") "Bot ID" else "User ID"
+                    DetailRow(label = idLabel, value = chatId)
                     Spacer(modifier = Modifier.height(12.dp))
-                    DetailRow(label = "Type", value = type.replaceFirstChar { it.uppercase() }.ifEmpty { "Private" })
+                    val displayType = when (type) {
+                        "bot" -> "Bot"
+                        "group" -> "Group"
+                        "supergroup" -> "Supergroup"
+                        "channel" -> "Channel"
+                        else -> "Private"
+                    }
+                    DetailRow(label = "Type", value = displayType)
                     
-                    if (isForum) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        DetailRow(label = "Forum", value = "Yes")
-                    }
-                    if (hasProtectedContent) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        DetailRow(label = "Protected Content", value = "Yes")
-                    }
-                    if (inviteLink.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        DetailRow(label = "Invite Link", value = "Available")
+                    if (type == "group" || type == "supergroup") {
+                        if (isForum) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            DetailRow(label = "Forum", value = "Yes")
+                        }
+                        if (hasProtectedContent) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            DetailRow(label = "Protected Content", value = "Yes")
+                        }
+                        if (inviteLink.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            DetailRow(label = "Invite Link", value = "Available")
+                        }
                     }
                 }
             }

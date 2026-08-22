@@ -15,6 +15,9 @@ interface ProfileDao {
     @Query("SELECT * FROM user_profiles WHERE chatId = :chatId")
     suspend fun getProfileSync(chatId: String): UserProfile?
 
+    @Query("SELECT * FROM user_profiles")
+    fun getAllProfiles(): Flow<List<UserProfile>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: UserProfile): Long
 }

@@ -348,6 +348,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _userProfile = MutableStateFlow<com.mobile.superiorchat.data.entity.UserProfile?>(null)
     val userProfile: StateFlow<com.mobile.superiorchat.data.entity.UserProfile?> = _userProfile.asStateFlow()
 
+    private val _userProfiles = MutableStateFlow<Map<String, com.mobile.superiorchat.data.entity.UserProfile>>(emptyMap())
+    val userProfiles: StateFlow<Map<String, com.mobile.superiorchat.data.entity.UserProfile>> = _userProfiles.asStateFlow()
+
+    private val _selectedProfile = MutableStateFlow<com.mobile.superiorchat.data.entity.UserProfile?>(null)
+    val selectedProfile: StateFlow<com.mobile.superiorchat.data.entity.UserProfile?> = _selectedProfile.asStateFlow()
+
     private val _scrollEvents = MutableSharedFlow<ScrollEvent>(extraBufferCapacity = 16)
     val scrollEvents: SharedFlow<ScrollEvent> = _scrollEvents.asSharedFlow()
 
@@ -368,10 +374,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val messageLimit: StateFlow<Int> = _messageLimit.asStateFlow()
 
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "bot_token" || key == "chat_id") {
+        if (key == "bot_token" || key == "chat_id" || key == "peerlink_group_chat_id" || key == "is_peerlink_enabled" || key == "is_admin_mode_enabled") {
             isCredentialsEmpty = prefs.botToken.isBlank() || prefs.activeChatId.isBlank()
-        }
-        if (key == "chat_id") {
             loadMessages()
         }
     }
@@ -408,6 +412,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             // One-time startup sync scan for interrupted/queued messages globally
             launch {
                 MediaSync.resumeInterruptedTransfers(getApplication(), repository)
+            }
+
+            launch {
+                repository.getAllProfiles().collectLatest { profileList ->
+                    _userProfiles.value = profileList.associateBy { it.chatId }
+                }
             }
 
             launch {
@@ -451,12 +461,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun forceSyncProfile(context: Context) {
-        val chatId = prefs.activeChatId
+    fun openProfileForSender(context: Context, senderId: String) {
+        val targetId = if (senderId.isBlank() || senderId == "ME") prefs.activeChatId else senderId
+        val profile = _userProfiles.value[targetId] ?: _userProfile.value
+        _selectedProfile.value = profile
+        forceSyncProfile(context, targetId)
+    }
+
+    fun clearSelectedProfile() {
+        _selectedProfile.value = null
+    }
+
+    fun forceSyncProfile(context: Context, senderId: String? = null) {
+        val targetId = senderId?.takeIf { it.isNotBlank() && it != "ME" } ?: prefs.activeChatId
         val token = prefs.botToken
-        if (chatId.isBlank() || token.isBlank()) return
+        if (targetId.isBlank() || token.isBlank()) return
         viewModelScope.launch(Dispatchers.IO) {
-            MediaSync.syncTargetProfile(context, token, chatId)
+            MediaSync.syncSenderProfile(context, token, targetId)
         }
     }
 

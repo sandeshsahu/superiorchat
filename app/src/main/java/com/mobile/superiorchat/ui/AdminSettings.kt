@@ -16,7 +16,7 @@ import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.popups.PeerLinkSetupFlowDialog
 
 @Composable
-fun AdminScreen(
+fun AdminSettingsScreen(
     viewModel: MainViewModel,
     onShowGlobalDialog: (GlobalDialogState) -> Unit
 ) {

@@ -579,9 +579,7 @@ fun AppScreen(
                             onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
                             onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
                             onClearCredentials = { 
-                                viewModel.botToken = ""
-                                viewModel.chatId = ""
-                                viewModel.saveCredentials()
+                                viewModel.clearCredentials()
                             },
                             isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
                             isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
@@ -676,16 +674,14 @@ fun AppScreen(
                                 onNavigateToAdmin = { currentScreen = NavScreen.AdminSettings },
                                 onSave = { viewModel.saveCredentials() },
                                 onClearCredentials = {
-                                    viewModel.botToken = ""
-                                    viewModel.chatId = ""
-                                    viewModel.saveCredentials()
+                                    viewModel.clearCredentials()
                                 },
                                 onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) },
                                 onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                             )
                         }
                         NavScreen.AdminSettings -> {
-                            AdminScreen(
+                            AdminSettingsScreen(
                                 viewModel = viewModel,
                                 onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                             )

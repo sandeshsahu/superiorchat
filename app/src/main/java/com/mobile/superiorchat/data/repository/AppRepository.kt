@@ -120,6 +120,10 @@ class AppRepository(
         return profileDao.getProfile(chatId)
     }
 
+    fun getAllProfiles(): Flow<List<UserProfile>> {
+        return profileDao.getAllProfiles()
+    }
+
     suspend fun getProfileSync(chatId: String): UserProfile? {
         return profileDao.getProfileSync(chatId)
     }

@@ -505,32 +505,55 @@ object MediaSync {
 
     suspend fun syncTargetProfile(context: Context, token: String, chatId: String) {
         if (chatId.isBlank() || token.isBlank()) return
+        syncSenderProfile(context, token, chatId)
+    }
+
+    suspend fun syncSenderProfile(
+        context: Context,
+        token: String,
+        senderId: String,
+        fallbackName: String? = null,
+        fallbackUsername: String? = null
+    ) {
+        if (senderId.isBlank() || token.isBlank()) return
         try {
             StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Checking profile details...")
-            val chatResponse = TelegramApi.getChat(token, chatId)
+            val chatResponse = TelegramApi.getChat(token, senderId)
             val chat = chatResponse?.result
-            
+
+            val repository = com.mobile.superiorchat.core.AppGraph.appRepository
+            val existingProfile = repository.getProfileSync(senderId)
+
             if (chat == null) {
-                AppLog.log(LogCategory.SYSTEM, "Failed to fetch target profile, keeping existing data.")
+                if (existingProfile == null && (fallbackName != null || fallbackUsername != null)) {
+                    val initialProfile = com.mobile.superiorchat.data.entity.UserProfile(
+                        chatId = senderId,
+                        title = fallbackName?.ifEmpty { "User" } ?: "User",
+                        username = fallbackUsername ?: "",
+                        type = "private",
+                        profilePhotoPath = "",
+                        photoUniqueId = ""
+                    )
+                    repository.insertProfile(initialProfile)
+                }
+                AppLog.log(LogCategory.SYSTEM, "Failed to fetch profile from Telegram for senderId=$senderId, keeping existing data.")
                 StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
                 return
             }
-            
-            val title = chat.first_name ?: chat.title ?: "Unknown"
-            val username = chat.username ?: ""
-            val type = chat.type
+
+            val title = chat.first_name ?: chat.title ?: fallbackName ?: "Unknown"
+            val username = chat.username ?: fallbackUsername ?: ""
+            val type = if (chat.type == "group" || chat.type == "supergroup") chat.type else "private"
             val bio = chat.bio ?: chat.description
             val inviteLink = chat.invite_link
             val hasProtectedContent = chat.has_protected_content ?: false
             val isForum = chat.is_forum ?: false
-            
+
             val photoUniqueId = chat.photo?.big_file_unique_id ?: ""
             val bigFileId = chat.photo?.big_file_id
-            
-            val repository = com.mobile.superiorchat.core.AppGraph.appRepository
-            val existingProfile = repository.getProfileSync(chatId)
+
             var localPath = existingProfile?.profilePhotoPath ?: ""
-            
+
             if (photoUniqueId.isNotEmpty() && photoUniqueId != existingProfile?.photoUniqueId) {
                 if (bigFileId != null) {
                     StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Updating profile picture...")
@@ -540,7 +563,7 @@ object MediaSync {
                         val downloadUrl = TelegramApi.getFileDownloadUrl(token, filePath)
                         val cacheDir = java.io.File(context.filesDir, "profiles")
                         if (!cacheDir.exists()) cacheDir.mkdirs()
-                        val destFile = java.io.File(cacheDir, "profile_${chatId}_${photoUniqueId}.jpg")
+                        val destFile = java.io.File(cacheDir, "profile_${senderId}_${photoUniqueId}.jpg")
                         val success = TelegramApi.downloadFileToLocal(downloadUrl, destFile)
                         if (success) {
                             if (localPath.isNotEmpty()) {
@@ -554,11 +577,15 @@ object MediaSync {
                     }
                 }
             } else if (photoUniqueId.isEmpty()) {
+                if (localPath.isNotEmpty()) {
+                    val oldFile = java.io.File(localPath)
+                    if (oldFile.exists()) oldFile.delete()
+                }
                 localPath = ""
             }
-            
+
             val newProfile = com.mobile.superiorchat.data.entity.UserProfile(
-                chatId = chatId,
+                chatId = senderId,
                 title = title,
                 username = username,
                 type = type,
@@ -571,29 +598,29 @@ object MediaSync {
             )
             repository.insertProfile(newProfile)
 
-            // Update ChatNode with pinnedMessageId
+            // Update ChatNode with pinnedMessageId if this is the active conversation
             val pinnedMsgId = chat.pinned_message?.message_id
-            val chatNode = repository.getChatSync(chatId)
-            if (chatNode != null) {
+            val chatNode = repository.getChatSync(senderId)
+            if (chatNode != null && pinnedMsgId != null) {
                 repository.updateChat(chatNode.copy(pinnedMessageId = pinnedMsgId))
             }
 
             val isUnchanged = existingProfile != null &&
-                              title == existingProfile.title && 
-                              username == existingProfile.username && 
-                              photoUniqueId == existingProfile.photoUniqueId &&
-                              bio == existingProfile.bio &&
-                              inviteLink == existingProfile.inviteLink &&
-                              hasProtectedContent == existingProfile.hasProtectedContent &&
-                              isForum == existingProfile.isForum
+                    title == existingProfile.title &&
+                    username == existingProfile.username &&
+                    photoUniqueId == existingProfile.photoUniqueId &&
+                    bio == existingProfile.bio &&
+                    inviteLink == existingProfile.inviteLink &&
+                    hasProtectedContent == existingProfile.hasProtectedContent &&
+                    isForum == existingProfile.isForum
             if (isUnchanged) {
                 StatusFlow.reportStatus(SyncState.SUCCESS, "No changes")
             } else {
                 StatusFlow.reportStatus(SyncState.SUCCESS, "Profile updated!")
             }
-            
+
         } catch (e: Exception) {
-            AppLog.log(LogCategory.SYSTEM, "Failed to sync target profile: ${e.message}")
+            AppLog.log(LogCategory.SYSTEM, "Failed to sync sender profile for $senderId: ${e.message}")
             StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
         }
     }

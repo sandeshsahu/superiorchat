@@ -118,6 +118,8 @@ fun ChatScreen(
     val messageLimit by viewModel.messageLimit.collectAsState()
     val isLoadingInitial by viewModel.isLoadingInitial.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
+    val userProfiles by viewModel.userProfiles.collectAsState()
+    val selectedProfile by viewModel.selectedProfile.collectAsState()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -504,9 +506,11 @@ fun ChatScreen(
                                 messages.find { it.messageId == msg.replyToMessageId }
                             } else null
 
+                            val senderProfile = userProfiles[msg.senderId] ?: userProfiles[msg.conversationId] ?: userProfile
+
                             MessageBubble(
                                 message = msg,
-                                userProfile = userProfile,
+                                userProfile = senderProfile,
                                 viewModel = viewModel,
                                 isSelectionMode = isInSelectionMode,
                                 isSelected = selectedMessageIds.contains(msg.messageId),
@@ -514,7 +518,7 @@ fun ChatScreen(
                                 onSelectMessage = { viewModel.toggleMessageSelection(it) },
                                 onNavigateToCallHistory = onNavigateToCallHistory,
                                 repliedMessageText = if (!repliedMsg?.text.isNullOrBlank()) {
-                                    repliedMsg?.text
+                                    repliedMsg.text
                                 } else when (repliedMsg?.mediaType) {
                                     "photo" -> "📷 Photo"
                                     "video" -> "🎬 Video"
@@ -523,12 +527,12 @@ fun ChatScreen(
                                     "audio" -> "🎵 ${repliedMsg.mediaFileName ?: "Audio"}"
                                     else -> if (repliedMsg != null) "📎 Attachment" else null
                                 },
-                                repliedMessageAuthor = if (repliedMsg?.isFromMe == true) "You" else (userProfile?.title?.ifEmpty { "User" } ?: "User"),
+                                repliedMessageAuthor = if (repliedMsg?.isFromMe == true) "You" else ((userProfiles[repliedMsg?.senderId]?.title ?: userProfile?.title)?.ifEmpty { "User" } ?: "User"),
                                 onMediaClick = onMediaClickRemembered,
                                 onMediaLongPressStart = onMediaLongPressStartRemembered,
                                 onMediaLongPressEnd = onMediaLongPressEndRemembered,
                                 onProfileClick = {
-                                    viewModel.forceSyncProfile(context)
+                                    viewModel.openProfileForSender(context, msg.senderId)
                                     showUserInfoDialog = true
                                 },
                                 onCopyMessage = { msgToCopy ->
@@ -701,12 +705,15 @@ fun ChatScreen(
 
         if (showUserInfoDialog) {
             PartnerProfile(
-                userProfile = userProfile,
+                userProfile = selectedProfile ?: userProfile,
                 onImageClick = { path ->
                     activeFullScreenMediaPath = path
                     activeFullScreenMediaType = "photo"
                 },
-                onDismiss = { showUserInfoDialog = false }
+                onDismiss = {
+                    showUserInfoDialog = false
+                    viewModel.clearSelectedProfile()
+                }
             )
         }
 

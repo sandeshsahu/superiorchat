@@ -89,8 +89,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             applyTheme(AppTheme.LAVENDER)
         }
         
-        prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-            // Update preferences if needed
+        prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            when (key) {
+                "bot_token" -> botToken = prefs.botToken
+                "chat_id" -> chatId = prefs.chatId
+                "webrtc_base_url" -> webrtcBaseUrl = prefs.webrtcBaseUrl
+                "peerlink_group_chat_id" -> peerLinkGroupChatId = prefs.peerLinkGroupChatId
+                "peerlink_partner_bot_username" -> peerLinkPartnerBotUsername = prefs.peerLinkPartnerBotUsername
+                "is_peerlink_enabled" -> isPeerLinkEnabled = prefs.isPeerLinkEnabled
+                "is_admin_mode_enabled" -> isAdminModeEnabled = prefs.isAdminModeEnabled
+                "is_peerlink_locked" -> isPeerLinkLocked = prefs.isPeerLinkLocked
+                "app_theme" -> {
+                    try {
+                        val theme = AppTheme.valueOf(prefs.appTheme)
+                        appTheme = theme
+                        applyTheme(theme)
+                    } catch (e: Exception) {}
+                }
+            }
+            checkTelegramConnection()
         }
         prefs.sharedPreferences.registerOnSharedPreferenceChangeListener(prefListener)
 
@@ -438,8 +455,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ServiceCore.ensureRunning(getApplication<Application>())
             com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
         } else {
+            ServiceCore.stop(getApplication<Application>())
             com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Cleared")
         }
+    }
+
+    fun clearCredentials() {
+        botToken = ""
+        chatId = ""
+        peerLinkGroupChatId = ""
+        peerLinkPartnerBotUsername = ""
+
+        prefs.botToken = ""
+        prefs.chatId = ""
+        prefs.peerLinkGroupChatId = ""
+        prefs.peerLinkPartnerBotUsername = ""
+        prefs.lastUpdateId = 0L
+
+        checkTelegramConnection()
+        ServiceCore.stop(getApplication<Application>())
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Cleared")
     }
 
     fun clearChat(deleteMedia: Boolean) {
