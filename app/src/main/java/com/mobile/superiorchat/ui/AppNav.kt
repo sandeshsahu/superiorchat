@@ -115,13 +115,19 @@ fun AppScreen(
     // sleeping_miku.png — CC BY-NC 3.0 — slubaru/DomEgCZ — fan art of Hatsune Miku © Crypton Future Media
     var autoMikuMode by remember { mutableStateOf(false) }
     var manualMikuMode by remember { mutableStateOf(false) }
-    val isMikuActive = autoMikuMode || manualMikuMode
+    val isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled
+    val isMikuActive = isAnimeCharacterEnabled && (autoMikuMode || manualMikuMode)
     var showMikuTip by remember { mutableStateOf(false) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
 
     // Auto inactivity timer — fires every 500ms, activates after 5s of no touch
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isAnimeCharacterEnabled) {
+        if (!isAnimeCharacterEnabled) {
+            autoMikuMode = false
+            manualMikuMode = false
+            return@LaunchedEffect
+        }
         while (true) {
             delay(500)
             if (!manualMikuMode && !autoMikuMode) {
@@ -395,6 +401,7 @@ fun AppScreen(
                                 indication = null, 
                                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
                             ) {
+                                if (!isAnimeCharacterEnabled) return@clickable
                                 if (isMikuActive) {
                                     manualMikuMode = false
                                     autoMikuMode = false
@@ -422,10 +429,17 @@ fun AppScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) { mikuActive ->
                             if (mikuActive) {
-                                TopAppBar(
-                                    title = {},
+                                CenterAlignedTopAppBar(
+                                    title = {
+                                        Text(
+                                            currentScreen.title,
+                                            fontSize = 24.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = PrimaryLight
+                                        )
+                                    },
                                     navigationIcon = {
-                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)) {
+                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory, NavScreen.AdminSettings)) {
                                             IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
                                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryLight)
                                             }
@@ -446,7 +460,7 @@ fun AppScreen(
                                                 .padding(end = 6.dp)
                                         )
                                     },
-                                    colors = TopAppBarDefaults.topAppBarColors(
+                                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                                         containerColor = androidx.compose.ui.graphics.Color.Transparent,
                                         scrolledContainerColor = androidx.compose.ui.graphics.Color.Transparent
                                     )
@@ -632,6 +646,8 @@ fun AppScreen(
                                 webrtcBaseUrl = viewModel.webrtcBaseUrl,
                                 appTheme = viewModel.appTheme,
                                 onAppThemeChange = { viewModel.updateAppTheme(it) },
+                                isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled,
+                                onAnimeCharacterChange = { viewModel.toggleAnimeCharacter(it) },
                                 isTileAccessEnabled = viewModel.tileAccessEnabled,
                                 customAccessWord = viewModel.customAccessWord,
                                 customDialerCode = viewModel.customDialerCode,

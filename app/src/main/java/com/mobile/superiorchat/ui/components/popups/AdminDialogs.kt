@@ -60,6 +60,12 @@ object AdminTexts {
     const val CREDENTIALS_INFO_TITLE = "Admin Credentials"
     const val CREDENTIALS_INFO_MESSAGE =
         "Configure your own *Bot Token*, *Private Group Chat ID*, and your *Partner's Bot Username* manually, or scan the configuration *QR Code* from the Setup App."
+
+    const val HIDE_FROM_RECENTS_INFO_TITLE = "Hide from Recent Apps"
+    const val HIDE_FROM_RECENTS_INFO_MESSAGE =
+        "Controls whether Superior Chat appears in Android's **Overview / Recent Apps** multitasking list.\n\n" +
+        "• **Enabled (Recommended for Stealth)**:\nWhen you minimize or leave the app, it completely disappears from Recent Apps, leaving zero trace on the multitasking screen. You can reopen via the dialer code or secret shortcut.\n\n" +
+        "• **Disabled**:\nThe app remains visible in Recent Apps, allowing quick task switching. (If Screen Security is enabled, the preview card screenshot will still remain pitch-black)."
 }
 
 /**
@@ -580,6 +586,17 @@ fun AdminCredentialsInfoDialog(
     InfoDialog(
         title = AdminTexts.CREDENTIALS_INFO_TITLE,
         message = AdminTexts.CREDENTIALS_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminExcludeFromRecentsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = AdminTexts.HIDE_FROM_RECENTS_INFO_TITLE,
+        message = AdminTexts.HIDE_FROM_RECENTS_INFO_MESSAGE,
         onDismiss = onDismiss
     )
 }

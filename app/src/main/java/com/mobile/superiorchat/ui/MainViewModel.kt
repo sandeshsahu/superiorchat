@@ -99,6 +99,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 "is_peerlink_enabled" -> isPeerLinkEnabled = prefs.isPeerLinkEnabled
                 "is_admin_mode_enabled" -> isAdminModeEnabled = prefs.isAdminModeEnabled
                 "is_peerlink_locked" -> isPeerLinkLocked = prefs.isPeerLinkLocked
+                "is_exclude_from_recents_enabled" -> isExcludeFromRecentsEnabled = prefs.isExcludeFromRecentsEnabled
+                "is_anime_character_enabled" -> isAnimeCharacterEnabled = prefs.isAnimeCharacterEnabled
                 "app_theme" -> {
                     try {
                         val theme = AppTheme.valueOf(prefs.appTheme)
@@ -347,6 +349,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleAdminMode(enabled: Boolean) {
         prefs.isAdminModeEnabled = enabled
         isAdminModeEnabled = enabled
+    }
+
+    var isExcludeFromRecentsEnabled by mutableStateOf(prefs.isExcludeFromRecentsEnabled)
+        private set
+
+    fun toggleExcludeFromRecents(enabled: Boolean) {
+        prefs.isExcludeFromRecentsEnabled = enabled
+        isExcludeFromRecentsEnabled = enabled
+    }
+
+    var isAnimeCharacterEnabled by mutableStateOf(prefs.isAnimeCharacterEnabled)
+        private set
+
+    fun toggleAnimeCharacter(enabled: Boolean) {
+        prefs.isAnimeCharacterEnabled = enabled
+        isAnimeCharacterEnabled = enabled
     }
 
     // -- Permissions State --

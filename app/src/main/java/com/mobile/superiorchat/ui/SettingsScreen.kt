@@ -68,6 +68,8 @@ fun AppSettingsPage(
     webrtcBaseUrl: String,
     appTheme: com.mobile.superiorchat.theme.AppTheme,
     onAppThemeChange: (com.mobile.superiorchat.theme.AppTheme) -> Unit,
+    isAnimeCharacterEnabled: Boolean = true,
+    onAnimeCharacterChange: (Boolean) -> Unit = {},
     onBotTokenChange: (String) -> Unit,
     onChatIdChange: (String) -> Unit,
     onTileAccessChange: (Boolean) -> Unit,
@@ -323,6 +325,43 @@ fun AppSettingsPage(
             }
         }
         
+        // Ui Settings Card
+        SettingsCard {
+            var showUiSettingsInfo by remember { mutableStateOf(false) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically, 
+                modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Palette, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Ui Settings", fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                }
+                Icon(
+                    Icons.Default.Info, 
+                    contentDescription = "Info", 
+                    tint = TextSecondary, 
+                    modifier = Modifier.size(20.dp).clickable { showUiSettingsInfo = true }
+                )
+            }
+            if (showUiSettingsInfo) {
+                SettingsUiSettingsInfoDialog(
+                    onDismiss = { showUiSettingsInfo = false }
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingsSwitchRow(
+                title = "Anime Character",
+                subtitle = "Show sleeping character on inactivity",
+                icon = Icons.Default.Face,
+                iconTint = PrimaryLight,
+                isChecked = isAnimeCharacterEnabled,
+                onCheckedChange = { onAnimeCharacterChange(it) }
+            )
+        }
+
         // ── 2nd: Security Settings Section ────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,

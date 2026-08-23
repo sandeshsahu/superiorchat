@@ -88,6 +88,10 @@ object PopupTexts {
         const val NETWORK_ERROR_TITLE = "No Internet Connection"
         const val NETWORK_ERROR_MESSAGE = "Please check your network connection and try again."
 
+        const val UI_SETTINGS_INFO_TITLE = "UI Settings"
+        const val UI_SETTINGS_INFO_MESSAGE =
+            "Customize the visual interface and interactive elements of Superior Chat.\n\n• **Anime Character**: Shows the sleeping Anime character during inactivity. When disabled, the character will not be shown."
+
         const val APP_LOCK_INFO_TITLE = "App Lock"
         const val APP_LOCK_INFO_MESSAGE =
             "App Lock secures your chats by requiring a PIN code every time you open the app or return from the background."
@@ -464,6 +468,17 @@ fun SettingsNetworkErrorDialog(
         confirmText = "Okay",
         dismissText = "",
         onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsUiSettingsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.UI_SETTINGS_INFO_TITLE,
+        message = PopupTexts.Settings.UI_SETTINGS_INFO_MESSAGE,
         onDismiss = onDismiss
     )
 }

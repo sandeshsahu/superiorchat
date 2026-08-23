@@ -145,6 +145,11 @@ open class MainActivity : ComponentActivity() {
                 }
             }
 
+            val isExcludeFromRecents = viewModel.isExcludeFromRecentsEnabled
+            LaunchedEffect(isExcludeFromRecents) {
+                updateExcludeFromRecents(isExcludeFromRecents)
+            }
+
             val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
             var showTerms by remember { mutableStateOf(!com.mobile.superiorchat.core.AppGraph.prefs.hasAgreedToTerms) }
 
@@ -232,8 +237,20 @@ open class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun updateExcludeFromRecents(exclude: Boolean) {
+        try {
+            val am = getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+            am?.appTasks?.forEach { task ->
+                task.setExcludeFromRecents(exclude)
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to update excludeFromRecents: ${e.message}", LogLevel.WARN)
+        }
+    }
+
     override fun onResume() {
         super.onResume()
+        updateExcludeFromRecents(viewModel.isExcludeFromRecentsEnabled)
         // Broadcast that chat is opened so camo engine clears notifications
         val intent = android.content.Intent("com.mobile.superiorchat.ACTION_CHAT_OPENED")
         sendBroadcast(intent)

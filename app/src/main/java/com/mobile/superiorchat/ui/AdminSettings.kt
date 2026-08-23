@@ -22,6 +22,7 @@ import com.mobile.superiorchat.ui.components.popups.AdminRouteMessagesInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminIAmAdminInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminAppToAppGuideDialog
 import com.mobile.superiorchat.ui.components.popups.AdminCredentialsInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminExcludeFromRecentsInfoDialog
 
 @Composable
 fun AdminSettingsScreen(
@@ -34,6 +35,7 @@ fun AdminSettingsScreen(
     var showIAmAdminInfo by remember { mutableStateOf(false) }
     var showSetupGuideDialog by remember { mutableStateOf(false) }
     var showCredentialsInfo by remember { mutableStateOf(false) }
+    var showExcludeFromRecentsInfo by remember { mutableStateOf(false) }
 
     if (showReadOnlyInfo) {
         AdminReadOnlyInfoDialog(onDismiss = { showReadOnlyInfo = false })
@@ -53,6 +55,10 @@ fun AdminSettingsScreen(
 
     if (showCredentialsInfo) {
         AdminCredentialsInfoDialog(onDismiss = { showCredentialsInfo = false })
+    }
+
+    if (showExcludeFromRecentsInfo) {
+        AdminExcludeFromRecentsInfoDialog(onDismiss = { showExcludeFromRecentsInfo = false })
     }
 
     if (showSetupDialog) {
@@ -147,7 +153,29 @@ fun AdminSettingsScreen(
             )
         }
 
-        // Section 2: I Am Admin
+        // Section 2: Lifecycle
+        SettingsCard {
+            Text(
+                text = "Lifecycle",
+                fontSize = 14.sp,
+                color = PrimaryLight,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
+            )
+
+            SettingsSwitchRow(
+                title = "Hide from Recent",
+                subtitle = "Exclude app from Android recent apps overview",
+                icon = Icons.Filled.VisibilityOff,
+                iconTint = PrimaryLight,
+                isChecked = viewModel.isExcludeFromRecentsEnabled,
+                enabled = !isLocked,
+                onCheckedChange = { viewModel.toggleExcludeFromRecents(it) },
+                onInfoClick = { showExcludeFromRecentsInfo = true }
+            )
+        }
+
+        // Section 3: I Am Admin
         SettingsCard {
             Text(
                 text = "I Am Admin",

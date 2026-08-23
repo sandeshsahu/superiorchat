@@ -289,6 +289,26 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isExcludeFromRecentsEnabled: Boolean = sharedPreferences.getBoolean("is_exclude_from_recents_enabled", true)
+    var isExcludeFromRecentsEnabled: Boolean
+        get() = _isExcludeFromRecentsEnabled
+        set(value) {
+            if (_isExcludeFromRecentsEnabled != value) {
+                _isExcludeFromRecentsEnabled = value
+                sharedPreferences.edit().putBoolean("is_exclude_from_recents_enabled", value).apply()
+            }
+        }
+
+    private var _isAnimeCharacterEnabled: Boolean = sharedPreferences.getBoolean("is_anime_character_enabled", true)
+    var isAnimeCharacterEnabled: Boolean
+        get() = _isAnimeCharacterEnabled
+        set(value) {
+            if (_isAnimeCharacterEnabled != value) {
+                _isAnimeCharacterEnabled = value
+                sharedPreferences.edit().putBoolean("is_anime_character_enabled", value).apply()
+            }
+        }
+
     // Tracks whether the user has agreed to Terms & Conditions.
     // Stored in EncryptedSharedPreferences — automatically resets if user clears app data,
     // which is intentional: T&C must be shown again on fresh install or data wipe.
