@@ -34,17 +34,23 @@ object AdminTexts {
     const val ADMIN_MODE_ACTIVE_MESSAGE =
         "You currently have *I am Admin* turned on.\n\nPlease configure your bot credentials inside the *Admin Settings* screen instead. Turn off Admin Mode if you want to configure regular client credentials."
 
-    const val READ_ONLY_INFO_TITLE = "Read Only Lock"
-    const val READ_ONLY_INFO_MESSAGE =
-        "When *Enabled*, all administrative settings are locked.\n\nThis prevents accidental toggling or modifying of *Routing* and *Admin Mode*, ensuring your chat configuration remains protected."
+    const val PEERLINK_INFO_TITLE = "PeerLink Configuration"
+    const val PEERLINK_INFO_MESSAGE =
+        "PeerLink enables direct app-to-app communication between you and your partner using Telegram's bot-to-bot group routing.\n\n" +
+        "• **Read Only**:\nLocks all administrative settings and prevents accidental modification or disabling of PeerLink routing.\n\n" +
+        "• **Route Messages**:\nInforms the app that the partner (Admin) will chat directly through the Superior Chat app rather than standard Telegram bot DMs. When enabled, it also unlocks the *Partner Bot Username* field in normal App Settings credentials so the client app can filter and accept messages exclusively from your bot."
 
-    const val ROUTE_MESSAGES_INFO_TITLE = "Route Messages"
-    const val ROUTE_MESSAGES_INFO_MESSAGE =
-        "Enables *App-to-App Chat* using Telegram's bot-to-bot communication in a private group.\n\n• **Direct Chat & Calls**: Both partners can chat and make calls directly inside the Superior Chat app.\n• **Intruder Shield**: Verifies sender usernames so the app strictly accepts messages from your partner's bot and ignores unauthorized intruders.\n• **Partner Setup**: On your partner's app, enable *Route Messages*, enter the same *Group Chat ID*, and provide *Your Bot Username* in Credentials.\n• **Direct DM Fallback**: When disabled, the app operates in standard 1-on-1 direct bot mode."
+    const val LIFECYCLE_INFO_TITLE = "Lifecycle & Task Management"
+    const val LIFECYCLE_INFO_MESSAGE =
+        "Controls application background behavior, task execution, and system-level visibility.\n\n" +
+        "• **Hide from Recent**:\nHides Superior Chat from Android's Recent Apps / Overview screen when the application is closed or minimized, ensuring zero trace of multitasking activity. Reopen anytime via dialer code or secret shortcut.\n\n" +
+        "*(Upcoming features: Background Call Routing, Call Ringing Services, and Persistent Keep-Alive controls).*"
 
-    const val I_AM_ADMIN_INFO_TITLE = "I Am Admin"
+    const val I_AM_ADMIN_INFO_TITLE = "I Am Admin (User B)"
     const val I_AM_ADMIN_INFO_MESSAGE =
-        "Turn this on if you are the *Admin (User B)* who will also be chatting directly inside this app.\n\n• **Admin Bot Configuration**: Unlocks the *Credentials* section where you can enter your bot token, private group chat ID, and partner's bot username.\n• **Bridge Mode**: Messages you send are dispatched via your admin bot to the shared group, where your partner's bot receives them securely."
+        "This section is strictly for **User B (Admin)** who wants to chat and call directly inside this application while connected to their partner.\n\n" +
+        "• **I will chat here**:\nUnlocks the dedicated *Credentials* card below. When enabled, credentials cannot be entered in regular App Settings—they must be configured in the Admin Credentials card below.\n\n" +
+        "• **Dual Bot Bridge**:\nOutgoing messages and calls are dispatched via your own Admin bot directly to the shared private group, where your partner's bot receives them securely."
 
     const val APP_TO_APP_GUIDE_TITLE = "App-to-App Setup Guide"
     const val APP_TO_APP_GUIDE_MESSAGE =
@@ -57,15 +63,26 @@ object AdminTexts {
     const val APP_TO_APP_GUIDE_NOTE =
         "Setup App QR Shortcut: Generate a setup QR code in the Setup App and scan it on your partner's device to configure everything automatically!"
 
-    const val CREDENTIALS_INFO_TITLE = "Admin Credentials"
+    const val CREDENTIALS_INFO_TITLE = "Admin Credentials Setup"
     const val CREDENTIALS_INFO_MESSAGE =
-        "Configure your own *Bot Token*, *Private Group Chat ID*, and your *Partner's Bot Username* manually, or scan the configuration *QR Code* from the Setup App."
+        "Configure your own Admin bot credentials to establish a secure link with your partner:\n\n" +
+        "• **Bot Token**:\nThe token of your *own* dedicated bot created via @BotFather (must be a separate bot from your partner's bot).\n\n" +
+        "• **Group Chat ID**:\nThe private Telegram group ID connecting both bots (e.g., -100...). Both bots must be members and promoted to **Administrators** with full permissions.\n\n" +
+        "• **Partner Bot's Username**:\nThe `@username` of your *partner's* bot (not your own bot). This acts as an intruder shield, ensuring the app strictly drops messages from anyone else in the group and only accepts messages from your partner."
 
-    const val HIDE_FROM_RECENTS_INFO_TITLE = "Hide from Recent Apps"
-    const val HIDE_FROM_RECENTS_INFO_MESSAGE =
-        "Controls whether Superior Chat appears in Android's **Overview / Recent Apps** multitasking list.\n\n" +
-        "• **Enabled (Recommended for Stealth)**:\nWhen you minimize or leave the app, it completely disappears from Recent Apps, leaving zero trace on the multitasking screen. You can reopen via the dialer code or secret shortcut.\n\n" +
-        "• **Disabled**:\nThe app remains visible in Recent Apps, allowing quick task switching. (If Screen Security is enabled, the preview card screenshot will still remain pitch-black)."
+    const val DISABLE_ROUTE_MESSAGES_WARNING_TITLE = "Disable Route Messages?"
+    const val DISABLE_ROUTE_MESSAGES_WARNING_MESSAGE =
+        "Disabling Route Messages will switch the application back to standard direct 1-on-1 mode.\n\n" +
+        "• The *Partner Bot Username* filter will be cleared.\n" +
+        "• If *Admin Mode* is active on this device, it will be turned off and Admin credentials will be cleared.\n\n" +
+        "Are you sure you want to proceed?"
+
+    const val DISABLE_ADMIN_MODE_WARNING_TITLE = "Disable Admin Mode?"
+    const val DISABLE_ADMIN_MODE_WARNING_MESSAGE =
+        "Disabling Admin Mode indicates this device will no longer act as the Admin (User B).\n\n" +
+        "• Your Admin Bot credentials and Partner Bot Username will be removed from this device.\n" +
+        "• Normal App Settings will unlock for standard client configuration.\n\n" +
+        "Are you sure you want to proceed?"
 }
 
 /**
@@ -82,7 +99,7 @@ fun SettingsAdminModeActiveDialog(
         title = AdminTexts.ADMIN_MODE_ACTIVE_TITLE,
         message = AdminTexts.ADMIN_MODE_ACTIVE_MESSAGE,
         icon = Icons.Default.AdminPanelSettings,
-        iconTint = WarningAmber,
+        iconTint = ErrorRed,
         confirmText = "Go to Settings",
         onConfirm = {
             onNavigateToAdmin()
@@ -131,49 +148,21 @@ fun PeerLinkSetupFlowDialog(
             isConfirmEnabled = botToken.isNotBlank() && !step1Loading,
             isConfirmLoading = step1Loading,
             onConfirmClick = {
-                val trimmedToken = botToken.trim()
-                if (trimmedToken.isBlank()) {
-                    step1Error = "Please enter your Telegram Bot Token."
-                    return@DialogStep
-                }
-                if (!Validator.isValidBotToken(trimmedToken)) {
-                    step1Error = "Invalid Bot Token format. It should look like 1234567890:AAH..."
-                    return@DialogStep
-                }
                 step1Loading = true
                 step1Error = null
                 scope.launch(Dispatchers.IO) {
-                    try {
-                        val getMeResp = TelegramApi.getMeSuspend(trimmedToken)
-                        if (getMeResp == null || !getMeResp.ok || getMeResp.result == null) {
-                            withContext(Dispatchers.Main) {
-                                step1Error = "Invalid bot token or token has been revoked by @BotFather."
+                    val result = Validator.verifyBotToken(botToken)
+                    withContext(Dispatchers.Main) {
+                        when (result) {
+                            is Validator.ValidationResult.Success -> {
+                                step1VerifiedBot = result.data
+                                step1Loading = false
+                                currentStep = 1
+                            }
+                            is Validator.ValidationResult.Error -> {
+                                step1Error = result.message
                                 step1Loading = false
                             }
-                            return@launch
-                        }
-                        val user = getMeResp.result
-                        if (user.can_read_all_group_messages == false) {
-                            withContext(Dispatchers.Main) {
-                                step1Error = "Group Privacy is Enabled in @BotFather. You must disable Group Privacy and enable Bot-to-Bot Communication Mode for this bot in @BotFather."
-                                step1Loading = false
-                            }
-                            return@launch
-                        }
-                        withContext(Dispatchers.Main) {
-                            step1VerifiedBot = user
-                            step1Loading = false
-                            currentStep = 1
-                        }
-                    } catch (e: java.io.IOException) {
-                        withContext(Dispatchers.Main) {
-                            step1Error = "Cannot connect to Telegram servers. Please check your internet connection."
-                            step1Loading = false
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            step1Error = "Validation failed: ${e.localizedMessage ?: "Unknown error"}"
-                            step1Loading = false
                         }
                     }
                 }
@@ -265,68 +254,28 @@ fun PeerLinkSetupFlowDialog(
             isConfirmEnabled = groupChatId.isNotBlank() && !step2Loading,
             isConfirmLoading = step2Loading,
             onConfirmClick = {
-                val trimmedChatId = groupChatId.trim()
-                if (trimmedChatId.isBlank()) {
-                    step2Error = "Please enter the Group Chat ID."
-                    return@DialogStep
-                }
-                if (!Validator.isValidGroupChatId(trimmedChatId)) {
-                    step2Error = "Must be a negative Group ID (e.g. -100123456789). Positive IDs (private 1-on-1 user chats) are not supported."
-                    return@DialogStep
-                }
-                val token = botToken.trim()
-                val botUser = step1VerifiedBot
+                val botUser = step1VerifiedBot ?: return@DialogStep
                 step2Loading = true
                 step2Error = null
                 scope.launch(Dispatchers.IO) {
-                    try {
-                        val chatResp = TelegramApi.getChatSuspend(token, trimmedChatId)
-                        if (chatResp == null || !chatResp.ok || chatResp.result == null) {
-                            withContext(Dispatchers.Main) {
-                                step2Error = "Bot has not joined this group. Please make sure 'Allow Groups' is enabled in @BotFather, then add @${botUser?.username ?: "bot"} to your group."
+                    val result = Validator.verifyChatId(
+                        token = botToken,
+                        chatId = groupChatId,
+                        botUser = botUser,
+                        isPeerLinkEnabled = true,
+                        requireGroupOnly = true
+                    )
+                    withContext(Dispatchers.Main) {
+                        when (result) {
+                            is Validator.ValidationResult.Success -> {
+                                step2VerifiedGroup = result.data
+                                step2Loading = false
+                                currentStep = 2
+                            }
+                            is Validator.ValidationResult.Error -> {
+                                step2Error = result.message
                                 step2Loading = false
                             }
-                            return@launch
-                        }
-                        val chat = chatResp.result
-                        if (chat.type == "private" || chat.type == "channel") {
-                            withContext(Dispatchers.Main) {
-                                step2Error = "This ID belongs to a ${chat.type}. App-to-App routing requires a private Group or Supergroup ID."
-                                step2Loading = false
-                            }
-                            return@launch
-                        }
-                        if (botUser != null) {
-                            val member = TelegramApi.getChatMember(token, trimmedChatId, botUser.id)
-                            if (member == null || member.status in listOf("left", "kicked")) {
-                                withContext(Dispatchers.Main) {
-                                    step2Error = "Admin Bot (@${botUser.username ?: "bot"}) is not in this group.\n\nPlease invite @${botUser.username ?: "bot"} to this group."
-                                    step2Loading = false
-                                }
-                                return@launch
-                            }
-                            if (member.status !in listOf("administrator", "creator")) {
-                                withContext(Dispatchers.Main) {
-                                    step2Error = "Admin Bot (@${botUser.username ?: "bot"}) is a regular member, NOT an Admin (Status: ${member.status}).\n\nPlease promote @${botUser.username ?: "bot"} to Administrator in Group Settings > Administrators."
-                                    step2Loading = false
-                                }
-                                return@launch
-                            }
-                        }
-                        withContext(Dispatchers.Main) {
-                            step2VerifiedGroup = chat.title ?: "Private Group"
-                            step2Loading = false
-                            currentStep = 2
-                        }
-                    } catch (e: java.io.IOException) {
-                        withContext(Dispatchers.Main) {
-                            step2Error = "Cannot connect to Telegram servers. Please check your internet connection."
-                            step2Loading = false
-                        }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            step2Error = "Validation failed: ${e.localizedMessage ?: "Unknown error"}"
-                            step2Loading = false
                         }
                     }
                 }
@@ -418,23 +367,20 @@ fun PeerLinkSetupFlowDialog(
             isConfirmEnabled = partnerUsername.isNotBlank(),
             isConfirmLoading = false,
             onConfirmClick = {
-                val trimmedPartner = partnerUsername.trim()
-                if (trimmedPartner.isBlank()) {
-                    step3Error = "Please enter your partner's bot username."
-                    return@DialogStep
-                }
-                if (!Validator.isValidPartnerBotUsername(trimmedPartner)) {
-                    step3Error = "Must start with @ (e.g. @partner_bot) and be between 4 and 32 characters."
-                    return@DialogStep
-                }
-                val myBotUsername = step1VerifiedBot?.username
-                if (myBotUsername != null && trimmedPartner.equals("@$myBotUsername", ignoreCase = true)) {
-                    step3Error = "Partner Bot Username cannot be your own Admin Bot (@$myBotUsername). Enter your partner's bot username."
+                val botUser = step1VerifiedBot ?: return@DialogStep
+                val result = Validator.verifyPartnerUsername(
+                    partnerUsername = partnerUsername,
+                    botUser = botUser,
+                    isPeerLinkEnabled = true,
+                    isGroup = true
+                )
+                if (result is Validator.ValidationResult.Error) {
+                    step3Error = result.message
                     return@DialogStep
                 }
                 val token = botToken.trim()
                 val chatId = groupChatId.trim()
-                onComplete(token, chatId, trimmedPartner)
+                onComplete(token, chatId, partnerUsername.trim())
             },
             customContent = {
                 val focusRequester = remember { FocusRequester() }
@@ -530,23 +476,23 @@ fun PeerLinkSetupFlowDialog(
 }
 
 @Composable
-fun AdminReadOnlyInfoDialog(
+fun AdminPeerLinkInfoDialog(
     onDismiss: () -> Unit
 ) {
     InfoDialog(
-        title = AdminTexts.READ_ONLY_INFO_TITLE,
-        message = AdminTexts.READ_ONLY_INFO_MESSAGE,
+        title = AdminTexts.PEERLINK_INFO_TITLE,
+        message = AdminTexts.PEERLINK_INFO_MESSAGE,
         onDismiss = onDismiss
     )
 }
 
 @Composable
-fun AdminRouteMessagesInfoDialog(
+fun AdminLifecycleInfoDialog(
     onDismiss: () -> Unit
 ) {
     InfoDialog(
-        title = AdminTexts.ROUTE_MESSAGES_INFO_TITLE,
-        message = AdminTexts.ROUTE_MESSAGES_INFO_MESSAGE,
+        title = AdminTexts.LIFECYCLE_INFO_TITLE,
+        message = AdminTexts.LIFECYCLE_INFO_MESSAGE,
         onDismiss = onDismiss
     )
 }
@@ -591,12 +537,36 @@ fun AdminCredentialsInfoDialog(
 }
 
 @Composable
-fun AdminExcludeFromRecentsInfoDialog(
+fun AdminDisableRouteMessagesDialog(
+    onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    InfoDialog(
-        title = AdminTexts.HIDE_FROM_RECENTS_INFO_TITLE,
-        message = AdminTexts.HIDE_FROM_RECENTS_INFO_MESSAGE,
+    ActionDialog(
+        title = AdminTexts.DISABLE_ROUTE_MESSAGES_WARNING_TITLE,
+        message = AdminTexts.DISABLE_ROUTE_MESSAGES_WARNING_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = "Disable",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
         onDismiss = onDismiss
     )
 }
+
+@Composable
+fun AdminDisableAdminModeDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = AdminTexts.DISABLE_ADMIN_MODE_WARNING_TITLE,
+        message = AdminTexts.DISABLE_ADMIN_MODE_WARNING_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = "Disable",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+

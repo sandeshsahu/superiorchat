@@ -652,6 +652,7 @@ fun AppScreen(
                                 customAccessWord = viewModel.customAccessWord,
                                 customDialerCode = viewModel.customDialerCode,
                                 isPeerLinkEnabled = viewModel.isPeerLinkEnabled,
+                                onPeerLinkChange = { viewModel.togglePeerLink(it) },
                                 isAdminModeEnabled = viewModel.isAdminModeEnabled,
                                 peerLinkPartnerBotUsername = viewModel.peerLinkPartnerBotUsername,
                                 onPeerLinkPartnerBotUsernameChange = { viewModel.updatePeerLinkPartnerUsername(it) },

@@ -62,6 +62,7 @@ fun AppSettingsPage(
     customDialerCode: String = "",
     onCustomDialerCodeChange: (String) -> Unit = {},
     isPeerLinkEnabled: Boolean = false,
+    onPeerLinkChange: (Boolean) -> Unit = {},
     isAdminModeEnabled: Boolean = false,
     peerLinkPartnerBotUsername: String = "",
     onPeerLinkPartnerBotUsernameChange: (String) -> Unit = {},
@@ -168,9 +169,17 @@ fun AppSettingsPage(
             isPeerLinkEnabled = isPeerLinkEnabled,
             onDismiss = { showAddManuallyDialog = false },
             onSave = { token, chat, partner ->
+                val isGroup = chat.trim().startsWith("-")
                 onBotTokenChange(token)
                 onChatIdChange(chat)
-                onPeerLinkPartnerBotUsernameChange(partner)
+                if (!isGroup) {
+                    onPeerLinkPartnerBotUsernameChange("")
+                    if (isPeerLinkEnabled) {
+                        onPeerLinkChange(false)
+                    }
+                } else {
+                    onPeerLinkPartnerBotUsernameChange(partner)
+                }
                 onSave()
                 showAddManuallyDialog = false
                 com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
@@ -869,6 +878,7 @@ fun AppSettingsPage(
                 
                 if (showBotInfo) {
                     SettingsBotCredentialsInfoDialog(
+                        isPeerLinkEnabled = isPeerLinkEnabled,
                         onDismiss = { showBotInfo = false }
                     )
                 }

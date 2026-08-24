@@ -312,6 +312,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (!enabled) {
             prefs.peerLinkPartnerBotUsername = ""
             peerLinkPartnerBotUsername = ""
+            if (isAdminModeEnabled) {
+                prefs.isAdminModeEnabled = false
+                isAdminModeEnabled = false
+                clearCredentials()
+            }
         }
     }
 
@@ -349,6 +354,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleAdminMode(enabled: Boolean) {
         prefs.isAdminModeEnabled = enabled
         isAdminModeEnabled = enabled
+        if (!enabled) {
+            clearCredentials()
+        }
     }
 
     var isExcludeFromRecentsEnabled by mutableStateOf(prefs.isExcludeFromRecentsEnabled)

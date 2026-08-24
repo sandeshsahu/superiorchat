@@ -150,9 +150,22 @@ object PopupTexts {
         fun getCustomDialerConfirmMessage(code: String): String =
             "Are you sure you want to set your custom dialer code to *$code*? (You will dial ** *#*#$code#*#* **). If you forget it, you can always use the default ** *#*#9131#*#* ** fallback."
 
-        const val BOT_INFO_TITLE = "Bot Credentials"
-        const val BOT_INFO_MESSAGE =
-            "You can manually enter your *Bot Token* and *Chat ID*, or securely import them by scanning a configuration *QR Code*."
+        const val BOT_INFO_DIRECT_TITLE = "Bot Credentials (Direct 1-on-1)"
+        const val BOT_INFO_DIRECT_MESSAGE =
+            "Configure your bot credentials for standard direct 1-on-1 chat:\n\n" +
+            "• **Bot Token**: Your Telegram Bot API token obtained from *@BotFather*.\n\n" +
+            "• **Chat ID**: Your Parner's personal Telegram User ID (positive number). Ensure they have sent */start* to your bot on Telegram first.\n\n" +
+            "• **Scan QR**: You can also securely import all credentials by scanning a configuration QR Code."
+
+        const val BOT_INFO_PEERLINK_TITLE = "Bot Credentials (PeerLink)"
+        const val BOT_INFO_PEERLINK_MESSAGE =
+            "Configure bot credentials for group-routed app-to-app communication:\n\n" +
+            "• **Bot Token**: The Bot Token of your own side bot from *@BotFather*. Ensure 'Allow Groups' is enabled and 'Group Privacy' is disabled in BotFather.\n\n" +
+            "• **Chat ID**: The private Group Chat ID (starts with **-100**) where both bots are added with Administrator rights. (You can also enter a regular User ID for direct troubleshooting, which will automatically disable PeerLink routing).\n\n" +
+            "• **Partner Bot's Username (Intruder Shield)**:\n" +
+            "  - *When Filled*: The app strictly filters messages, accepting messages *only* from that exact bot username and dropping any intruders in the group.\n" +
+            "  - *When Empty*: Open group mode where all group members can send messages, and the app displays them with individual sender profiles.\n" +
+            "  - *Wrong Username*: If an incorrect username is entered, no incoming messages will be received until the matching bot sends a message."
 
         const val INVALID_CREDENTIALS_TITLE = "Invalid Credentials"
 
@@ -769,11 +782,12 @@ fun SettingsCustomDialerConfirmDialog(
 
 @Composable
 fun SettingsBotCredentialsInfoDialog(
+    isPeerLinkEnabled: Boolean = false,
     onDismiss: () -> Unit
 ) {
     InfoDialog(
-        title = PopupTexts.Settings.BOT_INFO_TITLE,
-        message = PopupTexts.Settings.BOT_INFO_MESSAGE,
+        title = if (isPeerLinkEnabled) PopupTexts.Settings.BOT_INFO_PEERLINK_TITLE else PopupTexts.Settings.BOT_INFO_DIRECT_TITLE,
+        message = if (isPeerLinkEnabled) PopupTexts.Settings.BOT_INFO_PEERLINK_MESSAGE else PopupTexts.Settings.BOT_INFO_DIRECT_MESSAGE,
         onDismiss = onDismiss
     )
 }

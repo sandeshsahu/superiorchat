@@ -58,6 +58,11 @@ import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.CheckCircle
+import com.mobile.superiorchat.utils.Validator
+import com.mobile.superiorchat.bot.User
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.bounceClick
 import androidx.compose.animation.animateContentSize
@@ -843,28 +848,38 @@ fun CredentialsPopup(
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     var botToken by remember { mutableStateOf(initialToken) }
     var chatId by remember { mutableStateOf(initialChatId) }
     var partnerUsername by remember { mutableStateOf(initialPartnerUsername) }
     var tokenVisible by remember { mutableStateOf(false) }
     var isPartnerExpanded by remember { mutableStateOf(false) }
 
-    val isTokenValid by remember(botToken) { derivedStateOf { botToken.isBlank() || com.mobile.superiorchat.utils.Validator.isValidBotToken(botToken.trim()) } }
-    val isChatIdValid by remember(chatId) { derivedStateOf { chatId.isBlank() || com.mobile.superiorchat.utils.Validator.isValidChatId(chatId.trim()) } }
-    val isPartnerValid by remember(partnerUsername) { derivedStateOf { partnerUsername.isBlank() || com.mobile.superiorchat.utils.Validator.isValidPartnerBotUsername(partnerUsername.trim()) } }
+    var isLoading by remember { mutableStateOf(false) }
+    var validationError by remember { mutableStateOf<String?>(null) }
+
+    val isGroupChat by remember(chatId) { derivedStateOf { chatId.trim().startsWith("-") } }
+
+    val isTokenValid by remember(botToken) { derivedStateOf { botToken.isBlank() || Validator.isValidBotToken(botToken.trim()) } }
+    val isChatIdValid by remember(chatId) { derivedStateOf { chatId.isBlank() || Validator.isValidChatId(chatId.trim()) } }
+    val isPartnerValid by remember(partnerUsername, isGroupChat, isPeerLinkEnabled) {
+        derivedStateOf {
+            !isPeerLinkEnabled || !isGroupChat || partnerUsername.isBlank() || Validator.isValidPartnerBotUsername(partnerUsername.trim())
+        }
+    }
 
     val isAnyInvalid by remember(isTokenValid, isChatIdValid, isPartnerValid) {
         derivedStateOf { !isTokenValid || !isChatIdValid || !isPartnerValid }
     }
-    val canSave by remember(botToken, chatId, isAnyInvalid) { 
+    val canSave by remember(botToken, chatId, isAnyInvalid, isLoading) { 
         derivedStateOf { 
-            botToken.isNotBlank() && chatId.isNotBlank() && !isAnyInvalid
+            botToken.isNotBlank() && chatId.isNotBlank() && !isAnyInvalid && !isLoading
         } 
     }
 
     val title = if (initialToken.isNotBlank()) "Edit Credentials" else "Add Credentials"
 
-    BlurredPopup(onDismiss = onDismiss) {
+    BlurredPopup(onDismiss = { if (!isLoading) onDismiss() }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 text = title,
@@ -889,7 +904,10 @@ fun CredentialsPopup(
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = botToken,
-                        onValueChange = { botToken = it },
+                        onValueChange = { 
+                            botToken = it
+                            validationError = null
+                        },
                         placeholder = { Text("e.g. 1234567890:AAH...", color = TextSecondary, fontSize = 13.sp) },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -930,8 +948,11 @@ fun CredentialsPopup(
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = chatId,
-                        onValueChange = { chatId = it },
-                        placeholder = { Text("e.g. 1234567890", color = TextSecondary, fontSize = 13.sp) },
+                        onValueChange = { 
+                            chatId = it
+                            validationError = null
+                        },
+                        placeholder = { Text("e.g. 1234567890 or -100...", color = TextSecondary, fontSize = 13.sp) },
                         modifier = Modifier.fillMaxWidth().height(52.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             unfocusedContainerColor = SurfaceLevel2,
@@ -998,49 +1019,99 @@ fun CredentialsPopup(
                 ) {
                     Column {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Surface(
-                            color = SurfaceLevel1,
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, if (!isPartnerValid) ErrorRed else DividerColor),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                        if (!isGroupChat) {
+                            Surface(
+                                color = SurfaceLevel1,
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, DividerColor),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Info,
+                                        contentDescription = null,
+                                        tint = PrimaryLight,
+                                        modifier = Modifier.size(18.dp).padding(top = 2.dp)
+                                    )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Partner Bot Username", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    Text("Required", color = TextSecondary, fontSize = 11.sp)
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                OutlinedTextField(
-                                    value = partnerUsername,
-                                    onValueChange = { partnerUsername = it },
-                                    placeholder = { Text("e.g. @partner_bot", color = TextSecondary, fontSize = 13.sp) },
-                                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        unfocusedContainerColor = SurfaceLevel2,
-                                        focusedContainerColor = SurfaceLevel2,
-                                        unfocusedBorderColor = Color.Transparent,
-                                        focusedBorderColor = PrimaryLight,
-                                        unfocusedTextColor = TextPrimary,
-                                        focusedTextColor = TextPrimary,
-                                        errorBorderColor = ErrorRed
-                                    ),
-                                    isError = !isPartnerValid,
-                                    shape = RoundedCornerShape(10.dp)
-                                )
-                                if (!isPartnerValid) {
-                                    Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Must start with @ (e.g. @bot_username)",
-                                        color = ErrorRed,
-                                        fontSize = 11.sp,
-                                        modifier = Modifier.padding(start = 4.dp)
+                                        text = "Direct 1-on-1 User ID detected. Partner bot filtering is not applicable for direct user chats. Saving will switch the app to Direct DM mode.",
+                                        color = PrimaryLight,
+                                        fontSize = 12.sp,
+                                        lineHeight = 16.sp
                                     )
                                 }
                             }
+                        } else {
+                            Surface(
+                                color = SurfaceLevel1,
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(1.dp, if (!isPartnerValid) ErrorRed else DividerColor),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Filled.Person, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Partner Bot Username", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                        Spacer(modifier = Modifier.weight(1f))
+                                        Text("Optional", color = TextSecondary, fontSize = 11.sp)
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    OutlinedTextField(
+                                        value = partnerUsername,
+                                        onValueChange = { 
+                                            partnerUsername = it 
+                                            validationError = null
+                                        },
+                                        placeholder = { Text("e.g. @partner_bot", color = TextSecondary, fontSize = 13.sp) },
+                                        modifier = Modifier.fillMaxWidth().height(52.dp),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            unfocusedContainerColor = SurfaceLevel2,
+                                            focusedContainerColor = SurfaceLevel2,
+                                            unfocusedBorderColor = Color.Transparent,
+                                            focusedBorderColor = PrimaryLight,
+                                            unfocusedTextColor = TextPrimary,
+                                            focusedTextColor = TextPrimary,
+                                            errorBorderColor = ErrorRed
+                                        ),
+                                        isError = !isPartnerValid,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    if (!isPartnerValid) {
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Must start with @ (e.g. @bot_username)",
+                                            color = ErrorRed,
+                                            fontSize = 11.sp,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
+                    }
+                }
+            }
+
+            if (validationError != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Surface(
+                    color = ErrorRed.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, ErrorRed.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Error, contentDescription = null, tint = ErrorRed, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(validationError!!, color = ErrorRed, fontSize = 12.sp, lineHeight = 16.sp)
                     }
                 }
             }
@@ -1049,8 +1120,59 @@ fun CredentialsPopup(
             
             Button(
                 onClick = {
-                    if (canSave) {
-                        onSave(botToken.trim(), chatId.trim(), partnerUsername.trim())
+                    if (canSave && !isLoading) {
+                        isLoading = true
+                        validationError = null
+                        scope.launch(Dispatchers.IO) {
+                            val trimmedToken = botToken.trim()
+                            val trimmedChat = chatId.trim()
+                            val trimmedPartner = partnerUsername.trim()
+
+                            val tokenRes = Validator.verifyBotToken(trimmedToken)
+                            if (tokenRes is Validator.ValidationResult.Error) {
+                                withContext(Dispatchers.Main) {
+                                    validationError = tokenRes.message
+                                    isLoading = false
+                                }
+                                return@launch
+                            }
+                            val botUser = (tokenRes as Validator.ValidationResult.Success).data
+
+                            val chatRes = Validator.verifyChatId(
+                                token = trimmedToken,
+                                chatId = trimmedChat,
+                                botUser = botUser,
+                                isPeerLinkEnabled = isPeerLinkEnabled,
+                                requireGroupOnly = false
+                            )
+                            if (chatRes is Validator.ValidationResult.Error) {
+                                withContext(Dispatchers.Main) {
+                                    validationError = chatRes.message
+                                    isLoading = false
+                                }
+                                return@launch
+                            }
+
+                            val partnerRes = Validator.verifyPartnerUsername(
+                                partnerUsername = trimmedPartner,
+                                botUser = botUser,
+                                isPeerLinkEnabled = isPeerLinkEnabled,
+                                isGroup = isGroupChat
+                            )
+                            if (partnerRes is Validator.ValidationResult.Error) {
+                                withContext(Dispatchers.Main) {
+                                    validationError = partnerRes.message
+                                    isLoading = false
+                                }
+                                return@launch
+                            }
+
+                            withContext(Dispatchers.Main) {
+                                isLoading = false
+                                val finalPartner = if (isGroupChat && isPeerLinkEnabled) trimmedPartner else ""
+                                onSave(trimmedToken, trimmedChat, finalPartner)
+                            }
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -1063,17 +1185,30 @@ fun CredentialsPopup(
                 shape = RoundedCornerShape(16.dp),
                 enabled = canSave
             ) {
-                Text(
-                    text = if (isAnyInvalid) "Credentials Invalid" else "Save Credentials",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isLoading) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = PrimaryLight,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Verifying...", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Text(
+                        text = if (isAnyInvalid) "Credentials Invalid" else "Save Credentials",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
             Button(
                 onClick = onDismiss,
+                enabled = !isLoading,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = SurfaceLevel2,
@@ -1081,7 +1216,11 @@ fun CredentialsPopup(
                 ),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Cancel", fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(
+                    text = "Cancel",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
         }
     }

@@ -17,12 +17,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.popups.PeerLinkSetupFlowDialog
-import com.mobile.superiorchat.ui.components.popups.AdminReadOnlyInfoDialog
-import com.mobile.superiorchat.ui.components.popups.AdminRouteMessagesInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminPeerLinkInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminLifecycleInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminIAmAdminInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminAppToAppGuideDialog
 import com.mobile.superiorchat.ui.components.popups.AdminCredentialsInfoDialog
-import com.mobile.superiorchat.ui.components.popups.AdminExcludeFromRecentsInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminDisableRouteMessagesDialog
+import com.mobile.superiorchat.ui.components.popups.AdminDisableAdminModeDialog
 
 @Composable
 fun AdminSettingsScreen(
@@ -30,19 +31,20 @@ fun AdminSettingsScreen(
     onShowGlobalDialog: (GlobalDialogState) -> Unit
 ) {
     var showSetupDialog by remember { mutableStateOf(false) }
-    var showReadOnlyInfo by remember { mutableStateOf(false) }
-    var showRouteMessagesInfo by remember { mutableStateOf(false) }
+    var showPeerLinkInfo by remember { mutableStateOf(false) }
+    var showLifecycleInfo by remember { mutableStateOf(false) }
     var showIAmAdminInfo by remember { mutableStateOf(false) }
     var showSetupGuideDialog by remember { mutableStateOf(false) }
     var showCredentialsInfo by remember { mutableStateOf(false) }
-    var showExcludeFromRecentsInfo by remember { mutableStateOf(false) }
+    var showDisableRouteWarning by remember { mutableStateOf(false) }
+    var showDisableAdminModeWarning by remember { mutableStateOf(false) }
 
-    if (showReadOnlyInfo) {
-        AdminReadOnlyInfoDialog(onDismiss = { showReadOnlyInfo = false })
+    if (showPeerLinkInfo) {
+        AdminPeerLinkInfoDialog(onDismiss = { showPeerLinkInfo = false })
     }
 
-    if (showRouteMessagesInfo) {
-        AdminRouteMessagesInfoDialog(onDismiss = { showRouteMessagesInfo = false })
+    if (showLifecycleInfo) {
+        AdminLifecycleInfoDialog(onDismiss = { showLifecycleInfo = false })
     }
 
     if (showIAmAdminInfo) {
@@ -57,8 +59,24 @@ fun AdminSettingsScreen(
         AdminCredentialsInfoDialog(onDismiss = { showCredentialsInfo = false })
     }
 
-    if (showExcludeFromRecentsInfo) {
-        AdminExcludeFromRecentsInfoDialog(onDismiss = { showExcludeFromRecentsInfo = false })
+    if (showDisableRouteWarning) {
+        AdminDisableRouteMessagesDialog(
+            onConfirm = {
+                viewModel.togglePeerLink(false)
+                showDisableRouteWarning = false
+            },
+            onDismiss = { showDisableRouteWarning = false }
+        )
+    }
+
+    if (showDisableAdminModeWarning) {
+        AdminDisableAdminModeDialog(
+            onConfirm = {
+                viewModel.toggleAdminMode(false)
+                showDisableAdminModeWarning = false
+            },
+            onDismiss = { showDisableAdminModeWarning = false }
+        )
     }
 
     if (showSetupDialog) {
@@ -84,17 +102,41 @@ fun AdminSettingsScreen(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Section 1: Security Lock
+        // Section 1: PeerLink
         val isLocked = viewModel.isPeerLinkLocked
 
         SettingsCard {
-            Text(
-                text = "Security Lock",
-                fontSize = 14.sp,
-                color = PrimaryLight,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(bottom = 12.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Hub,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "PeerLink",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = "Info",
+                    tint = TextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { showPeerLinkInfo = true }
+                )
+            }
 
             SettingsSwitchRow(
                 title = "Read Only",
@@ -102,8 +144,7 @@ fun AdminSettingsScreen(
                 icon = Icons.Filled.Lock,
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isPeerLinkLocked,
-                onCheckedChange = { viewModel.togglePeerLinkLocked(it) },
-                onInfoClick = { showReadOnlyInfo = true }
+                onCheckedChange = { viewModel.togglePeerLinkLocked(it) }
             )
 
             androidx.compose.animation.AnimatedVisibility(
@@ -148,42 +189,53 @@ fun AdminSettingsScreen(
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isPeerLinkEnabled,
                 enabled = !isLocked,
-                onCheckedChange = { viewModel.togglePeerLink(it) },
-                onInfoClick = { showRouteMessagesInfo = true }
+                onCheckedChange = { checked ->
+                    if (!checked) {
+                        if (viewModel.peerLinkPartnerBotUsername.isNotEmpty() || viewModel.isAdminModeEnabled) {
+                            showDisableRouteWarning = true
+                        } else {
+                            viewModel.togglePeerLink(false)
+                        }
+                    } else {
+                        viewModel.togglePeerLink(true)
+                    }
+                }
             )
         }
 
-        // Section 2: Lifecycle
+        // Section 2: I Am Admin
         SettingsCard {
-            Text(
-                text = "Lifecycle",
-                fontSize = 14.sp,
-                color = PrimaryLight,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-            )
-
-            SettingsSwitchRow(
-                title = "Hide from Recent",
-                subtitle = "Exclude app from Android recent apps overview",
-                icon = Icons.Filled.VisibilityOff,
-                iconTint = PrimaryLight,
-                isChecked = viewModel.isExcludeFromRecentsEnabled,
-                enabled = !isLocked,
-                onCheckedChange = { viewModel.toggleExcludeFromRecents(it) },
-                onInfoClick = { showExcludeFromRecentsInfo = true }
-            )
-        }
-
-        // Section 3: I Am Admin
-        SettingsCard {
-            Text(
-                text = "I Am Admin",
-                fontSize = 14.sp,
-                color = PrimaryLight,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 16.dp, start = 4.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(bottom = 12.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "I Am Admin",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = "Info",
+                    tint = TextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { showIAmAdminInfo = true }
+                )
+            }
 
             SettingsSwitchRow(
                 title = "I will chat here",
@@ -192,8 +244,17 @@ fun AdminSettingsScreen(
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isAdminModeEnabled,
                 enabled = !isLocked && viewModel.isPeerLinkEnabled,
-                onCheckedChange = { viewModel.toggleAdminMode(it) },
-                onInfoClick = { showIAmAdminInfo = true }
+                onCheckedChange = { checked ->
+                    if (!checked) {
+                        if (viewModel.botToken.isNotEmpty()) {
+                            showDisableAdminModeWarning = true
+                        } else {
+                            viewModel.toggleAdminMode(false)
+                        }
+                    } else {
+                        viewModel.toggleAdminMode(true)
+                    }
+                }
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -210,58 +271,115 @@ fun AdminSettingsScreen(
             )
         }
 
-        // Section 3: Credentials (Only visible if isAdminModeEnabled is true)
-        if (viewModel.isAdminModeEnabled) {
-            SettingsCard {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp, start = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        // Section 3: Credentials (Always visible, disabled when I Am Admin is false)
+        val isCredentialsEnabled = !isLocked && viewModel.isAdminModeEnabled
+
+        SettingsCard {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(bottom = 12.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.VpnKey,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "Credentials",
-                        fontSize = 14.sp,
-                        color = PrimaryLight,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = "Info",
-                        tint = TextSecondary,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clickable { showCredentialsInfo = true }
-                    )
                 }
-
-                val isConfigured = viewModel.botToken.isNotEmpty()
-                SettingsActionRow(
-                    title = if (isConfigured) "Edit Manually" else "Add Manually",
-                    subtitle = "Configure Bot, Group & Partner",
-                    icon = if (isConfigured) Icons.Filled.Edit else Icons.Filled.Add,
-                    iconTint = PrimaryLight,
-                    enabled = !isLocked,
-                    onClick = { showSetupDialog = true }
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                SettingsActionRow(
-                    title = "Scan QR Code",
-                    subtitle = "Import configuration from Setup App",
-                    icon = Icons.Filled.QrCodeScanner,
-                    iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    background = PrimaryLight,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    isGlow = true,
-                    enabled = !isLocked,
-                    onClick = { /* Disabled/No-op for now as per plan */ }
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = "Info",
+                    tint = TextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { showCredentialsInfo = true }
                 )
             }
+
+            val isConfigured = viewModel.botToken.isNotEmpty()
+                && viewModel.chatId.isNotEmpty()
+                && viewModel.peerLinkPartnerBotUsername.isNotEmpty()
+            SettingsActionRow(
+                title = if (isConfigured) "Edit Manually" else "Add Manually",
+                subtitle = "Configure Bot, Group & Partner",
+                icon = if (isConfigured) Icons.Filled.Edit else Icons.Filled.Add,
+                iconTint = PrimaryLight,
+                enabled = isCredentialsEnabled,
+                onClick = { showSetupDialog = true }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingsActionRow(
+                title = "Scan QR Code",
+                subtitle = "Import configuration from Setup App",
+                icon = Icons.Filled.QrCodeScanner,
+                iconTint = MaterialTheme.colorScheme.onPrimaryContainer,
+                background = PrimaryLight,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                isGlow = true,
+                enabled = isCredentialsEnabled,
+                onClick = { /* Disabled/No-op for now as per plan */ }
+            )
+        }
+
+        // Section 4: Lifecycle
+        SettingsCard {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .padding(bottom = 12.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.SyncAlt,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Lifecycle",
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = "Info",
+                    tint = TextSecondary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable { showLifecycleInfo = true }
+                )
+            }
+
+            SettingsSwitchRow(
+                title = "Hide from Recent",
+                subtitle = "Exclude app from Android recent apps overview",
+                icon = Icons.Filled.VisibilityOff,
+                iconTint = PrimaryLight,
+                isChecked = viewModel.isExcludeFromRecentsEnabled,
+                enabled = !isLocked,
+                onCheckedChange = { viewModel.toggleExcludeFromRecents(it) }
+            )
         }
 
         Spacer(modifier = Modifier.height(30.dp)) // Bottom padding
     }
 }
+
