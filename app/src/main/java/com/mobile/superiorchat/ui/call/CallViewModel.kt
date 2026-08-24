@@ -189,20 +189,13 @@ class CallViewModel : ViewModel() {
                     val botName = me?.result?.first_name ?: "Superiorchat"
                     val initiateTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
 
-                    var replyText = "===================\n" +
+                    val replyText = "===================\n" +
                                     "🔔 <b>New Call Incoming</b>\n" +
                                     "===================\n" +
                                     "<b>$botName is inviting you for call</b>\n\n" +
                                     "<b>Time</b> : $initiateTime\n\n" +
                                     "<b>Click Below Button To Join</b>"
-                    
-                    if (prefs.isPeerLinkEnabled) {
-                        val targetBot = prefs.peerLinkPartnerBotUsername.removePrefix("@")
-                        if (targetBot.isNotEmpty()) {
-                            replyText = "@$targetBot $replyText"
-                        }
-                    }
-                    
+
                     val markup = InlineKeyboardMarkup(listOf(listOf(
                         InlineKeyboardButton(text = "🔰 Connect", url = telegramUrl),
                         InlineKeyboardButton(text = "❌ Decline Call", callbackData = "decline_call")
@@ -319,13 +312,25 @@ class CallViewModel : ViewModel() {
                 val endTime = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.getDefault()).format(java.util.Date())
                 
                 // Save Call History
+                val prefs = AppGraph.prefs
                 val profile = AppGraph.database.profileDao().getProfileSync(chatId)
-                val partnerName = profile?.title ?: "Unknown"
+                val partnerName = if (prefs.isPeerLinkEnabled) {
+                    val targetBot = prefs.peerLinkPartnerBotUsername.trim().removePrefix("@")
+                    val cachedBotProfile = if (targetBot.isNotBlank()) {
+                        AppGraph.database.profileDao().getAllProfilesSync().firstOrNull { it.username.equals(targetBot, ignoreCase = true) }
+                    } else null
+                    cachedBotProfile?.title?.takeIf { it.isNotBlank() }
+                        ?: if (targetBot.isNotBlank()) "@$targetBot"
+                        else profile?.title?.takeIf { it.isNotBlank() } ?: "Partner"
+                } else {
+                    profile?.title?.takeIf { it.isNotBlank() } ?: "Partner"
+                }
 
                 val node = com.mobile.superiorchat.data.entity.CallHistoryNode(
                     timestamp = System.currentTimeMillis(),
                     durationSeconds = duration,
                     isMissed = isMissed,
+                    isIncoming = false,
                     callStatus = status,
                     peerJsId = peerJsId,
                     domain = domain,
@@ -401,13 +406,26 @@ class CallViewModel : ViewModel() {
                 CallError.INVALID_URL -> "FAILED_CONFIG"
                 else -> "FAILED_CONFIG"
             }
+            val prefs = AppGraph.prefs
             val profile = AppGraph.database.profileDao().getProfileSync(chat)
-            val partnerName = profile?.title ?: "Unknown"
+            val partnerName = if (prefs.isPeerLinkEnabled) {
+                val targetBot = prefs.peerLinkPartnerBotUsername.trim().removePrefix("@")
+                val cachedBotProfile = if (targetBot.isNotBlank()) {
+                    AppGraph.database.profileDao().getAllProfilesSync().firstOrNull { it.username.equals(targetBot, ignoreCase = true) }
+                } else null
+                cachedBotProfile?.title?.takeIf { it.isNotBlank() }
+                    ?: if (targetBot.isNotBlank()) "@$targetBot"
+                    else profile?.title?.takeIf { it.isNotBlank() } ?: "Partner"
+            } else {
+                profile?.title?.takeIf { it.isNotBlank() } ?: "Partner"
+            }
+
             AppGraph.database.callHistoryDao().insertCall(
                 CallHistoryNode(
                     timestamp = now,
                     durationSeconds = 0L,
                     isMissed = true,
+                    isIncoming = false,
                     callStatus = callStatus,
                     peerJsId = CallManager.currentRoomId ?: "",
                     domain = CallManager.currentBaseUrl ?: "",

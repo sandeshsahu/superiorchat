@@ -18,6 +18,9 @@ interface ProfileDao {
     @Query("SELECT * FROM user_profiles")
     fun getAllProfiles(): Flow<List<UserProfile>>
 
+    @Query("SELECT * FROM user_profiles")
+    suspend fun getAllProfilesSync(): List<UserProfile>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: UserProfile): Long
 }

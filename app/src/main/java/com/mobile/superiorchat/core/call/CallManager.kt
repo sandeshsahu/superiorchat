@@ -315,6 +315,16 @@ object CallManager {
 
         currentCallUrl = formattedUrl
         currentBaseUrl = formattedUrl.substringBefore("/call.html")
+
+        // Extract roomId (PeerJS ID) and secret from URL hash params (e.g. #join=UUID&secret=UUID)
+        val hashPart = formattedUrl.substringAfter("#", "")
+        val params = hashPart.split("&").associate { param ->
+            val parts = param.split("=")
+            parts.getOrElse(0) { "" } to parts.getOrElse(1) { "" }
+        }
+        currentRoomId = params["join"]?.takeIf { it.isNotBlank() } ?: params["host"]?.takeIf { it.isNotBlank() }
+        currentSecret = params["secret"]?.takeIf { it.isNotBlank() }
+
         incomingCallerName = callerName
         isIncomingCall = true
         incomingTelegramMsgId = msgId
@@ -351,10 +361,10 @@ object CallManager {
         val prefs = AppGraph.prefs
         if (prefs.isPeerLinkEnabled) {
             val token = prefs.botToken
-            val chatId = if (prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else prefs.activeChatId
+            val chatId = prefs.activeChatId
             val replyTo = incomingTelegramMsgId
             if (token.isNotBlank() && chatId.isNotBlank()) {
-                GlobalScope.launch(Dispatchers.IO) {
+                scope.launch(Dispatchers.IO) {
                     TelegramApi.sendMessage(
                         token = token,
                         chatId = chatId,
@@ -373,6 +383,21 @@ object CallManager {
      */
     fun endCall() {
         if (_callState.value == CallState.ENDING || _callState.value == CallState.IDLE) return
+
+        // If the call was merely RINGING (never accepted by receiver), reset directly to IDLE without showing CallScreen
+        if (_callState.value == CallState.RINGING) {
+            _callState.value = CallState.IDLE
+            _callDuration.value = 0
+            currentRoomId = null
+            currentSecret = null
+            currentCallUrl = null
+            incomingCallerName = ""
+            timeoutJob?.cancel()
+            timerJob?.cancel()
+            releaseHardware()
+            StatusFlow.reportStatus(SyncState.IDLE, "")
+            return
+        }
 
         val wasActive = _callState.value == CallState.ACTIVE
         val wasConnecting = _callState.value == CallState.CONNECTING

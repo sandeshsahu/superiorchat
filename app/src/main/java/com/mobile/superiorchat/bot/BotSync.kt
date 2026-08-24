@@ -373,7 +373,10 @@ class BotSync(private val context: Context) {
 
         if (match != null) {
             val joinUrl = match.value + "&isApp=true"
-            val callerName = message.from?.first_name ?: "Partner"
+            val callerIdentifier = message.from?.first_name?.takeIf { it.isNotBlank() }
+                ?: message.from?.username?.let { "@${it.removePrefix("@")}" }
+                ?: if (prefs.isPeerLinkEnabled && prefs.peerLinkPartnerBotUsername.isNotBlank()) "@${prefs.peerLinkPartnerBotUsername.removePrefix("@")}"
+                else repository.getProfileSync(chatId)?.title?.takeIf { it.isNotBlank() } ?: "Partner"
             
             val msgTimestamp = message.date * 1000L
             val now = System.currentTimeMillis()
@@ -381,16 +384,69 @@ class BotSync(private val context: Context) {
             
             if (isStale) {
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Received stale call request (Offline for ${(now - msgTimestamp) / 1000}s). Skipping ringing.")
-            } else {
-                com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerName, message.message_id)
-            }
-            
-            if (prefs.isPeerLinkEnabled) {
-                text = "Incoming Call"
+                text = "Call Missed"
                 mediaType = "call_event"
-                monitorLocalIncomingCall(chatId, message.message_id)
+                
+                // If not already in call_history, insert as missed
+                val existingMsg = repository.getMessageById(message.message_id)
+                if (existingMsg == null) {
+                    coroutineScope.launch(Dispatchers.IO) {
+                        val historyNode = com.mobile.superiorchat.data.entity.CallHistoryNode(
+                            timestamp = msgTimestamp,
+                            durationSeconds = 0L,
+                            isMissed = true,
+                            isIncoming = true,
+                            callStatus = "MISSED",
+                            peerJsId = "",
+                            domain = "",
+                            partnerName = callerIdentifier
+                        )
+                        com.mobile.superiorchat.core.AppGraph.database.callHistoryDao().insertCall(historyNode)
+                    }
+                }
             } else {
-                text = "📞 Incoming Call"
+                com.mobile.superiorchat.core.call.CallManager.receiveIncomingCall(joinUrl, callerIdentifier, message.message_id)
+                if (prefs.isPeerLinkEnabled) {
+                    text = "Incoming Call"
+                    mediaType = "call_event"
+                    monitorLocalIncomingCall(chatId, message.message_id, callerIdentifier)
+                } else {
+                    text = "📞 Incoming Call"
+                }
+            }
+        } else if (prefs.isPeerLinkEnabled && text.contains("===================") && (text.contains("Time :") || text.contains("*Time* :") || text.contains("<b>Time</b> :")) && (text.contains("New Call Incoming") || text.contains("Call Missed") || text.contains("Call Cancelled") || text.contains("Call Declined") || text.contains("Call Ended") || text.contains("inviting you for call"))) {
+            mediaType = "call_event"
+            val callStatus = when {
+                text.contains("Call Declined") -> "DECLINED"
+                text.contains("Call Ended") -> "COMPLETED"
+                else -> "MISSED"
+            }
+            text = when (callStatus) {
+                "DECLINED" -> "Call Declined"
+                "COMPLETED" -> "Call Ended"
+                else -> "Call Missed"
+            }
+
+            // If this message is not yet in our database, also log to call_history
+            val existingMsg = repository.getMessageById(message.message_id)
+            if (existingMsg == null) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    val callerIdentifier = message.from?.first_name?.takeIf { it.isNotBlank() }
+                        ?: message.from?.username?.let { "@${it.removePrefix("@")}" }
+                        ?: if (prefs.peerLinkPartnerBotUsername.isNotBlank()) "@${prefs.peerLinkPartnerBotUsername.removePrefix("@")}"
+                        else repository.getProfileSync(chatId)?.title?.takeIf { it.isNotBlank() } ?: "Partner"
+                    val historyNode = com.mobile.superiorchat.data.entity.CallHistoryNode(
+                        timestamp = message.date * 1000L,
+                        durationSeconds = 0L,
+                        isMissed = callStatus != "COMPLETED",
+                        isIncoming = true,
+                        callStatus = callStatus,
+                        peerJsId = "",
+                        domain = "",
+                        partnerName = callerIdentifier
+                    )
+                    com.mobile.superiorchat.core.AppGraph.database.callHistoryDao().insertCall(historyNode)
+                }
             }
         }
 
@@ -573,7 +629,7 @@ class BotSync(private val context: Context) {
         }
     }
 
-    private fun monitorLocalIncomingCall(chatId: String, telegramMsgId: Long) {
+    private fun monitorLocalIncomingCall(chatId: String, telegramMsgId: Long, callerIdentifier: String) {
         coroutineScope.launch(Dispatchers.IO) {
             try {
                 // Wait for the call to transition to a finished state (ENDING or IDLE)
@@ -604,17 +660,15 @@ class BotSync(private val context: Context) {
                     else -> "MISSED"
                 }
                 
-                val profile = AppGraph.database.profileDao().getProfileSync(chatId)
-                val partnerName = profile?.title ?: "Unknown"
-                
                 val node = com.mobile.superiorchat.data.entity.CallHistoryNode(
                     timestamp = System.currentTimeMillis(),
                     durationSeconds = duration,
                     isMissed = isMissed,
+                    isIncoming = true,
                     callStatus = status,
                     peerJsId = peerJsId,
                     domain = domain,
-                    partnerName = partnerName
+                    partnerName = callerIdentifier
                 )
                 AppGraph.database.callHistoryDao().insertCall(node)
                 

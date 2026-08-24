@@ -22,7 +22,7 @@ import com.mobile.superiorchat.data.dao.EmojiDao
 import com.mobile.superiorchat.data.entity.CallHistoryNode
 import com.mobile.superiorchat.data.dao.CallHistoryDao
 
-@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class, CallHistoryNode::class], version = 12, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class, CallHistoryNode::class], version = 13, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
@@ -117,6 +117,12 @@ abstract class LocalDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE call_history ADD COLUMN isIncoming INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): LocalDb {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -124,7 +130,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

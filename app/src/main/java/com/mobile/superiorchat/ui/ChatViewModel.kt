@@ -179,8 +179,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             if (NetState.isOnline.value) {
                 // Send only the last/most recent emoji to the API
                 val apiEmoji = myReactions.lastOrNull() ?: ""
-                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
-                val success = TelegramApi.setMessageReaction(token, targetChatId, message.messageId, apiEmoji)
+                val success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
                 if (!success) {
                     // Telegram has strict rate limits for reactions (429 Too Many Requests).
                     // We DO NOT roll back the local database anymore to keep the UI feeling fluid.
@@ -321,8 +320,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 repository.deleteMessage(message.messageId)
                 var success = false
                 if (isOnline.value) {
-                    val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
-                    success = TelegramApi.deleteMessage(token, targetChatId, message.messageId)
+                    success = TelegramApi.deleteMessage(token, chatId, message.messageId)
                 }
                 if (!success) {
                     AppLog.log(LogCategory.ERROR, "Failed to bulk-delete message ${message.messageId} via API")
@@ -495,8 +493,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             
             if (isOnline.value) {
-                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
-                val success = TelegramApi.pinChatMessage(token, targetChatId, message.messageId)
+                val success = TelegramApi.pinChatMessage(token, chatId, message.messageId)
                 if (success) {
                     StatusFlow.reportStatus(SyncState.SUCCESS, "Message pinned")
                 } else {
@@ -534,8 +531,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             if (isOnline.value) {
-                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
-                val success = TelegramApi.unpinChatMessage(token, targetChatId, message.messageId)
+                val success = TelegramApi.unpinChatMessage(token, chatId, message.messageId)
                 if (success) {
                     StatusFlow.reportStatus(SyncState.SUCCESS, "Message unpinned")
                 } else {
@@ -865,8 +861,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteMessage(message.messageId)
             var success = false
             if (NetState.isOnline.value) {
-                val targetChatId = if (prefs.isPeerLinkEnabled && prefs.peerLinkGroupChatId.isNotBlank()) prefs.peerLinkGroupChatId else chatId
-                success = TelegramApi.deleteMessage(token, targetChatId, message.messageId)
+                success = TelegramApi.deleteMessage(token, chatId, message.messageId)
             }
             if (!success) {
                 AppLog.log(LogCategory.ERROR, "Failed to delete message via API")

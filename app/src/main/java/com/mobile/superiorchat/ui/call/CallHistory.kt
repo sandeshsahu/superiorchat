@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.CallMissed
+import androidx.compose.material.icons.filled.CallReceived
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Delete
@@ -308,6 +309,8 @@ private fun CallDetailsSheetContent(call: CallHistoryNode, onDelete: () -> Unit)
         ) {
             DetailRow("Partner", call.partnerName)
             HorizontalDivider(color = DividerColor)
+            DetailRow("Call Type", if (call.isIncoming) "Incoming Call" else "Outgoing Call")
+            HorizontalDivider(color = DividerColor)
             DetailRow("Date & Time", fullDateFormat)
             HorizontalDivider(color = DividerColor)
             DetailRow("Status", statusInfo.text, valueColor = statusInfo.color)
@@ -318,10 +321,16 @@ private fun CallDetailsSheetContent(call: CallHistoryNode, onDelete: () -> Unit)
             if (call.domain.isNotEmpty()) {
                 HorizontalDivider(color = DividerColor)
                 DetailRow("Domain", call.domain)
+            } else if (call.isMissed) {
+                HorizontalDivider(color = DividerColor)
+                DetailRow("Domain", "N/A (Offline Sync)", valueColor = TextSecondary)
             }
             if (call.peerJsId.isNotEmpty()) {
                 HorizontalDivider(color = DividerColor)
                 DetailRow("Peer ID", call.peerJsId)
+            } else if (call.isMissed) {
+                HorizontalDivider(color = DividerColor)
+                DetailRow("Peer ID", "N/A (Offline Sync)", valueColor = TextSecondary)
             }
         }
         
@@ -371,18 +380,24 @@ private data class StatusInfo(val text: String, val color: Color, val icon: Imag
 
 private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
     return when (call.callStatus) {
-        "COMPLETED" -> StatusInfo("Connected", PrimaryLight, Icons.Filled.CallMade)
-        "CANCELLED" -> StatusInfo("Cancelled", WarningAmber, Icons.Filled.CallMissed)
-        "FAILED_NO_ANSWER" -> StatusInfo("No Answer", WarningAmber, Icons.Filled.CallMissed)
+        "COMPLETED" -> {
+            if (call.isIncoming) {
+                StatusInfo("Incoming", PrimaryLight, Icons.Filled.CallReceived)
+            } else {
+                StatusInfo("Outgoing", PrimaryLight, Icons.Filled.CallMade)
+            }
+        }
+        "CANCELLED" -> StatusInfo("Cancelled", WarningAmber, Icons.Filled.CallMade)
+        "FAILED_NO_ANSWER" -> StatusInfo("No Answer", WarningAmber, Icons.Filled.CallMade)
         "FAILED_NETWORK" -> StatusInfo("Network Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_HARDWARE" -> StatusInfo("Hardware Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_CONFIG" -> StatusInfo("Server Error", ErrorRed, Icons.Filled.ErrorOutline)
         "DECLINED" -> StatusInfo("Declined", WarningAmber, Icons.Filled.CallMissed)
         "MISSED" -> StatusInfo("Missed", WarningAmber, Icons.Filled.CallMissed)
         else -> if (call.isMissed) {
-            StatusInfo("Unanswered", WarningAmber, Icons.Filled.CallMissed)
+            StatusInfo(if (call.isIncoming) "Missed" else "Unanswered", WarningAmber, if (call.isIncoming) Icons.Filled.CallMissed else Icons.Filled.CallMade)
         } else {
-            StatusInfo("Connected", PrimaryLight, Icons.Filled.CallMade)
+            StatusInfo(if (call.isIncoming) "Incoming" else "Outgoing", PrimaryLight, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
         }
     }
 }

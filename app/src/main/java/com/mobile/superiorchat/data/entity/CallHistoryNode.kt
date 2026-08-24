@@ -10,6 +10,7 @@ data class CallHistoryNode(
     val timestamp: Long,
     val durationSeconds: Long,
     val isMissed: Boolean = false,
+    val isIncoming: Boolean = false,
     val callStatus: String = "COMPLETED",
     val peerJsId: String = "",
     val domain: String = "",

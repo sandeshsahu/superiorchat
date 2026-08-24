@@ -358,12 +358,15 @@ fun CallScreen(
                         }
                         .systemBarsPadding()
                 ) {
+                    val isIncomingCall = CallManager.isIncomingCall
+
                     // ── Top Header ────────────────────────────────
                     CallHeader(
                         callState = callState,
                         callDuration = callDuration,
                         isVideoActive = isVideoActive,
                         isControlsVisible = isControlsVisible,
+                        isIncomingCall = isIncomingCall,
                         modifier = Modifier
                             .fillMaxWidth()
                             .align(Alignment.TopCenter)
@@ -425,7 +428,7 @@ fun CallScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             AnimatedVisibility(visible = callState == CallState.CONNECTING) {
-                                ConnectingInfoBanner()
+                                ConnectingInfoBanner(isIncomingCall = isIncomingCall)
                             }
 
                             CallControls(
@@ -460,7 +463,7 @@ fun CallScreen(
 // ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun ConnectingInfoBanner() {
+private fun ConnectingInfoBanner(isIncomingCall: Boolean = false) {
     Box(
         modifier = Modifier
             .padding(start = 24.dp, end = 24.dp, bottom = 16.dp)
@@ -487,7 +490,11 @@ private fun ConnectingInfoBanner() {
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "The Invitation link has been sent to Telegram.\nThe call will end if not answered within 45s.",
+                text = if (isIncomingCall) {
+                    "Establishing secure peer-to-peer connection...\nConnecting directly with caller."
+                } else {
+                    "Call invitation sent.\nThe call will end if not answered within 45s."
+                },
                 color = PrimaryLight,
                 fontSize = 13.sp,
                 lineHeight = 18.sp
@@ -506,6 +513,7 @@ private fun CallHeader(
     callDuration: Long,
     isVideoActive: Boolean,
     isControlsVisible: Boolean = true,
+    isIncomingCall: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // Fix #2: Animated header backdrop — prevents instant color pop when controls toggle
@@ -565,7 +573,7 @@ private fun CallHeader(
             }
 
             // Call status label — AnimatedContent for smooth state-to-state transitions
-            CallStatusLabel(callState, callDuration)
+            CallStatusLabel(callState, callDuration, isIncomingCall)
 
             // Duration timer
             AnimatedVisibility(
@@ -957,7 +965,11 @@ private fun ControlButton(
 }
 
 @Composable
-private fun CallStatusLabel(callState: CallState, callDuration: Long = 0L) {
+private fun CallStatusLabel(
+    callState: CallState,
+    callDuration: Long = 0L,
+    isIncomingCall: Boolean = false
+) {
     // Fix #2: AnimatedContent — smooth crossfade between state text instead of instant swap
     AnimatedContent(
         targetState = callState,
@@ -982,8 +994,9 @@ private fun CallStatusLabel(callState: CallState, callDuration: Long = 0L) {
                     ),
                     label = "connecting_alpha"
                 )
+                val statusText = if (isIncomingCall) "Connecting to caller$dots" else "Calling$dots"
                 Text(
-                    text = "Waiting$dots",
+                    text = statusText,
                     color = CallTextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.SemiBold,
