@@ -246,6 +246,15 @@ data class EditMessageRequest(
 )
 
 @Serializable
+data class EditMessageCaptionRequest(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("message_id") val messageId: Long,
+    val caption: String,
+    @SerialName("parse_mode") val parseMode: String? = null,
+    @SerialName("reply_markup") val replyMarkup: kotlinx.serialization.json.JsonElement? = null
+)
+
+@Serializable
 data class DeleteMessageRequest(
     @SerialName("chat_id") val chatId: String,
     @SerialName("message_id") val messageId: Long

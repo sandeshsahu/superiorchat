@@ -272,8 +272,9 @@ class BotSync(private val context: Context) {
 
         if (update.edited_message != null) {
             val editedMsg = update.edited_message
-            if (editedMsg.text != null) {
-                var text = editedMsg.text
+            val rawText = editedMsg.text ?: editedMsg.caption
+            if (rawText != null) {
+                var text = rawText
                 val existingMsg = repository.getMessageById(editedMsg.message_id)
                 if (existingMsg?.mediaType == "call_event" && prefs.isPeerLinkEnabled) {
                     // Check if the caller aborted the call
@@ -287,7 +288,8 @@ class BotSync(private val context: Context) {
                     return // Ignore edited message from Telegram; we manage call UI locally
                 }
                 
-                val formattedEditedText = com.mobile.superiorchat.utils.Validator.applyTelegramEntities(text, editedMsg.entities ?: editedMsg.caption_entities)
+                val entities = editedMsg.entities ?: editedMsg.caption_entities
+                val formattedEditedText = com.mobile.superiorchat.utils.Validator.applyTelegramEntities(text, entities)
                 repository.updateMessageText(editedMsg.message_id, formattedEditedText)
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${formattedEditedText.take(50)}")
             }

@@ -753,6 +753,45 @@ object TelegramApi {
         }
     }
 
+    fun editMessageCaption(
+        token: String,
+        chatId: String,
+        messageId: Long,
+        caption: String,
+        parseMode: String? = "Markdown",
+        replyMarkup: String? = null
+    ): Boolean {
+        return try {
+            val markupJson = replyMarkup?.let { json.parseToJsonElement(it) }
+            val req = EditMessageCaptionRequest(chatId, messageId, caption, parseMode, markupJson)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "editMessageCaption"))
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val success = response.isSuccessful
+                if (!success) {
+                    val errorBody = response.body?.string().orEmpty()
+                    if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in editMessageCaption, retrying as plain text...")
+                        return editMessageCaption(token, chatId, messageId, caption, parseMode = null, replyMarkup = replyMarkup)
+                    }
+                    AppLog.log(LogCategory.NETWORK, "editMessageCaption failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                } else {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "[EDITCAPTION] " + caption.take(100))
+                }
+                success
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "editMessageCaption error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+            false
+        }
+    }
+
     sealed class DeleteResult {
         object Success : DeleteResult()
         data class Failed(val reason: String) : DeleteResult()

@@ -139,9 +139,16 @@ fun ChatInputBox(
         label = "glow_scale"
     )
 
+    val editingMsg = viewModel.editingMessage
+
+    LaunchedEffect(editingMsg) {
+        if (editingMsg != null) {
+            messageText = editingMsg.text ?: ""
+        }
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         val replyingMsg = viewModel.replyingToMessage
-        val editingMsg = viewModel.editingMessage
         
         AnimatedVisibility(
             visible = replyingMsg != null || editingMsg != null,
@@ -186,7 +193,10 @@ fun ChatInputBox(
                     )
                 }
                 IconButton(onClick = { 
-                    if (editingMsg != null) viewModel.setEditingMessage(null)
+                    if (editingMsg != null) {
+                        viewModel.setEditingMessage(null)
+                        messageText = ""
+                    }
                     if (replyingMsg != null) viewModel.setReplyingToMessage(null)
                 }) {
                     Icon(imageVector = Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurfaceVariant)

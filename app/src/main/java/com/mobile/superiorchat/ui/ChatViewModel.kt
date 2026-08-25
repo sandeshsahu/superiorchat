@@ -635,7 +635,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (isOnline.value) {
                     val targetChatId = prefs.activeChatId
                     val targetText = text
-                    success = TelegramApi.editMessageText(token, targetChatId, msgToEdit.messageId, targetText)
+                    val isMedia = msgToEdit.mediaType != null
+                    success = if (isMedia) {
+                        TelegramApi.editMessageCaption(token, targetChatId, msgToEdit.messageId, targetText)
+                    } else {
+                        TelegramApi.editMessageText(token, targetChatId, msgToEdit.messageId, targetText)
+                    }
                 }
                 if (!success) {
                     AppLog.log(LogCategory.ERROR, "Failed to edit message via API")
