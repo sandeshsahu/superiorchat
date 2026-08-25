@@ -154,4 +154,171 @@ object Validator {
 
         return ValidationResult.Success(Unit)
     }
+
+    /**
+     * Reusable validator for PeerLink bot-to-bot messages and system signals.
+     * Ensures message belongs to the configured group and was sent by the authorized partner bot.
+     */
+    fun isAuthorizedPeerLinkMessage(
+        msgChatId: String,
+        fromUsername: String?,
+        isBot: Boolean?,
+        activeChatId: String,
+        partnerBotUsername: String,
+        isPeerLinkEnabled: Boolean
+    ): Boolean {
+        if (!isPeerLinkEnabled) return false
+        if (!isValidGroupChatId(activeChatId)) return false
+        if (msgChatId != activeChatId) return false
+        if (isBot != true) return false
+        val expectedPartner = partnerBotUsername.trim().removePrefix("@")
+        val senderUser = fromUsername?.trim()?.removePrefix("@") ?: ""
+        return expectedPartner.isNotBlank() && senderUser.equals(expectedPartner, ignoreCase = true)
+    }
+
+    sealed class SystemSignal {
+        object None : SystemSignal()
+        data class DeleteMessages(val messageIds: List<Long>) : SystemSignal()
+        object CallDeclined : SystemSignal()
+        data class Unknown(val rawSignal: String) : SystemSignal()
+    }
+
+    /**
+     * Identifies and parses internal system signals from message text/caption.
+     * Used at the core engine level to intercept, execute, and drop control signals before DB storage or UI notifications.
+     */
+    fun extractSystemSignal(rawText: String?): SystemSignal {
+        if (rawText.isNullOrBlank()) return SystemSignal.None
+        val trimmed = rawText.trim()
+
+        // Case-insensitive regex: matches [SYS-MSG-DELETE:101], [sys_msg_delete: 101, 102], sys-msg-delete:101, etc.
+        val deleteRegex = Regex("""(?:\[)?(?:SYS[-_]MSG[-_]DELETE)[:\s]+([0-9,\s]+)(?:\])?""", RegexOption.IGNORE_CASE)
+        val deleteMatch = deleteRegex.find(trimmed)
+        if (deleteMatch != null) {
+            val ids = deleteMatch.groupValues[1].split(",").mapNotNull { it.trim().toLongOrNull() }
+            if (ids.isNotEmpty()) return SystemSignal.DeleteMessages(ids)
+        }
+
+        // Case-insensitive regex: matches [SYS-CALL-DECLINED], sys_call_declined, etc.
+        val declineRegex = Regex("""(?:\[)?(?:SYS[-_]CALL[-_]DECLINED)(?:\])?""", RegexOption.IGNORE_CASE)
+        if (declineRegex.containsMatchIn(trimmed)) {
+            return SystemSignal.CallDeclined
+        }
+
+        // Catch-all for any other system signal prefix (case-insensitive)
+        if (trimmed.startsWith("[SYS-", ignoreCase = true) || 
+            trimmed.startsWith("[SYS_", ignoreCase = true) ||
+            trimmed.startsWith("SYS-", ignoreCase = true) ||
+            trimmed.startsWith("SYS_", ignoreCase = true)) {
+            return SystemSignal.Unknown(trimmed)
+        }
+
+        return SystemSignal.None
+    }
+
+    /**
+     * Pre-flight validator for Telegram Markdown syntax.
+     * Uses strict delimiter parity (even/odd counts) and tag balancing to guarantee 100% validity.
+     * Instantly catches unclosed single characters like "h_", "A_", "*test" so they are safely
+     * transmitted as plain text on the first attempt without causing Telegram 400 entity errors.
+     */
+    fun hasValidMarkdownSyntax(text: String?): Boolean {
+        if (text.isNullOrBlank()) return true
+
+        // If no markdown formatting characters are present, it is safe plain text
+        if (!text.contains('*') && !text.contains('_') && !text.contains('`') && 
+            !text.contains('~') && !text.contains('|') && !text.contains('<')) {
+            return true
+        }
+
+        // 1. Pre code blocks: ```...``` count must be even
+        val tripleBacktickCount = text.windowed(3).count { it == "```" }
+        if (tripleBacktickCount % 2 != 0) return false
+
+        // Remove complete code blocks before inspecting inline delimiters
+        val withoutCodeBlocks = text.replace(Regex("""```(?:[a-zA-Z0-9_-]+)?\n?[\s\S]*?```"""), "")
+
+        // 2. Inline code backticks: count must be even
+        if (withoutCodeBlocks.count { it == '`' } % 2 != 0) return false
+
+        // 3. Spoilers: || must come in even pairs
+        if (withoutCodeBlocks.windowed(2).count { it == "||" } % 2 != 0) return false
+
+        // 4. Asterisks (*): every bold opening requires a closing pair (even count)
+        if (withoutCodeBlocks.count { it == '*' } % 2 != 0) return false
+
+        // 5. Underscores (_): in Telegram Markdown, odd underscores always break entities (e.g. h_, A_, _test)
+        if (withoutCodeBlocks.count { it == '_' } % 2 != 0) return false
+
+        // 6. Tildes (~): count must be even
+        if (withoutCodeBlocks.count { it == '~' } % 2 != 0) return false
+
+        // 7. Underline tags: <u> count must equal </u> count
+        val uOpenCount = Regex("""<u>""", RegexOption.IGNORE_CASE).findAll(withoutCodeBlocks).count()
+        val uCloseCount = Regex("""</u>""", RegexOption.IGNORE_CASE).findAll(withoutCodeBlocks).count()
+        if (uOpenCount != uCloseCount) return false
+
+        return true
+    }
+
+    /**
+     * Strips Markdown formatting delimiters to provide clean text for clipboard copying, matching official Telegram behavior.
+     */
+    fun stripMarkdown(rawText: String?): String {
+        if (rawText.isNullOrBlank()) return ""
+        var clean = rawText
+        // Code blocks: ```code``` -> code
+        clean = clean.replace(Regex("""```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```""")) { it.groupValues[1] }
+        // Inline code: `code` -> code
+        clean = clean.replace(Regex("""`([^`\n]+)`""")) { it.groupValues[1] }
+        // Spoilers: ||text|| -> text
+        clean = clean.replace(Regex("""\|\|([\s\S]+?)\|\|""")) { it.groupValues[1] }
+        // Underline: <u>text</u> -> text
+        clean = clean.replace(Regex("""<u>([\s\S]+?)</u>""", RegexOption.IGNORE_CASE)) { it.groupValues[1] }
+        // Bold: **text** -> text, *text* -> text
+        clean = clean.replace(Regex("""\*\*([^\*\n]+?)\*\*""")) { it.groupValues[1] }
+        clean = clean.replace(Regex("""\*([^*\n]+?)\*""")) { it.groupValues[1] }
+        // Italic: __text__ -> text, _text_ -> text
+        clean = clean.replace(Regex("""__([^_\n]+?)__""")) { it.groupValues[1] }
+        clean = clean.replace(Regex("""_([^_\n]+?)_""")) { it.groupValues[1] }
+        // Strike: ~~text~~ -> text, ~text~ -> text
+        clean = clean.replace(Regex("""~~([^~\n]+?)~~""")) { it.groupValues[1] }
+        clean = clean.replace(Regex("""~([^~\n]+?)~""")) { it.groupValues[1] }
+        return clean
+    }
+
+    /**
+     * Reconstructs standard Telegram markdown formatting delimiters from Telegram MessageEntity objects.
+     * When Telegram processes formatted messages sent by clients, it strips delimiters from `message.text`
+     * and supplies character offset/length ranges in `entities`. This function wraps the designated substrings
+     * in markdown formatting using reverse-offset insertion so earlier offsets remain unaffected.
+     */
+    fun applyTelegramEntities(rawText: String?, entities: List<com.mobile.superiorchat.bot.MessageEntity>?): String {
+        if (rawText.isNullOrEmpty() || entities.isNullOrEmpty()) return rawText ?: ""
+
+        // Sort descending by offset so modifications at the end of the text don't alter indices at the beginning
+        val sortedEntities = entities.sortedByDescending { it.offset }
+        var result: String = rawText
+
+        for (entity in sortedEntities) {
+            val start = entity.offset
+            val end = minOf(entity.offset + entity.length, result.length)
+            if (start in 0 until result.length && end in (start + 1)..result.length) {
+                val target = result.substring(start, end)
+                val wrapped = when (entity.type.lowercase()) {
+                    "bold" -> "**$target**"
+                    "italic" -> "_${target}_"
+                    "code" -> "`$target`"
+                    "pre" -> "```$target```"
+                    "spoiler" -> "||$target||"
+                    "underline" -> "<u>$target</u>"
+                    "strikethrough" -> "~$target~"
+                    else -> target
+                }
+                result = result.replaceRange(start, end, wrapped)
+            }
+        }
+        return result
+    }
 }
+

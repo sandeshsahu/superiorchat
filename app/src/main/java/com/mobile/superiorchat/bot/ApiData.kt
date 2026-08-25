@@ -65,8 +65,18 @@ data class Message(
     val voice: JsonElement? = null,
     val reply_to_message: Message? = null,
     val pinned_message: Message? = null,
-    val reply_markup: JsonElement? = null
+    val reply_markup: JsonElement? = null,
+    val entities: List<MessageEntity>? = null,
+    val caption_entities: List<MessageEntity>? = null
 )
+
+@Serializable
+data class MessageEntity(
+    val type: String,
+    val offset: Int,
+    val length: Int
+)
+
 
 
 @Serializable
@@ -239,6 +249,12 @@ data class EditMessageRequest(
 data class DeleteMessageRequest(
     @SerialName("chat_id") val chatId: String,
     @SerialName("message_id") val messageId: Long
+)
+
+@Serializable
+data class DeleteMessagesRequest(
+    @SerialName("chat_id") val chatId: String,
+    @SerialName("message_ids") val messageIds: List<Long>
 )
 
 @Serializable

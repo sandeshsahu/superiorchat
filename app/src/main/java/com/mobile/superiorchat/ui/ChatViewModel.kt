@@ -244,13 +244,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleMessageSelection(message: MessageNode) {
         val id = message.messageId
-        selectedMessageIds = if (selectedMessageIds.contains(id)) {
-            selectedMessageIds - id
+        if (selectedMessageIds.contains(id)) {
+            selectedMessageIds = selectedMessageIds - id
+            if (selectedMessageIds.isEmpty()) {
+                isInSelectionMode = false
+            }
         } else {
-            selectedMessageIds + id
-        }
-        if (selectedMessageIds.isEmpty()) {
-            isInSelectionMode = false
+            if (selectedMessageIds.size >= 100) {
+                StatusFlow.reportStatus(SyncState.ERROR, "Max 100 messages selectable at once")
+                return
+            }
+            selectedMessageIds = selectedMessageIds + id
         }
     }
 
@@ -311,26 +315,83 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteSelectedMessages(messagesToDelete: List<MessageNode>) {
         val chatId = prefs.activeChatId
         val token = prefs.botToken
-        if (chatId.isBlank() || token.isBlank()) return
+        if (chatId.isBlank() || token.isBlank()) {
+            StatusFlow.reportStatus(SyncState.AUTH_ERROR, "Credentials not configured")
+            return
+        }
+        if (!NetState.isOnline.value) {
+            StatusFlow.reportStatus(SyncState.OFFLINE, "Cannot delete for everyone while offline")
+            return
+        }
+
         val selected = messagesToDelete.filter { selectedMessageIds.contains(it.messageId) }
+        val totalCount = selected.size
+        if (totalCount == 0) return
         exitSelectionMode()
+
         viewModelScope.launch(Dispatchers.IO) {
-            var anyFailed = false
-            selected.forEach { message ->
-                repository.deleteMessage(message.messageId)
-                var success = false
-                if (isOnline.value) {
-                    success = TelegramApi.deleteMessage(token, chatId, message.messageId)
+            val isGroup = prefs.isPeerLinkEnabled && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)
+            val selectedIds = selected.map { it.messageId }
+            val deletedIds = mutableListOf<Long>()
+            val failedIds = mutableListOf<Long>()
+            var lastErrorReason: String? = null
+
+            StatusFlow.reportStatus(SyncState.SYNCING_MESSAGES, "Deleting 0/$totalCount messages...")
+
+            if (isGroup && totalCount > 1) {
+                // Try batch deletion first for groups
+                val batchResult = TelegramApi.deleteMessagesBatch(token, chatId, selectedIds)
+                if (batchResult is TelegramApi.DeleteResult.Success) {
+                    deletedIds.addAll(selectedIds)
+                    StatusFlow.reportStatus(SyncState.SYNCING_MESSAGES, "Deleted $totalCount/$totalCount messages...")
+                } else {
+                    // If batch delete fails, try individual sequential delete to delete as many as allowed
+                    selected.forEachIndexed { index, msg ->
+                        StatusFlow.reportStatus(SyncState.SYNCING_MESSAGES, "Deleting ${index + 1}/$totalCount messages...")
+                        val indResult = TelegramApi.deleteMessageWithResult(token, chatId, msg.messageId)
+                        if (indResult is TelegramApi.DeleteResult.Success) {
+                            deletedIds.add(msg.messageId)
+                        } else if (indResult is TelegramApi.DeleteResult.Failed) {
+                            failedIds.add(msg.messageId)
+                            lastErrorReason = indResult.reason
+                        }
+                    }
                 }
-                if (!success) {
-                    AppLog.log(LogCategory.ERROR, "Failed to bulk-delete message ${message.messageId} via API")
-                    repository.insertMessage(message)
-                    anyFailed = true
+            } else {
+                // Sequential delete for 1-on-1 DM or single message
+                selected.forEachIndexed { index, msg ->
+                    StatusFlow.reportStatus(SyncState.SYNCING_MESSAGES, "Deleting ${index + 1}/$totalCount messages...")
+                    val indResult = TelegramApi.deleteMessageWithResult(token, chatId, msg.messageId)
+                    if (indResult is TelegramApi.DeleteResult.Success) {
+                        deletedIds.add(msg.messageId)
+                    } else if (indResult is TelegramApi.DeleteResult.Failed) {
+                        failedIds.add(msg.messageId)
+                        lastErrorReason = indResult.reason
+                    }
                 }
             }
-            // Report a single consolidated error if any delete failed (messages were re-inserted)
-            if (anyFailed) {
-                StatusFlow.reportStatus(SyncState.ERROR, "Some messages could not be deleted")
+
+            // Delete ONLY successfully deleted messages from local database
+            deletedIds.forEach { id ->
+                repository.deleteMessage(id)
+            }
+
+            // Send PeerLink broadcast signal for all deleted IDs if in group
+            if (isGroup && deletedIds.isNotEmpty()) {
+                TelegramApi.sendMessage(
+                    token = token,
+                    chatId = chatId,
+                    text = "[SYS-MSG-DELETE:${deletedIds.joinToString(",")}]"
+                )
+            }
+
+            // Report final status feedback to user
+            if (failedIds.isEmpty()) {
+                StatusFlow.reportStatus(SyncState.SUCCESS, "Deleted $totalCount messages")
+            } else if (deletedIds.isNotEmpty()) {
+                StatusFlow.reportStatus(SyncState.ERROR, "Deleted ${deletedIds.size}/$totalCount. ${failedIds.size} failed: ${lastErrorReason ?: "Restricted"}")
+            } else {
+                StatusFlow.reportStatus(SyncState.ERROR, "Failed to delete: ${lastErrorReason ?: "Restricted"}")
             }
         }
     }
@@ -856,17 +917,35 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteMessage(message: MessageNode) {
         val chatId = prefs.activeChatId
         val token = prefs.botToken
-        if (chatId.isBlank() || token.isBlank()) return
+        if (chatId.isBlank() || token.isBlank()) {
+            StatusFlow.reportStatus(SyncState.AUTH_ERROR, "Credentials not configured")
+            return
+        }
+        if (!NetState.isOnline.value) {
+            StatusFlow.reportStatus(SyncState.OFFLINE, "Cannot delete for everyone while offline")
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
-            repository.deleteMessage(message.messageId)
-            var success = false
-            if (NetState.isOnline.value) {
-                success = TelegramApi.deleteMessage(token, chatId, message.messageId)
-            }
-            if (!success) {
-                AppLog.log(LogCategory.ERROR, "Failed to delete message via API")
-                repository.insertMessage(message)
-                StatusFlow.reportStatus(SyncState.ERROR, "Unable Delete for everyone")
+            StatusFlow.reportStatus(SyncState.SYNCING_MESSAGES, "Deleting message...")
+            val result = TelegramApi.deleteMessageWithResult(token, chatId, message.messageId)
+            when (result) {
+                is TelegramApi.DeleteResult.Success -> {
+                    val isGroup = prefs.isPeerLinkEnabled && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)
+                    if (isGroup) {
+                        TelegramApi.sendMessage(
+                            token = token,
+                            chatId = chatId,
+                            text = "[SYS-MSG-DELETE:${message.messageId}]"
+                        )
+                    }
+                    repository.deleteMessage(message.messageId)
+                    StatusFlow.reportStatus(SyncState.SUCCESS, "Deleted for everyone")
+                }
+                is TelegramApi.DeleteResult.Failed -> {
+                    AppLog.log(LogCategory.ERROR, "Failed to delete message via API: ${result.reason}")
+                    StatusFlow.reportStatus(SyncState.ERROR, result.reason)
+                }
             }
         }
     }

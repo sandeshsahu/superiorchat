@@ -177,10 +177,10 @@ fun ChatInputBox(
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp
                     )
-                    Text(
+                    com.mobile.superiorchat.ui.components.bubbles.MarkdownText(
                         text = body,
                         color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )

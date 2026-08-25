@@ -382,9 +382,9 @@ private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
     return when (call.callStatus) {
         "COMPLETED" -> {
             if (call.isIncoming) {
-                StatusInfo("Incoming", PrimaryLight, Icons.Filled.CallReceived)
+                StatusInfo("Connected", PrimaryLight, Icons.Filled.CallReceived)
             } else {
-                StatusInfo("Outgoing", PrimaryLight, Icons.Filled.CallMade)
+                StatusInfo("Connected", PrimaryLight, Icons.Filled.CallMade)
             }
         }
         "CANCELLED" -> StatusInfo("Cancelled", WarningAmber, Icons.Filled.CallMade)
@@ -397,7 +397,7 @@ private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
         else -> if (call.isMissed) {
             StatusInfo(if (call.isIncoming) "Missed" else "Unanswered", WarningAmber, if (call.isIncoming) Icons.Filled.CallMissed else Icons.Filled.CallMade)
         } else {
-            StatusInfo(if (call.isIncoming) "Incoming" else "Outgoing", PrimaryLight, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
+            StatusInfo("Connected", PrimaryLight, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
         }
     }
 }

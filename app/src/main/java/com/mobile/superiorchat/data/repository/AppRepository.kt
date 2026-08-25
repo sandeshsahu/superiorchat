@@ -143,8 +143,9 @@ class AppRepository(
         val targetChatId = prefs.activeChatId
         
         val targetText = text
+        val parseMode = if (com.mobile.superiorchat.utils.Validator.hasValidMarkdownSyntax(targetText)) "Markdown" else null
 
-        val sentId = TelegramApi.sendMessage(token, targetChatId, targetText, replyToMessageId = replyToMessageId)
+        val sentId = TelegramApi.sendMessage(token, targetChatId, targetText, parseMode = parseMode, replyToMessageId = replyToMessageId)
         return if (sentId != null) {
             messageDao.updateMessageIdAndStatus(tempMessageId, sentId, MessageStatus.SENT)
             true

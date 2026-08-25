@@ -297,7 +297,7 @@ fun DeleteWarningDialog(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = if (targetUserName != null && targetUserName.isNotBlank()) "Also delete for $targetUserName" else "Also delete for everyone",
+                text = if (targetUserName != null && targetUserName.isNotBlank()) "Try Deleting for $targetUserName" else "Try Deleting for everyone",
                 color = TextPrimary,
                 fontSize = 14.sp
             )

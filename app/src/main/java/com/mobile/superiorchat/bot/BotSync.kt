@@ -287,11 +287,13 @@ class BotSync(private val context: Context) {
                     return // Ignore edited message from Telegram; we manage call UI locally
                 }
                 
-                repository.updateMessageText(editedMsg.message_id, text)
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${text.take(50)}")
+                val formattedEditedText = com.mobile.superiorchat.utils.Validator.applyTelegramEntities(text, editedMsg.entities ?: editedMsg.caption_entities)
+                repository.updateMessageText(editedMsg.message_id, formattedEditedText)
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${formattedEditedText.take(50)}")
             }
             return
         }
+
 
         if (update.message_reaction != null) {
             val reactionUpdate = update.message_reaction
@@ -314,50 +316,77 @@ class BotSync(private val context: Context) {
         val message = update.message ?: return
 
         // Intruder filtering: only accept messages from the target chat
-        val senderId = message.from?.id?.toString() ?: ""
         val prefs = AppGraph.prefs
+        val chatId = message.chat.id.toString()
+        val senderId = message.from?.id?.toString() ?: ""
+
         if (prefs.isPeerLinkEnabled) {
-            val expectedGroupId = prefs.activeChatId
-            val expectedPartner = prefs.peerLinkPartnerBotUsername.trim().removePrefix("@")
-            val fromUser = message.from?.username ?: ""
-            if (expectedGroupId.isEmpty() || message.chat.id.toString() != expectedGroupId) {
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from chat ${message.chat.id}", LogLevel.WARN)
-                return
-            }
-            if (expectedPartner.isNotEmpty() && !fromUser.equals(expectedPartner, ignoreCase = true)) {
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from user $fromUser (expected $expectedPartner)", LogLevel.WARN)
-                return
+            val isAuthorized = com.mobile.superiorchat.utils.Validator.isAuthorizedPeerLinkMessage(
+                msgChatId = chatId,
+                fromUsername = message.from?.username,
+                isBot = message.from?.is_bot,
+                activeChatId = prefs.activeChatId,
+                partnerBotUsername = prefs.peerLinkPartnerBotUsername,
+                isPeerLinkEnabled = true
+            )
+            if (!isAuthorized) {
+                // If partner bot username was not filled yet, allow message from group if matching activeChatId
+                val isGroupChat = com.mobile.superiorchat.utils.Validator.isValidGroupChatId(prefs.activeChatId) && chatId == prefs.activeChatId
+                if (!isGroupChat) {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from chat $chatId user ${message.from?.username}", LogLevel.WARN)
+                    return
+                }
+                if (prefs.peerLinkPartnerBotUsername.isNotBlank()) {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from user ${message.from?.username} (expected ${prefs.peerLinkPartnerBotUsername})", LogLevel.WARN)
+                    return
+                }
             }
         } else {
             val targetChatId = prefs.activeChatId
-            if (targetChatId.isEmpty() || message.chat.id.toString() != targetChatId) {
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected! Ignored message from chat ${message.chat.id}", LogLevel.WARN)
+            if (targetChatId.isEmpty() || chatId != targetChatId) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected! Ignored message from chat $chatId", LogLevel.WARN)
                 return
             }
         }
 
-        val chatId = message.chat.id.toString()
         var text = message.text ?: message.caption ?: ""
         
-        if (prefs.isPeerLinkEnabled) {
-            
-            if (text.trim() == "[SYS-CALL-DECLINED]" || text.trim() == "[SYS_CALL_DECLINED]") {
-                AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink decline signal")
-                
-                // Retroactively update history if user was offline or call ended
-                message.reply_to_message?.message_id?.let { repliedMsgId ->
-                    val existing = repository.getMessageById(repliedMsgId)
-                    if (existing != null && existing.mediaType == "call_event") {
-                        repository.updateMessageText(repliedMsgId, "Call Declined")
-                        AppLog.log(LogCategory.BOT_ACTIVITY, "Retroactively updated call event message $repliedMsgId to Declined")
+        // Core Interceptor: Parse & Execute internal system signals before DB insertion or UI notifications
+        val systemSignal = com.mobile.superiorchat.utils.Validator.extractSystemSignal(text)
+        if (systemSignal !is com.mobile.superiorchat.utils.Validator.SystemSignal.None) {
+            when (systemSignal) {
+                is com.mobile.superiorchat.utils.Validator.SystemSignal.DeleteMessages -> {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink delete signal for ${systemSignal.messageIds.size} messages: ${systemSignal.messageIds}")
+                    coroutineScope.launch(Dispatchers.IO) {
+                        systemSignal.messageIds.forEach { id ->
+                            repository.deleteMessage(id)
+                        }
+                        // Clean up the transient signal message from Telegram
+                        val token = prefs.botToken
+                        if (token.isNotBlank()) {
+                            TelegramApi.deleteMessage(token, chatId, message.message_id)
+                        }
                     }
                 }
-
-                if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
-                    com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                is com.mobile.superiorchat.utils.Validator.SystemSignal.CallDeclined -> {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink decline signal")
+                    message.reply_to_message?.message_id?.let { repliedMsgId ->
+                        val existing = repository.getMessageById(repliedMsgId)
+                        if (existing != null && existing.mediaType == "call_event") {
+                            repository.updateMessageText(repliedMsgId, "Call Declined")
+                            AppLog.log(LogCategory.BOT_ACTIVITY, "Retroactively updated call event message $repliedMsgId to Declined")
+                        }
+                    }
+                    if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
+                        com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                    }
                 }
-                return // Do not process this as a normal message
+                is com.mobile.superiorchat.utils.Validator.SystemSignal.Unknown -> {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received future/unknown system signal: ${systemSignal.rawSignal}")
+                }
+                com.mobile.superiorchat.utils.Validator.SystemSignal.None -> {}
             }
+            return // Core-level drop: NEVER reaches SQLite, NEVER reaches UI, NEVER triggers notifications
         }
 
         val replyMarkupStr = message.reply_markup?.toString() ?: ""
@@ -523,7 +552,7 @@ class BotSync(private val context: Context) {
 
         val receiveTimestamp = System.currentTimeMillis()
         
-        var parsedText = text
+        var parsedText = if (mediaType == "call_event") text else com.mobile.superiorchat.utils.Validator.applyTelegramEntities(text, message.entities ?: message.caption_entities)
         var parsedMediaType = mediaType
         
         val existingChat = repository.getChatSync(chatId)

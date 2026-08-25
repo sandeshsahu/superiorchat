@@ -268,7 +268,11 @@ object TelegramApi {
             client.newCall(request).execute().use { response ->
                 val success = response.isSuccessful
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in sendMessage, retrying as plain text...")
+                        return sendMessage(token, chatId, text, parseMode = null, replyMarkup = replyMarkup, replyToMessageId = replyToMessageId)
+                    }
                     AppLog.log(LogCategory.NETWORK, "sendMessage failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] " + text.take(200))
@@ -300,7 +304,8 @@ object TelegramApi {
         file: File,
         caption: String? = null,
         replyToMessageId: Long? = null,
-        onProgress: ((Long, Long) -> Unit)? = null
+        onProgress: ((Long, Long) -> Unit)? = null,
+        parseMode: String? = "Markdown"
     ): UploadResult? {
         return try {
             val photoBody = if (onProgress != null) {
@@ -314,7 +319,9 @@ object TelegramApi {
                 .addFormDataPart("photo", file.name, photoBody)
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
-                builder.addFormDataPart("parse_mode", "Markdown")
+                if (parseMode != null) {
+                    builder.addFormDataPart("parse_mode", parseMode)
+                }
             }
             if (replyToMessageId != null) {
                 builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
@@ -330,7 +337,12 @@ object TelegramApi {
                 var messageId: Long? = null
                 var fileUniqueId: String? = null
                 if (!success) {
-                    AppLog.log(LogCategory.NETWORK, "sendPhoto failed: ${response.code}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    val errorBody = response.body?.string().orEmpty()
+                    if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in photo caption, retrying as plain text...")
+                        return sendPhoto(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
+                    }
+                    AppLog.log(LogCategory.NETWORK, "sendPhoto failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Photo: ${file.name}" + (if (caption != null) " - ${caption.take(100)}" else ""))
                     val body = response.body?.string()
@@ -361,7 +373,8 @@ object TelegramApi {
         file: File,
         caption: String? = null,
         replyToMessageId: Long? = null,
-        onProgress: ((Long, Long) -> Unit)? = null
+        onProgress: ((Long, Long) -> Unit)? = null,
+        parseMode: String? = "Markdown"
     ): UploadResult? {
         return try {
             val voiceBody = if (onProgress != null) {
@@ -375,7 +388,9 @@ object TelegramApi {
                 .addFormDataPart("voice", file.name, voiceBody)
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
-                builder.addFormDataPart("parse_mode", "Markdown")
+                if (parseMode != null) {
+                    builder.addFormDataPart("parse_mode", parseMode)
+                }
             }
             if (replyToMessageId != null) {
                 builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
@@ -391,7 +406,11 @@ object TelegramApi {
                 var messageId: Long? = null
                 var fileUniqueId: String? = null
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in voice caption, retrying as plain text...")
+                        return sendVoice(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
+                    }
                     AppLog.log(LogCategory.NETWORK, "sendVoice failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Voice: ${file.name}")
@@ -423,7 +442,8 @@ object TelegramApi {
         file: File,
         caption: String? = null,
         replyToMessageId: Long? = null,
-        onProgress: ((Long, Long) -> Unit)? = null
+        onProgress: ((Long, Long) -> Unit)? = null,
+        parseMode: String? = "Markdown"
     ): UploadResult? {
         return try {
             val audioBody = if (onProgress != null) {
@@ -437,7 +457,9 @@ object TelegramApi {
                 .addFormDataPart("audio", file.name, audioBody)
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
-                builder.addFormDataPart("parse_mode", "Markdown")
+                if (parseMode != null) {
+                    builder.addFormDataPart("parse_mode", parseMode)
+                }
             }
             if (replyToMessageId != null) {
                 builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
@@ -453,7 +475,11 @@ object TelegramApi {
                 var messageId: Long? = null
                 var fileUniqueId: String? = null
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in audio caption, retrying as plain text...")
+                        return sendAudio(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
+                    }
                     AppLog.log(LogCategory.NETWORK, "sendAudio failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Audio: ${file.name}")
@@ -485,7 +511,8 @@ object TelegramApi {
         file: File,
         caption: String? = null,
         replyToMessageId: Long? = null,
-        onProgress: ((Long, Long) -> Unit)? = null
+        onProgress: ((Long, Long) -> Unit)? = null,
+        parseMode: String? = "Markdown"
     ): UploadResult? {
         return try {
             val videoBody = if (onProgress != null) {
@@ -499,7 +526,9 @@ object TelegramApi {
                 .addFormDataPart("video", file.name, videoBody)
             if (caption != null) {
                 builder.addFormDataPart("caption", caption)
-                builder.addFormDataPart("parse_mode", "Markdown")
+                if (parseMode != null) {
+                    builder.addFormDataPart("parse_mode", parseMode)
+                }
             }
             if (replyToMessageId != null) {
                 builder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
@@ -515,7 +544,11 @@ object TelegramApi {
                 var messageId: Long? = null
                 var fileUniqueId: String? = null
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in video caption, retrying as plain text...")
+                        return sendVideo(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
+                    }
                     AppLog.log(LogCategory.NETWORK, "sendVideo failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Video: ${file.name}")
@@ -546,7 +579,7 @@ object TelegramApi {
         chatId: String,
         file: File,
         caption: String,
-        parseMode: String = "Markdown",
+        parseMode: String? = "Markdown",
         displayName: String? = null,
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
@@ -563,8 +596,10 @@ object TelegramApi {
                 .setType(MultipartBody.FORM)
                 .addFormDataPart("chat_id", chatId)
                 .addFormDataPart("caption", caption)
-                .addFormDataPart("parse_mode", parseMode)
-                .addFormDataPart("document", uploadName, docBody)
+            if (parseMode != null) {
+                requestBodyBuilder.addFormDataPart("parse_mode", parseMode)
+            }
+            requestBodyBuilder.addFormDataPart("document", uploadName, docBody)
             
             if (replyToMessageId != null) {
                 requestBodyBuilder.addFormDataPart("reply_to_message_id", replyToMessageId.toString())
@@ -582,7 +617,11 @@ object TelegramApi {
                 var messageId: Long? = null
                 var fileUniqueId: String? = null
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in document caption, retrying as plain text...")
+                        return sendDocument(token, chatId, file, caption, parseMode = null, displayName = displayName, replyToMessageId = replyToMessageId, onProgress = onProgress)
+                    }
                     AppLog.log(LogCategory.NETWORK, "sendDocument failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[SENTMSG] Document: ${file.name} - ${caption.take(100)}")
@@ -697,7 +736,11 @@ object TelegramApi {
             client.newCall(request).execute().use { response ->
                 val success = response.isSuccessful
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in editMessageText, retrying as plain text...")
+                        return editMessageText(token, chatId, messageId, text, parseMode = null, replyMarkup = replyMarkup)
+                    }
                     AppLog.log(LogCategory.NETWORK, "editMessageText failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[EDITMSG] " + text.take(100))
@@ -710,11 +753,16 @@ object TelegramApi {
         }
     }
 
-    fun deleteMessage(
+    sealed class DeleteResult {
+        object Success : DeleteResult()
+        data class Failed(val reason: String) : DeleteResult()
+    }
+
+    fun deleteMessageWithResult(
         token: String,
         chatId: String,
         messageId: Long
-    ): Boolean {
+    ): DeleteResult {
         return try {
             val req = DeleteMessageRequest(chatId, messageId)
             val jsonBody = json.encodeToString(req)
@@ -726,19 +774,83 @@ object TelegramApi {
                 .build()
 
             client.newCall(request).execute().use { response ->
-                val success = response.isSuccessful
-                if (!success) {
-                    val errorBody = response.body?.string()
-                    AppLog.log(LogCategory.NETWORK, "deleteMessage failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
-                } else {
+                if (response.isSuccessful) {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[DELMSG] ID $messageId")
+                    DeleteResult.Success
+                } else {
+                    val errorBody = response.body?.string().orEmpty()
+                    AppLog.log(LogCategory.NETWORK, "deleteMessage failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    val reason = when {
+                        errorBody.contains("not enough rights", ignoreCase = true) || 
+                        errorBody.contains("admin", ignoreCase = true) ||
+                        errorBody.contains("MESSAGE_DELETE_FORBIDDEN", ignoreCase = true) -> 
+                            "Bot lacks Admin Delete rights in this group"
+                        errorBody.contains("48", ignoreCase = true) || 
+                        errorBody.contains("can't be deleted for everyone", ignoreCase = true) -> 
+                            "Messages older than 48 hours cannot be deleted for everyone"
+                        errorBody.contains("message to delete not found", ignoreCase = true) -> 
+                            "Message already deleted from Telegram"
+                        else -> "Telegram deletion rejected (${response.code})"
+                    }
+                    DeleteResult.Failed(reason)
                 }
-                success
             }
         } catch (e: Exception) {
             AppLog.log(LogCategory.NETWORK, "deleteMessage error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
-            false
+            DeleteResult.Failed(e.message ?: "Network error")
         }
+    }
+
+    fun deleteMessagesBatch(
+        token: String,
+        chatId: String,
+        messageIds: List<Long>
+    ): DeleteResult {
+        if (messageIds.isEmpty()) return DeleteResult.Success
+        if (messageIds.size == 1) return deleteMessageWithResult(token, chatId, messageIds.first())
+
+        return try {
+            val req = DeleteMessagesRequest(chatId, messageIds)
+            val jsonBody = json.encodeToString(req)
+            val body = jsonBody.toRequestBody("application/json".toMediaType())
+
+            val request = Request.Builder()
+                .url(apiUrl(token, "deleteMessages"))
+                .post(body)
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "[DELMSGS] Batch deleted ${messageIds.size} messages")
+                    DeleteResult.Success
+                } else {
+                    val errorBody = response.body?.string().orEmpty()
+                    AppLog.log(LogCategory.NETWORK, "deleteMessages batch failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
+                    val reason = when {
+                        errorBody.contains("not enough rights", ignoreCase = true) || 
+                        errorBody.contains("admin", ignoreCase = true) ||
+                        errorBody.contains("MESSAGE_DELETE_FORBIDDEN", ignoreCase = true) -> 
+                            "Bot lacks Admin Delete rights in this group"
+                        errorBody.contains("48", ignoreCase = true) || 
+                        errorBody.contains("can't be deleted for everyone", ignoreCase = true) -> 
+                            "Messages older than 48 hours cannot be deleted for everyone"
+                        else -> "Telegram batch deletion rejected (${response.code})"
+                    }
+                    DeleteResult.Failed(reason)
+                }
+            }
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.NETWORK, "deleteMessages batch error: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
+            DeleteResult.Failed(e.message ?: "Network error")
+        }
+    }
+
+    fun deleteMessage(
+        token: String,
+        chatId: String,
+        messageId: Long
+    ): Boolean {
+        return deleteMessageWithResult(token, chatId, messageId) is DeleteResult.Success
     }
 
     /**

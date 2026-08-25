@@ -418,10 +418,10 @@ fun ChatScreen(
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text(
+                                com.mobile.superiorchat.ui.components.bubbles.MarkdownText(
                                     text = if (pinnedMsg.text.isNullOrBlank()) "Media message" else pinnedMsg.text,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    fontSize = 14.sp,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                                     maxLines = 1,
                                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                                 )
@@ -536,7 +536,8 @@ fun ChatScreen(
                                     showUserInfoDialog = true
                                 },
                                 onCopyMessage = { msgToCopy ->
-                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(msgToCopy.text ?: ""))
+                                    val cleanText = com.mobile.superiorchat.utils.Validator.stripMarkdown(msgToCopy.text ?: "")
+                                    clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(cleanText))
                                 },
                                 onDeleteMessage = { msgToDelete ->
                                     messageToDelete = msgToDelete

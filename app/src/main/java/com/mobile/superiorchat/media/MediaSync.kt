@@ -397,14 +397,15 @@ object MediaSync {
                 val targetChatId = prefs.activeChatId
                 var baseCaption = msg?.text?.takeIf { it.isNotBlank() } ?: ""
                 val targetCaption = baseCaption.takeIf { it.isNotBlank() }
+                val parseMode = if (com.mobile.superiorchat.utils.Validator.hasValidMarkdownSyntax(targetCaption)) "Markdown" else null
 
                 when (mediaType) {
-                    "photo" -> TelegramApi.sendPhoto(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
-                    "video" -> TelegramApi.sendVideo(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
-                    "voice" -> TelegramApi.sendVoice(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
-                    "audio" -> TelegramApi.sendAudio(token, targetChatId, file, caption = targetCaption, onProgress = progressListener)
+                    "photo" -> TelegramApi.sendPhoto(token, targetChatId, file, caption = targetCaption, onProgress = progressListener, parseMode = parseMode)
+                    "video" -> TelegramApi.sendVideo(token, targetChatId, file, caption = targetCaption, onProgress = progressListener, parseMode = parseMode)
+                    "voice" -> TelegramApi.sendVoice(token, targetChatId, file, caption = targetCaption, onProgress = progressListener, parseMode = parseMode)
+                    "audio" -> TelegramApi.sendAudio(token, targetChatId, file, caption = targetCaption, onProgress = progressListener, parseMode = parseMode)
                     "document" -> {
-                        TelegramApi.sendDocument(token, targetChatId, file, caption = targetCaption ?: "", displayName = displayName, onProgress = progressListener)
+                        TelegramApi.sendDocument(token, targetChatId, file, caption = targetCaption ?: "", parseMode = parseMode, displayName = displayName, onProgress = progressListener)
                     }
                     else -> null
                 }

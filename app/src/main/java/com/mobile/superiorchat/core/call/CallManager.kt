@@ -359,9 +359,9 @@ object CallManager {
     private fun sendPeerLinkDeclineSignal() {
         // PeerLink Silent Rejection
         val prefs = AppGraph.prefs
-        if (prefs.isPeerLinkEnabled) {
+        val chatId = prefs.activeChatId
+        if (prefs.isPeerLinkEnabled && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) {
             val token = prefs.botToken
-            val chatId = prefs.activeChatId
             val replyTo = incomingTelegramMsgId
             if (token.isNotBlank() && chatId.isNotBlank()) {
                 scope.launch(Dispatchers.IO) {
