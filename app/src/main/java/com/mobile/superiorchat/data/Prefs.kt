@@ -299,6 +299,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isBackgroundCallsEnabled: Boolean = sharedPreferences.getBoolean("is_background_calls_enabled", false)
+    var isBackgroundCallsEnabled: Boolean
+        get() = _isBackgroundCallsEnabled
+        set(value) {
+            if (_isBackgroundCallsEnabled != value) {
+                _isBackgroundCallsEnabled = value
+                sharedPreferences.edit().putBoolean("is_background_calls_enabled", value).apply()
+            }
+        }
+
     private var _isAnimeCharacterEnabled: Boolean = sharedPreferences.getBoolean("is_anime_character_enabled", true)
     var isAnimeCharacterEnabled: Boolean
         get() = _isAnimeCharacterEnabled

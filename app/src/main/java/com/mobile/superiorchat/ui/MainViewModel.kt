@@ -100,6 +100,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 "is_admin_mode_enabled" -> isAdminModeEnabled = prefs.isAdminModeEnabled
                 "is_peerlink_locked" -> isPeerLinkLocked = prefs.isPeerLinkLocked
                 "is_exclude_from_recents_enabled" -> isExcludeFromRecentsEnabled = prefs.isExcludeFromRecentsEnabled
+                "is_background_calls_enabled" -> isBackgroundCallsEnabled = prefs.isBackgroundCallsEnabled
                 "is_anime_character_enabled" -> isAnimeCharacterEnabled = prefs.isAnimeCharacterEnabled
                 "app_theme" -> {
                     try {
@@ -365,6 +366,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleExcludeFromRecents(enabled: Boolean) {
         prefs.isExcludeFromRecentsEnabled = enabled
         isExcludeFromRecentsEnabled = enabled
+    }
+
+    var isBackgroundCallsEnabled by mutableStateOf(prefs.isBackgroundCallsEnabled)
+        private set
+
+    fun toggleBackgroundCalls(enabled: Boolean) {
+        prefs.isBackgroundCallsEnabled = enabled
+        isBackgroundCallsEnabled = enabled
     }
 
     var isAnimeCharacterEnabled by mutableStateOf(prefs.isAnimeCharacterEnabled)

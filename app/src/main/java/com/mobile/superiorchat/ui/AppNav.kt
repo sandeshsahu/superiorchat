@@ -98,7 +98,8 @@ enum class ReceiverConnectionState { IDLE, VALIDATING, INITIALIZING_HARDWARE, FA
 @Composable
 fun AppScreen(
     viewModel: MainViewModel,
-    requestPostNotifications: () -> Unit
+    requestPostNotifications: () -> Unit,
+    isInPipMode: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -289,31 +290,26 @@ fun AppScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    AnimatedContent(
-        targetState = isAppUnlocked,
-        transitionSpec = {
-            fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
-        },
-        label = "AppLockTransition"
-    ) { unlocked ->
-        if (!unlocked) {
-            if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed) {
-                com.mobile.superiorchat.ui.components.popups.FakeCrashDialog(
-                    onBypass = { viewModel.bypassFakeCrash() }
-                )
-            } else if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled) {
-                LockScreen(
-                    pinLength = com.mobile.superiorchat.core.AppGraph.prefs.appLockPinLength,
-                    onUnlock = { pin ->
-                        val result = viewModel.unlockApp(pin)
-                        result
-                    }
-                )
-            } else {
-                // Empty state while transitioning
-                Box(modifier = Modifier.fillMaxSize().background(Background))
+    // Security: When returning from OS PiP mode back to the full app, require PIN unlock
+    var wasInPipBefore by remember { mutableStateOf(false) }
+    LaunchedEffect(isInPipMode) {
+        if (isInPipMode) {
+            wasInPipBefore = true
+        } else if (wasInPipBefore) {
+            wasInPipBefore = false
+            if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled || com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+                viewModel.lockApp()
             }
-        } else {
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(if (isAppUnlocked || !viewModel.isFakeCrashEnabled || viewModel.isFakeCrashBypassed) Background else Color.Transparent)
+    ) {
+        // ── LAYER 1: Navigation, Drawer & Chat UI (Rendered only when unlocked) ──
+        if (isAppUnlocked) {
             if (viewModel.isDuressModeActive) {
                 VaultScreen(
                     permissionHandler = permissionHandler,
@@ -321,17 +317,17 @@ fun AppScreen(
                 )
             } else {
                 ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
-        scrimColor = Background.copy(alpha = 0.6f),
-        drawerContent = {
-            ModalDrawerSheet(
-                drawerContainerColor = SurfaceLevel1,
-                drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-                modifier = Modifier
-                    .width(240.dp)
-                    .border(1.dp, DividerColor, RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp))
-            ) {
+                    drawerState = drawerState,
+                    gesturesEnabled = !isInPipMode && isAppUnlocked && currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
+                    scrimColor = Background.copy(alpha = 0.6f),
+                    drawerContent = {
+                        ModalDrawerSheet(
+                            drawerContainerColor = SurfaceLevel1,
+                            drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+                            modifier = Modifier
+                                .width(240.dp)
+                                .border(1.dp, DividerColor, RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp))
+                        ) {
                 Column(modifier = Modifier.fillMaxSize().padding(vertical = 20.dp)) {
                     // Header
                     Column(
@@ -387,7 +383,7 @@ fun AppScreen(
     ) {
         Scaffold(
             topBar = {
-                if (callState == CallState.IDLE || isCallMinimized) {
+                if (!isInPipMode && (callState == CallState.IDLE || isCallMinimized)) {
                     val density = androidx.compose.ui.platform.LocalDensity.current
                     val statusBars = WindowInsets.statusBars
                     val topPaddingPx = statusBars.getTop(density)
@@ -551,12 +547,14 @@ fun AppScreen(
                 val isGlobalRemoteVideoOn by CallManager.isRemoteVideoOn.collectAsState()
                 val isCallPipActive = isCallMinimized && (isGlobalVideoOn || isGlobalRemoteVideoOn)
 
-                com.mobile.superiorchat.ui.components.popups.StatusPill(
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f),
-                    isCallMinimized = isCallMinimized,
-                    isCallPipActive = isCallPipActive,
-                    onRestoreCall = { isCallMinimized = false }
-                )
+                if (!isInPipMode) {
+                    com.mobile.superiorchat.ui.components.popups.StatusPill(
+                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f),
+                        isCallMinimized = isCallMinimized,
+                        isCallPipActive = isCallPipActive,
+                        onRestoreCall = { isCallMinimized = false }
+                    )
+                }
 
                 AnimatedContent(
                     targetState = currentScreen,
@@ -745,241 +743,6 @@ fun AppScreen(
                     )
                 }
                 
-                val callState by CallManager.callState.collectAsState()
-                
-                // Show Call Screen Overlay (Kept in composition even when minimized or during popup)
-                if (callState == CallState.RINGING) {
-                    if (!isCallMinimized) {
-                        IncomingCallDialog(
-                            callerName = CallManager.incomingCallerName,
-                            onAccept = { 
-                                permissionHandler.requestAudioAndCamera {
-                                    receiverConnectionState = ReceiverConnectionState.VALIDATING
-                                    CallManager.acceptIncomingCall(context)
-                                    receiverHardwareTimer = 0
-                                    scope.launch {
-                                        while (receiverHardwareTimer < 30 && (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
-                                            kotlinx.coroutines.delay(1000)
-                                            receiverHardwareTimer++
-                                        }
-                                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
-                                            com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
-                                            CallManager.endCall()
-                                            receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
-                                        } else if (receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                                            com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
-                                            CallManager.endCall()
-                                            CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                            receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
-                                        }
-                                    }
-                                }
-                            },
-                            onDecline = { CallManager.declineIncomingCall() },
-                            onMinimize = { isCallMinimized = true }
-                        )
-                    }
-                } else if (callState != CallState.IDLE) {
-                    val callUrl = CallManager.currentCallUrl
-                    if (callUrl != null) {
-                        CallScreen(
-                            url = callUrl,
-                            isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE || receiverConnectionState != ReceiverConnectionState.IDLE,
-                            onMinimize = { isCallMinimized = true },
-                            onMaximize = { 
-                                keyboardController?.hide()
-                                isCallMinimized = false 
-                            },
-                            onEndCall = { 
-                                isCallMinimized = false
-                                receiverConnectionState = ReceiverConnectionState.IDLE
-                            },
-                            modifier = Modifier
-                        )
-                    }
-                }
-                
-                // Clear minimize state if call ends
-                LaunchedEffect(callState) {
-                    if (callState == CallState.IDLE) {
-                        isCallMinimized = false
-                    }
-                }
-                
-                val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
-                
-                val shouldShowError = callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && 
-                                      !(callFailedError == com.mobile.superiorchat.core.call.CallError.DECLINED && CallManager.isIncomingCall) &&
-                                      receiverConnectionState == ReceiverConnectionState.IDLE &&
-                                      callConfirmationState == CallInitiationState.IDLE &&
-                                      callState == CallState.IDLE
-                                      
-                if (shouldShowError) {
-                    CallErrorDialog(
-                        callError = callFailedError,
-                        onConfirm = {
-                            val err = callFailedError
-                            CallManager.clearCallError()
-                            if (err == com.mobile.superiorchat.core.call.CallError.INVALID_URL || err == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
-                                currentScreen = NavScreen.AppSettings
-                            }
-                        },
-                        onDismiss = {
-                            CallManager.clearCallError()
-                        }
-                    )
-                }
-                
-                if (callConfirmationState != CallInitiationState.IDLE) {
-                    val isFailed = callConfirmationState == CallInitiationState.FAILED_SENDING
-                    val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.SENDING_LINK
-                    
-                    CallInitiationDialog(
-                        title = when (callConfirmationState) {
-                            CallInitiationState.VALIDATING -> "Validating Servers..."
-                            CallInitiationState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
-                            CallInitiationState.SENDING_LINK -> "Sending Invite Link..."
-                            CallInitiationState.FAILED_SENDING -> "Invite Link Failed"
-                            CallInitiationState.SUCCESS -> "Call Started"
-                            else -> "Start Secure Call"
-                        },
-                        message = when {
-                            isFailed -> "Failed to deliver the invite link to Telegram. Please check your connection and try again."
-                            callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $hardwareInitTimer / 30 seconds"
-                            else -> "A secure peer-to-peer connection link will be generated and sent to the other person's chat."
-                        },
-                        note = if (isFailed) null else "*Important:* This feature is **Experimental.** Calls may be blocked by firewalls or strict networks.\n\n**Reliability:** TURN servers are **Not Provided** by default. You must add your own to guarantee connectivity.\n\n**Security:** The developer assumes no responsibility for privacy or data leaks.\n\nRead the Security & Deployment documents on GitHub.",
-                        isFailed = isFailed,
-                        isLoading = isLoading,
-                        isSuccess = callConfirmationState == CallInitiationState.SUCCESS,
-                        onConfirm = {
-                            if (callConfirmationState == CallInitiationState.CONFIRMATION || callConfirmationState == CallInitiationState.FAILED_SENDING) {
-                                permissionHandler.requestAudioAndCamera {
-                                    callConfirmationState = CallInitiationState.VALIDATING
-                                    scope.launch {
-                                        val result = callViewModel.initiateCall(context)
-                                        if (callConfirmationState == CallInitiationState.VALIDATING) {
-                                            when (result) {
-                                                com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
-                                                    callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
-                                                    hardwareInitTimer = 0
-                                                    
-                                                    scope.launch {
-                                                        while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                                                            kotlinx.coroutines.delay(1000)
-                                                            hardwareInitTimer++
-                                                        }
-                                                        if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                                                            com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
-                                                            CallManager.endCall()
-                                                            CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                                            callViewModel.recordLocalCallFailure("Hardware Error")
-                                                            callConfirmationState = CallInitiationState.IDLE
-                                                        }
-                                                    }
-                                                }
-                                                com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
-                                                    callConfirmationState = CallInitiationState.IDLE
-                                                }
-                                                else -> {} // SUCCESS and TELEGRAM_FAILED handled in sendTelegramLink
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        onDismiss = {
-                            if (callConfirmationState != CallInitiationState.CONFIRMATION) {
-                                CallManager.endCall()
-                            }
-                            callConfirmationState = CallInitiationState.IDLE
-                        }
-                    )
-                }
-
-                if (receiverConnectionState != ReceiverConnectionState.IDLE) {
-                    val isFailed = receiverConnectionState == ReceiverConnectionState.FAILED_VALIDATING || receiverConnectionState == ReceiverConnectionState.FAILED_HARDWARE
-                    val isLoading = receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE
-                    
-                    CallInitiationDialog(
-                        title = when (receiverConnectionState) {
-                            ReceiverConnectionState.VALIDATING -> "Validating Host..."
-                            ReceiverConnectionState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
-                            ReceiverConnectionState.FAILED_VALIDATING -> "Host Unreachable"
-                            ReceiverConnectionState.FAILED_HARDWARE -> "Hardware Error"
-                            else -> ""
-                        },
-                        message = when (receiverConnectionState) {
-                            ReceiverConnectionState.VALIDATING -> "Connecting to caller...\nWaiting: $receiverHardwareTimer / 30 seconds"
-                            ReceiverConnectionState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $receiverHardwareTimer / 30 seconds"
-                            ReceiverConnectionState.FAILED_VALIDATING -> "The host is no longer calling or your network connection dropped."
-                            ReceiverConnectionState.FAILED_HARDWARE -> "Could not acquire media permissions or hardware failed to start."
-                            else -> ""
-                        },
-                        note = null,
-                        isFailed = isFailed,
-                        isLoading = isLoading,
-                        isSuccess = false,
-                        onConfirm = { 
-                            receiverConnectionState = ReceiverConnectionState.IDLE 
-                            CallManager.clearCallError()
-                        },
-                        onDismiss = {
-                            CallManager.endCall()
-                            CallManager.clearCallError()
-                            receiverConnectionState = ReceiverConnectionState.IDLE
-                        }
-                    )
-                }
-
-                // Handle Validation Passed Callback from ViewModel (Receiver)
-                LaunchedEffect(Unit) {
-                    callViewModel.validationPassedEvent.collectLatest {
-                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
-                            receiverConnectionState = ReceiverConnectionState.INITIALIZING_HARDWARE
-                            receiverHardwareTimer = 0
-                        }
-                    }
-                }
-
-                // Handle Hardware Ready Callback from ViewModel
-                LaunchedEffect(Unit) {
-                    callViewModel.hardwareReadyEvent.collectLatest { 
-                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                            receiverConnectionState = ReceiverConnectionState.IDLE
-                            isCallMinimized = false
-                        } else if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                            callConfirmationState = CallInitiationState.SENDING_LINK
-                            val result = callViewModel.sendTelegramLink()
-                            
-                            // Check if user cancelled while sending link
-                            if (callConfirmationState == CallInitiationState.SENDING_LINK) {
-                                if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
-                                    callConfirmationState = CallInitiationState.SUCCESS
-                                    kotlinx.coroutines.delay(500)
-                                    callConfirmationState = CallInitiationState.IDLE
-                                    isCallMinimized = false
-                                } else {
-                                    callConfirmationState = CallInitiationState.FAILED_SENDING
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Handle WebRTC/CallEngine Error Callbacks
-                LaunchedEffect(Unit) {
-                    callViewModel.errorEvent.collectLatest { errorMsg ->
-                        if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                            if (errorMsg.contains("Host unreachable", ignoreCase = true) || errorMsg.contains("expired", ignoreCase = true) || errorMsg.contains("unreachable", ignoreCase = true)) {
-                                receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
-                            } else {
-                                receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
-                            }
-                        }
-                    }
-                }
-
                 // ── Zen Mode Tip Card (Manual Mode only) ──────────────────────────────
                 AnimatedVisibility(
                     visible = showMikuTip,
@@ -1015,6 +778,262 @@ fun AppScreen(
             }
         }
     }
+            }
+        }
+
+        // ── Persistent WebRTC Call Layer (Independent of Lock State) ──────────
+        val callState by CallManager.callState.collectAsState()
+
+        if (callState == CallState.RINGING) {
+            if (!isCallMinimized) {
+                IncomingCallDialog(
+                    callerName = CallManager.incomingCallerName,
+                    onAccept = { 
+                        permissionHandler.requestAudioAndCamera {
+                            receiverConnectionState = ReceiverConnectionState.VALIDATING
+                            CallManager.acceptIncomingCall(context)
+                            receiverHardwareTimer = 0
+                            scope.launch {
+                                while (receiverHardwareTimer < 30 && (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
+                                    kotlinx.coroutines.delay(1000)
+                                    receiverHardwareTimer++
+                                }
+                                if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
+                                    com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
+                                    CallManager.endCall()
+                                    receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
+                                } else if (receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                                    com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                    CallManager.endCall()
+                                    CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                    receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
+                                }
+                            }
+                        }
+                    },
+                    onDecline = { CallManager.declineIncomingCall() },
+                    onMinimize = { isCallMinimized = true }
+                )
+            }
+        } else if (callState != CallState.IDLE) {
+            val callUrl = CallManager.currentCallUrl
+            if (callUrl != null) {
+                CallScreen(
+                    url = callUrl,
+                    isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE || receiverConnectionState != ReceiverConnectionState.IDLE,
+                    isInPipMode = isInPipMode,
+                    isAppUnlocked = isAppUnlocked,
+                    onMinimize = { isCallMinimized = true },
+                    onMaximize = { 
+                        keyboardController?.hide()
+                        isCallMinimized = false 
+                    },
+                    onEndCall = { 
+                        isCallMinimized = false
+                        receiverConnectionState = ReceiverConnectionState.IDLE
+                    },
+                    modifier = Modifier
+                )
+            }
+        }
+        
+        // Clear minimize state if call ends
+        LaunchedEffect(callState) {
+            if (callState == CallState.IDLE) {
+                isCallMinimized = false
+            }
+        }
+        
+        val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
+        
+        val shouldShowError = callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && 
+                              !(callFailedError == com.mobile.superiorchat.core.call.CallError.DECLINED && CallManager.isIncomingCall) &&
+                              receiverConnectionState == ReceiverConnectionState.IDLE &&
+                              callConfirmationState == CallInitiationState.IDLE &&
+                              callState == CallState.IDLE
+                              
+        if (shouldShowError) {
+            CallErrorDialog(
+                callError = callFailedError,
+                onConfirm = {
+                    val err = callFailedError
+                    CallManager.clearCallError()
+                    if (err == com.mobile.superiorchat.core.call.CallError.INVALID_URL || err == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
+                        currentScreen = NavScreen.AppSettings
+                    }
+                },
+                onDismiss = {
+                    CallManager.clearCallError()
+                }
+            )
+        }
+        
+        if (callConfirmationState != CallInitiationState.IDLE) {
+            val isFailed = callConfirmationState == CallInitiationState.FAILED_SENDING
+            val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.SENDING_LINK
+            
+            CallInitiationDialog(
+                title = when (callConfirmationState) {
+                    CallInitiationState.VALIDATING -> "Validating Servers..."
+                    CallInitiationState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
+                    CallInitiationState.SENDING_LINK -> "Sending Invite Link..."
+                    CallInitiationState.FAILED_SENDING -> "Invite Link Failed"
+                    CallInitiationState.SUCCESS -> "Call Started"
+                    else -> "Start Secure Call"
+                },
+                message = when {
+                    isFailed -> "Failed to deliver the invite link to Telegram. Please check your connection and try again."
+                    callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $hardwareInitTimer / 30 seconds"
+                    else -> "A secure peer-to-peer connection link will be generated and sent to the other person's chat."
+                },
+                note = if (isFailed) null else "*Important:* This feature is **Experimental.** Calls may be blocked by firewalls or strict networks.\n\n**Reliability:** TURN servers are **Not Provided** by default. You must add your own to guarantee connectivity.\n\n**Security:** The developer assumes no responsibility for privacy or data leaks.\n\nRead the Security & Deployment documents on GitHub.",
+                isFailed = isFailed,
+                isLoading = isLoading,
+                isSuccess = callConfirmationState == CallInitiationState.SUCCESS,
+                onConfirm = {
+                    if (callConfirmationState == CallInitiationState.CONFIRMATION || callConfirmationState == CallInitiationState.FAILED_SENDING) {
+                        permissionHandler.requestAudioAndCamera {
+                            callConfirmationState = CallInitiationState.VALIDATING
+                            scope.launch {
+                                val result = callViewModel.initiateCall(context)
+                                if (callConfirmationState == CallInitiationState.VALIDATING) {
+                                    when (result) {
+                                        com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
+                                            callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
+                                            hardwareInitTimer = 0
+                                            
+                                            scope.launch {
+                                                while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                                    kotlinx.coroutines.delay(1000)
+                                                    hardwareInitTimer++
+                                                }
+                                                if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                                                    com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                                    CallManager.endCall()
+                                                    CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
+                                                    callViewModel.recordLocalCallFailure("Hardware Error")
+                                                    callConfirmationState = CallInitiationState.IDLE
+                                                }
+                                            }
+                                        }
+                                        com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
+                                            callConfirmationState = CallInitiationState.IDLE
+                                        }
+                                        else -> {} // SUCCESS and TELEGRAM_FAILED handled in sendTelegramLink
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                onDismiss = {
+                    if (callConfirmationState != CallInitiationState.CONFIRMATION) {
+                        CallManager.endCall()
+                    }
+                    callConfirmationState = CallInitiationState.IDLE
+                }
+            )
+        }
+
+        if (receiverConnectionState != ReceiverConnectionState.IDLE) {
+            val isFailed = receiverConnectionState == ReceiverConnectionState.FAILED_VALIDATING || receiverConnectionState == ReceiverConnectionState.FAILED_HARDWARE
+            val isLoading = receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE
+            
+            CallInitiationDialog(
+                title = when (receiverConnectionState) {
+                    ReceiverConnectionState.VALIDATING -> "Validating Host..."
+                    ReceiverConnectionState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
+                    ReceiverConnectionState.FAILED_VALIDATING -> "Host Unreachable"
+                    ReceiverConnectionState.FAILED_HARDWARE -> "Hardware Error"
+                    else -> ""
+                },
+                message = when (receiverConnectionState) {
+                    ReceiverConnectionState.VALIDATING -> "Connecting to caller...\nWaiting: $receiverHardwareTimer / 30 seconds"
+                    ReceiverConnectionState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $receiverHardwareTimer / 30 seconds"
+                    ReceiverConnectionState.FAILED_VALIDATING -> "The host is no longer calling or your network connection dropped."
+                    ReceiverConnectionState.FAILED_HARDWARE -> "Could not acquire media permissions or hardware failed to start."
+                    else -> ""
+                },
+                note = null,
+                isFailed = isFailed,
+                isLoading = isLoading,
+                isSuccess = false,
+                onConfirm = { 
+                    receiverConnectionState = ReceiverConnectionState.IDLE 
+                    CallManager.clearCallError()
+                },
+                onDismiss = {
+                    CallManager.endCall()
+                    CallManager.clearCallError()
+                    receiverConnectionState = ReceiverConnectionState.IDLE
+                }
+            )
+        }
+
+        // Handle Validation Passed Callback from ViewModel (Receiver)
+        LaunchedEffect(Unit) {
+            callViewModel.validationPassedEvent.collectLatest {
+                if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
+                    receiverConnectionState = ReceiverConnectionState.INITIALIZING_HARDWARE
+                    receiverHardwareTimer = 0
+                }
+            }
+        }
+
+        // Handle Hardware Ready Callback from ViewModel
+        LaunchedEffect(Unit) {
+            callViewModel.hardwareReadyEvent.collectLatest { 
+                if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                    receiverConnectionState = ReceiverConnectionState.IDLE
+                    isCallMinimized = false
+                } else if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
+                    callConfirmationState = CallInitiationState.SENDING_LINK
+                    val result = callViewModel.sendTelegramLink()
+                    
+                    // Check if user cancelled while sending link
+                    if (callConfirmationState == CallInitiationState.SENDING_LINK) {
+                        if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
+                            callConfirmationState = CallInitiationState.SUCCESS
+                            kotlinx.coroutines.delay(500)
+                            callConfirmationState = CallInitiationState.IDLE
+                            isCallMinimized = false
+                        } else {
+                            callConfirmationState = CallInitiationState.FAILED_SENDING
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle WebRTC/CallEngine Error Callbacks
+        LaunchedEffect(Unit) {
+            callViewModel.errorEvent.collectLatest { errorMsg ->
+                if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                    if (errorMsg.contains("Host unreachable", ignoreCase = true) || errorMsg.contains("expired", ignoreCase = true) || errorMsg.contains("unreachable", ignoreCase = true)) {
+                        receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
+                    } else {
+                        receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
+                    }
+                }
+            }
+        }
+
+        // ── LAYER 3: Security Shield Overlay (Topmost Layer in Full Screen) ──
+        if (!isAppUnlocked && !isInPipMode && !viewModel.isDuressModeActive) {
+            if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed) {
+                // STEP 1: Fake Crash Dialog (transparent over wallpaper in TransparentActivity)
+                com.mobile.superiorchat.ui.components.popups.FakeCrashDialog(
+                    onBypass = { viewModel.bypassFakeCrash() }
+                )
+            } else if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled) {
+                // STEP 2: PIN Lock Screen
+                LockScreen(
+                    pinLength = com.mobile.superiorchat.core.AppGraph.prefs.appLockPinLength,
+                    onUnlock = { pin ->
+                        val result = viewModel.unlockApp(pin)
+                        result
+                    }
+                )
             }
         }
     }

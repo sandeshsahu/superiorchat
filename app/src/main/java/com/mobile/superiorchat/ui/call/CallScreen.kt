@@ -13,6 +13,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeMute
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -66,6 +68,8 @@ import com.mobile.superiorchat.ui.components.bounceClick
 fun CallScreen(
     url: String,
     isMinimized: Boolean,
+    isInPipMode: Boolean = false,
+    isAppUnlocked: Boolean = true,
     onMinimize: () -> Unit,
     onMaximize: () -> Unit,
     onEndCall: () -> Unit,
@@ -84,6 +88,7 @@ fun CallScreen(
 
     val viewModel: CallViewModel = viewModel()
     val isMuted by viewModel.isMuted.collectAsState()
+    val isIncomingAudioMuted by viewModel.isIncomingAudioMuted.collectAsState()
     val isVideoOn by viewModel.isVideoOn.collectAsState()
     val isRemoteVideoOn by viewModel.isRemoteVideoOn.collectAsState()
     val isControlsVisible by viewModel.isControlsVisible.collectAsState()
@@ -170,9 +175,12 @@ fun CallScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
-                // End the call immediately when the app goes to the background
-                if (callState == CallState.ACTIVE || callState == CallState.CONNECTING) {
-                    performEndCall()
+                // End the call immediately when the app goes to the background if Background Calls is disabled
+                val isBgCallsEnabled = com.mobile.superiorchat.core.AppGraph.prefs.isBackgroundCallsEnabled
+                if (!isBgCallsEnabled) {
+                    if (callState == CallState.ACTIVE || callState == CallState.CONNECTING) {
+                        performEndCall()
+                    }
                 }
             }
         }
@@ -181,11 +189,11 @@ fun CallScreen(
     }
 
     // ── Picture in Picture Mode ──────────────────────────────
-    val showPip = isMinimized && (isVideoOn || isRemoteVideoOn) && callState == CallState.ACTIVE
+    val showPip = isAppUnlocked && !isInPipMode && isMinimized && (isVideoOn || isRemoteVideoOn) && callState == CallState.ACTIVE
 
-    LaunchedEffect(showPip, isVideoOn, isRemoteVideoOn, callState) {
+    LaunchedEffect(showPip, isInPipMode, isVideoOn, isRemoteVideoOn, callState) {
         val targetVideo = if (isRemoteVideoOn) "remote" else if (isVideoOn) "local" else "none"
-        if (showPip) {
+        if (isInPipMode || showPip) {
             callEngine.setPipMode(webViewRef, true, targetVideo)
         } else {
             callEngine.setPipMode(webViewRef, false, "none")
@@ -222,7 +230,9 @@ fun CallScreen(
         Box(
             modifier = Modifier
                 .then(
-                    if (isMinimized) {
+                    if (!isAppUnlocked && !isInPipMode) {
+                        Modifier.align(Alignment.BottomEnd).size(1.dp).alpha(0f)
+                    } else if (isMinimized && !isInPipMode) {
                         if (showPip) {
                             Modifier
                                 .align(Alignment.BottomEnd)
@@ -261,7 +271,7 @@ fun CallScreen(
                 // Fix #6: Slightly longer animateContentSize so it doesn't race with skeleton fadeout
                 .animateContentSize(animationSpec = tween(280, easing = FastOutSlowInEasing))
                 .clip(RoundedCornerShape(animatedCornerRadius))
-                .background(screenBgColor)
+                .background(if (!isAppUnlocked && !isInPipMode) Color.Transparent else screenBgColor)
         ) {
             // 1. Fullscreen Video WebView Layer (hidden during ENDING state to reveal gradient)
             AndroidView(
@@ -345,8 +355,51 @@ fun CallScreen(
                 )
             }
 
-            // 2. Native Compose UI Overlay Layer (only active when not minimized)
-            if (!isMinimized) {
+            // 1.7. OS PiP Audio Mode Avatar Layer (Rendered in OS PiP when cameras are OFF)
+            if (isInPipMode && !isVideoActive && (callState == CallState.ACTIVE || callState == CallState.CONNECTING)) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(CallBackground),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CallAvatar(
+                            isConnecting = callState == CallState.CONNECTING,
+                            isActive = callState == CallState.ACTIVE,
+                            profilePhotoPath = profilePhotoPath,
+                            audioLevel = remoteAudioLevel,
+                            size = 56.dp,
+                            iconSize = 26.dp,
+                            modifier = Modifier.padding(bottom = 0.dp)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (callState == CallState.ACTIVE) "Connected" else "Connecting...",
+                            color = if (callState == CallState.ACTIVE) CallSuccess else PrimaryLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.5.sp
+                        )
+                        if (callState == CallState.ACTIVE) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = CallManager.formatDuration(callDuration),
+                                color = CallTextSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 2. Native Compose UI Overlay Layer (only active when not minimized and not in OS PiP mode)
+            if (!isMinimized && !isInPipMode) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -436,6 +489,7 @@ fun CallScreen(
                                 isMuted = isMuted,
                                 isVideoOn = isVideoOn,
                                 isSpeakerphoneOn = isSpeakerphoneOn,
+                                isIncomingAudioMuted = isIncomingAudioMuted,
                                 isVideoActive = isVideoActive,
                                 onMuteToggle = {
                                     viewModel.toggleMute()
@@ -447,6 +501,10 @@ fun CallScreen(
                                 },
                                 onSpeakerToggle = { CallManager.toggleSpeaker() },
                                 onFlipCamera = { callEngine.flipCamera(webViewRef) },
+                                onIncomingAudioMuteToggle = {
+                                    viewModel.toggleIncomingAudioMute()
+                                    callEngine.setIncomingAudioMuted(webViewRef, !isIncomingAudioMuted)
+                                },
                                 onMinimize = { handleMinimize() },
                                 onEndCall = { performEndCall() }
                             )
@@ -604,10 +662,13 @@ private fun CallAvatar(
     isActive: Boolean = false,
     profilePhotoPath: String? = null,
     audioLevel: Float = 0f,
+    size: androidx.compose.ui.unit.Dp = 120.dp,
+    iconSize: androidx.compose.ui.unit.Dp = 56.dp,
     modifier: Modifier = Modifier
 ) {
+    val containerSize = size * (160f / 120f)
     Box(
-        modifier = modifier.size(160.dp),
+        modifier = modifier.size(containerSize),
         contentAlignment = Alignment.Center
     ) {
         // Fix #10: 3 pulse rings, organically staggered (0 / 500 / 1000ms)
@@ -633,7 +694,7 @@ private fun CallAvatar(
             val ringColor = lerp(CallAccent, CallSuccess, audioLevel.coerceIn(0f, 1f))
             Box(
                 modifier = Modifier
-                    .size(120.dp)
+                    .size(size)
                     .graphicsLayer {
                         scaleX = dynamicScale
                         scaleY = dynamicScale
@@ -647,7 +708,7 @@ private fun CallAvatar(
         // Avatar circle — clean, no ENDING-specific tint or border
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(size)
                 .clip(CircleShape)
                 .then(
                     if (isConnecting) Modifier.skeletonEffect()
@@ -667,7 +728,7 @@ private fun CallAvatar(
                     imageVector = Icons.Filled.Person,
                     contentDescription = null,
                     tint = Color.White,
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(iconSize)
                 )
             }
         }
@@ -721,11 +782,13 @@ private fun CallControls(
     isMuted: Boolean,
     isVideoOn: Boolean,
     isSpeakerphoneOn: Boolean,
+    isIncomingAudioMuted: Boolean,
     isVideoActive: Boolean,
     onMuteToggle: () -> Unit,
     onVideoToggle: () -> Unit,
     onSpeakerToggle: () -> Unit,
     onFlipCamera: () -> Unit,
+    onIncomingAudioMuteToggle: () -> Unit,
     onMinimize: () -> Unit,
     onEndCall: () -> Unit,
     modifier: Modifier = Modifier
@@ -750,106 +813,92 @@ private fun CallControls(
                 targetOffsetY = { it / 3 }
             )
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .clip(RoundedCornerShape(24.dp))
-                    // Fix #16: Proper frosted glass with gradient + border — much more depth than flat CallGlass
+                    .padding(horizontal = 24.dp)
+                    .clip(RoundedCornerShape(28.dp))
                     .background(
                         brush = if (isVideoActive)
-                            Brush.linearGradient(listOf(Color.Black.copy(0.58f), Color.Black.copy(0.38f)))
+                            Brush.linearGradient(listOf(Color.Black.copy(0.65f), Color.Black.copy(0.42f)))
                         else
-                            Brush.linearGradient(listOf(Color.White.copy(0.10f), Color.White.copy(0.05f)))
+                            Brush.linearGradient(listOf(Color.White.copy(0.12f), Color.White.copy(0.06f)))
                     )
-                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
-                    .padding(vertical = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(28.dp))
+                    .padding(vertical = 18.dp, horizontal = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                ControlButton(
-                    icon = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
-                    label = if (isMuted) "Unmute" else "Mute",
-                    isActive = isMuted,
-                    activeIconTint = Color.Black,
-                    activeBg = CallDanger.copy(alpha = 0.90f),
-                    onClick = onMuteToggle
-                )
-                ControlButton(
-                    icon = if (isVideoOn) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
-                    label = if (isVideoOn) "Camera On" else "Camera Off",
-                    isActive = isVideoOn,
-                    onClick = onVideoToggle
-                )
-                if (isVideoOn) {
+                // ── Row 1: Voice & Video (3 buttons) ────────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ControlButton(
+                        icon = if (isMuted) Icons.Filled.MicOff else Icons.Filled.Mic,
+                        label = "Mute Mic",
+                        isActive = isMuted,
+                        activeIconTint = Color.Black,
+                        activeBg = CallDanger.copy(alpha = 0.90f),
+                        onClick = onMuteToggle
+                    )
+                    ControlButton(
+                        icon = if (isVideoOn) Icons.Filled.Videocam else Icons.Filled.VideocamOff,
+                        label = "Camera",
+                        isActive = isVideoOn,
+                        onClick = onVideoToggle
+                    )
                     ControlButton(
                         icon = Icons.Filled.FlipCameraAndroid,
                         label = "Flip",
                         isActive = false,
+                        enabled = isVideoOn,
                         onClick = onFlipCamera
                     )
                 }
-                ControlButton(
-                    icon = if (isSpeakerphoneOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeDown,
-                    label = if (isSpeakerphoneOn) "Loudspeaker" else "Earpiece",
-                    isActive = isSpeakerphoneOn,
-                    onClick = onSpeakerToggle
-                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ── Row 2: Sound & App Navigation (3 buttons) ──────────
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ControlButton(
+                        icon = if (isSpeakerphoneOn) Icons.AutoMirrored.Filled.VolumeUp else Icons.Filled.Hearing,
+                        label = if (isSpeakerphoneOn) "Speaker" else "Earpiece",
+                        isActive = isSpeakerphoneOn,
+                        onClick = onSpeakerToggle
+                    )
+                    ControlButton(
+                        icon = if (isIncomingAudioMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeDown,
+                        label = "Mute Call",
+                        isActive = isIncomingAudioMuted,
+                        activeIconTint = Color.Black,
+                        activeBg = CallDanger.copy(alpha = 0.90f),
+                        onClick = onIncomingAudioMuteToggle
+                    )
+                    ControlButton(
+                        icon = Icons.Filled.KeyboardArrowDown,
+                        label = "Minimize",
+                        isActive = false,
+                        onClick = onMinimize
+                    )
+                }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        // ── Bottom action row: Minimize + End ────────────────
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Fix #17: Minimize button with proper spring interaction + glassmorphism style
-            val minimizeInteraction = remember { MutableInteractionSource() }
-            val minimizePressed by minimizeInteraction.collectIsPressedAsState()
-            val minimizeScale by animateFloatAsState(
-                targetValue = if (minimizePressed) 0.87f else 1f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
-                label = "minimizeScale"
-            )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .graphicsLayer { scaleX = minimizeScale; scaleY = minimizeScale }
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(listOf(Color.White.copy(0.13f), Color.White.copy(0.07f)))
-                        )
-                        .border(1.dp, Color.White.copy(0.10f), CircleShape)
-                        .clickable(
-                            interactionSource = minimizeInteraction,
-                            indication = null,
-                            onClick = onMinimize
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.KeyboardArrowDown,
-                        contentDescription = "Minimize",
-                        tint = Color.White,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Minimize",
-                    color = CallTextSecondary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            Spacer(modifier = Modifier.width(48.dp))
-
-            // Fix #18: End call button with proper spring interaction
+        // ── Bottom action row: Minimize + End while connecting; Centered End when connected ──
+        AnimatedContent(
+            targetState = callState == CallState.ACTIVE,
+            transitionSpec = {
+                fadeIn(tween(250, easing = FastOutSlowInEasing)) togetherWith fadeOut(tween(200, easing = FastOutSlowInEasing))
+            },
+            label = "bottomActionsTransition"
+        ) { isConnected ->
             val endCallInteraction = remember { MutableInteractionSource() }
             val endCallPressed by endCallInteraction.collectIsPressedAsState()
             val endCallScale by animateFloatAsState(
@@ -857,36 +906,121 @@ private fun CallControls(
                 animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
                 label = "endCallScale"
             )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .graphicsLayer { scaleX = endCallScale; scaleY = endCallScale }
-                        .size(68.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(listOf(CallDanger.copy(0.85f), CallDanger))
+
+            if (isConnected) {
+                // Connected: End Call button centered cleanly below the 2x3 grid
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer { scaleX = endCallScale; scaleY = endCallScale }
+                            .size(68.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.radialGradient(listOf(CallDanger.copy(0.85f), CallDanger))
+                            )
+                            .clickable(
+                                interactionSource = endCallInteraction,
+                                indication = null,
+                                onClick = onEndCall
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CallEnd,
+                            contentDescription = "End call",
+                            tint = Color.White,
+                            modifier = Modifier.size(30.dp)
                         )
-                        .clickable(
-                            interactionSource = endCallInteraction,
-                            indication = null,
-                            onClick = onEndCall
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.CallEnd,
-                        contentDescription = "End call",
-                        tint = Color.White,
-                        modifier = Modifier.size(30.dp)
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "End",
+                        color = CallDanger.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "End",
-                    color = CallDanger.copy(alpha = 0.8f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
+            } else {
+                // Calling / Connecting: Minimize + End Call side-by-side as it was before
+                val minimizeInteraction = remember { MutableInteractionSource() }
+                val minimizePressed by minimizeInteraction.collectIsPressedAsState()
+                val minimizeScale by animateFloatAsState(
+                    targetValue = if (minimizePressed) 0.87f else 1f,
+                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
+                    label = "minimizeScale"
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .graphicsLayer { scaleX = minimizeScale; scaleY = minimizeScale }
+                                .size(52.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.linearGradient(listOf(Color.White.copy(0.13f), Color.White.copy(0.07f)))
+                                )
+                                .border(1.dp, Color.White.copy(0.10f), CircleShape)
+                                .clickable(
+                                    interactionSource = minimizeInteraction,
+                                    indication = null,
+                                    onClick = onMinimize
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = "Minimize",
+                                tint = Color.White,
+                                modifier = Modifier.size(26.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Minimize",
+                            color = CallTextSecondary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(48.dp))
+
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .graphicsLayer { scaleX = endCallScale; scaleY = endCallScale }
+                                .size(68.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    Brush.radialGradient(listOf(CallDanger.copy(0.85f), CallDanger))
+                                )
+                                .clickable(
+                                    interactionSource = endCallInteraction,
+                                    indication = null,
+                                    onClick = onEndCall
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CallEnd,
+                                contentDescription = "End call",
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "End",
+                            color = CallDanger.copy(alpha = 0.8f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
             }
         }
     }
@@ -901,6 +1035,7 @@ private fun ControlButton(
     icon: ImageVector,
     label: String,
     isActive: Boolean,
+    enabled: Boolean = true,
     // Optional overrides for specific active-state styling (e.g. mute = red bg)
     activeBg: Color = Color.White,
     activeIconTint: Color = Color.Black,
@@ -911,19 +1046,32 @@ private fun ControlButton(
 
     // Fix #7: Snappier, cleaner bounce — LowBouncy + StiffnessMedium stops wobbling too long
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.87f else 1f,
+        targetValue = if (isPressed && enabled) 0.87f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMedium),
         label = "buttonScale"
     )
 
     // Smooth background color transition on active toggle
     val bgColor by animateColorAsState(
-        targetValue = if (isActive) activeBg else Color.White.copy(alpha = 0.10f),
+        targetValue = when {
+            !enabled -> Color.White.copy(alpha = 0.04f)
+            isActive -> activeBg
+            else -> Color.White.copy(alpha = 0.10f)
+        },
         animationSpec = tween(200, easing = FastOutSlowInEasing),
         label = "buttonBg"
     )
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.35f,
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "contentAlpha"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.graphicsLayer { alpha = contentAlpha }
+    ) {
         Box(
             modifier = Modifier
                 .graphicsLayer {
@@ -936,6 +1084,7 @@ private fun ControlButton(
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
+                    enabled = enabled,
                     onClick = onClick
                 ),
             contentAlignment = Alignment.Center
@@ -949,7 +1098,7 @@ private fun ControlButton(
                 Icon(
                     imageVector = currentIcon,
                     contentDescription = label,
-                    tint = if (isActive) activeIconTint else Color.White,
+                    tint = if (isActive && enabled) activeIconTint else Color.White,
                     modifier = Modifier.size(26.dp)
                 )
             }

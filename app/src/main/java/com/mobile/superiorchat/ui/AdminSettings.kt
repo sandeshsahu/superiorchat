@@ -377,6 +377,18 @@ fun AdminSettingsScreen(
                 enabled = !isLocked,
                 onCheckedChange = { viewModel.toggleExcludeFromRecents(it) }
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingsSwitchRow(
+                title = "Background Calls",
+                subtitle = "Keep calls active and enable Picture-in-Picture when app is minimized",
+                icon = Icons.Filled.PhoneInTalk,
+                iconTint = PrimaryLight,
+                isChecked = viewModel.isBackgroundCallsEnabled,
+                enabled = !isLocked,
+                onCheckedChange = { viewModel.toggleBackgroundCalls(it) }
+            )
         }
 
         Spacer(modifier = Modifier.height(30.dp)) // Bottom padding

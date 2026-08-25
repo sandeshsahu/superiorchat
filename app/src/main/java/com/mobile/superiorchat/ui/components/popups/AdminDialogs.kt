@@ -44,7 +44,8 @@ object AdminTexts {
     const val LIFECYCLE_INFO_MESSAGE =
         "Controls application background behavior, task execution, and system-level visibility.\n\n" +
         "• **Hide from Recent**:\nHides Superior Chat from Android's Recent Apps / Overview screen when the application is closed or minimized, ensuring zero trace of multitasking activity. Reopen anytime via dialer code or secret shortcut.\n\n" +
-        "*(Upcoming features: Background Call Routing, Call Ringing Services, and Persistent Keep-Alive controls).*"
+        "• **Background Calls**:\nKeeps calls and audio active in the background when the app is minimized or the screen is locked. When video is enabled, automatically transitions into an OS-level Picture-in-Picture (PiP) floating window.\n\n" +
+        "*(Upcoming features: Call Ringing Services and Persistent Keep-Alive controls).*"
 
     const val I_AM_ADMIN_INFO_TITLE = "I Am Admin (User B)"
     const val I_AM_ADMIN_INFO_MESSAGE =

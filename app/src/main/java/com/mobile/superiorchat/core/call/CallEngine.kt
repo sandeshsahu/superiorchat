@@ -131,4 +131,8 @@ class CallEngine(
     fun setPipMode(webView: WebView?, isEnabled: Boolean, targetVideo: String) {
         webView?.evaluateJavascript("window.androidSetPipMode($isEnabled, '$targetVideo');", null)
     }
+
+    fun setIncomingAudioMuted(webView: WebView?, isMuted: Boolean) {
+        webView?.evaluateJavascript("var el = document.getElementById('remoteVideo'); if (el) el.muted = $isMuted;", null)
+    }
 }

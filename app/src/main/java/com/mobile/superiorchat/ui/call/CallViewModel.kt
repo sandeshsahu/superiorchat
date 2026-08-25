@@ -36,6 +36,9 @@ class CallViewModel : ViewModel() {
     private val _isMuted = MutableStateFlow(false)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
 
+    private val _isIncomingAudioMuted = MutableStateFlow(false)
+    val isIncomingAudioMuted: StateFlow<Boolean> = _isIncomingAudioMuted.asStateFlow()
+
     private val _isVideoOn = MutableStateFlow(false)
     val isVideoOn: StateFlow<Boolean> = _isVideoOn.asStateFlow()
 
@@ -103,6 +106,7 @@ class CallViewModel : ViewModel() {
     }
 
     fun toggleMute() { _isMuted.value = !_isMuted.value }
+    fun toggleIncomingAudioMute() { _isIncomingAudioMuted.value = !_isIncomingAudioMuted.value }
     fun toggleVideo() { 
         _isVideoOn.value = !_isVideoOn.value 
         CallManager.setLocalVideoState(_isVideoOn.value)
@@ -129,6 +133,7 @@ class CallViewModel : ViewModel() {
 
     private fun resetState() {
         _isMuted.value = false
+        _isIncomingAudioMuted.value = false
         _isVideoOn.value = false
         _isRemoteVideoOn.value = false
         CallManager.setLocalVideoState(false)
