@@ -55,6 +55,7 @@ open class MainActivity : ComponentActivity() {
     var isInPipMode by mutableStateOf(false)
         private set
     private var wasInPipMode = false
+    private var isMaximizingFromPip = false
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -223,25 +224,7 @@ open class MainActivity : ComponentActivity() {
             }
 
             LaunchedEffect(Unit) {
-                var prevRemoteVideo = false
-                CallManager.isRemoteVideoOn.collect { remoteVideoOn ->
-                    if (remoteVideoOn && !prevRemoteVideo) {
-                        val isCalling = CallManager.callState.value == CallState.ACTIVE
-                        val isBgEnabled = com.mobile.superiorchat.core.AppGraph.prefs.isBackgroundCallsEnabled
-                        if (isBgEnabled && isCalling && !isInPipMode && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            if (!this@MainActivity.hasWindowFocus()) {
-                                try {
-                                    val params = PictureInPictureParams.Builder()
-                                        .setAspectRatio(Rational(9, 16))
-                                        .build()
-                                    enterPictureInPictureMode(params)
-                                } catch (e: Exception) {
-                                    AppLog.log(LogCategory.SYSTEM, "Failed to enter PiP on remote video: ${e.message}", LogLevel.WARN)
-                                }
-                            }
-                        }
-                    }
-                    prevRemoteVideo = remoteVideoOn
+                CallManager.isRemoteVideoOn.collect {
                     updatePipParams()
                 }
             }
@@ -399,9 +382,18 @@ open class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra("ACTION_MAXIMIZE_PIP", false)) {
+            isMaximizingFromPip = true
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         wasInPipMode = false
+        isMaximizingFromPip = false
         updateExcludeFromRecents(viewModel.isExcludeFromRecentsEnabled)
         updatePipParams()
         // Broadcast that chat is opened so camo engine clears notifications
@@ -412,8 +404,8 @@ open class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         // A visible floating PiP window is always in onPause (never onStop).
-        // If onStop() is called while in PiP, it means the user closed/dismissed the PiP window via the '✕' button or swipe!
-        if (isInPipMode || wasInPipMode || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode)) {
+        // If onStop() is called while in PiP and NOT maximizing, the user closed/dismissed the PiP window via the '✕' button or swipe!
+        if ((isInPipMode || wasInPipMode || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode)) && !isMaximizingFromPip) {
             wasInPipMode = false
             isInPipMode = false
             CallManager.endCall()

@@ -21,6 +21,19 @@ class TileActivity : ComponentActivity() {
             AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Valid unlock sequence detected. Launching MainActivity.", com.mobile.superiorchat.utils.LogLevel.DEBUG)
             TileUnlockState.resetSession() // Reset the lock and tap counts completely
             
+            val isCallActive = com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE
+
+            if (isCallActive) {
+                // Maximize existing PiP call to fullscreen without terminating the call
+                val mainIntent = Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra("ACTION_MAXIMIZE_PIP", true)
+                }
+                startActivity(mainIntent)
+                finish()
+                return
+            }
+
             val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
                 com.mobile.superiorchat.TransparentActivity::class.java
             } else {

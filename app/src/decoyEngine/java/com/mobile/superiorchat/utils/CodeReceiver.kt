@@ -25,6 +25,23 @@ class CodeReceiver : BroadcastReceiver() {
 
         AppLog.log(LogCategory.SYSTEM, "Secret dialer code triggered (*#*#$code#*#*). Launching MainActivity.")
 
+        val isCallActive = com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE
+
+        if (isCallActive) {
+            val i = Intent(context, MainActivity::class.java).apply {
+                action = Intent.ACTION_MAIN
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("ACTION_MAXIMIZE_PIP", true)
+                putExtra("isSecretLaunch", true)
+            }
+            try {
+                context.startActivity(i)
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.SYSTEM, "Failed to maximize MainActivity from dialer: ${e.message}", LogLevel.ERROR)
+            }
+            return
+        }
+
         val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
             com.mobile.superiorchat.TransparentActivity::class.java
         } else {
