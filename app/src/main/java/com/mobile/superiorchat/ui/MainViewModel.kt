@@ -168,6 +168,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return validToken && validChatId
         }
 
+    val tokenStatusText: String
+        get() = when {
+            !hasCredentials -> "Invalid"
+            !isNetworkAvailable.value -> "Offline"
+            !isTelegramApiReachable.value -> "Invalid"
+            else -> "Online"
+        }
+
     // -- App Lock State --
     var isDuressModeActive by mutableStateOf(false)
         private set

@@ -16,9 +16,11 @@ import com.mobile.superiorchat.utils.AppLog
 import com.mobile.superiorchat.utils.LogCategory
 import kotlinx.serialization.encodeToString
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.asSharedFlow
@@ -28,10 +30,31 @@ import com.mobile.superiorchat.data.entity.CallHistoryNode
 
 enum class CallInitiationResult { SUCCESS, VALIDATION_FAILED, TELEGRAM_FAILED, HARDWARE_INIT }
 
+enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, INITIALIZING_HARDWARE, SENDING_LINK, FAILED_SENDING, SUCCESS }
+enum class ReceiverConnectionState { IDLE, VALIDATING, INITIALIZING_HARDWARE, FAILED_VALIDATING, FAILED_HARDWARE }
+
 class CallViewModel : ViewModel() {
 
     private var lastCallEventMsgId: Long = 0L
     private var lastCallEventTime: Long = 0L
+
+    private val _isCallMinimized = MutableStateFlow(false)
+    val isCallMinimized: StateFlow<Boolean> = _isCallMinimized.asStateFlow()
+
+    private val _callInitiationState = MutableStateFlow(CallInitiationState.IDLE)
+    val callInitiationState: StateFlow<CallInitiationState> = _callInitiationState.asStateFlow()
+
+    private val _receiverConnectionState = MutableStateFlow(ReceiverConnectionState.IDLE)
+    val receiverConnectionState: StateFlow<ReceiverConnectionState> = _receiverConnectionState.asStateFlow()
+
+    private val _hardwareInitTimer = MutableStateFlow(0)
+    val hardwareInitTimer: StateFlow<Int> = _hardwareInitTimer.asStateFlow()
+
+    private val _receiverHardwareTimer = MutableStateFlow(0)
+    val receiverHardwareTimer: StateFlow<Int> = _receiverHardwareTimer.asStateFlow()
+
+    private var outboundTimerJob: kotlinx.coroutines.Job? = null
+    private var receiverTimerJob: kotlinx.coroutines.Job? = null
 
     private val _isMuted = MutableStateFlow(false)
     val isMuted: StateFlow<Boolean> = _isMuted.asStateFlow()
@@ -67,6 +90,162 @@ class CallViewModel : ViewModel() {
 
     private val _profilePhotoPath = MutableStateFlow<String?>(null)
     val profilePhotoPath: StateFlow<String?> = _profilePhotoPath.asStateFlow()
+
+    init {
+        // Handle Validation Passed Callback from WebRTC
+        viewModelScope.launch {
+            validationPassedEvent.collectLatest {
+                if (_receiverConnectionState.value == ReceiverConnectionState.VALIDATING) {
+                    _receiverConnectionState.value = ReceiverConnectionState.INITIALIZING_HARDWARE
+                    _receiverHardwareTimer.value = 0
+                }
+            }
+        }
+
+        // Handle Hardware Ready Callback from WebRTC
+        viewModelScope.launch {
+            hardwareReadyEvent.collectLatest {
+                if (_receiverConnectionState.value == ReceiverConnectionState.VALIDATING || _receiverConnectionState.value == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                    receiverTimerJob?.cancel()
+                    _receiverConnectionState.value = ReceiverConnectionState.IDLE
+                    _isCallMinimized.value = false
+                } else if (_callInitiationState.value == CallInitiationState.INITIALIZING_HARDWARE) {
+                    outboundTimerJob?.cancel()
+                    _callInitiationState.value = CallInitiationState.SENDING_LINK
+                    val result = sendTelegramLink()
+                    
+                    if (_callInitiationState.value == CallInitiationState.SENDING_LINK) {
+                        if (result == CallInitiationResult.SUCCESS) {
+                            _callInitiationState.value = CallInitiationState.SUCCESS
+                            kotlinx.coroutines.delay(500)
+                            _callInitiationState.value = CallInitiationState.IDLE
+                            _isCallMinimized.value = false
+                        } else {
+                            _callInitiationState.value = CallInitiationState.FAILED_SENDING
+                        }
+                    }
+                }
+            }
+        }
+
+        // Handle WebRTC/CallEngine Error Callbacks
+        viewModelScope.launch {
+            errorEvent.collectLatest { errorMsg ->
+                if (_receiverConnectionState.value == ReceiverConnectionState.VALIDATING || _receiverConnectionState.value == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                    receiverTimerJob?.cancel()
+                    if (errorMsg.contains("Host unreachable", ignoreCase = true) || errorMsg.contains("expired", ignoreCase = true) || errorMsg.contains("unreachable", ignoreCase = true)) {
+                        _receiverConnectionState.value = ReceiverConnectionState.FAILED_VALIDATING
+                    } else {
+                        _receiverConnectionState.value = ReceiverConnectionState.FAILED_HARDWARE
+                    }
+                }
+            }
+        }
+
+        // Reset minimize state if call ends
+        viewModelScope.launch {
+            CallManager.callState.collectLatest { state ->
+                if (state == CallState.IDLE) {
+                    _isCallMinimized.value = false
+                }
+            }
+        }
+    }
+
+    fun showCallConfirmation() {
+        _callInitiationState.value = CallInitiationState.CONFIRMATION
+    }
+
+    fun minimizeCall() {
+        _isCallMinimized.value = true
+    }
+
+    fun maximizeCall() {
+        _isCallMinimized.value = false
+    }
+
+    fun cancelOutboundCall() {
+        outboundTimerJob?.cancel()
+        if (_callInitiationState.value != CallInitiationState.CONFIRMATION) {
+            CallManager.endCall()
+        }
+        _callInitiationState.value = CallInitiationState.IDLE
+    }
+
+    fun startOutboundCall(context: Context) {
+        if (_callInitiationState.value == CallInitiationState.CONFIRMATION || _callInitiationState.value == CallInitiationState.FAILED_SENDING) {
+            _callInitiationState.value = CallInitiationState.VALIDATING
+            viewModelScope.launch {
+                val result = initiateCall(context)
+                if (_callInitiationState.value == CallInitiationState.VALIDATING) {
+                    when (result) {
+                        CallInitiationResult.HARDWARE_INIT -> {
+                            _callInitiationState.value = CallInitiationState.INITIALIZING_HARDWARE
+                            _hardwareInitTimer.value = 0
+                            outboundTimerJob?.cancel()
+                            outboundTimerJob = viewModelScope.launch {
+                                while (_hardwareInitTimer.value < 30 && _callInitiationState.value == CallInitiationState.INITIALIZING_HARDWARE) {
+                                    kotlinx.coroutines.delay(1000)
+                                    _hardwareInitTimer.value++
+                                }
+                                if (_callInitiationState.value == CallInitiationState.INITIALIZING_HARDWARE) {
+                                    AppLog.log(LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                                    CallManager.endCall()
+                                    CallManager.markFailed(CallError.HARDWARE_ERROR)
+                                    recordLocalCallFailure("Hardware Error")
+                                    _callInitiationState.value = CallInitiationState.IDLE
+                                }
+                            }
+                        }
+                        CallInitiationResult.VALIDATION_FAILED -> {
+                            _callInitiationState.value = CallInitiationState.IDLE
+                        }
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+
+    fun acceptInboundCall(context: Context) {
+        _receiverConnectionState.value = ReceiverConnectionState.VALIDATING
+        CallManager.acceptIncomingCall(context)
+        _receiverHardwareTimer.value = 0
+        receiverTimerJob?.cancel()
+        receiverTimerJob = viewModelScope.launch {
+            while (_receiverHardwareTimer.value < 30 && (_receiverConnectionState.value == ReceiverConnectionState.VALIDATING || _receiverConnectionState.value == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
+                kotlinx.coroutines.delay(1000)
+                _receiverHardwareTimer.value++
+            }
+            if (_receiverConnectionState.value == ReceiverConnectionState.VALIDATING) {
+                AppLog.log(LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
+                CallManager.endCall()
+                _receiverConnectionState.value = ReceiverConnectionState.FAILED_VALIDATING
+            } else if (_receiverConnectionState.value == ReceiverConnectionState.INITIALIZING_HARDWARE) {
+                AppLog.log(LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
+                CallManager.endCall()
+                CallManager.markFailed(CallError.HARDWARE_ERROR)
+                _receiverConnectionState.value = ReceiverConnectionState.FAILED_HARDWARE
+            }
+        }
+    }
+
+    fun declineInboundCall() {
+        receiverTimerJob?.cancel()
+        CallManager.declineIncomingCall()
+    }
+
+    fun dismissReceiverState() {
+        receiverTimerJob?.cancel()
+        _receiverConnectionState.value = ReceiverConnectionState.IDLE
+        CallManager.clearCallError()
+    }
+
+    fun dismissCallError(): CallError {
+        val err = CallManager.lastCallFailedDueToError.value
+        CallManager.clearCallError()
+        return err
+    }
 
     val callHistory: StateFlow<List<CallHistoryNode>> = AppGraph.database.callHistoryDao()
         .getAllCalls()

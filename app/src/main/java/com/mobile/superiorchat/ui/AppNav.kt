@@ -1,78 +1,47 @@
 package com.mobile.superiorchat.ui
 
-import com.mobile.superiorchat.ui.components.popups.*
-import android.Manifest
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.ui.layout.layout
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.mobile.superiorchat.R
-import com.mobile.superiorchat.theme.*
-import com.mobile.superiorchat.ui.profile.ProfileScreen
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collectLatest
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.mobile.superiorchat.ui.call.CallScreen
-import com.mobile.superiorchat.ui.call.CallHistoryPage
-import com.mobile.superiorchat.ui.call.CallViewModel
+import com.mobile.superiorchat.core.AppGraph
 import com.mobile.superiorchat.core.call.CallManager
 import com.mobile.superiorchat.core.call.CallState
+import com.mobile.superiorchat.theme.*
+import com.mobile.superiorchat.ui.call.CallContainer
+import com.mobile.superiorchat.ui.call.CallHistoryPage
+import com.mobile.superiorchat.ui.call.CallViewModel
+import com.mobile.superiorchat.ui.components.AppBars
+import com.mobile.superiorchat.ui.components.AppNavDrawer
+import com.mobile.superiorchat.ui.components.ZenModeTipCard
+import com.mobile.superiorchat.ui.components.popups.FakeCrashDialog
+import com.mobile.superiorchat.ui.components.popups.GlobalDialogHandler
+import com.mobile.superiorchat.ui.components.popups.SettingsQrScanPromptDialog
+import com.mobile.superiorchat.ui.components.popups.StatusPill
 import com.mobile.superiorchat.ui.components.vault.VaultScreen
+import com.mobile.superiorchat.ui.profile.ProfileScreen
+import com.mobile.superiorchat.utils.rememberPermissionHandler
+import kotlinx.coroutines.launch
 
 fun Context.findActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
@@ -91,9 +60,6 @@ enum class NavScreen(val title: String, val icon: ImageVector) {
     CallHistory("Call History", Icons.Filled.History)
 }
 
-enum class CallInitiationState { IDLE, CONFIRMATION, VALIDATING, INITIALIZING_HARDWARE, SENDING_LINK, FAILED_SENDING, SUCCESS }
-enum class ReceiverConnectionState { IDLE, VALIDATING, INITIALIZING_HARDWARE, FAILED_VALIDATING, FAILED_HARDWARE }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppScreen(
@@ -105,58 +71,23 @@ fun AppScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val activity = context.findActivity()
 
     var currentScreen by remember { mutableStateOf(NavScreen.Chat) }
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // ── Zen Mode (Sleeping Miku) ─────────────────────────────────────────────
-    // Two distinct modes:
-    // • Auto  — triggered by 3s inactivity, dismissed by any touch, no tip shown
-    // • Manual— triggered by tapping the title, persists for the session, shows tip
-    // sleeping_miku.png — CC BY-NC 3.0 — slubaru/DomEgCZ — fan art of Hatsune Miku © Crypton Future Media
-    var autoMikuMode by remember { mutableStateOf(false) }
-    var manualMikuMode by remember { mutableStateOf(false) }
-    val isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled
-    val isMikuActive = isAnimeCharacterEnabled && (autoMikuMode || manualMikuMode)
-    var showMikuTip by remember { mutableStateOf(false) }
-    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
-
-
-    // Auto inactivity timer — fires every 500ms, activates after 5s of no touch
-    LaunchedEffect(isAnimeCharacterEnabled) {
-        if (!isAnimeCharacterEnabled) {
-            autoMikuMode = false
-            manualMikuMode = false
-            return@LaunchedEffect
-        }
-        while (true) {
-            delay(500)
-            if (!manualMikuMode && !autoMikuMode) {
-                if (System.currentTimeMillis() - lastInteractionTime > 5000L) {
-                    autoMikuMode = true
-                }
-            }
-        }
-    }
-
-    // Tip auto-hide after 4s
-    LaunchedEffect(showMikuTip) {
-        if (showMikuTip) {
-            delay(4000)
-            showMikuTip = false
-        }
-    }
-    // ────────────────────────────────────────────────────────────────────────
-    
     val callViewModel: CallViewModel = viewModel()
-    var isCallMinimized by remember { mutableStateOf(false) }
-    var callConfirmationState by remember { mutableStateOf(CallInitiationState.IDLE) }
-    var receiverConnectionState by remember { mutableStateOf(ReceiverConnectionState.IDLE) }
-    var hardwareInitTimer by remember { mutableIntStateOf(0) }
-    var receiverHardwareTimer by remember { mutableIntStateOf(0) }
+    val isCallMinimized by callViewModel.isCallMinimized.collectAsState()
+    val callState by CallManager.callState.collectAsState()
+    val isAppUnlocked by viewModel.isAppUnlocked.collectAsState()
+
     var showScanPrompt by remember { mutableStateOf(false) }
 
-    val activity = context as? android.app.Activity
+    // ── Zen Mode Tip Card state (Zen Mode timers/logic live in AppBars) ────
+    var showMikuTip by remember { mutableStateOf(false) }
+    var contentTouchTimestamp by remember { mutableLongStateOf(0L) }
+
+    // ── System bar color controller ──────────────────────────────────────────
     LaunchedEffect(drawerState.isOpen) {
         activity?.window?.let { window ->
             val color = if (drawerState.isOpen) {
@@ -172,18 +103,20 @@ fun AppScreen(
         }
     }
 
-    val permissionStatus by viewModel.permissionStatus.collectAsState()
     val isNetworkAvailable by viewModel.isNetworkAvailable.collectAsState()
     val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
 
-    com.mobile.superiorchat.ui.components.popups.GlobalDialogHandler(
-        dialogState = viewModel.activeGlobalDialog,
-        onDismiss = { viewModel.activeGlobalDialog = null }
-    )
+    // ── Global Dialog Handler (Gated on isAppUnlocked to prevent leaks over decoy) ──
+    if (isAppUnlocked) {
+        GlobalDialogHandler(
+            dialogState = viewModel.activeGlobalDialog,
+            onDismiss = { viewModel.activeGlobalDialog = null }
+        )
+    }
 
-    val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val permissionHandler = rememberPermissionHandler { viewModel.activeGlobalDialog = it }
 
+    // ── Lifecycle observers ──────────────────────────────────────────────────
     DisposableEffect(currentScreen, lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -206,80 +139,6 @@ fun AppScreen(
         }
     }
 
-    val permissionStates = listOf(
-        PermissionState(
-            name = "Post Notifications", 
-            isGranted = permissionStatus.hasPostNotifs,
-            buttonText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && activity?.let { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.POST_NOTIFICATIONS) } == true) "Retry" else "Grant"
-        ) { requestPostNotifications() },
-        PermissionState(
-            name = "Camera", 
-            isGranted = permissionStatus.hasCamera,
-            buttonText = if (activity?.let { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.CAMERA) } == true) "Retry" else "Grant"
-        ) {
-            permissionHandler.requestCamera { viewModel.refreshPermissions() }
-        },
-        PermissionState(
-            name = "Microphone", 
-            isGranted = permissionStatus.hasMicrophone,
-            buttonText = if (activity?.let { androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.RECORD_AUDIO) } == true) "Retry" else "Grant"
-        ) {
-            permissionHandler.requestAudio { viewModel.refreshPermissions() }
-        },
-        PermissionState(
-            name = "Media & Storage",
-            isGranted = permissionStatus.mediaAccessLevel == MediaAccessLevel.FULL,
-            displayStatus = when (permissionStatus.mediaAccessLevel) {
-                MediaAccessLevel.FULL -> "Granted"
-                MediaAccessLevel.PARTIAL -> "Partial Access"
-                MediaAccessLevel.NONE -> "Required"
-            },
-            buttonText = if (activity?.let { 
-                val permsToCheck = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-                } else if (Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU) {
-                    arrayOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VIDEO)
-                } else {
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-                }
-                permsToCheck.any { perm -> androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(it, perm) }
-            } == true) "Retry" else "Grant"
-        ) {
-            permissionHandler.requestStorageForMedia { viewModel.refreshPermissions() }
-        },
-        PermissionState("Ignore Battery Optimizations", permissionStatus.hasIgnoreBattery) {
-            context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
-        },
-        PermissionState("Install Unknown Apps", permissionStatus.hasInstallPackages) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")))
-            }
-        },
-        PermissionState("All Files Access", permissionStatus.hasManageStorage) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                try {
-                    context.startActivity(Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${context.packageName}")))
-                } catch (e: Exception) {
-                    context.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-                }
-            }
-        }
-    )
-
-    if (currentScreen != NavScreen.Chat) {
-        BackHandler {
-            if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory, NavScreen.AdminSettings)) {
-                currentScreen = NavScreen.AppInformation
-            } else {
-                currentScreen = NavScreen.Chat
-            }
-        }
-    }
-
-    val callState by CallManager.callState.collectAsState()
-
-    val isAppUnlocked by viewModel.isAppUnlocked.collectAsState()
-
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
@@ -297,18 +156,38 @@ fun AppScreen(
             wasInPipBefore = true
         } else if (wasInPipBefore) {
             wasInPipBefore = false
-            if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled || com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+            if (AppGraph.prefs.isAppLockEnabled || AppGraph.prefs.isFakeCrashEnabled) {
                 viewModel.lockApp()
             }
         }
     }
 
+    if (currentScreen != NavScreen.Chat) {
+        BackHandler {
+            if (currentScreen in listOf(
+                    NavScreen.Permissions,
+                    NavScreen.Logs,
+                    NavScreen.AppSettings,
+                    NavScreen.CallHistory,
+                    NavScreen.AdminSettings
+                )
+            ) {
+                currentScreen = NavScreen.AppInformation
+            } else {
+                currentScreen = NavScreen.Chat
+            }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  ROOT 3-TIER WINDOW CONTAINER
+    // ══════════════════════════════════════════════════════════════════════════
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(if (isAppUnlocked || !viewModel.isFakeCrashEnabled || viewModel.isFakeCrashBypassed) Background else Color.Transparent)
     ) {
-        // ── LAYER 1: Navigation, Drawer & Chat UI (Rendered only when unlocked) ──
+        // ── LAYER 0: Navigation, Drawer & App Screens (Rendered only when unlocked) ──
         if (isAppUnlocked) {
             if (viewModel.isDuressModeActive) {
                 VaultScreen(
@@ -321,714 +200,287 @@ fun AppScreen(
                     gesturesEnabled = !isInPipMode && isAppUnlocked && currentScreen in listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation),
                     scrimColor = Background.copy(alpha = 0.6f),
                     drawerContent = {
-                        ModalDrawerSheet(
-                            drawerContainerColor = SurfaceLevel1,
-                            drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
-                            modifier = Modifier
-                                .width(240.dp)
-                                .border(1.dp, DividerColor, RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp))
-                        ) {
-                Column(modifier = Modifier.fillMaxSize().padding(vertical = 20.dp)) {
-                    // Header
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                            .padding(bottom = 24.dp)
-                    ) {
-                        Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Author Sandesh", fontSize = 14.sp, color = PrimaryLight.copy(alpha = 0.55f))
-                    }
-
-                    // Navigation Items — only top level entries shown
-                    listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation).forEach { screen ->
-                        val isSelected = currentScreen == screen
-                        val bgColor = if (isSelected) PrimaryLight else Color.Transparent
-                        val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(bgColor)
-                                .clickable {
-                                    currentScreen = screen
-                                    scope.launch { drawerState.close() }
-                                }
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                        ) {
-                            Icon(screen.icon, contentDescription = screen.title, tint = contentColor, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(screen.title, fontSize = 16.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = contentColor)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    HorizontalDivider(color = PrimaryLight.copy(alpha = 0.55f), modifier = Modifier.padding(horizontal = 24.dp))
-
-                    // External Links
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        ExternalLinkItem("LinkedIn", Icons.Filled.Link, "https://www.linkedin.com/in/sandesh-sahu/")
-                        ExternalLinkItem("GitHub", Icons.Filled.Code, "https://github.com/sandeshsahu/")
-                        ExternalLinkItem("GitLab", Icons.Filled.Terminal, "https://gitlab.com/sandeshsahu")
-                    }
-                }
-            }
-        }
-    ) {
-        Scaffold(
-            topBar = {
-                if (!isInPipMode && (callState == CallState.IDLE || isCallMinimized)) {
-                    val density = androidx.compose.ui.platform.LocalDensity.current
-                    val statusBars = WindowInsets.statusBars
-                    val topPaddingPx = statusBars.getTop(density)
-                    val desiredHeightPx = with(density) { 52.dp.roundToPx() } + topPaddingPx
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Background)
-                            .clickable(
-                                indication = null, 
-                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                            ) {
-                                if (!isAnimeCharacterEnabled) return@clickable
-                                if (isMikuActive) {
-                                    manualMikuMode = false
-                                    autoMikuMode = false
-                                    showMikuTip = false
-                                    lastInteractionTime = System.currentTimeMillis()
-                                } else {
-                                    autoMikuMode = false
-                                    manualMikuMode = true
-                                    showMikuTip = true
-                                }
+                        AppNavDrawer(
+                            currentScreen = currentScreen,
+                            onNavigate = { screen: NavScreen ->
+                                currentScreen = screen
+                                scope.launch { drawerState.close() }
                             }
-                            .layout { measurable, constraints ->
-                                val placeable = measurable.measure(constraints)
-                                layout(placeable.width, desiredHeightPx) {
-                                    placeable.place(0, 0)
-                                }
-                            }
-                    ) {
-                        AnimatedContent(
-                            targetState = isMikuActive,
-                            transitionSpec = {
-                                fadeIn(animationSpec = tween(400)) togetherWith fadeOut(animationSpec = tween(400))
-                            },
-                            label = "topBarTransition",
-                            modifier = Modifier.fillMaxWidth()
-                        ) { mikuActive ->
-                            if (mikuActive) {
-                                CenterAlignedTopAppBar(
-                                    title = {
-                                        Text(
-                                            currentScreen.title,
-                                            fontSize = 24.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = PrimaryLight
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory, NavScreen.AdminSettings)) {
-                                            IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
-                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryLight)
-                                            }
-                                        } else {
-                                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = PrimaryLight)
-                                            }
-                                        }
-                                    },
-                                    actions = {
-                                        AsyncImage(
-                                            model = R.drawable.sleeping_miku,
-                                            contentDescription = "Sleeping Miku",
-                                            contentScale = ContentScale.Fit,
-                                            filterQuality = FilterQuality.None,
-                                            modifier = Modifier
-                                                .height(56.dp)
-                                                .padding(end = 6.dp)
-                                        )
-                                    },
-                                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        scrolledContainerColor = androidx.compose.ui.graphics.Color.Transparent
-                                    )
-                                )
-                            } else {
-                                CenterAlignedTopAppBar(
-                                    title = {
-                                        Text(
-                                            currentScreen.title,
-                                            fontSize = 24.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = PrimaryLight
-                                        )
-                                    },
-                                    navigationIcon = {
-                                        if (currentScreen in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory, NavScreen.AdminSettings)) {
-                                            IconButton(onClick = { currentScreen = NavScreen.AppInformation }) {
-                                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = PrimaryLight)
-                                            }
-                                        } else {
-                                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                                Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = PrimaryLight)
-                                            }
-                                        }
-                                    },
-                                    actions = {
-                                        if (currentScreen == NavScreen.Chat) {
-                                            Row {
-                                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
-                                                if (canCall) {
-                                                    IconButton(onClick = { callConfirmationState = CallInitiationState.CONFIRMATION }) {
-                                                        Icon(Icons.Filled.Phone, contentDescription = "Call", tint = PrimaryLight)
-                                                    }
-                                                }
-                                                IconButton(onClick = {
-                                                    permissionHandler.requestCamera {
-                                                        showScanPrompt = true
-                                                    }
-                                                }) {
-                                                    Icon(Icons.Filled.QrCodeScanner, contentDescription = "Scan QR", tint = PrimaryLight)
-                                                }
-                                            }
-                                        }
-                                    },
-                                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                                        containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                                        scrolledContainerColor = androidx.compose.ui.graphics.Color.Transparent
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            snackbarHost = {
-                SnackbarHost(snackbarHostState) { data ->
-                    Snackbar(
-                        snackbarData = data,
-                        containerColor = SurfaceLevel1,
-                        contentColor = TextPrimary,
-                        actionColor = PrimaryLight
-                    )
-                }
-            },
-            containerColor = Background,
-            contentWindowInsets = WindowInsets.systemBars
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .consumeWindowInsets(innerPadding)
-                    .pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                if (event.changes.any { it.pressed && !it.previousPressed }) {
-                                    if (!manualMikuMode) {
-                                        lastInteractionTime = System.currentTimeMillis()
-                                        if (autoMikuMode) autoMikuMode = false
-                                    }
-                                }
-                            }
-                        }
-                    }
-            ) {
-                val isGlobalVideoOn by CallManager.isVideoOn.collectAsState()
-                val isGlobalRemoteVideoOn by CallManager.isRemoteVideoOn.collectAsState()
-                val isCallPipActive = isCallMinimized && (isGlobalVideoOn || isGlobalRemoteVideoOn)
-
-                if (!isInPipMode) {
-                    com.mobile.superiorchat.ui.components.popups.StatusPill(
-                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f),
-                        isCallMinimized = isCallMinimized,
-                        isCallPipActive = isCallPipActive,
-                        onRestoreCall = { isCallMinimized = false }
-                    )
-                }
-
-                AnimatedContent(
-                    targetState = currentScreen,
-                    transitionSpec = {
-                        val isSubScreenTarget = targetState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)
-                        val isReturningToInfo = initialState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory) && targetState == NavScreen.AppInformation
-                        
-                        val isForward = isSubScreenTarget || (!isReturningToInfo && targetState.ordinal > initialState.ordinal)
-
-                        if (isForward) {
-                            (slideInHorizontally(animationSpec = tween(300)) { width -> width } + 
-                                fadeIn(animationSpec = tween(300))) togetherWith
-                            (slideOutHorizontally(animationSpec = tween(300)) { width -> -width / 3 } + 
-                                fadeOut(animationSpec = tween(250)))
-                        } else {
-                            (slideInHorizontally(animationSpec = tween(300)) { width -> -width / 3 } + 
-                                fadeIn(animationSpec = tween(300))) togetherWith
-                            (slideOutHorizontally(animationSpec = tween(300)) { width -> width } + 
-                                fadeOut(animationSpec = tween(250)))
-                        }
-                    },
-                    label = "screen_transition"
-                ) { screen ->
-                    when (screen) {
-                        NavScreen.Chat -> ChatScreen(
-                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                            onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
-                            onNavigateToCall = { isCallMinimized = false },
-                            onNavigateToCallHistory = { currentScreen = NavScreen.CallHistory }
                         )
-
-                        NavScreen.Profile -> ProfileScreen(
-                            hasCredentials = viewModel.hasCredentials,
-                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                            onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
-                            onClearCredentials = { 
-                                viewModel.clearCredentials()
-                            },
-                            isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
-                            isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
-                            isNewMessageNotificationEnabled = viewModel.newMessageNotificationEnabled,
-                            isAppNotificationsEnabled = viewModel.appNotificationsEnabled,
-                            onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
-                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
-                            onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
-                            onAppNotificationsChange = { viewModel.toggleAppNotificationsEnabled(it) },
-                            onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) }
-                        )
-                        NavScreen.AppInformation -> {
-                            val tokenStatusText = when {
-                                !viewModel.hasCredentials -> "Invalid"
-                                !isNetworkAvailable -> "Offline"
-                                !isTelegramApiReachable -> "Invalid"
-                                else -> "Online"
-                            }
-
-                            AppScreenPage(
-                                isInternetConnected = isNetworkAvailable,
-                                tokenStatus = tokenStatusText,
-                                onNavigate = { currentScreen = it }
-                            )
-                        }
-                        NavScreen.Permissions -> {
-                            PermissionsScreen(permissions = permissionStates)
-                        }
-                        NavScreen.Logs -> {
-                            LogsScreen()
-                        }
-                        NavScreen.AppSettings -> {
-                            LaunchedEffect(Unit) {
-                                viewModel.webrtcBaseUrl = com.mobile.superiorchat.core.AppGraph.prefs.webrtcBaseUrl
-                            }
-                            
-                            val tokenStatusText = when {
-                                !viewModel.hasCredentials -> "Invalid"
-                                !isNetworkAvailable -> "Offline"
-                                !isTelegramApiReachable -> "Invalid"
-                                else -> "Online"
-                            }
-
-                            AppSettingsPage(
-                                isInternetConnected = isNetworkAvailable,
-                                tokenStatus = tokenStatusText,
-                                hasCredentials = viewModel.hasCredentials,
-                                botToken = viewModel.botToken,
-                                chatId = viewModel.chatId,
-                                webrtcBaseUrl = viewModel.webrtcBaseUrl,
-                                appTheme = viewModel.appTheme,
-                                onAppThemeChange = { viewModel.updateAppTheme(it) },
-                                isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled,
-                                onAnimeCharacterChange = { viewModel.toggleAnimeCharacter(it) },
-                                isTileAccessEnabled = viewModel.tileAccessEnabled,
-                                customAccessWord = viewModel.customAccessWord,
-                                customDialerCode = viewModel.customDialerCode,
-                                isPeerLinkEnabled = viewModel.isPeerLinkEnabled,
-                                onPeerLinkChange = { viewModel.togglePeerLink(it) },
-                                isAdminModeEnabled = viewModel.isAdminModeEnabled,
-                                peerLinkPartnerBotUsername = viewModel.peerLinkPartnerBotUsername,
-                                onPeerLinkPartnerBotUsernameChange = { viewModel.updatePeerLinkPartnerUsername(it) },
-                                onBotTokenChange = { viewModel.botToken = it },
-                                onChatIdChange = { viewModel.chatId = it },
-                                onTileAccessChange = { viewModel.toggleTileAccess(it) },
-                                onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
-                                onCustomDialerCodeChange = { viewModel.updateCustomDialerCode(it) },
-                                onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
-                                onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
-                                onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
-                                onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
-                                isAppLockEnabled = viewModel.isAppLockEnabled,
-                                isFakeCrashEnabled = viewModel.isFakeCrashEnabled,
-                                onAppLockChange = { enabled, pin ->
-                                    if (enabled) {
-                                        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
-                                        prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
-                                        prefs.appLockPinLength = pin.length
-                                        viewModel.toggleAppLock(true)
-                                        viewModel.unlockApp(pin)
-                                    } else {
-                                        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
-                                        prefs.appLockPin = ""
-                                        viewModel.toggleAppLock(false)
-                                        viewModel.unlockApp("")
-                                    }
-                                },
-                                onFakeCrashChange = { viewModel.toggleFakeCrash(it) },
-                                onChangePin = { pin ->
-                                    val prefs = com.mobile.superiorchat.core.AppGraph.prefs
-                                    prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
-                                    prefs.appLockPinLength = pin.length
-                                },
-                                verifyPin = { pin -> viewModel.verifyPin(pin) },
-                                onNavigateToAdmin = { currentScreen = NavScreen.AdminSettings },
-                                onSave = { viewModel.saveCredentials() },
-                                onClearCredentials = {
-                                    viewModel.clearCredentials()
-                                },
-                                onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) },
-                                onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
-                            )
-                        }
-                        NavScreen.AdminSettings -> {
-                            AdminSettingsScreen(
-                                viewModel = viewModel,
-                                onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
-                            )
-                        }
-                        NavScreen.CallHistory -> {
-                            CallHistoryPage(viewModel = callViewModel)
-                        }
                     }
-                }
-                
-                if (showScanPrompt) {
-                    SettingsQrScanPromptDialog(
-                        onConfirm = {
-                            showScanPrompt = false
-                            viewModel.showAppLevelQrScanner = true
-                        },
-                        onDismiss = { showScanPrompt = false }
-                    )
-                }
-                
-                if (viewModel.showAppLevelQrScanner) {
-                    com.mobile.superiorchat.ui.components.QrScanner(
-                        onDismiss = { viewModel.showAppLevelQrScanner = false },
-                        onSuccess = { data ->
-                            viewModel.botToken = data.token
-                            viewModel.chatId = data.chatId
-                            data.autoDownloadMedia?.let { viewModel.toggleAutoDownloadMedia(it) }
-                            data.newMessageNotification?.let { viewModel.toggleNewMessageNotification(it) }
-                            data.screenSecurity?.let { viewModel.toggleScreenSecurity(it) }
-                            data.callServer?.let { 
-                                viewModel.webrtcBaseUrl = it
-                            }
-                            data.theme?.let {
-                                try {
-                                    viewModel.updateAppTheme(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
-                                } catch (e: Exception) {}
-                            }
-                            
-                            viewModel.saveCredentials()
-                            viewModel.showAppLevelQrScanner = false
-                            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
-                        },
-                        onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
-                    )
-                }
-                
-                // ── Zen Mode Tip Card (Manual Mode only) ──────────────────────────────
-                AnimatedVisibility(
-                    visible = showMikuTip,
-                    enter = fadeIn(tween(300)) + slideInVertically(tween(350)) { -it },
-                    exit = fadeOut(tween(250)) + slideOutVertically(tween(300)) { -it },
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 16.dp)
-                        .padding(horizontal = 40.dp)
-                        .zIndex(20f)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(24.dp),
-                        color = SurfaceLevel1,
-                        tonalElevation = 8.dp,
-                        shadowElevation = 12.dp
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .border(1.dp, PrimaryLight.copy(alpha = 0.35f), RoundedCornerShape(24.dp))
-                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Zen Mode", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Tap header to exit", fontSize = 12.sp, color = TextSecondary)
-                        }
-                    }
-                }
-                // ─────────────────────────────────────────────────────────────────────
-            }
-        }
-    }
-            }
-        }
-
-        // ── Persistent WebRTC Call Layer (Independent of Lock State) ──────────
-        val callState by CallManager.callState.collectAsState()
-
-        if (callState == CallState.RINGING) {
-            if (!isCallMinimized) {
-                IncomingCallDialog(
-                    callerName = CallManager.incomingCallerName,
-                    onAccept = { 
-                        permissionHandler.requestAudioAndCamera {
-                            receiverConnectionState = ReceiverConnectionState.VALIDATING
-                            CallManager.acceptIncomingCall(context)
-                            receiverHardwareTimer = 0
-                            scope.launch {
-                                while (receiverHardwareTimer < 30 && (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE)) {
-                                    kotlinx.coroutines.delay(1000)
-                                    receiverHardwareTimer++
-                                }
-                                if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
-                                    com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Validation timed out at 30 seconds.")
-                                    CallManager.endCall()
-                                    receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
-                                } else if (receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                                    com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
-                                    CallManager.endCall()
-                                    CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                    receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
-                                }
+                    Scaffold(
+                        topBar = {
+                            if (!isInPipMode && (callState == CallState.IDLE || isCallMinimized)) {
+                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
+                                AppBars(
+                                    currentScreen = currentScreen,
+                                    isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled,
+                                    canCall = canCall,
+                                    contentTouchTimestamp = contentTouchTimestamp,
+                                    showMikuTip = showMikuTip,
+                                    onShowMikuTipChange = { showMikuTip = it },
+                                    onMenuClick = { scope.launch { drawerState.open() } },
+                                    onBackClick = { currentScreen = NavScreen.AppInformation },
+                                    onCallClick = { callViewModel.showCallConfirmation() },
+                                    onQrScanClick = {
+                                        permissionHandler.requestCamera {
+                                            showScanPrompt = true
+                                        }
+                                    }
+                                )
                             }
-                        }
-                    },
-                    onDecline = { CallManager.declineIncomingCall() },
-                    onMinimize = { isCallMinimized = true }
-                )
-            }
-        } else if (callState != CallState.IDLE) {
-            val callUrl = CallManager.currentCallUrl
-            if (callUrl != null) {
-                CallScreen(
-                    url = callUrl,
-                    isMinimized = isCallMinimized || callConfirmationState != CallInitiationState.IDLE || receiverConnectionState != ReceiverConnectionState.IDLE,
-                    isInPipMode = isInPipMode,
-                    isAppUnlocked = isAppUnlocked,
-                    onMinimize = { isCallMinimized = true },
-                    onMaximize = { 
-                        keyboardController?.hide()
-                        isCallMinimized = false 
-                    },
-                    onEndCall = { 
-                        isCallMinimized = false
-                        receiverConnectionState = ReceiverConnectionState.IDLE
-                    },
-                    modifier = Modifier
-                )
-            }
-        }
-        
-        // Clear minimize state if call ends
-        LaunchedEffect(callState) {
-            if (callState == CallState.IDLE) {
-                isCallMinimized = false
-            }
-        }
-        
-        val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
-        
-        val shouldShowError = callFailedError != com.mobile.superiorchat.core.call.CallError.NONE && 
-                              !(callFailedError == com.mobile.superiorchat.core.call.CallError.DECLINED && CallManager.isIncomingCall) &&
-                              receiverConnectionState == ReceiverConnectionState.IDLE &&
-                              callConfirmationState == CallInitiationState.IDLE &&
-                              callState == CallState.IDLE
-                              
-        if (shouldShowError) {
-            CallErrorDialog(
-                callError = callFailedError,
-                onConfirm = {
-                    val err = callFailedError
-                    CallManager.clearCallError()
-                    if (err == com.mobile.superiorchat.core.call.CallError.INVALID_URL || err == com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR) {
-                        currentScreen = NavScreen.AppSettings
-                    }
-                },
-                onDismiss = {
-                    CallManager.clearCallError()
-                }
-            )
-        }
-        
-        if (callConfirmationState != CallInitiationState.IDLE) {
-            val isFailed = callConfirmationState == CallInitiationState.FAILED_SENDING
-            val isLoading = callConfirmationState == CallInitiationState.VALIDATING || callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE || callConfirmationState == CallInitiationState.SENDING_LINK
-            
-            CallInitiationDialog(
-                title = when (callConfirmationState) {
-                    CallInitiationState.VALIDATING -> "Validating Servers..."
-                    CallInitiationState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
-                    CallInitiationState.SENDING_LINK -> "Sending Invite Link..."
-                    CallInitiationState.FAILED_SENDING -> "Invite Link Failed"
-                    CallInitiationState.SUCCESS -> "Call Started"
-                    else -> "Start Secure Call"
-                },
-                message = when {
-                    isFailed -> "Failed to deliver the invite link to Telegram. Please check your connection and try again."
-                    callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $hardwareInitTimer / 30 seconds"
-                    else -> "A secure peer-to-peer connection link will be generated and sent to the other person's chat."
-                },
-                note = if (isFailed) null else "*Important:* This feature is **Experimental.** Calls may be blocked by firewalls or strict networks.\n\n**Reliability:** TURN servers are **Not Provided** by default. You must add your own to guarantee connectivity.\n\n**Security:** The developer assumes no responsibility for privacy or data leaks.\n\nRead the Security & Deployment documents on GitHub.",
-                isFailed = isFailed,
-                isLoading = isLoading,
-                isSuccess = callConfirmationState == CallInitiationState.SUCCESS,
-                onConfirm = {
-                    if (callConfirmationState == CallInitiationState.CONFIRMATION || callConfirmationState == CallInitiationState.FAILED_SENDING) {
-                        permissionHandler.requestAudioAndCamera {
-                            callConfirmationState = CallInitiationState.VALIDATING
-                            scope.launch {
-                                val result = callViewModel.initiateCall(context)
-                                if (callConfirmationState == CallInitiationState.VALIDATING) {
-                                    when (result) {
-                                        com.mobile.superiorchat.ui.call.CallInitiationResult.HARDWARE_INIT -> {
-                                            callConfirmationState = CallInitiationState.INITIALIZING_HARDWARE
-                                            hardwareInitTimer = 0
-                                            
-                                            scope.launch {
-                                                while (hardwareInitTimer < 30 && callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                                                    kotlinx.coroutines.delay(1000)
-                                                    hardwareInitTimer++
-                                                }
-                                                if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                                                    com.mobile.superiorchat.utils.AppLog.log(com.mobile.superiorchat.utils.LogCategory.SYSTEM, "Hardware initialization timed out at 30 seconds.")
-                                                    CallManager.endCall()
-                                                    CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.HARDWARE_ERROR)
-                                                    callViewModel.recordLocalCallFailure("Hardware Error")
-                                                    callConfirmationState = CallInitiationState.IDLE
-                                                }
+                        },
+                        snackbarHost = {
+                            SnackbarHost(snackbarHostState) { data ->
+                                Snackbar(
+                                    snackbarData = data,
+                                    containerColor = SurfaceLevel1,
+                                    contentColor = TextPrimary,
+                                    actionColor = PrimaryLight
+                                )
+                            }
+                        },
+                        containerColor = Background,
+                        contentWindowInsets = WindowInsets.systemBars
+                    ) { innerPadding ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(innerPadding)
+                                .consumeWindowInsets(innerPadding)
+                                .pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                            if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                                contentTouchTimestamp = System.currentTimeMillis()
                                             }
                                         }
-                                        com.mobile.superiorchat.ui.call.CallInitiationResult.VALIDATION_FAILED -> {
-                                            callConfirmationState = CallInitiationState.IDLE
+                                    }
+                                }
+                        ) {
+                            val isGlobalVideoOn by CallManager.isVideoOn.collectAsState()
+                            val isGlobalRemoteVideoOn by CallManager.isRemoteVideoOn.collectAsState()
+                            val isCallPipActive = isCallMinimized && (isGlobalVideoOn || isGlobalRemoteVideoOn)
+
+                            if (!isInPipMode) {
+                                StatusPill(
+                                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp).zIndex(10f),
+                                    isCallMinimized = isCallMinimized,
+                                    isCallPipActive = isCallPipActive,
+                                    onRestoreCall = { callViewModel.maximizeCall() }
+                                )
+                            }
+
+                            // ── Zen Mode Tip Card (Centered below header, zIndex 20f) ──
+                            ZenModeTipCard(
+                                visible = showMikuTip,
+                                modifier = Modifier.align(Alignment.TopCenter)
+                            )
+
+                            AnimatedContent(
+                                targetState = currentScreen,
+                                transitionSpec = {
+                                    val isSubScreenTarget = targetState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory)
+                                    val isReturningToInfo = initialState in listOf(NavScreen.Permissions, NavScreen.Logs, NavScreen.AppSettings, NavScreen.CallHistory) && targetState == NavScreen.AppInformation
+                                    
+                                    val isForward = isSubScreenTarget || (!isReturningToInfo && targetState.ordinal > initialState.ordinal)
+
+                                    if (isForward) {
+                                        (slideInHorizontally(animationSpec = tween(300)) { width -> width } + 
+                                            fadeIn(animationSpec = tween(300))) togetherWith
+                                        (slideOutHorizontally(animationSpec = tween(300)) { width -> -width / 3 } + 
+                                            fadeOut(animationSpec = tween(250)))
+                                    } else {
+                                        (slideInHorizontally(animationSpec = tween(300)) { width -> -width / 3 } + 
+                                            fadeIn(animationSpec = tween(300))) togetherWith
+                                        (slideOutHorizontally(animationSpec = tween(300)) { width -> width } + 
+                                            fadeOut(animationSpec = tween(250)))
+                                    }
+                                },
+                                label = "screen_transition"
+                            ) { screen ->
+                                when (screen) {
+                                    NavScreen.Chat -> ChatScreen(
+                                        onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
+                                        onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
+                                        onNavigateToCall = { callViewModel.maximizeCall() },
+                                        onNavigateToCallHistory = { currentScreen = NavScreen.CallHistory }
+                                    )
+
+                                    NavScreen.Profile -> ProfileScreen(
+                                        hasCredentials = viewModel.hasCredentials,
+                                        onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
+                                        onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
+                                        onClearCredentials = { 
+                                            viewModel.clearCredentials()
+                                        },
+                                        isAutoDownloadMediaEnabled = viewModel.autoDownloadMedia,
+                                        isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
+                                        isNewMessageNotificationEnabled = viewModel.newMessageNotificationEnabled,
+                                        isAppNotificationsEnabled = viewModel.appNotificationsEnabled,
+                                        onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
+                                        onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
+                                        onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
+                                        onAppNotificationsChange = { viewModel.toggleAppNotificationsEnabled(it) },
+                                        onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) }
+                                    )
+                                    NavScreen.AppInformation -> {
+                                        AppScreenPage(
+                                            isInternetConnected = isNetworkAvailable,
+                                            tokenStatus = viewModel.tokenStatusText,
+                                            onNavigate = { currentScreen = it }
+                                        )
+                                    }
+                                    NavScreen.Permissions -> {
+                                        PermissionsScreen(
+                                            viewModel = viewModel,
+                                            permissionHandler = permissionHandler,
+                                            requestPostNotifications = requestPostNotifications
+                                        )
+                                    }
+                                    NavScreen.Logs -> {
+                                        LogsScreen()
+                                    }
+                                    NavScreen.AppSettings -> {
+                                        LaunchedEffect(Unit) {
+                                            viewModel.webrtcBaseUrl = AppGraph.prefs.webrtcBaseUrl
                                         }
-                                        else -> {} // SUCCESS and TELEGRAM_FAILED handled in sendTelegramLink
+
+                                        AppSettingsPage(
+                                            isInternetConnected = isNetworkAvailable,
+                                            tokenStatus = viewModel.tokenStatusText,
+                                            hasCredentials = viewModel.hasCredentials,
+                                            botToken = viewModel.botToken,
+                                            chatId = viewModel.chatId,
+                                            webrtcBaseUrl = viewModel.webrtcBaseUrl,
+                                            appTheme = viewModel.appTheme,
+                                            onAppThemeChange = { viewModel.updateAppTheme(it) },
+                                            isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled,
+                                            onAnimeCharacterChange = { viewModel.toggleAnimeCharacter(it) },
+                                            isTileAccessEnabled = viewModel.tileAccessEnabled,
+                                            customAccessWord = viewModel.customAccessWord,
+                                            customDialerCode = viewModel.customDialerCode,
+                                            isPeerLinkEnabled = viewModel.isPeerLinkEnabled,
+                                            onPeerLinkChange = { viewModel.togglePeerLink(it) },
+                                            isAdminModeEnabled = viewModel.isAdminModeEnabled,
+                                            peerLinkPartnerBotUsername = viewModel.peerLinkPartnerBotUsername,
+                                            onPeerLinkPartnerBotUsernameChange = { viewModel.updatePeerLinkPartnerUsername(it) },
+                                            onBotTokenChange = { viewModel.botToken = it },
+                                            onChatIdChange = { viewModel.chatId = it },
+                                            onTileAccessChange = { viewModel.toggleTileAccess(it) },
+                                            onCustomAccessWordChange = { viewModel.updateCustomAccessWord(it) },
+                                            onCustomDialerCodeChange = { viewModel.updateCustomDialerCode(it) },
+                                            onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
+                                            onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
+                                            onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
+                                            onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
+                                            isAppLockEnabled = viewModel.isAppLockEnabled,
+                                            isFakeCrashEnabled = viewModel.isFakeCrashEnabled,
+                                            onAppLockChange = { enabled, pin ->
+                                                if (enabled) {
+                                                    val prefs = AppGraph.prefs
+                                                    prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
+                                                    prefs.appLockPinLength = pin.length
+                                                    viewModel.toggleAppLock(true)
+                                                    viewModel.unlockApp(pin)
+                                                } else {
+                                                    val prefs = AppGraph.prefs
+                                                    prefs.appLockPin = ""
+                                                    viewModel.toggleAppLock(false)
+                                                    viewModel.unlockApp("")
+                                                }
+                                            },
+                                            onFakeCrashChange = { viewModel.toggleFakeCrash(it) },
+                                            onChangePin = { pin ->
+                                                val prefs = AppGraph.prefs
+                                                prefs.appLockPin = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
+                                                prefs.appLockPinLength = pin.length
+                                            },
+                                            verifyPin = { pin -> viewModel.verifyPin(pin) },
+                                            onNavigateToAdmin = { currentScreen = NavScreen.AdminSettings },
+                                            onSave = { viewModel.saveCredentials() },
+                                            onClearCredentials = {
+                                                viewModel.clearCredentials()
+                                            },
+                                            onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) },
+                                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+                                        )
+                                    }
+                                    NavScreen.AdminSettings -> {
+                                        AdminSettingsScreen(
+                                            viewModel = viewModel,
+                                            onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+                                        )
+                                    }
+                                    NavScreen.CallHistory -> {
+                                        CallHistoryPage(viewModel = callViewModel)
                                     }
                                 }
                             }
-                        }
-                    }
-                },
-                onDismiss = {
-                    if (callConfirmationState != CallInitiationState.CONFIRMATION) {
-                        CallManager.endCall()
-                    }
-                    callConfirmationState = CallInitiationState.IDLE
-                }
-            )
-        }
-
-        if (receiverConnectionState != ReceiverConnectionState.IDLE) {
-            val isFailed = receiverConnectionState == ReceiverConnectionState.FAILED_VALIDATING || receiverConnectionState == ReceiverConnectionState.FAILED_HARDWARE
-            val isLoading = receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE
-            
-            CallInitiationDialog(
-                title = when (receiverConnectionState) {
-                    ReceiverConnectionState.VALIDATING -> "Validating Host..."
-                    ReceiverConnectionState.INITIALIZING_HARDWARE -> "Initializing Hardware..."
-                    ReceiverConnectionState.FAILED_VALIDATING -> "Host Unreachable"
-                    ReceiverConnectionState.FAILED_HARDWARE -> "Hardware Error"
-                    else -> ""
-                },
-                message = when (receiverConnectionState) {
-                    ReceiverConnectionState.VALIDATING -> "Connecting to caller...\nWaiting: $receiverHardwareTimer / 30 seconds"
-                    ReceiverConnectionState.INITIALIZING_HARDWARE -> "Accessing secure camera and microphone...\nWaiting: $receiverHardwareTimer / 30 seconds"
-                    ReceiverConnectionState.FAILED_VALIDATING -> "The host is no longer calling or your network connection dropped."
-                    ReceiverConnectionState.FAILED_HARDWARE -> "Could not acquire media permissions or hardware failed to start."
-                    else -> ""
-                },
-                note = null,
-                isFailed = isFailed,
-                isLoading = isLoading,
-                isSuccess = false,
-                onConfirm = { 
-                    receiverConnectionState = ReceiverConnectionState.IDLE 
-                    CallManager.clearCallError()
-                },
-                onDismiss = {
-                    CallManager.endCall()
-                    CallManager.clearCallError()
-                    receiverConnectionState = ReceiverConnectionState.IDLE
-                }
-            )
-        }
-
-        // Handle Validation Passed Callback from ViewModel (Receiver)
-        LaunchedEffect(Unit) {
-            callViewModel.validationPassedEvent.collectLatest {
-                if (receiverConnectionState == ReceiverConnectionState.VALIDATING) {
-                    receiverConnectionState = ReceiverConnectionState.INITIALIZING_HARDWARE
-                    receiverHardwareTimer = 0
-                }
-            }
-        }
-
-        // Handle Hardware Ready Callback from ViewModel
-        LaunchedEffect(Unit) {
-            callViewModel.hardwareReadyEvent.collectLatest { 
-                if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                    receiverConnectionState = ReceiverConnectionState.IDLE
-                    isCallMinimized = false
-                } else if (callConfirmationState == CallInitiationState.INITIALIZING_HARDWARE) {
-                    callConfirmationState = CallInitiationState.SENDING_LINK
-                    val result = callViewModel.sendTelegramLink()
-                    
-                    // Check if user cancelled while sending link
-                    if (callConfirmationState == CallInitiationState.SENDING_LINK) {
-                        if (result == com.mobile.superiorchat.ui.call.CallInitiationResult.SUCCESS) {
-                            callConfirmationState = CallInitiationState.SUCCESS
-                            kotlinx.coroutines.delay(500)
-                            callConfirmationState = CallInitiationState.IDLE
-                            isCallMinimized = false
-                        } else {
-                            callConfirmationState = CallInitiationState.FAILED_SENDING
+                            
+                            if (showScanPrompt) {
+                                SettingsQrScanPromptDialog(
+                                    onConfirm = {
+                                        showScanPrompt = false
+                                        viewModel.showAppLevelQrScanner = true
+                                    },
+                                    onDismiss = { showScanPrompt = false }
+                                )
+                            }
+                            
+                            if (viewModel.showAppLevelQrScanner) {
+                                com.mobile.superiorchat.ui.components.QrScanner(
+                                    onDismiss = { viewModel.showAppLevelQrScanner = false },
+                                    onSuccess = { data ->
+                                        viewModel.botToken = data.token
+                                        viewModel.chatId = data.chatId
+                                        data.autoDownloadMedia?.let { viewModel.toggleAutoDownloadMedia(it) }
+                                        data.newMessageNotification?.let { viewModel.toggleNewMessageNotification(it) }
+                                        data.screenSecurity?.let { viewModel.toggleScreenSecurity(it) }
+                                        data.callServer?.let { 
+                                            viewModel.webrtcBaseUrl = it
+                                        }
+                                        data.theme?.let {
+                                            try {
+                                                viewModel.updateAppTheme(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
+                                            } catch (e: Exception) {}
+                                        }
+                                        
+                                        viewModel.saveCredentials()
+                                        viewModel.showAppLevelQrScanner = false
+                                        com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
+                                    },
+                                    onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+                                )
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Handle WebRTC/CallEngine Error Callbacks
-        LaunchedEffect(Unit) {
-            callViewModel.errorEvent.collectLatest { errorMsg ->
-                if (receiverConnectionState == ReceiverConnectionState.VALIDATING || receiverConnectionState == ReceiverConnectionState.INITIALIZING_HARDWARE) {
-                    if (errorMsg.contains("Host unreachable", ignoreCase = true) || errorMsg.contains("expired", ignoreCase = true) || errorMsg.contains("unreachable", ignoreCase = true)) {
-                        receiverConnectionState = ReceiverConnectionState.FAILED_VALIDATING
-                    } else {
-                        receiverConnectionState = ReceiverConnectionState.FAILED_HARDWARE
-                    }
-                }
-            }
-        }
+        // ── LAYER 1: Persistent WebRTC Calling Engine & Dialogs (Below Security Shield) ──
+        CallContainer(
+            callViewModel = callViewModel,
+            isInPipMode = isInPipMode,
+            isAppUnlocked = isAppUnlocked,
+            onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
+            onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
+        )
 
-        // ── LAYER 3: Security Shield Overlay (Topmost Layer in Full Screen) ──
+        // ── LAYER 2: Security Shield Overlay (Topmost Layer in Full Screen) ──
         if (!isAppUnlocked && !isInPipMode && !viewModel.isDuressModeActive) {
             if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed) {
                 // STEP 1: Fake Crash Dialog (transparent over wallpaper in TransparentActivity)
-                com.mobile.superiorchat.ui.components.popups.FakeCrashDialog(
+                FakeCrashDialog(
                     onBypass = { viewModel.bypassFakeCrash() }
                 )
-            } else if (com.mobile.superiorchat.core.AppGraph.prefs.isAppLockEnabled) {
+            } else if (AppGraph.prefs.isAppLockEnabled) {
                 // STEP 2: PIN Lock Screen
                 LockScreen(
-                    pinLength = com.mobile.superiorchat.core.AppGraph.prefs.appLockPinLength,
+                    pinLength = AppGraph.prefs.appLockPinLength,
                     onUnlock = { pin ->
                         val result = viewModel.unlockApp(pin)
                         result
@@ -1036,27 +488,5 @@ fun AppScreen(
                 )
             }
         }
-    }
-}
-
-
-
-@Composable
-private fun ExternalLinkItem(title: String, icon: ImageVector, url: String) {
-    val context = LocalContext.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable { 
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Icon(icon, contentDescription = title, tint = PrimaryLight.copy(alpha = 0.55f), modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(title, fontSize = 16.sp, color = PrimaryLight.copy(alpha = 0.55f))
     }
 }
