@@ -158,6 +158,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _hasEverGrantedPostNotifs: Boolean = sharedPreferences.getBoolean("has_ever_granted_post_notifs", false)
+    var hasEverGrantedPostNotifs: Boolean
+        get() = _hasEverGrantedPostNotifs
+        set(value) {
+            if (_hasEverGrantedPostNotifs != value) {
+                _hasEverGrantedPostNotifs = value
+                sharedPreferences.edit().putBoolean("has_ever_granted_post_notifs", value).apply()
+            }
+        }
+
     private var _profileEditRateLimitExpiry: Long = sharedPreferences.getLong("profile_edit_rate_limit_expiry", 0L)
     var profileEditRateLimitExpiry: Long
         get() = _profileEditRateLimitExpiry

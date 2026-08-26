@@ -8,8 +8,10 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.Uri
+import android.app.AppOpsManager
 import android.os.Build
 import android.os.PowerManager
+import android.os.Process
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -53,7 +55,8 @@ data class PermissionStatus(
     val hasMicrophone: Boolean = false,
     val mediaAccessLevel: MediaAccessLevel = MediaAccessLevel.NONE,
     val hasInstallPackages: Boolean = false,
-    val hasManageStorage: Boolean = false
+    val hasManageStorage: Boolean = false,
+    val hasPipPermission: Boolean = false
 ) {
     val allPermissionsGranted: Boolean
         get() = hasPostNotifs && hasIgnoreBattery && hasCamera && hasMicrophone && mediaAccessLevel == MediaAccessLevel.FULL && hasInstallPackages && hasManageStorage
@@ -61,6 +64,8 @@ data class PermissionStatus(
 
 sealed class GlobalDialogState {
     data class PermissionPermanentlyDenied(val intent: Intent) : GlobalDialogState()
+    data class NotificationPermanentlyDenied(val onGoToSettings: () -> Unit, val onDismiss: () -> Unit) : GlobalDialogState()
+    data class BatteryOptimizationRequired(val onRetry: () -> Unit, val onDismiss: () -> Unit) : GlobalDialogState()
     data class PartialMediaAccessPermanentlyDenied(val onContinue: () -> Unit, val onGoToSettings: () -> Unit) : GlobalDialogState()
     data class ManageStorageRequired(val intent: Intent) : GlobalDialogState()
     data class PartialMediaAccess(val onContinue: () -> Unit, val onUpgrade: () -> Unit) : GlobalDialogState()
@@ -455,6 +460,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 true
             }
 
+            val hasPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+                val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    appOps.unsafeCheckOpNoThrow(
+                        AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
+                        Process.myUid(),
+                        context.packageName
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    appOps.checkOpNoThrow(
+                        AppOpsManager.OPSTR_PICTURE_IN_PICTURE,
+                        Process.myUid(),
+                        context.packageName
+                    )
+                }
+                mode == AppOpsManager.MODE_ALLOWED
+            } else false
+
             _permissionStatus.value = PermissionStatus(
                 hasPostNotifs = hasPostNotifs,
                 hasIgnoreBattery = hasIgnoreBattery,
@@ -463,14 +487,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 hasMicrophone = hasMicrophone,
                 mediaAccessLevel = mediaAccessLevel,
                 hasInstallPackages = hasInstallPackages,
-                hasManageStorage = hasManageStorage
+                hasManageStorage = hasManageStorage,
+                hasPipPermission = hasPip
             )
-            
-            // We ONLY want to sync from OS to Prefs if the OS is ENABLED. 
-            // If it's disabled, it might just be a fresh install (Android 13+ defaults to denied),
-            // so we don't want to blindly overwrite our default `true` to `false`, which would break the startup prompt!
-            if (hasPostNotifs && !prefs.isAppNotificationsEnabled) {
-                prefs.isAppNotificationsEnabled = true
+
+            // Auto-disable Background Calls if the user has revoked PiP permission from OS Settings.
+            // Detected on every ON_RESUME via AppNav's refreshPermissions() call.
+            if (!hasPip && prefs.isBackgroundCallsEnabled) {
+                prefs.isBackgroundCallsEnabled = false
+                isBackgroundCallsEnabled = false
+            }
+
+            if (hasPostNotifs) {
+                prefs.hasEverGrantedPostNotifs = true
+                if (!prefs.isAppNotificationsEnabled) {
+                    prefs.isAppNotificationsEnabled = true
+                }
+            } else if (prefs.hasEverGrantedPostNotifs) {
+                // User previously granted notification permission, but revoked it in Android OS directly!
+                // Treat as intentional stealth: update app preference to false so no denial popups appear.
+                if (prefs.isAppNotificationsEnabled) {
+                    prefs.isAppNotificationsEnabled = false
+                }
             }
             appNotificationsEnabled = prefs.isAppNotificationsEnabled
         }

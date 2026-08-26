@@ -84,6 +84,15 @@ object AdminTexts {
         "• Your Admin Bot credentials and Partner Bot Username will be removed from this device.\n" +
         "• Normal App Settings will unlock for standard client configuration.\n\n" +
         "Are you sure you want to proceed?"
+
+    const val PIP_REQUIRED_TITLE = "Picture-in-Picture Required"
+    const val PIP_REQUIRED_MESSAGE =
+        "*Background Calls* requires *Picture-in-Picture* permission to keep calls alive when the app is minimized.\n\n" +
+        "• Without PiP, active calls will drop when you leave the app\n" +
+        "• Enable PiP directly on the *App Info* page\n\n" +
+        "• Go to *App Info* Page\n" +
+        "• Find *Picture-in-Picture* and enable it."
+    const val PIP_REQUIRED_CONFIRM = "App Info"
 }
 
 /**
@@ -571,3 +580,22 @@ fun AdminDisableAdminModeDialog(
     )
 }
 
+@Composable
+fun AdminPipRequiredDialog(
+    onGoToSettings: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = AdminTexts.PIP_REQUIRED_TITLE,
+        message = AdminTexts.PIP_REQUIRED_MESSAGE,
+        icon = Icons.Filled.PictureInPicture,
+        iconTint = ErrorRed,
+        confirmText = AdminTexts.PIP_REQUIRED_CONFIRM,
+        dismissText = "Not Now",
+        onConfirm = {
+            onGoToSettings()
+            onDismiss()
+        },
+        onDismiss = onDismiss
+    )
+}

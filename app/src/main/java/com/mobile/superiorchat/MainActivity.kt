@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
@@ -176,23 +177,43 @@ open class MainActivity : ComponentActivity() {
             val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
             var showTerms by remember { mutableStateOf(!com.mobile.superiorchat.core.AppGraph.prefs.hasAgreedToTerms) }
 
+            val runBatteryCheck = {
+                permissionHandler.requestBatteryOptimization(
+                    showDenial = true,
+                    onDismiss = {},
+                    onGranted = { viewModel.refreshPermissions() }
+                )
+            }
+
             LaunchedEffect(showTerms, showSetupUninstallDialog) {
                 if (!showTerms && !showSetupUninstallDialog) {
-                    val context = this@MainActivity
-                    val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
-                    if (!powerManager.isIgnoringBatteryOptimizations(context.packageName)) {
-                        try {
-                            val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                                data = android.net.Uri.parse("package:${context.packageName}")
-                            }
-                            context.startActivity(intent)
-                        } catch (e: Exception) {
-                            AppLog.log(LogCategory.SYSTEM, "Failed to launch battery optimization intent: ${e.message}", com.mobile.superiorchat.utils.LogLevel.ERROR)
-                        }
+                    val hasPostNotifs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            this@MainActivity,
+                            android.Manifest.permission.POST_NOTIFICATIONS
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    } else {
+                        true
                     }
 
-                    if (viewModel.appNotificationsEnabled) {
-                        permissionHandler.requestNotification(showDenial = false) {}
+                    if (viewModel.appNotificationsEnabled && !hasPostNotifs) {
+                        permissionHandler.requestNotification(
+                            showDenial = true,
+                            // intentLauncher fires this when user presses Back from notification settings
+                            onGoToSettings = {
+                                viewModel.refreshPermissions()
+                                runBatteryCheck()
+                            },
+                            onDismiss = {
+                                // User tapped "Not Now" — proceed with battery check
+                                runBatteryCheck()
+                            }
+                        ) {
+                            viewModel.refreshPermissions()
+                            runBatteryCheck()
+                        }
+                    } else {
+                        runBatteryCheck()
                     }
                 }
             }
@@ -252,7 +273,9 @@ open class MainActivity : ComponentActivity() {
                         AppScreen(
                             viewModel = viewModel,
                             requestPostNotifications = {
-                                permissionHandler.requestNotification {}
+                                permissionHandler.requestNotification(showDenial = true) {
+                                    viewModel.refreshPermissions()
+                                }
                             },
                             isInPipMode = isInPipMode
                         )

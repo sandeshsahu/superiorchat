@@ -7,9 +7,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -25,8 +27,10 @@ class PermissionHandler(
     private val onShowGlobalDialog: (GlobalDialogState) -> Unit,
     private val singleLauncher: ManagedActivityResultLauncher<String, Boolean>,
     private val multipleLauncher: ManagedActivityResultLauncher<Array<String>, Map<String, @JvmSuppressWildcards Boolean>>,
+    private val intentLauncher: ManagedActivityResultLauncher<Intent, ActivityResult>,
     private val currentSingleCallback: MutableState<((Boolean) -> Unit)?>,
-    private val currentMultipleCallback: MutableState<((Map<String, Boolean>) -> Unit)?>
+    private val currentMultipleCallback: MutableState<((Map<String, Boolean>) -> Unit)?>,
+    private val currentIntentCallback: MutableState<((ActivityResult) -> Unit)?>
 ) {
     /**
      * Request camera permission and handle rationale/denial automatically.
@@ -109,9 +113,17 @@ class PermissionHandler(
 
     /**
      * Request notification permission if API 33+, else invoke onGranted directly.
-     * @param showDenial If true, shows the permanently denied popup if they reject it. Set to false for startup prompts.
+     * @param showDenial If true, shows the permanently denied popup if they reject it.
+     * @param onGoToSettings Invoked when the user taps 'Go to Settings' in the denial dialog.
+     * @param onDismiss Invoked when the user dismisses the denial dialog via 'Not Now'.
+     * @param onGranted Invoked when the permission is granted.
      */
-    fun requestNotification(showDenial: Boolean = true, onGranted: () -> Unit) {
+    fun requestNotification(
+        showDenial: Boolean = true,
+        onGoToSettings: () -> Unit = {},
+        onDismiss: () -> Unit = {},
+        onGranted: () -> Unit
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val hasPerm = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
             if (hasPerm) {
@@ -122,7 +134,12 @@ class PermissionHandler(
                 if (isGranted) {
                     onGranted()
                 } else if (showDenial) {
-                    showRationaleOrDenied(Manifest.permission.POST_NOTIFICATIONS)
+                    showNotificationDeniedDialog(
+                        onGoToSettings = onGoToSettings,
+                        onDismiss = onDismiss
+                    )
+                } else {
+                    onDismiss()
                 }
             }
             singleLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -216,14 +233,115 @@ class PermissionHandler(
         multipleLauncher.launch(permissions)
     }
     
+    fun showNotificationDeniedDialog(
+        onGoToSettings: () -> Unit = {},
+        onDismiss: () -> Unit = {}
+    ) {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+            }
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+        }
+        onShowGlobalDialog(
+            GlobalDialogState.NotificationPermanentlyDenied(
+                onGoToSettings = {
+                    // Use intentLauncher so we get a result callback when the user returns,
+                    // regardless of whether settings opens inline, in-app, or as a separate task.
+                    currentIntentCallback.value = { _ -> onGoToSettings() }
+                    try {
+                        intentLauncher.launch(intent)
+                    } catch (e: Exception) {
+                        val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                        try {
+                            intentLauncher.launch(fallback)
+                        } catch (ex: Exception) {
+                            // Last resort: fire onGoToSettings directly if launching fails entirely
+                            onGoToSettings()
+                        }
+                    }
+                },
+                onDismiss = onDismiss
+            )
+        )
+    }
+
+    fun showBatteryOptimizationGuidanceDialog(
+        onRetry: () -> Unit = {},
+        onDismiss: () -> Unit = {}
+    ) {
+        onShowGlobalDialog(
+            GlobalDialogState.BatteryOptimizationRequired(
+                onRetry = onRetry,
+                onDismiss = onDismiss
+            )
+        )
+    }
+
+    /**
+     * Request ignore battery optimizations via system prompt. If user denies the OS dialog,
+     * immediately shows the BatteryOptimizationRequired guidance popup offering 1-click retry!
+     */
+    fun requestBatteryOptimization(
+        showDenial: Boolean = true,
+        onDismiss: () -> Unit = {},
+        onGranted: () -> Unit = {}
+    ) {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        if (powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true) {
+            onGranted()
+            return
+        }
+
+        try {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${context.packageName}")
+            }
+            currentIntentCallback.value = { _ ->
+                val isNowGranted = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true
+                if (isNowGranted) {
+                    onGranted()
+                } else if (showDenial) {
+                    showBatteryOptimizationGuidanceDialog(
+                        onRetry = { requestBatteryOptimization(showDenial, onDismiss, onGranted) },
+                        onDismiss = onDismiss
+                    )
+                } else {
+                    onDismiss()
+                }
+            }
+            intentLauncher.launch(intent)
+        } catch (e: Exception) {
+            if (showDenial) {
+                showBatteryOptimizationGuidanceDialog(
+                    onRetry = {
+                        try {
+                            context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                        } catch (ex: Exception) {
+                            context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+                        }
+                    },
+                    onDismiss = onDismiss
+                )
+            } else {
+                onDismiss()
+            }
+        }
+    }
+
     fun showRationaleOrDenied(permission: String) {
         val activity = context as? Activity
         if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)) {
-            onShowGlobalDialog(
-                GlobalDialogState.PermissionPermanentlyDenied(
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && permission == Manifest.permission.POST_NOTIFICATIONS) {
+                showNotificationDeniedDialog()
+            } else {
+                onShowGlobalDialog(
+                    GlobalDialogState.PermissionPermanentlyDenied(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+                    )
                 )
-            )
+            }
         }
     }
 }
@@ -237,6 +355,7 @@ fun rememberPermissionHandler(
     // We hold references to the callbacks so we can swap them dynamically.
     val currentSingleCallback = remember { mutableStateOf<((Boolean) -> Unit)?>(null) }
     val currentMultipleCallback = remember { mutableStateOf<((Map<String, Boolean>) -> Unit)?>(null) }
+    val currentIntentCallback = remember { mutableStateOf<((ActivityResult) -> Unit)?>(null) }
 
     val singleLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -250,14 +369,22 @@ fun rememberPermissionHandler(
         currentMultipleCallback.value?.invoke(results)
     }
 
+    val intentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        currentIntentCallback.value?.invoke(result)
+    }
+
     return remember(context, onShowGlobalDialog) {
         PermissionHandler(
             context = context,
             onShowGlobalDialog = onShowGlobalDialog,
             singleLauncher = singleLauncher,
             multipleLauncher = multipleLauncher,
+            intentLauncher = intentLauncher,
             currentSingleCallback = currentSingleCallback,
-            currentMultipleCallback = currentMultipleCallback
+            currentMultipleCallback = currentMultipleCallback,
+            currentIntentCallback = currentIntentCallback
         )
     }
 }

@@ -12,9 +12,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.popups.PeerLinkSetupFlowDialog
 import com.mobile.superiorchat.ui.components.popups.AdminPeerLinkInfoDialog
@@ -24,12 +28,14 @@ import com.mobile.superiorchat.ui.components.popups.AdminAppToAppGuideDialog
 import com.mobile.superiorchat.ui.components.popups.AdminCredentialsInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminDisableRouteMessagesDialog
 import com.mobile.superiorchat.ui.components.popups.AdminDisableAdminModeDialog
+import com.mobile.superiorchat.ui.components.popups.AdminPipRequiredDialog
 
 @Composable
 fun AdminSettingsScreen(
     viewModel: MainViewModel,
     onShowGlobalDialog: (GlobalDialogState) -> Unit
 ) {
+    val context = LocalContext.current
     var showSetupDialog by remember { mutableStateOf(false) }
     var showPeerLinkInfo by remember { mutableStateOf(false) }
     var showLifecycleInfo by remember { mutableStateOf(false) }
@@ -38,6 +44,7 @@ fun AdminSettingsScreen(
     var showCredentialsInfo by remember { mutableStateOf(false) }
     var showDisableRouteWarning by remember { mutableStateOf(false) }
     var showDisableAdminModeWarning by remember { mutableStateOf(false) }
+    var showPipRequired by remember { mutableStateOf(false) }
 
     if (showPeerLinkInfo) {
         AdminPeerLinkInfoDialog(onDismiss = { showPeerLinkInfo = false })
@@ -76,6 +83,20 @@ fun AdminSettingsScreen(
                 showDisableAdminModeWarning = false
             },
             onDismiss = { showDisableAdminModeWarning = false }
+        )
+    }
+
+    if (showPipRequired) {
+        AdminPipRequiredDialog(
+            onGoToSettings = {
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                )
+            },
+            onDismiss = { showPipRequired = false }
         )
     }
 
@@ -387,7 +408,18 @@ fun AdminSettingsScreen(
                 iconTint = PrimaryLight,
                 isChecked = viewModel.isBackgroundCallsEnabled,
                 enabled = !isLocked,
-                onCheckedChange = { viewModel.toggleBackgroundCalls(it) }
+                onCheckedChange = { checked ->
+                    if (checked) {
+                        val permStatus = viewModel.permissionStatus.value
+                        if (!permStatus.hasPipPermission) {
+                            showPipRequired = true
+                        } else {
+                            viewModel.toggleBackgroundCalls(true)
+                        }
+                    } else {
+                        viewModel.toggleBackgroundCalls(false)
+                    }
+                }
             )
         }
 

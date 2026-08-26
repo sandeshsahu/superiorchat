@@ -101,7 +101,9 @@ fun PermissionsScreen(
                 permissionHandler.requestStorageForMedia { viewModel.refreshPermissions() }
             },
             PermissionState("Ignore Battery Optimizations", permissionStatus.hasIgnoreBattery) {
-                context.startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:${context.packageName}")))
+                permissionHandler.requestBatteryOptimization(showDenial = true) {
+                    viewModel.refreshPermissions()
+                }
             },
             PermissionState("Install Unknown Apps", permissionStatus.hasInstallPackages) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

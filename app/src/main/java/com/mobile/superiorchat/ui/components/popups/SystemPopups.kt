@@ -34,6 +34,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.BatteryAlert
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -683,6 +685,42 @@ fun GlobalDialogHandler(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     when (dialogState) {
+        is com.mobile.superiorchat.ui.GlobalDialogState.NotificationPermanentlyDenied -> {
+            ActionDialog(
+                title = PopupTexts.GlobalPermissions.NOTIFICATION_DENIED_TITLE,
+                message = PopupTexts.GlobalPermissions.NOTIFICATION_DENIED_MESSAGE,
+                icon = Icons.Filled.NotificationsOff,
+                iconTint = ErrorRed,
+                confirmText = "Go to Settings",
+                dismissText = "Not Now",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onGoToSettings()
+                },
+                onDismiss = {
+                    onDismiss()
+                    dialogState.onDismiss()
+                }
+            )
+        }
+        is com.mobile.superiorchat.ui.GlobalDialogState.BatteryOptimizationRequired -> {
+            ActionDialog(
+                title = PopupTexts.GlobalPermissions.BATTERY_OPTIMIZATION_TITLE,
+                message = PopupTexts.GlobalPermissions.BATTERY_OPTIMIZATION_MESSAGE,
+                icon = Icons.Filled.BatteryAlert,
+                iconTint = ErrorRed,
+                confirmText = "Allow Permission",
+                dismissText = "Not Now",
+                onConfirm = {
+                    onDismiss()
+                    dialogState.onRetry()
+                },
+                onDismiss = {
+                    onDismiss()
+                    dialogState.onDismiss()
+                }
+            )
+        }
         is com.mobile.superiorchat.ui.GlobalDialogState.PermissionPermanentlyDenied -> {
             ActionDialog(
                 title = PopupTexts.GlobalPermissions.PERMISSION_DENIED_TITLE,

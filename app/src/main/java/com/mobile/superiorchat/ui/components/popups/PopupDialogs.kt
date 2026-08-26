@@ -291,6 +291,14 @@ object PopupTexts {
         const val CALL_RATIONALE_TITLE = "Camera & Microphone Required"
         const val CALL_RATIONALE_MESSAGE =
             "We need access to both your camera and microphone to initiate the secure WebRTC call."
+
+        const val NOTIFICATION_DENIED_TITLE = "Notification Permission Denied"
+        const val NOTIFICATION_DENIED_MESSAGE =
+            "The *Notification Permission* is denied, which will impact core background functionality:\n\n• *Messages* may not be received in real-time\n• *Calls* may not work properly or not at all\n\nIf you really want to run app *100% Smooth* with no notifications, please allow permissions here for first time, then disable from:\n*Profile → Settings → Notifications → App Notifications*"
+
+        const val BATTERY_OPTIMIZATION_TITLE = "Disable Battery Optimization"
+        const val BATTERY_OPTIMIZATION_MESSAGE =
+            "To ensure *Background Service* and *WebRTC Calls* work reliably 24/7 without causing Message delays or any Call Drops when app is in background, battery optimization must be set to *Unrestricted*.\n\n• Prevents Android from killing the background service\n• Keeps message synchronization active 24/7"
     }
 
     // ── Call Engine Popups ──
