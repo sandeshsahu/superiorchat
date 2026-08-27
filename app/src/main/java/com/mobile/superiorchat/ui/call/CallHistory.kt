@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.CallMissed
 import androidx.compose.material.icons.filled.CallReceived
+import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Delete
@@ -382,9 +383,9 @@ private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
     return when (call.callStatus) {
         "COMPLETED" -> {
             if (call.isIncoming) {
-                StatusInfo("Connected", PrimaryLight, Icons.Filled.CallReceived)
+                StatusInfo("Connected", com.mobile.superiorchat.theme.CallSuccess, Icons.Filled.CallReceived)
             } else {
-                StatusInfo("Connected", PrimaryLight, Icons.Filled.CallMade)
+                StatusInfo("Connected", com.mobile.superiorchat.theme.CallSuccess, Icons.Filled.CallMade)
             }
         }
         "CANCELLED" -> StatusInfo("Cancelled", WarningAmber, Icons.Filled.CallMade)
@@ -392,12 +393,12 @@ private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
         "FAILED_NETWORK" -> StatusInfo("Network Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_HARDWARE" -> StatusInfo("Hardware Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_CONFIG" -> StatusInfo("Server Error", ErrorRed, Icons.Filled.ErrorOutline)
-        "DECLINED" -> StatusInfo("Declined", WarningAmber, Icons.Filled.CallMissed)
-        "MISSED" -> StatusInfo("Missed", WarningAmber, Icons.Filled.CallMissed)
+        "DECLINED" -> StatusInfo("Declined", WarningAmber, Icons.Filled.CallEnd)
+        "MISSED" -> StatusInfo("Missed", ErrorRed, Icons.Filled.CallMissed)
         else -> if (call.isMissed) {
-            StatusInfo(if (call.isIncoming) "Missed" else "Unanswered", WarningAmber, if (call.isIncoming) Icons.Filled.CallMissed else Icons.Filled.CallMade)
+            StatusInfo(if (call.isIncoming) "Missed" else "Unanswered", if (call.isIncoming) ErrorRed else WarningAmber, if (call.isIncoming) Icons.Filled.CallMissed else Icons.Filled.CallMade)
         } else {
-            StatusInfo("Connected", PrimaryLight, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
+            StatusInfo("Connected", com.mobile.superiorchat.theme.CallSuccess, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
         }
     }
 }

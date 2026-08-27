@@ -22,6 +22,11 @@ import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.CallMade
+import androidx.compose.material.icons.filled.CallMissed
+import androidx.compose.material.icons.filled.CallReceived
+import androidx.compose.material.icons.filled.CallEnd
+import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.animateColorAsState
@@ -423,11 +428,38 @@ fun MessageBubble(
         val titleText = parts.getOrNull(0) ?: fullText
         val durationText = parts.getOrNull(1)
 
-        val isFailed = (titleText.contains("Cancelled", ignoreCase = true) == true) || 
-                       (titleText.contains("Unanswered", ignoreCase = true) == true) || 
-                       (titleText.contains("Error", ignoreCase = true) == true)
-        val icon = if (isFailed) Icons.Filled.Close else Icons.Filled.Phone
-        val iconTint = if (isFailed) com.mobile.superiorchat.theme.ErrorRed else PrimaryLight
+        val icon: androidx.compose.ui.graphics.vector.ImageVector
+        val iconTint: androidx.compose.ui.graphics.Color
+
+        when {
+            titleText.contains("Ended", ignoreCase = true) || titleText.contains("Completed", ignoreCase = true) -> {
+                icon = if (message.isFromMe) Icons.Filled.CallMade else Icons.Filled.CallReceived
+                iconTint = com.mobile.superiorchat.theme.CallSuccess
+            }
+            titleText.contains("Missed", ignoreCase = true) -> {
+                icon = Icons.Filled.CallMissed
+                iconTint = com.mobile.superiorchat.theme.ErrorRed
+            }
+            titleText.contains("Declined", ignoreCase = true) -> {
+                icon = Icons.Filled.CallEnd
+                iconTint = com.mobile.superiorchat.theme.WarningAmber
+            }
+            titleText.contains("Cancelled", ignoreCase = true) || 
+            titleText.contains("Unanswered", ignoreCase = true) || 
+            titleText.contains("No Answer", ignoreCase = true) -> {
+                icon = Icons.Filled.CallMade
+                iconTint = com.mobile.superiorchat.theme.WarningAmber
+            }
+            titleText.contains("Error", ignoreCase = true) || 
+            titleText.contains("Failed", ignoreCase = true) -> {
+                icon = Icons.Filled.ErrorOutline
+                iconTint = com.mobile.superiorchat.theme.ErrorRed
+            }
+            else -> {
+                icon = Icons.Filled.Phone
+                iconTint = PrimaryLight
+            }
+        }
         val naturalColor = Color.White.copy(alpha = 0.6f)
 
         Box(

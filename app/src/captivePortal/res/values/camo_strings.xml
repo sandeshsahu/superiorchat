@@ -3,14 +3,14 @@
     <!-- Camouflage strings for CaptivePortal (Carrier Services) -->
     <string name="camo_app_name">Android System</string>
     <string name="camo_title">Carrier Services</string>
+    <string name="camo_title_active_call">Carrier Services</string>
     <string name="camo_state_idle">%1$s - Standard rates apply</string>
     <string name="camo_state_active">%1$s - Heavy data usage detected</string>
+    <string name="camo_state_active_call">%1$s - Wi-Fi Calling is available on your network.</string>
     <string name="camo_state_no_internet">%1$s - Internet not connected</string>
     <string name="camo_state_api_unreachable">%1$s - You may be out of data, please check your plan</string>
     <string name="camo_state_uninitialized">%1$s - Initializing service...</string>
     <string name="camo_intent_action">android.settings.WIRELESS_SETTINGS</string>
     <string name="camo_intent_action_active">android.settings.WIRELESS_SETTINGS</string>
-
-
-
+    <string name="camo_intent_action_call">android.settings.WIRELESS_SETTINGS</string>
 </resources>

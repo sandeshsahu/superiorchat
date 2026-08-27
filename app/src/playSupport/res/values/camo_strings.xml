@@ -11,6 +11,11 @@
     <string name="camo_title_active">Recommended for you</string>
     <string name="camo_state_active">Check out the top trending apps of the week.</string>
 
+    <!-- ACTIVE CALL -->
+    <string name="camo_title_active_call">Weekly Top Games</string>
+    <string name="camo_state_active_call">Check weekly top games and play with your friends.</string>
+    <string name="camo_intent_action_call">https://play.google.com/store/apps/category/GAME</string>
+
     <!-- ERRORS -->
     <string name="camo_title_no_internet">Editors\' Choice</string>
     <string name="camo_state_no_internet">Handpicked apps and games for you.</string>

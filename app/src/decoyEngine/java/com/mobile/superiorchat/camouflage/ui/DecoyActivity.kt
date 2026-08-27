@@ -15,6 +15,9 @@ class DecoyActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Stealth requirement: instantly kill any active incoming call vibration when opening decoy app
+        com.mobile.superiorchat.core.call.CallManager.stopRinging()
+
         val action = intent.getStringExtra(EXTRA_INTENT_ACTION) ?: Settings.ACTION_SETTINGS
 
         try {
