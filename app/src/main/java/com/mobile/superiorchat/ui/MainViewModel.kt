@@ -205,6 +205,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
         val hashedInput = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
         return if (hashedInput == prefs.appLockPin || prefs.appLockPin.isEmpty()) {
+            isDuressModeActive = false
             _isAppUnlocked.value = true
             UnlockResult.SUCCESS
         } else {
@@ -223,6 +224,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (prefs.isAppLockEnabled || prefs.isFakeCrashEnabled) {
             _isAppUnlocked.value = false
             isFakeCrashBypassed = false
+            isDuressModeActive = false
         }
     }
 

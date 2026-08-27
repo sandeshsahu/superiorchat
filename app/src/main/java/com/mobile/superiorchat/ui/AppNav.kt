@@ -471,7 +471,7 @@ fun AppScreen(
         )
 
         // ── LAYER 2: Security Shield Overlay (Topmost Layer in Full Screen) ──
-        if (!isAppUnlocked && !isInPipMode && !viewModel.isDuressModeActive) {
+        if (!isAppUnlocked && !isInPipMode) {
             if (viewModel.isFakeCrashEnabled && !viewModel.isFakeCrashBypassed) {
                 // STEP 1: Fake Crash Dialog (transparent over wallpaper in TransparentActivity)
                 FakeCrashDialog(
