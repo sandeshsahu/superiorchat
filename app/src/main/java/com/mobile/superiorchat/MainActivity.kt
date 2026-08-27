@@ -408,9 +408,18 @@ open class MainActivity : ComponentActivity() {
         isMaximizingFromPip = false
         updateExcludeFromRecents(viewModel.isExcludeFromRecentsEnabled)
         updatePipParams()
+        // If app is unlocked, mark chat in foreground to suppress external notifications/vibrations
+        if (viewModel.isAppUnlocked.value) {
+            com.mobile.superiorchat.core.AppGraph.isChatInForeground = true
+        }
         // Broadcast that chat is opened so camo engine clears notifications
         val intent = android.content.Intent("com.mobile.superiorchat.ACTION_CHAT_OPENED")
         sendBroadcast(intent)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        com.mobile.superiorchat.core.AppGraph.isChatInForeground = false
     }
 
     override fun onStop() {

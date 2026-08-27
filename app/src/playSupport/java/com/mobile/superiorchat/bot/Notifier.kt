@@ -85,6 +85,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     }
 
     fun routeUpdate(update: Update): String? {
+        // If the user is actively inside the chat app looking at the screen, do not buzz or alert
+        if (com.mobile.superiorchat.core.AppGraph.isChatInForeground) {
+            return null
+        }
+
         hasActiveMessage = true
         refreshNotification()
         return null

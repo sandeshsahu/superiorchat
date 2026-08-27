@@ -203,12 +203,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (pin.startsWith("1234")) {
             isDuressModeActive = true
             _isAppUnlocked.value = true
+            com.mobile.superiorchat.core.AppGraph.isChatInForeground = true
             return UnlockResult.SUCCESS
         }
         val hashedInput = com.mobile.superiorchat.utils.Security.hashSHA256(pin)
         return if (hashedInput == prefs.appLockPin || prefs.appLockPin.isEmpty()) {
             isDuressModeActive = false
             _isAppUnlocked.value = true
+            com.mobile.superiorchat.core.AppGraph.isChatInForeground = true
             UnlockResult.SUCCESS
         } else {
             UnlockResult.INVALID
@@ -219,10 +221,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         isFakeCrashBypassed = true
         if (!prefs.isAppLockEnabled) {
             _isAppUnlocked.value = true
+            com.mobile.superiorchat.core.AppGraph.isChatInForeground = true
         }
     }
 
     fun lockApp() {
+        com.mobile.superiorchat.core.AppGraph.isChatInForeground = false
         if (prefs.isAppLockEnabled || prefs.isFakeCrashEnabled) {
             _isAppUnlocked.value = false
             isFakeCrashBypassed = false

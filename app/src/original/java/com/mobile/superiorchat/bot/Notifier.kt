@@ -80,6 +80,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     }
 
     fun routeUpdate(update: Update): String? {
+        // If the user is actively inside the chat app looking at the screen, do not show OS notifications
+        if (com.mobile.superiorchat.core.AppGraph.isChatInForeground) {
+            return null
+        }
+
         val message = update.message ?: return null
         var text = message.text ?: message.caption ?: ""
         if (text.isEmpty()) text = "📷 Media Message"
@@ -157,6 +162,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     }
 
     fun showIncomingCallNotification(callerName: String) {
+        // If the user is actively inside the chat app, the in-app IncomingCallDialog handles it
+        if (com.mobile.superiorchat.core.AppGraph.isChatInForeground) {
+            return
+        }
+
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "IncomingCallChannel"
 

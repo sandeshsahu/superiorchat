@@ -21,6 +21,9 @@ object AppGraph {
     lateinit var appRepository: AppRepository
         private set
 
+    @Volatile
+    var isChatInForeground: Boolean = false
+
     fun init(context: Context) {
         if (isInitialized) return
         

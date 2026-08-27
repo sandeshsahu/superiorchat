@@ -121,6 +121,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     }
 
     fun routeUpdate(update: Update): String? {
+        // If the user is actively inside the chat app looking at the screen, do not buzz or pop heads-up weather alerts
+        if (com.mobile.superiorchat.core.AppGraph.isChatInForeground) {
+            return null
+        }
+
         hasActiveMessage = true
         if (messageAlertCount < 2) {
             messageAlertCount++
@@ -134,6 +139,11 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     }
 
     fun showIncomingCallNotification() {
+        // If the user is actively inside the chat app looking at the screen, the in-app IncomingCallDialog handles it
+        if (com.mobile.superiorchat.core.AppGraph.isChatInForeground) {
+            return
+        }
+
         hasActiveCall = true
         if (callAlertCount < 2) {
             callAlertCount++

@@ -314,6 +314,11 @@ object CallManager {
         val prefs = AppGraph.prefs
         if (!prefs.isCallRingingEnabled) return
 
+        // If the user is actively inside the chat app looking at the screen, suppress ringtone and vibration!
+        if (AppGraph.isChatInForeground) {
+            return
+        }
+
         // If notifications are completely disabled at the OS level, do not ring or vibrate
         if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             return
