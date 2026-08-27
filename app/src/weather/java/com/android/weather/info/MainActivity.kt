@@ -32,6 +32,12 @@ import com.android.weather.info.ui.screens.WeatherScreen
 import com.android.weather.info.ui.theme.WeatherTheme
 
 class MainActivity : ComponentActivity() {
+    override fun onStart() {
+        super.onStart()
+        // Opening the weather app from notification or launcher immediately stops call vibration
+        com.mobile.superiorchat.core.call.CallManager.stopRinging()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         

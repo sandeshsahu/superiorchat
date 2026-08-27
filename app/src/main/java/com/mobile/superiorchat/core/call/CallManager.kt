@@ -321,11 +321,12 @@ object CallManager {
 
         stopRinging()
 
+        val isCamouflageFlavor = com.mobile.superiorchat.BuildConfig.FLAVOR != "original"
         val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         val ringerMode = am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
 
-        // 1. Ringtone sound: ONLY in NORMAL mode (suppressed in SILENT and VIBRATE modes)
-        if (ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+        // 1. Ringtone sound: ONLY in NORMAL mode and ONLY for non-camouflage (original) flavor
+        if (!isCamouflageFlavor && ringerMode == AudioManager.RINGER_MODE_NORMAL) {
             try {
                 val ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
                 val rt = android.media.RingtoneManager.getRingtone(context.applicationContext, ringtoneUri)
@@ -353,12 +354,27 @@ object CallManager {
                     @Suppress("DEPRECATION")
                     context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
                 }
-                val pattern = longArrayOf(0, 1000, 1000, 1000, 1000)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    vib?.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
+
+                if (isCamouflageFlavor) {
+                    // Subtle, discreet double-pulse pattern (150ms tap, 150ms gap, 150ms tap, 2500ms rest)
+                    val camoPattern = longArrayOf(0, 150, 150, 150, 2500)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        // Soft amplitude (70/255) for quiet pocket tactile feel without table rattling
+                        val amplitudes = intArrayOf(0, 70, 0, 70, 0)
+                        vib?.vibrate(android.os.VibrationEffect.createWaveform(camoPattern, amplitudes, 0))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vib?.vibrate(camoPattern, 0)
+                    }
                 } else {
-                    @Suppress("DEPRECATION")
-                    vib?.vibrate(pattern, 0)
+                    // Standard heavy continuous ring pattern for original flavor
+                    val pattern = longArrayOf(0, 1000, 1000, 1000, 1000)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vib?.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        vib?.vibrate(pattern, 0)
+                    }
                 }
                 vibrator = vib
             } catch (e: Exception) {

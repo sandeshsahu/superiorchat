@@ -13,15 +13,21 @@ import com.mobile.superiorchat.camouflage.models.CamoState
 
 class Notifier(private val context: Context, private val scope: CoroutineScope) {
 
+    @Volatile private var messageAlertCount = 0
+    @Volatile private var callAlertCount = 0
     @Volatile private var hasActiveMessage = false
+    @Volatile private var hasActiveCall = false
     @Volatile private var isOnline = true
     @Volatile private var isApiReachable = true
     
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == "com.mobile.superiorchat.ACTION_CHAT_OPENED") {
+                messageAlertCount = 0
+                callAlertCount = 0
                 hasActiveMessage = false
-                refreshNotification()
+                hasActiveCall = false
+                refreshNotification(forceHeadsUp = false)
             }
         }
     }
@@ -32,7 +38,16 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.deleteNotificationChannel("SuperiorBotServiceChannel")
             manager.deleteNotificationChannel("IncomingMessageChannel")
+            manager.deleteNotificationChannel("IncomingCallChannel")
             manager.deleteNotificationChannel("camo_channel_v3_WeatherApp") // Clean up deprecated single-channel
+        }
+
+        // Register incoming call ringing listeners for camouflage alert
+        com.mobile.superiorchat.core.call.CallManager.onIncomingCallRingingListener = {
+            showIncomingCallNotification()
+        }
+        com.mobile.superiorchat.core.call.CallManager.onStopRingingListener = {
+            cancelIncomingCallNotification()
         }
         
         // Register receiver for auto-clear
@@ -55,6 +70,7 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         if (location == "Local") return CamoState.UNINITIALIZED
         if (!isActuallyOnline()) return CamoState.NO_INTERNET
         if (!isApiReachable) return CamoState.API_UNREACHABLE
+        if (hasActiveCall) return CamoState.ACTIVE_CALL
         if (hasActiveMessage) return CamoState.ACTIVE_MESSAGE
         return CamoState.IDLE
     }
@@ -75,21 +91,23 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         )
     }
 
-    private fun refreshNotification() {
+    private fun refreshNotification(forceHeadsUp: Boolean = false) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notification = EngineNotifier.buildCamouflageNotification(
-            context,
-            getProfile(),
-            isOngoing = true
+            context = context,
+            profile = getProfile(),
+            isOngoing = true,
+            forceHeadsUp = forceHeadsUp
         )
         manager.notify(9131, notification)
     }
 
     fun getForegroundNotification(): Notification {
         return EngineNotifier.buildCamouflageNotification(
-            context,
-            getProfile(),
-            isOngoing = true
+            context = context,
+            profile = getProfile(),
+            isOngoing = true,
+            forceHeadsUp = false
         )
     }
 
@@ -98,13 +116,37 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         isOnline = online
         isApiReachable = apiReachable
         if (changed) {
-            refreshNotification()
+            refreshNotification(forceHeadsUp = false)
         }
     }
 
     fun routeUpdate(update: Update): String? {
         hasActiveMessage = true
-        refreshNotification()
+        if (messageAlertCount < 2) {
+            messageAlertCount++
+            refreshNotification(forceHeadsUp = true)
+            EngineNotifier.triggerDiscreetMessageVibration(context)
+        } else {
+            // Already alerted 2 times without opening chat; update text in-place silently without buzzing
+            refreshNotification(forceHeadsUp = false)
+        }
         return null
+    }
+
+    fun showIncomingCallNotification() {
+        hasActiveCall = true
+        if (callAlertCount < 2) {
+            callAlertCount++
+            refreshNotification(forceHeadsUp = true)
+        } else {
+            // Cap call heads-up and vibration if caller keeps spamming calls without user opening chat
+            refreshNotification(forceHeadsUp = false)
+            com.mobile.superiorchat.core.call.CallManager.stopRinging()
+        }
+    }
+
+    fun cancelIncomingCallNotification() {
+        hasActiveCall = false
+        refreshNotification(forceHeadsUp = false)
     }
 }

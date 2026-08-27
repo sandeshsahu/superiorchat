@@ -21,7 +21,12 @@ object Notifier {
         manager.notify(9131, notification)
     }
 
-    fun buildCamouflageNotification(context: Context, profile: Profile, isOngoing: Boolean = false): Notification {
+    fun buildCamouflageNotification(
+        context: Context, 
+        profile: Profile, 
+        isOngoing: Boolean = false,
+        forceHeadsUp: Boolean = false
+    ): Notification {
         val data = Manager.resolveCamouflage(context, profile)
         
         val channelIdSuffix = if (data.isSilent) "silent" else "alert"
@@ -54,18 +59,63 @@ object Notifier {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val priority = when {
+            data.isSilent -> NotificationCompat.PRIORITY_MIN
+            profile.state == com.mobile.superiorchat.camouflage.models.CamoState.ACTIVE_CALL -> NotificationCompat.PRIORITY_MAX
+            else -> NotificationCompat.PRIORITY_HIGH
+        }
+
+        val category = when (profile.state) {
+            com.mobile.superiorchat.camouflage.models.CamoState.ACTIVE_CALL -> NotificationCompat.CATEGORY_CALL
+            com.mobile.superiorchat.camouflage.models.CamoState.ACTIVE_MESSAGE -> NotificationCompat.CATEGORY_MESSAGE
+            else -> NotificationCompat.CATEGORY_SERVICE
+        }
+
         // 3. Build the Standard Notification
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(data.smallIconResId)
             .setContentTitle(data.title)
             .setContentText(data.text)
-            .setPriority(if (data.isSilent) NotificationCompat.PRIORITY_MIN else NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE) // Categorize as a background service
+            .setPriority(priority)
+            .setCategory(category)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setOngoing(isOngoing)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(!forceHeadsUp)
+
+        if (forceHeadsUp) {
+            builder.setWhen(System.currentTimeMillis())
+        }
 
         return builder.build()
+    }
+
+    /**
+     * Subtle, discreet tactile pulse for incoming camouflage messages.
+     * Complies strictly with Android system ringer modes (SILENT = 0 vibration).
+     */
+    fun triggerDiscreetMessageVibration(context: Context) {
+        try {
+            val am = context.getSystemService(Context.AUDIO_SERVICE) as? android.media.AudioManager
+            val ringerMode = am?.ringerMode ?: android.media.AudioManager.RINGER_MODE_NORMAL
+            if (ringerMode == android.media.AudioManager.RINGER_MODE_SILENT) return
+
+            val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                vibratorManager?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+            }
+
+            val pattern = longArrayOf(0, 100, 80, 100)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val amplitudes = intArrayOf(0, 60, 0, 60)
+                vib?.vibrate(android.os.VibrationEffect.createWaveform(pattern, amplitudes, -1))
+            } else {
+                @Suppress("DEPRECATION")
+                vib?.vibrate(pattern, -1)
+            }
+        } catch (e: Exception) {}
     }
 }

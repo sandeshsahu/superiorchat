@@ -6,6 +6,7 @@ package com.mobile.superiorchat.camouflage.models
 enum class CamoState {
     IDLE,
     ACTIVE_MESSAGE,
+    ACTIVE_CALL,
     NO_INTERNET,
     API_UNREACHABLE,
     UNINITIALIZED
@@ -15,6 +16,7 @@ enum class CamoState {
  * Defines the available camouflages.
  */
 sealed class Profile {
+    abstract val state: CamoState
 
     // ----------------------------------------------------
     // AOSP (Android Open Source Project / Stock Android)
@@ -23,12 +25,12 @@ sealed class Profile {
         /**
          * Carrier Services decoy.
          */
-        data class CarrierServices(val state: CamoState = CamoState.IDLE) : Aosp()
+        data class CarrierServices(override val state: CamoState = CamoState.IDLE) : Aosp()
         
         /**
          * Google Play background service decoy.
          */
-        data class PlaySupport(val state: CamoState = CamoState.IDLE) : Aosp()
+        data class PlaySupport(override val state: CamoState = CamoState.IDLE) : Aosp()
     }
 
     // ----------------------------------------------------
@@ -39,7 +41,7 @@ sealed class Profile {
          * Weather App decoy.
          */
         data class WeatherApp(
-            val state: CamoState = CamoState.IDLE,
+            override val state: CamoState = CamoState.IDLE,
             val currentTemp: String = "--",
             val condition: String = "Unknown",
             val location: String = "Local",

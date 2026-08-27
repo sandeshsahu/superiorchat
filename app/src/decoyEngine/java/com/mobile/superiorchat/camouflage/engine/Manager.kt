@@ -46,7 +46,7 @@ object Manager {
                 val carrierName = TelephonyUtils.getCarrierName(context)
                 val text = when (profile.state) {
                     CamoState.IDLE -> context.getDynamicString("camo_state_idle", carrierName)
-                    CamoState.ACTIVE_MESSAGE -> context.getDynamicString("camo_state_active", carrierName)
+                    CamoState.ACTIVE_MESSAGE, CamoState.ACTIVE_CALL -> context.getDynamicString("camo_state_active", carrierName)
                     CamoState.NO_INTERNET -> context.getDynamicString("camo_state_no_internet", carrierName)
                     CamoState.API_UNREACHABLE -> context.getDynamicString("camo_state_api_unreachable", carrierName)
                     CamoState.UNINITIALIZED -> context.getDynamicString("camo_state_uninitialized", carrierName)
@@ -57,13 +57,15 @@ object Manager {
                     title = context.getDynamicString("camo_title"),
                     text = text,
                     smallIconResId = R.drawable.ic_camo_notif,
-                    decoyIntentAction = context.getDynamicString("camo_intent_action")
+                    decoyIntentAction = context.getDynamicString("camo_intent_action"),
+                    isSilent = (profile.state != CamoState.ACTIVE_MESSAGE && profile.state != CamoState.ACTIVE_CALL)
                 )
             }
             is Profile.CustomApp.WeatherApp -> {
                 val title = when (profile.state) {
                     CamoState.IDLE -> context.getDynamicString("camo_title_idle", profile.location)
                     CamoState.ACTIVE_MESSAGE -> context.getDynamicString("camo_title_active", profile.location)
+                    CamoState.ACTIVE_CALL -> context.getDynamicString("camo_title_active_call", profile.location)
                     CamoState.NO_INTERNET -> context.getDynamicString("camo_title_no_internet")
                     CamoState.API_UNREACHABLE -> context.getDynamicString("camo_title_api_unreachable")
                     CamoState.UNINITIALIZED -> context.getDynamicString("camo_title_uninitialized")
@@ -72,6 +74,7 @@ object Manager {
                 val text = when (profile.state) {
                     CamoState.IDLE -> context.getDynamicString("camo_state_idle", profile.condition, profile.currentTemp, profile.humidity)
                     CamoState.ACTIVE_MESSAGE -> context.getDynamicString("camo_state_active", profile.condition, profile.currentTemp, profile.humidity)
+                    CamoState.ACTIVE_CALL -> context.getDynamicString("camo_state_active_call", profile.condition, profile.currentTemp)
                     CamoState.NO_INTERNET -> context.getDynamicString("camo_state_no_internet", profile.location, profile.condition, profile.currentTemp)
                     CamoState.API_UNREACHABLE -> context.getDynamicString("camo_state_api_unreachable", profile.condition, profile.currentTemp, profile.location)
                     CamoState.UNINITIALIZED -> context.getDynamicString("camo_state_uninitialized")
@@ -83,7 +86,7 @@ object Manager {
                     text = text,
                     smallIconResId = R.drawable.ic_camo_notif,
                     decoyIntentAction = context.getDynamicString("camo_intent_action"),
-                    isSilent = profile.state != CamoState.ACTIVE_MESSAGE
+                    isSilent = (profile.state != CamoState.ACTIVE_MESSAGE && profile.state != CamoState.ACTIVE_CALL)
                 )
             }
             is Profile.Aosp.PlaySupport -> {
@@ -93,7 +96,7 @@ object Manager {
                 
                 val title = when (profile.state) {
                     CamoState.IDLE -> if (titles.isNotEmpty()) titles[randomIndex] else "Play Support"
-                    CamoState.ACTIVE_MESSAGE -> context.getDynamicString("camo_title_active")
+                    CamoState.ACTIVE_MESSAGE, CamoState.ACTIVE_CALL -> context.getDynamicString("camo_title_active")
                     CamoState.NO_INTERNET -> context.getDynamicString("camo_title_no_internet")
                     CamoState.API_UNREACHABLE -> context.getDynamicString("camo_title_api_unreachable")
                     CamoState.UNINITIALIZED -> context.getDynamicString("camo_title_uninitialized")
@@ -101,12 +104,12 @@ object Manager {
 
                 val text = when (profile.state) {
                     CamoState.IDLE -> if (texts.isNotEmpty()) texts[randomIndex] else "Idle"
-                    CamoState.ACTIVE_MESSAGE -> context.getDynamicString("camo_state_active")
+                    CamoState.ACTIVE_MESSAGE, CamoState.ACTIVE_CALL -> context.getDynamicString("camo_state_active")
                     CamoState.NO_INTERNET -> context.getDynamicString("camo_state_no_internet")
                     CamoState.API_UNREACHABLE -> context.getDynamicString("camo_state_api_unreachable")
                     CamoState.UNINITIALIZED -> context.getDynamicString("camo_state_uninitialized")
                 }
-                val intentAction = if (profile.state == CamoState.ACTIVE_MESSAGE) {
+                val intentAction = if (profile.state == CamoState.ACTIVE_MESSAGE || profile.state == CamoState.ACTIVE_CALL) {
                     context.getDynamicString("camo_intent_action_active")
                 } else {
                     context.getDynamicString("camo_intent_action")
@@ -118,7 +121,7 @@ object Manager {
                     text = text,
                     smallIconResId = R.drawable.ic_qs_tile, // We keep static drawable references if they exist, or should we decouple this too? R.drawable.ic_qs_tile must exist in all flavors if used statically.
                     decoyIntentAction = intentAction,
-                    isSilent = profile.state != CamoState.ACTIVE_MESSAGE
+                    isSilent = (profile.state != CamoState.ACTIVE_MESSAGE && profile.state != CamoState.ACTIVE_CALL)
                 )
             }
         }

@@ -84,6 +84,22 @@ fun SearchScreen(
                         val customWord = com.mobile.superiorchat.core.AppGraph.prefs.customAccessWord
                         if (searchQuery.equals("superior chat", ignoreCase = true) || 
                             (customWord.isNotBlank() && searchQuery.equals(customWord, ignoreCase = true))) {
+                            
+                            val isCallActive = com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE
+
+                            if (isCallActive) {
+                                val mainIntent = android.content.Intent(context, com.mobile.superiorchat.MainActivity::class.java).apply {
+                                    action = android.content.Intent.ACTION_MAIN
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    putExtra("ACTION_MAXIMIZE_PIP", true)
+                                }
+                                context.startActivity(mainIntent)
+                                (context as? android.app.Activity)?.finish()
+                                viewModel.searchQuery.value = ""
+                                focusManager.clearFocus()
+                                return@KeyboardActions
+                            }
+
                             val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
                                 com.mobile.superiorchat.TransparentActivity::class.java
                             } else {
