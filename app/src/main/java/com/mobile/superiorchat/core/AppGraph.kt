@@ -9,6 +9,9 @@ object AppGraph {
     
     private var isInitialized = false
 
+    lateinit var context: Context
+        private set
+
     lateinit var prefs: Prefs
         private set
 
@@ -22,6 +25,7 @@ object AppGraph {
         if (isInitialized) return
         
         val appContext = context.applicationContext
+        this.context = appContext
         
         prefs = Prefs.getInstance(appContext)
         

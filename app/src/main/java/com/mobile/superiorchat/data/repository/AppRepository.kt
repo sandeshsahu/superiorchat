@@ -132,6 +132,36 @@ class AppRepository(
         profileDao.insertProfile(profile)
     }
 
+    suspend fun resolveActivePartnerProfile(callerIdentifier: String? = null): UserProfile? {
+        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+        val allProfiles = profileDao.getAllProfilesSync()
+        val targetBot = prefs.peerLinkPartnerBotUsername.trim().removePrefix("@")
+        val cleanCaller = callerIdentifier?.trim()?.removePrefix("@").orEmpty()
+
+        // 1. PeerLink partner bot username match
+        val peerLinkBot = if (prefs.isPeerLinkEnabled && targetBot.isNotBlank()) {
+            allProfiles.firstOrNull { it.username.equals(targetBot, ignoreCase = true) }
+        } else null
+
+        // 2. Caller identifier (username, title, or ID) match
+        val byCaller = if (cleanCaller.isNotBlank()) {
+            allProfiles.firstOrNull {
+                it.username.equals(cleanCaller, ignoreCase = true) ||
+                it.title.equals(callerIdentifier, ignoreCase = true) ||
+                it.chatId == callerIdentifier
+            }
+        } else null
+
+        // 3. Direct active chat ID match
+        val directChat = if (prefs.activeChatId.isNotBlank()) {
+            profileDao.getProfileSync(prefs.activeChatId)
+        } else null
+
+        return peerLinkBot ?: byCaller ?: directChat ?: allProfiles.firstOrNull {
+            it.profilePhotoPath.isNotBlank() && java.io.File(it.profilePhotoPath).exists()
+        }
+    }
+
 
 
     suspend fun getQueuedMessages(): List<MessageNode> {

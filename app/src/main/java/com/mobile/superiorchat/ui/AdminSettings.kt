@@ -29,6 +29,9 @@ import com.mobile.superiorchat.ui.components.popups.AdminCredentialsInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminDisableRouteMessagesDialog
 import com.mobile.superiorchat.ui.components.popups.AdminDisableAdminModeDialog
 import com.mobile.superiorchat.ui.components.popups.AdminPipRequiredDialog
+import com.mobile.superiorchat.ui.components.popups.AdminNotificationRequiredDialog
+import com.mobile.superiorchat.ui.components.popups.AdminCallRingingInfoDialog
+import androidx.core.app.NotificationManagerCompat
 
 @Composable
 fun AdminSettingsScreen(
@@ -39,12 +42,14 @@ fun AdminSettingsScreen(
     var showSetupDialog by remember { mutableStateOf(false) }
     var showPeerLinkInfo by remember { mutableStateOf(false) }
     var showLifecycleInfo by remember { mutableStateOf(false) }
+    var showCallRingingInfo by remember { mutableStateOf(false) }
     var showIAmAdminInfo by remember { mutableStateOf(false) }
     var showSetupGuideDialog by remember { mutableStateOf(false) }
     var showCredentialsInfo by remember { mutableStateOf(false) }
     var showDisableRouteWarning by remember { mutableStateOf(false) }
     var showDisableAdminModeWarning by remember { mutableStateOf(false) }
     var showPipRequired by remember { mutableStateOf(false) }
+    var showNotificationRequired by remember { mutableStateOf(false) }
 
     if (showPeerLinkInfo) {
         AdminPeerLinkInfoDialog(onDismiss = { showPeerLinkInfo = false })
@@ -52,6 +57,10 @@ fun AdminSettingsScreen(
 
     if (showLifecycleInfo) {
         AdminLifecycleInfoDialog(onDismiss = { showLifecycleInfo = false })
+    }
+
+    if (showCallRingingInfo) {
+        AdminCallRingingInfoDialog(onDismiss = { showCallRingingInfo = false })
     }
 
     if (showIAmAdminInfo) {
@@ -97,6 +106,25 @@ fun AdminSettingsScreen(
                 )
             },
             onDismiss = { showPipRequired = false }
+        )
+    }
+
+    if (showNotificationRequired) {
+        AdminNotificationRequiredDialog(
+            onGoToSettings = {
+                val intent = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    }
+                } else {
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:${context.packageName}")
+                    )
+                }
+                context.startActivity(intent)
+            },
+            onDismiss = { showNotificationRequired = false }
         )
     }
 
@@ -418,6 +446,29 @@ fun AdminSettingsScreen(
                         }
                     } else {
                         viewModel.toggleBackgroundCalls(false)
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            SettingsSwitchRow(
+                title = "Call Ringing",
+                subtitle = "Play continuous ringtone & show heads-up notification with Accept & Decline",
+                icon = Icons.Filled.RingVolume,
+                iconTint = PrimaryLight,
+                isChecked = viewModel.isCallRingingEnabled,
+                enabled = !isLocked,
+                onCheckedChange = { checked ->
+                    if (checked) {
+                        val hasNotifs = viewModel.permissionStatus.value.hasPostNotifs && NotificationManagerCompat.from(context).areNotificationsEnabled()
+                        if (!hasNotifs) {
+                            showNotificationRequired = true
+                        } else {
+                            viewModel.toggleCallRinging(true)
+                        }
+                    } else {
+                        viewModel.toggleCallRinging(false)
                     }
                 }
             )

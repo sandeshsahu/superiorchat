@@ -16,6 +16,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mobile.superiorchat.bot.TelegramApi
@@ -106,6 +107,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 "is_peerlink_locked" -> isPeerLinkLocked = prefs.isPeerLinkLocked
                 "is_exclude_from_recents_enabled" -> isExcludeFromRecentsEnabled = prefs.isExcludeFromRecentsEnabled
                 "is_background_calls_enabled" -> isBackgroundCallsEnabled = prefs.isBackgroundCallsEnabled
+                "is_call_ringing_enabled" -> isCallRingingEnabled = prefs.isCallRingingEnabled
                 "is_anime_character_enabled" -> isAnimeCharacterEnabled = prefs.isAnimeCharacterEnabled
                 "app_theme" -> {
                     try {
@@ -391,6 +393,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         isBackgroundCallsEnabled = enabled
     }
 
+    var isCallRingingEnabled by mutableStateOf(prefs.isCallRingingEnabled)
+        private set
+
+    fun toggleCallRinging(enabled: Boolean) {
+        prefs.isCallRingingEnabled = enabled
+        isCallRingingEnabled = enabled
+    }
+
     var isAnimeCharacterEnabled by mutableStateOf(prefs.isAnimeCharacterEnabled)
         private set
 
@@ -415,11 +425,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val context = getApplication<Application>()
             
-            val hasPostNotifs = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val areNotifsEnabled = NotificationManagerCompat.from(context).areNotificationsEnabled()
+            val hasPostNotifs = areNotifsEnabled && (
+                Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
                 ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-            } else {
-                true
-            }
+            )
 
             val hasIgnoreBattery = (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(context.packageName)
 
@@ -498,6 +508,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (!hasPip && prefs.isBackgroundCallsEnabled) {
                 prefs.isBackgroundCallsEnabled = false
                 isBackgroundCallsEnabled = false
+            }
+
+            // Auto-disable Call Ringing if the user has revoked Notification permission from OS Settings.
+            // Detected on every ON_RESUME via AppNav's refreshPermissions() call.
+            if (!hasPostNotifs && prefs.isCallRingingEnabled) {
+                prefs.isCallRingingEnabled = false
+                isCallRingingEnabled = false
             }
 
             if (hasPostNotifs) {

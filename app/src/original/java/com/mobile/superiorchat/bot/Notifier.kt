@@ -20,6 +20,7 @@ import android.app.Notification
 class Notifier(private val context: Context, private val scope: CoroutineScope) {
 
     private val MESSAGE_NOTIFICATION_ID = 1001
+    private val CALL_NOTIFICATION_ID = 9132
     private val messageHistory = mutableListOf<NotificationCompat.MessagingStyle.Message>()
 
     init {
@@ -35,6 +36,28 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
             context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             context.registerReceiver(receiver, filter)
+        }
+
+        val callDeclineReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                if (intent?.action == "com.mobile.superiorchat.ACTION_DECLINE_CALL") {
+                    com.mobile.superiorchat.core.call.CallManager.declineIncomingCall()
+                    cancelIncomingCallNotification()
+                }
+            }
+        }
+        val callFilter = IntentFilter("com.mobile.superiorchat.ACTION_DECLINE_CALL")
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(callDeclineReceiver, callFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(callDeclineReceiver, callFilter)
+        }
+
+        com.mobile.superiorchat.core.call.CallManager.onIncomingCallRingingListener = { callerName ->
+            showIncomingCallNotification(callerName)
+        }
+        com.mobile.superiorchat.core.call.CallManager.onStopRingingListener = {
+            cancelIncomingCallNotification()
         }
     }
 
@@ -79,15 +102,23 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         scope.launch {
-            val profile = AppGraph.database.profileDao().getProfileSync(AppGraph.prefs.activeChatId)
+            val senderIdentifier = message.from?.username?.takeIf { it.isNotBlank() } ?: message.from?.id?.toString()
+            val profile = try {
+                AppGraph.appRepository.resolveActivePartnerProfile(senderIdentifier)
+            } catch (e: Exception) { null }
+
             val senderName = profile?.title ?: message.from?.first_name ?: "Unknown"
             
             val personBuilder = Person.Builder().setName(senderName)
-            if (profile?.profilePhotoPath?.isNotEmpty() == true) {
+            val photoPath = profile?.profilePhotoPath
+            if (!photoPath.isNullOrBlank()) {
                 try {
-                    val bitmap = BitmapFactory.decodeFile(profile.profilePhotoPath)
-                    if (bitmap != null) {
-                        personBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
+                    val file = java.io.File(photoPath)
+                    if (file.exists() && file.length() > 0) {
+                        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                        if (bitmap != null) {
+                            personBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
+                        }
                     }
                 } catch (e: Exception) {
                     // Fallback to initial letter
@@ -123,5 +154,138 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
     
     fun setNetworkState(online: Boolean, apiReachable: Boolean) {
         // Not used in original flavor
+    }
+
+    fun showIncomingCallNotification(callerName: String) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channelId = "IncomingCallChannel"
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(channelId, "Incoming Calls", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Incoming voice and video call notifications"
+                setSound(null, null)
+                enableVibration(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        val targetClass = if (com.mobile.superiorchat.core.AppGraph.prefs.isFakeCrashEnabled) {
+            com.mobile.superiorchat.TransparentActivity::class.java
+        } else {
+            com.mobile.superiorchat.MainActivity::class.java
+        }
+
+        // Tapping the notification body opens the app to the incoming call dialog (does NOT auto-accept)
+        val openAppIntent = Intent(context, targetClass).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val openAppPendingIntent = PendingIntent.getActivity(
+            context,
+            101,
+            openAppIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Tapping the explicit Accept action triggers the acceptance + validation flow
+        val acceptIntent = Intent(context, targetClass).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("ACTION_ACCEPT_INCOMING_CALL", true)
+        }
+        val acceptPendingIntent = PendingIntent.getActivity(
+            context,
+            102,
+            acceptIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val declineIntent = Intent("com.mobile.superiorchat.ACTION_DECLINE_CALL").apply {
+            setPackage(context.packageName)
+        }
+        val declinePendingIntent = PendingIntent.getBroadcast(
+            context,
+            103,
+            declineIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        scope.launch {
+            val profile = try {
+                AppGraph.appRepository.resolveActivePartnerProfile(callerName)
+            } catch (e: Exception) { null }
+
+            val displayName = callerName.ifBlank { profile?.title ?: "Partner" }
+            val personBuilder = Person.Builder().setName(displayName).setImportant(true)
+
+            val photoPath = profile?.profilePhotoPath
+            if (!photoPath.isNullOrBlank()) {
+                try {
+                    val file = java.io.File(photoPath)
+                    if (file.exists() && file.length() > 0) {
+                        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                        if (bitmap != null) {
+                            personBuilder.setIcon(IconCompat.createWithBitmap(bitmap))
+                        }
+                    }
+                } catch (e: Exception) {
+                    com.mobile.superiorchat.utils.AppLog.log(
+                        com.mobile.superiorchat.utils.LogCategory.SYSTEM,
+                        "Failed to decode profile photo: ${e.message}",
+                        com.mobile.superiorchat.utils.LogLevel.WARN
+                    )
+                }
+            }
+            val callerPerson = personBuilder.build()
+
+            try {
+                val callStyle = NotificationCompat.CallStyle.forIncomingCall(
+                    callerPerson,
+                    declinePendingIntent,
+                    acceptPendingIntent
+                )
+
+                val notification = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(com.mobile.superiorchat.R.drawable.ic_notification)
+                    .setStyle(callStyle)
+                    .setColor(0xFF00E676.toInt()) // Vibrant Green Call Accent
+                    .setColorized(true)
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setCategory(NotificationCompat.CATEGORY_CALL)
+                    .setOngoing(true)
+                    .setAutoCancel(false)
+                    .setContentIntent(openAppPendingIntent)
+                    .setFullScreenIntent(openAppPendingIntent, true)
+                    .build()
+
+                notificationManager.notify(CALL_NOTIFICATION_ID, notification)
+            } catch (e: Exception) {
+                com.mobile.superiorchat.utils.AppLog.log(
+                    com.mobile.superiorchat.utils.LogCategory.SYSTEM,
+                    "CallStyle notification failed: ${e.message}, falling back to standard notification",
+                    com.mobile.superiorchat.utils.LogLevel.WARN
+                )
+                val fallbackNotification = NotificationCompat.Builder(context, channelId)
+                    .setSmallIcon(com.mobile.superiorchat.R.drawable.ic_notification)
+                    .setContentTitle("Incoming Call")
+                    .setContentText(if (displayName.isNotBlank()) "$displayName is calling..." else "Incoming call...")
+                    .setPriority(NotificationCompat.PRIORITY_MAX)
+                    .setCategory(NotificationCompat.CATEGORY_CALL)
+                    .setColor(0xFF00E676.toInt())
+                    .setOngoing(true)
+                    .setAutoCancel(false)
+                    .setContentIntent(openAppPendingIntent)
+                    .setFullScreenIntent(openAppPendingIntent, true)
+                    .addAction(com.mobile.superiorchat.R.drawable.ic_call_end, "Decline", declinePendingIntent)
+                    .addAction(com.mobile.superiorchat.R.drawable.ic_notification, "Accept", acceptPendingIntent)
+                    .build()
+
+                notificationManager.notify(CALL_NOTIFICATION_ID, fallbackNotification)
+            }
+        }
+    }
+
+    fun cancelIncomingCallNotification() {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        manager?.cancel(CALL_NOTIFICATION_ID)
     }
 }

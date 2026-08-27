@@ -160,6 +160,8 @@ open class MainActivity : ComponentActivity() {
         clearIntent.setPackage(packageName)
         sendBroadcast(clearIntent)
 
+        handleIncomingCallIntent(intent)
+
         setContent {
             val isSecure = viewModel.isScreenSecurityEnabled
             LaunchedEffect(isSecure) {
@@ -382,12 +384,22 @@ open class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleIncomingCallIntent(intent: android.content.Intent?) {
+        if (intent?.getBooleanExtra("ACTION_ACCEPT_INCOMING_CALL", false) == true) {
+            CallManager.stopRinging()
+            if (CallManager.callState.value == CallState.RINGING) {
+                CallManager.requestAcceptInboundCall()
+            }
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         if (intent.getBooleanExtra("ACTION_MAXIMIZE_PIP", false)) {
             isMaximizingFromPip = true
         }
+        handleIncomingCallIntent(intent)
     }
 
     override fun onResume() {

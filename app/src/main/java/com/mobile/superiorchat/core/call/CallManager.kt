@@ -25,6 +25,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import java.util.UUID
 import androidx.annotation.RequiresApi
 
@@ -92,6 +93,18 @@ object CallManager {
     private var sensorManager: SensorManager? = null
     private var proximitySensor: Sensor? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var ringtone: android.media.Ringtone? = null
+    private var vibrator: android.os.Vibrator? = null
+
+    var onIncomingCallRingingListener: ((callerName: String) -> Unit)? = null
+    var onStopRingingListener: (() -> Unit)? = null
+
+    private val _inboundCallAcceptEvent = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val inboundCallAcceptEvent: kotlinx.coroutines.flow.SharedFlow<Unit> = _inboundCallAcceptEvent.asSharedFlow()
+
+    fun requestAcceptInboundCall() {
+        _inboundCallAcceptEvent.tryEmit(Unit)
+    }
 
     private var timerJob: Job? = null
     private var timeoutJob: Job? = null
@@ -290,10 +303,82 @@ object CallManager {
      * Triggered by WebRTC error or timeout. End call but also signal failure for UI handling.
      */
     fun markFailed(error: CallError = CallError.INVALID_URL) {
+        stopRinging()
         timeoutJob?.cancel()
         AppLog.log(LogCategory.SYSTEM, "Call Failed due to: $error")
         _lastCallFailedDueToError.value = error
         endCall()
+    }
+
+    fun startRinging(context: Context) {
+        val prefs = AppGraph.prefs
+        if (!prefs.isCallRingingEnabled) return
+
+        // If notifications are completely disabled at the OS level, do not ring or vibrate
+        if (!androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()) {
+            return
+        }
+
+        stopRinging()
+
+        val am = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+        val ringerMode = am?.ringerMode ?: AudioManager.RINGER_MODE_NORMAL
+
+        // 1. Ringtone sound: ONLY in NORMAL mode (suppressed in SILENT and VIBRATE modes)
+        if (ringerMode == AudioManager.RINGER_MODE_NORMAL) {
+            try {
+                val ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+                val rt = android.media.RingtoneManager.getRingtone(context.applicationContext, ringtoneUri)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    rt?.isLooping = true
+                }
+                rt?.audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .build()
+                rt?.play()
+                ringtone = rt
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.SYSTEM, "Failed to play ringtone: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
+            }
+        }
+
+        // 2. Vibration: in NORMAL and VIBRATE modes (NEVER in SILENT/MUTE mode)
+        if (ringerMode == AudioManager.RINGER_MODE_NORMAL || ringerMode == AudioManager.RINGER_MODE_VIBRATE) {
+            try {
+                val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager
+                    vibratorManager?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+                }
+                val pattern = longArrayOf(0, 1000, 1000, 1000, 1000)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vib?.vibrate(android.os.VibrationEffect.createWaveform(pattern, 0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vib?.vibrate(pattern, 0)
+                }
+                vibrator = vib
+            } catch (e: Exception) {
+                AppLog.log(LogCategory.SYSTEM, "Failed to vibrate: ${e.message}", com.mobile.superiorchat.utils.LogLevel.WARN)
+            }
+        }
+    }
+
+    fun stopRinging() {
+        try {
+            ringtone?.stop()
+        } catch (e: Exception) {}
+        ringtone = null
+
+        try {
+            vibrator?.cancel()
+        } catch (e: Exception) {}
+        vibrator = null
+
+        onStopRingingListener?.invoke()
     }
 
     /**
@@ -330,12 +415,18 @@ object CallManager {
         incomingTelegramMsgId = msgId
         _callState.value = CallState.RINGING
         StatusFlow.reportStatus(SyncState.SUCCESS, "Incoming Call: ${callerName.ifBlank { "Caller" }}")
+
+        if (AppGraph.prefs.isCallRingingEnabled) {
+            startRinging(AppGraph.context)
+            onIncomingCallRingingListener?.invoke(callerName)
+        }
     }
 
     /**
      * Called when user taps 'Accept' on the incoming call popup.
      */
     fun acceptIncomingCall(context: Context) {
+        stopRinging()
         AudioPlayer.stop()
         setupHardware(context.applicationContext)
         _callState.value = CallState.CONNECTING
@@ -347,6 +438,7 @@ object CallManager {
      * Called when user taps 'Decline' on the incoming call popup.
      */
     fun declineIncomingCall() {
+        stopRinging()
         _callState.value = CallState.IDLE
         _lastCallFailedDueToError.value = CallError.DECLINED
         currentCallUrl = null
@@ -382,6 +474,7 @@ object CallManager {
      * with a brief delay for the UI "Call Ended" label to display.
      */
     fun endCall() {
+        stopRinging()
         if (_callState.value == CallState.ENDING || _callState.value == CallState.IDLE) return
 
         // If the call was merely RINGING (never accepted by receiver), reset directly to IDLE without showing CallScreen

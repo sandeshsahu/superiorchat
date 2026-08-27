@@ -1,8 +1,10 @@
 package com.mobile.superiorchat.ui.call
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -42,6 +44,16 @@ fun CallContainer(
     val hardwareInitTimer by callViewModel.hardwareInitTimer.collectAsState()
     val receiverHardwareTimer by callViewModel.receiverHardwareTimer.collectAsState()
     val callFailedError by CallManager.lastCallFailedDueToError.collectAsState()
+
+    LaunchedEffect(Unit) {
+        CallManager.inboundCallAcceptEvent.collectLatest {
+            if (CallManager.callState.value == CallState.RINGING) {
+                permissionHandler.requestAudioAndCamera {
+                    callViewModel.acceptInboundCall(context)
+                }
+            }
+        }
+    }
 
     // ── Persistent WebRTC Call Surface ─────────────────────────────────────
     if (callState != CallState.IDLE && callState != CallState.RINGING) {

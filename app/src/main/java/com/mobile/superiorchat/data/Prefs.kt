@@ -329,6 +329,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isCallRingingEnabled: Boolean = sharedPreferences.getBoolean("is_call_ringing_enabled", false)
+    var isCallRingingEnabled: Boolean
+        get() = _isCallRingingEnabled
+        set(value) {
+            if (_isCallRingingEnabled != value) {
+                _isCallRingingEnabled = value
+                sharedPreferences.edit().putBoolean("is_call_ringing_enabled", value).apply()
+            }
+        }
+
     // Tracks whether the user has agreed to Terms & Conditions.
     // Stored in EncryptedSharedPreferences — automatically resets if user clears app data,
     // which is intentional: T&C must be shown again on fresh install or data wipe.

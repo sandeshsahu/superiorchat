@@ -45,7 +45,15 @@ object AdminTexts {
         "Controls application background behavior, task execution, and system-level visibility.\n\n" +
         "• **Hide from Recent**:\nHides Superior Chat from Android's Recent Apps / Overview screen when the application is closed or minimized, ensuring zero trace of multitasking activity. Reopen anytime via dialer code or secret shortcut.\n\n" +
         "• **Background Calls**:\nKeeps calls and audio active in the background when the app is minimized or the screen is locked. When video is enabled, automatically transitions into an OS-level Picture-in-Picture (PiP) floating window.\n\n" +
-        "*(Upcoming features: Call Ringing Services and Persistent Keep-Alive controls).*"
+        "• **Call Ringing**:\nPlays system ringtone, vibrates, and shows high-priority heads-up banner with Accept and Decline actions for incoming calls in Admin mode."
+
+    const val CALL_RINGING_INFO_TITLE = "Call Ringing"
+    const val CALL_RINGING_INFO_MESSAGE =
+        "Enables incoming call heads-up notifications and continuous phone ringing for Admin mode.\n\n" +
+        "• **Continuous Ringing**:\nWhen an incoming call is received from your partner in the background, your device will play the system ringtone and vibrate rhythmically until answered, declined, or timed out.\n\n" +
+        "• **Interactive Actions**:\nShows a high-priority heads-up banner with *Accept* and *Decline* buttons. Tapping Accept instantly connects to the live WebRTC call.\n\n" +
+        "• **Silent Rejection**:\nTapping Decline automatically rejects the call and notifies your partner without opening the application."
+
 
     const val I_AM_ADMIN_INFO_TITLE = "I Am Admin (User B)"
     const val I_AM_ADMIN_INFO_MESSAGE =
@@ -93,6 +101,13 @@ object AdminTexts {
         "• Go to *App Info* Page\n" +
         "• Find *Picture-in-Picture* and enable it."
     const val PIP_REQUIRED_CONFIRM = "App Info"
+
+    const val NOTIFICATION_REQUIRED_TITLE = "Notification Permission Required"
+    const val NOTIFICATION_REQUIRED_MESSAGE =
+        "*Call Ringing* requires *Notification* permission to show incoming call heads-up alerts and ring your device.\n\n" +
+        "• Without notifications, incoming calls cannot alert or ring your device in the background\n" +
+        "• Enable Notifications in Android Settings to activate Call Ringing."
+    const val NOTIFICATION_REQUIRED_CONFIRM = "Open Settings"
 }
 
 /**
@@ -508,6 +523,17 @@ fun AdminLifecycleInfoDialog(
 }
 
 @Composable
+fun AdminCallRingingInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = AdminTexts.CALL_RINGING_INFO_TITLE,
+        message = AdminTexts.CALL_RINGING_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
 fun AdminIAmAdminInfoDialog(
     onDismiss: () -> Unit
 ) {
@@ -591,6 +617,26 @@ fun AdminPipRequiredDialog(
         icon = Icons.Filled.PictureInPicture,
         iconTint = ErrorRed,
         confirmText = AdminTexts.PIP_REQUIRED_CONFIRM,
+        dismissText = "Not Now",
+        onConfirm = {
+            onGoToSettings()
+            onDismiss()
+        },
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminNotificationRequiredDialog(
+    onGoToSettings: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = AdminTexts.NOTIFICATION_REQUIRED_TITLE,
+        message = AdminTexts.NOTIFICATION_REQUIRED_MESSAGE,
+        icon = Icons.Filled.NotificationsOff,
+        iconTint = ErrorRed,
+        confirmText = AdminTexts.NOTIFICATION_REQUIRED_CONFIRM,
         dismissText = "Not Now",
         onConfirm = {
             onGoToSettings()

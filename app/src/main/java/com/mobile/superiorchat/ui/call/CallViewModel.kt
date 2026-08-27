@@ -209,6 +209,12 @@ class CallViewModel : ViewModel() {
 
     fun acceptInboundCall(context: Context) {
         _receiverConnectionState.value = ReceiverConnectionState.VALIDATING
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val profile = AppGraph.appRepository.resolveActivePartnerProfile(CallManager.incomingCallerName)
+            _profilePhotoPath.value = profile?.profilePhotoPath
+        }
+
         CallManager.acceptIncomingCall(context)
         _receiverHardwareTimer.value = 0
         receiverTimerJob?.cancel()
@@ -233,12 +239,12 @@ class CallViewModel : ViewModel() {
     fun declineInboundCall() {
         receiverTimerJob?.cancel()
         CallManager.declineIncomingCall()
+        _receiverConnectionState.value = ReceiverConnectionState.IDLE
     }
 
     fun dismissReceiverState() {
         receiverTimerJob?.cancel()
         _receiverConnectionState.value = ReceiverConnectionState.IDLE
-        CallManager.clearCallError()
     }
 
     fun dismissCallError(): CallError {
@@ -330,7 +336,7 @@ class CallViewModel : ViewModel() {
             val chat = prefs.activeChatId
             
             // Fetch cached profile image for the UI avatar
-            val profile = AppGraph.database.profileDao().getProfileSync(chat)
+            val profile = AppGraph.appRepository.resolveActivePartnerProfile()
             _profilePhotoPath.value = profile?.profilePhotoPath
 
             val callUrls = CallManager.initCall(context)
@@ -590,19 +596,10 @@ class CallViewModel : ViewModel() {
                 CallError.INVALID_URL -> "FAILED_CONFIG"
                 else -> "FAILED_CONFIG"
             }
-            val prefs = AppGraph.prefs
-            val profile = AppGraph.database.profileDao().getProfileSync(chat)
-            val partnerName = if (prefs.isPeerLinkEnabled) {
-                val targetBot = prefs.peerLinkPartnerBotUsername.trim().removePrefix("@")
-                val cachedBotProfile = if (targetBot.isNotBlank()) {
-                    AppGraph.database.profileDao().getAllProfilesSync().firstOrNull { it.username.equals(targetBot, ignoreCase = true) }
-                } else null
-                cachedBotProfile?.title?.takeIf { it.isNotBlank() }
-                    ?: if (targetBot.isNotBlank()) "@$targetBot"
-                    else profile?.title?.takeIf { it.isNotBlank() } ?: "Partner"
-            } else {
-                profile?.title?.takeIf { it.isNotBlank() } ?: "Partner"
-            }
+            val profile = AppGraph.appRepository.resolveActivePartnerProfile()
+            val partnerName = profile?.title?.takeIf { it.isNotBlank() }
+                ?: if (AppGraph.prefs.peerLinkPartnerBotUsername.isNotBlank()) "@${AppGraph.prefs.peerLinkPartnerBotUsername.removePrefix("@")}"
+                else "Partner"
 
             AppGraph.database.callHistoryDao().insertCall(
                 CallHistoryNode(
