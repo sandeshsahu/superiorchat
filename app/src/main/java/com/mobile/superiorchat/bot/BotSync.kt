@@ -221,11 +221,35 @@ class BotSync(private val context: Context) {
     }
 
     private suspend fun handleUpdate(update: Update) {
+        val token = prefs.botToken
+        val myBotId = if (token.contains(":")) token.substringBefore(":") else ""
+
+        // Drop any reflected messages or edits sent by our own bot in group chats to prevent self-duplication
+        if (myBotId.isNotEmpty()) {
+            if (update.message?.from?.id?.toString() == myBotId) return
+            if (update.edited_message?.from?.id?.toString() == myBotId) return
+            if (update.callback_query?.from?.id?.toString() == myBotId) return
+        }
+
         if (update.callback_query != null) {
             val query = update.callback_query
             if (query.data == "decline_call") {
+                val queryChatId = query.message?.chat?.id?.toString() ?: ""
+                val isGroup = com.mobile.superiorchat.utils.Validator.isValidGroupChatId(prefs.activeChatId)
+
+                // Verify callback origin belongs to the active conversation
+                val isAuthorizedCallback = if (isGroup) {
+                    queryChatId == prefs.activeChatId
+                } else {
+                    query.from.id.toString() == prefs.activeChatId
+                }
+
+                if (!isAuthorizedCallback) {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Ignored decline callback from unauthorized chat/user: ${query.from.id}", LogLevel.WARN)
+                    return
+                }
+
                 val callState = com.mobile.superiorchat.core.call.CallManager.callState.value
-                val token = AppGraph.prefs.botToken
 
                 if (callState == com.mobile.superiorchat.core.call.CallState.CONNECTING || 
                     callState == com.mobile.superiorchat.core.call.CallState.RINGING) {
@@ -274,6 +298,13 @@ class BotSync(private val context: Context) {
             val editedMsg = update.edited_message
             val rawText = editedMsg.text ?: editedMsg.caption
             if (rawText != null) {
+                // Reject raw system signals in edited messages to prevent DB pollution
+                val signal = com.mobile.superiorchat.utils.Validator.extractSystemSignal(rawText)
+                if (signal !is com.mobile.superiorchat.utils.Validator.SystemSignal.None) {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Dropped system signal in edited_message: $rawText")
+                    return
+                }
+
                 var text = rawText
                 val existingMsg = repository.getMessageById(editedMsg.message_id)
                 if (existingMsg?.mediaType == "call_event" && prefs.isPeerLinkEnabled) {
@@ -319,7 +350,6 @@ class BotSync(private val context: Context) {
         val message = update.message ?: return
 
         // Intruder filtering: only accept messages from the target chat
-        val prefs = AppGraph.prefs
         val chatId = message.chat.id.toString()
         val senderId = message.from?.id?.toString() ?: ""
 
@@ -357,31 +387,47 @@ class BotSync(private val context: Context) {
         // Core Interceptor: Parse & Execute internal system signals before DB insertion or UI notifications
         val systemSignal = com.mobile.superiorchat.utils.Validator.extractSystemSignal(text)
         if (systemSignal !is com.mobile.superiorchat.utils.Validator.SystemSignal.None) {
+            val isSignalAuthorized = com.mobile.superiorchat.utils.Validator.isAuthorizedSignalSender(
+                msgChatId = chatId,
+                fromUser = message.from,
+                activeChatId = prefs.activeChatId,
+                partnerBotUsername = prefs.peerLinkPartnerBotUsername,
+                myBotId = myBotId
+            )
+
+            if (!isSignalAuthorized) {
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Unauthorized system signal rejected from chat $chatId user ${message.from?.username} (id=${message.from?.id})", LogLevel.WARN)
+                return // Core-level drop
+            }
+
             when (systemSignal) {
                 is com.mobile.superiorchat.utils.Validator.SystemSignal.DeleteMessages -> {
-                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink delete signal for ${systemSignal.messageIds.size} messages: ${systemSignal.messageIds}")
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received authorized delete signal for ${systemSignal.messageIds.size} messages: ${systemSignal.messageIds}")
                     coroutineScope.launch(Dispatchers.IO) {
-                        systemSignal.messageIds.forEach { id ->
-                            repository.deleteMessage(id)
-                        }
-                        // Clean up the transient signal message from Telegram
-                        val token = prefs.botToken
+                        repository.deleteMessages(chatId, systemSignal.messageIds)
+                        // Clean up the transient signal message from Telegram (receiver scrubs it)
                         if (token.isNotBlank()) {
                             TelegramApi.deleteMessage(token, chatId, message.message_id)
                         }
                     }
                 }
                 is com.mobile.superiorchat.utils.Validator.SystemSignal.CallDeclined -> {
-                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received PeerLink decline signal")
-                    message.reply_to_message?.message_id?.let { repliedMsgId ->
-                        val existing = repository.getMessageById(repliedMsgId)
-                        if (existing != null && existing.mediaType == "call_event") {
-                            repository.updateMessageText(repliedMsgId, "Call Declined")
-                            AppLog.log(LogCategory.BOT_ACTIVITY, "Retroactively updated call event message $repliedMsgId to Declined")
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received authorized PeerLink decline signal")
+                    coroutineScope.launch(Dispatchers.IO) {
+                        message.reply_to_message?.message_id?.let { repliedMsgId ->
+                            val existing = repository.getMessageById(repliedMsgId)
+                            if (existing != null && existing.mediaType == "call_event") {
+                                repository.updateMessageText(repliedMsgId, "Call Declined")
+                                AppLog.log(LogCategory.BOT_ACTIVITY, "Retroactively updated call event message $repliedMsgId to Declined")
+                            }
                         }
-                    }
-                    if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
-                        com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                        if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
+                            com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                        }
+                        // Clean up the transient signal message from Telegram (receiver scrubs it)
+                        if (token.isNotBlank()) {
+                            TelegramApi.deleteMessage(token, chatId, message.message_id)
+                        }
                     }
                 }
                 is com.mobile.superiorchat.utils.Validator.SystemSignal.Unknown -> {
@@ -451,7 +497,7 @@ class BotSync(private val context: Context) {
                     text = "📞 Incoming Call"
                 }
             }
-        } else if (prefs.isPeerLinkEnabled && text.contains("===================") && (text.contains("Time :") || text.contains("*Time* :") || text.contains("<b>Time</b> :")) && (text.contains("New Call Incoming") || text.contains("Call Missed") || text.contains("Call Cancelled") || text.contains("Call Declined") || text.contains("Call Ended") || text.contains("inviting you for call"))) {
+        } else if (prefs.isPeerLinkEnabled && (message.from?.is_bot == true || !com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) && text.contains("===================") && (text.contains("Time :") || text.contains("*Time* :") || text.contains("<b>Time</b> :")) && (text.contains("New Call Incoming") || text.contains("Call Missed") || text.contains("Call Cancelled") || text.contains("Call Declined") || text.contains("Call Ended") || text.contains("inviting you for call"))) {
             mediaType = "call_event"
             val callStatus = when {
                 text.contains("Call Declined") -> "DECLINED"

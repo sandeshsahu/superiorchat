@@ -34,6 +34,9 @@ interface MessageDao {
     @Query("DELETE FROM messages WHERE messageId = :messageId")
     suspend fun deleteMessage(messageId: Long): Int
 
+    @Query("DELETE FROM messages WHERE conversationId = :conversationId AND messageId IN (:messageIds)")
+    suspend fun deleteMessages(conversationId: String, messageIds: List<Long>): Int
+
     @Query("UPDATE messages SET reactions = :reactions WHERE messageId = :messageId")
     suspend fun updateMessageReactions(messageId: Long, reactions: String?): Int
 

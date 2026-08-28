@@ -112,6 +112,12 @@ class AppRepository(
         messageDao.deleteMessage(messageId)
     }
 
+    suspend fun deleteMessages(conversationId: String, messageIds: List<Long>) {
+        if (messageIds.isNotEmpty()) {
+            messageDao.deleteMessages(conversationId, messageIds)
+        }
+    }
+
     suspend fun updateMessageReactions(messageId: Long, reactions: String?) {
         messageDao.updateMessageReactions(messageId, reactions)
     }

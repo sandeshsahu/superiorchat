@@ -191,6 +191,42 @@ object Validator {
         return expectedPartner.isNotBlank() && senderUser.equals(expectedPartner, ignoreCase = true)
     }
 
+    /**
+     * Reusable validator for internal system signal authorization.
+     * Ensures control signals (e.g. [SYS-MSG-DELETE], [SYS-CALL-DECLINED]) originate from authorized senders.
+     * In group chats (chatId < 0): Strictly requires a non-self bot (is_bot == true, id != myBotId),
+     * matching partnerBotUsername if configured.
+     * In direct DMs (chatId > 0): Strictly requires the sender ID to match activeChatId.
+     */
+    fun isAuthorizedSignalSender(
+        msgChatId: String,
+        fromUser: User?,
+        activeChatId: String,
+        partnerBotUsername: String,
+        myBotId: String
+    ): Boolean {
+        if (msgChatId.isBlank() || activeChatId.isBlank() || fromUser == null) return false
+        if (msgChatId != activeChatId) return false
+
+        val isGroup = isValidGroupChatId(msgChatId)
+        if (isGroup) {
+            // Must be a bot, and cannot be our own bot reflected from Telegram
+            if (fromUser.is_bot != true) return false
+            if (myBotId.isNotBlank() && fromUser.id.toString() == myBotId) return false
+
+            val expectedPartner = partnerBotUsername.trim().removePrefix("@")
+            if (expectedPartner.isNotBlank()) {
+                val senderUser = fromUser.username?.trim()?.removePrefix("@") ?: ""
+                return senderUser.equals(expectedPartner, ignoreCase = true)
+            }
+            // If partner bot username was not configured yet, any non-self bot in the group is allowed
+            return true
+        } else {
+            // Direct 1-on-1 DM: Partner is a human user chatting directly with our bot
+            return fromUser.id.toString() == activeChatId
+        }
+    }
+
     sealed class SystemSignal {
         object None : SystemSignal()
         data class DeleteMessages(val messageIds: List<Long>) : SystemSignal()
@@ -210,7 +246,7 @@ object Validator {
         val deleteRegex = Regex("""(?:\[)?(?:SYS[-_]MSG[-_]DELETE)[:\s]+([0-9,\s]+)(?:\])?""", RegexOption.IGNORE_CASE)
         val deleteMatch = deleteRegex.find(trimmed)
         if (deleteMatch != null) {
-            val ids = deleteMatch.groupValues[1].split(",").mapNotNull { it.trim().toLongOrNull() }
+            val ids = deleteMatch.groupValues[1].split(",").mapNotNull { it.trim().toLongOrNull() }.take(100)
             if (ids.isNotEmpty()) return SystemSignal.DeleteMessages(ids)
         }
 
