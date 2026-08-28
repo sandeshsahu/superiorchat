@@ -11,5 +11,21 @@ data class ChatNode(
     val lastMessageText: String?,
     val lastMessageTimestamp: Long,
     val unreadCount: Int = 0,
-    val pinnedMessageId: Long? = null
+    val pinnedMessageId: Long? = null,
+    val pinnedMessageIds: String? = null,
+
+    // Chat Attributes
+    val chatType: String? = null,
+    val description: String? = null,
+    val photoPath: String? = null,
+    val isMuted: Boolean = false,
+    val isPinned: Boolean = false,
+    val isArchived: Boolean = false,
+    val memberCount: Int = 0,
+
+    // Local App State
+    val draftText: String? = null,
+    val draftTimestamp: Long? = null,
+    val ttlSeconds: Int = 0,
+    val wallpaperPath: String? = null
 )

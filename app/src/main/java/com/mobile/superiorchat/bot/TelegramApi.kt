@@ -998,6 +998,20 @@ object TelegramApi {
         } catch (e: Exception) { "" }
     }
 
+    suspend fun getUserProfilePhotos(token: String, userId: String): UserProfilePhotosResponse? {
+        return try {
+            val request = Request.Builder()
+                .url(apiUrl(token, "getUserProfilePhotos") + "?user_id=$userId&limit=1")
+                .build()
+            val response = client.executeCancellable(request)
+            if (response.isSuccessful) {
+                response.body?.string()?.let { body ->
+                    json.decodeFromString<UserProfilePhotosResponse>(body)
+                }
+            } else null
+        } catch (e: Exception) { null }
+    }
+
     suspend fun getMyProfilePhotoUrl(token: String): String? {
         val botId = sanitizeToken(token).split(":")[0]
         return try {

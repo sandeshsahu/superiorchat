@@ -526,19 +526,45 @@ object MediaSync {
             val existingProfile = repository.getProfileSync(senderId)
 
             if (chat == null) {
-                if (existingProfile == null && (fallbackName != null || fallbackUsername != null)) {
-                    val initialProfile = com.mobile.superiorchat.data.entity.UserProfile(
-                        chatId = senderId,
-                        title = fallbackName?.ifEmpty { "User" } ?: "User",
-                        username = fallbackUsername ?: "",
-                        type = "private",
-                        profilePhotoPath = "",
-                        photoUniqueId = ""
-                    )
-                    repository.insertProfile(initialProfile)
+                // Fallback: Attempt to fetch user avatar via getUserProfilePhotos
+                var avatarPath = existingProfile?.profilePhotoPath ?: ""
+                var avatarUniqueId = existingProfile?.photoUniqueId ?: ""
+                try {
+                    val photosResp = TelegramApi.getUserProfilePhotos(token, senderId)
+                    val photos = photosResp?.result?.photos
+                    if (!photos.isNullOrEmpty() && photos.first().isNotEmpty()) {
+                        val largest = photos.first().maxByOrNull { it.width * it.height }
+                        if (largest != null && largest.fileUniqueId != existingProfile?.photoUniqueId) {
+                            val fileInfo = TelegramApi.getFile(token, largest.fileId)
+                            val filePath = fileInfo?.result?.file_path
+                            if (filePath != null) {
+                                val downloadUrl = TelegramApi.getFileDownloadUrl(token, filePath)
+                                val cacheDir = java.io.File(context.filesDir, "profiles")
+                                if (!cacheDir.exists()) cacheDir.mkdirs()
+                                val destFile = java.io.File(cacheDir, "profile_${senderId}_${largest.fileUniqueId}.jpg")
+                                val success = TelegramApi.downloadFileToLocal(downloadUrl, destFile)
+                                if (success) {
+                                    avatarPath = destFile.absolutePath
+                                    avatarUniqueId = largest.fileUniqueId
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    AppLog.log(LogCategory.SYSTEM, "Fallback getUserProfilePhotos failed for senderId=$senderId: ${e.message}")
                 }
-                AppLog.log(LogCategory.SYSTEM, "Failed to fetch profile from Telegram for senderId=$senderId, keeping existing data.")
-                StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
+
+                val initialProfile = com.mobile.superiorchat.data.entity.UserProfile(
+                    chatId = senderId,
+                    title = fallbackName?.ifEmpty { "User" } ?: existingProfile?.title ?: "User",
+                    username = fallbackUsername ?: existingProfile?.username ?: "",
+                    type = "private",
+                    profilePhotoPath = avatarPath,
+                    photoUniqueId = avatarUniqueId,
+                    isBot = fallbackUsername?.endsWith("bot", ignoreCase = true) == true
+                )
+                repository.insertProfile(initialProfile)
+                AppLog.log(LogCategory.SYSTEM, "Fetched profile via fallback for senderId=$senderId.")
                 return
             }
 
@@ -549,6 +575,7 @@ object MediaSync {
             val inviteLink = chat.invite_link
             val hasProtectedContent = chat.has_protected_content ?: false
             val isForum = chat.is_forum ?: false
+            val isBot = username.endsWith("bot", ignoreCase = true)
 
             val photoUniqueId = chat.photo?.big_file_unique_id ?: ""
             val bigFileId = chat.photo?.big_file_id
@@ -595,15 +622,23 @@ object MediaSync {
                 bio = bio,
                 inviteLink = inviteLink,
                 hasProtectedContent = hasProtectedContent,
-                isForum = isForum
+                isForum = isForum,
+                isBot = isBot
             )
             repository.insertProfile(newProfile)
 
-            // Update ChatNode with pinnedMessageId if this is the active conversation
+            // Update ChatNode with full attributes if this is the active conversation or a group chat
             val pinnedMsgId = chat.pinned_message?.message_id
             val chatNode = repository.getChatSync(senderId)
-            if (chatNode != null && pinnedMsgId != null) {
-                repository.updateChat(chatNode.copy(pinnedMessageId = pinnedMsgId))
+            if (chatNode != null) {
+                repository.updateChat(
+                    chatNode.copy(
+                        pinnedMessageId = pinnedMsgId ?: chatNode.pinnedMessageId,
+                        photoPath = if (localPath.isNotEmpty()) localPath else chatNode.photoPath,
+                        chatType = type,
+                        description = bio ?: chatNode.description
+                    )
+                )
             }
 
             val isUnchanged = existingProfile != null &&

@@ -22,7 +22,7 @@ import com.mobile.superiorchat.data.dao.EmojiDao
 import com.mobile.superiorchat.data.entity.CallHistoryNode
 import com.mobile.superiorchat.data.dao.CallHistoryDao
 
-@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class, CallHistoryNode::class], version = 13, exportSchema = false)
+@Database(entities = [MessageNode::class, ChatNode::class, UserProfile::class, EmojiUsage::class, CallHistoryNode::class], version = 14, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class LocalDb : RoomDatabase() {
     abstract fun messageDao(): MessageDao
@@ -123,6 +123,63 @@ abstract class LocalDb : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1. messages
+                db.execSQL("ALTER TABLE messages ADD COLUMN editTimestamp INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN isFromBot INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE messages ADD COLUMN senderUsername TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN senderName TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN senderPhotoPath TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN senderRole TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN chatType TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN mediaMimeType TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN mediaDuration INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN mediaWidth INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN mediaHeight INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN mediaThumbPath TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN mediaWaveform TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN entities TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN replyToText TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN replyToAuthor TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN forwardFromId TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN forwardFromName TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN forwardDate INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE messages ADD COLUMN isStarred INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE messages ADD COLUMN expiresAt INTEGER DEFAULT NULL")
+
+                // 2. conversations
+                db.execSQL("ALTER TABLE conversations ADD COLUMN pinnedMessageIds TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN chatType TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN description TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN photoPath TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN isMuted INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN isArchived INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN memberCount INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN draftText TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN draftTimestamp INTEGER DEFAULT NULL")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN ttlSeconds INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE conversations ADD COLUMN wallpaperPath TEXT DEFAULT NULL")
+
+                // 3. user_profiles
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN isBot INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN isVerified INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN isPremium INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN userRole TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN phoneNumber TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN customNickname TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN languageCode TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE user_profiles ADD COLUMN lastSeenTimestamp INTEGER DEFAULT NULL")
+
+                // 4. call_history
+                db.execSQL("ALTER TABLE call_history ADD COLUMN callType TEXT NOT NULL DEFAULT 'voice'")
+                db.execSQL("ALTER TABLE call_history ADD COLUMN partnerPhotoPath TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE call_history ADD COLUMN endReason TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE call_history ADD COLUMN bytesTransferred INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): LocalDb {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -130,7 +187,7 @@ abstract class LocalDb : RoomDatabase() {
                     LocalDb::class.java,
                     "superior_chat_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
                 .fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance

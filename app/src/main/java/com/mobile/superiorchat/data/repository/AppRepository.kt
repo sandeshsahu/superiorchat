@@ -104,8 +104,8 @@ class AppRepository(
         messageDao.updateMessageStatus(messageId, status)
     }
 
-    suspend fun updateMessageText(messageId: Long, newText: String) {
-        messageDao.updateMessageText(messageId, newText)
+    suspend fun updateMessageText(messageId: Long, newText: String, editTimestamp: Long? = System.currentTimeMillis()) {
+        messageDao.updateMessageText(messageId, newText, editTimestamp)
     }
 
     suspend fun deleteMessage(messageId: Long) {

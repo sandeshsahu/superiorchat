@@ -14,5 +14,15 @@ data class UserProfile(
     val bio: String? = null,
     val inviteLink: String? = null,
     val hasProtectedContent: Boolean = false,
-    val isForum: Boolean = false
+    val isForum: Boolean = false,
+
+    // Telemetry & Flags
+    val isBot: Boolean = false,
+    val isVerified: Boolean = false,
+    val isPremium: Boolean = false,
+    val userRole: String? = null,
+    val phoneNumber: String? = null,
+    val customNickname: String? = null,
+    val languageCode: String? = null,
+    val lastSeenTimestamp: Long? = null
 )

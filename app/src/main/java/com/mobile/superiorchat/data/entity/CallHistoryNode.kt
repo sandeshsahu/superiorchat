@@ -12,7 +12,11 @@ data class CallHistoryNode(
     val isMissed: Boolean = false,
     val isIncoming: Boolean = false,
     val callStatus: String = "COMPLETED",
+    val callType: String = "voice",
     val peerJsId: String = "",
     val domain: String = "",
-    val partnerName: String
+    val partnerName: String,
+    val partnerPhotoPath: String? = null,
+    val endReason: String? = null,
+    val bytesTransferred: Long = 0
 )

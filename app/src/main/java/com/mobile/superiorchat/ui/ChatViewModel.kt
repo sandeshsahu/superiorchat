@@ -652,11 +652,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val replyToId = replyingToMessage?.messageId
+        val replyToText = replyingToMessage?.text
+        val replyToAuthor = if (replyingToMessage?.isFromMe == true) "You" else (_userProfiles.value[replyingToMessage?.senderId]?.title ?: _userProfile.value?.title ?: "User")
         setReplyingToMessage(null) // clear state
 
         val messageTime = getNextMessageTime()
         val tempMessageId = -messageTime // Avoid conflict with positive Telegram message IDs
         val initialStatus = if (isOnline.value) MessageStatus.SENDING else MessageStatus.QUEUED
+        val isGroup = com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)
 
         val newMsg = MessageNode(
             messageId = tempMessageId,
@@ -665,8 +668,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             text = text,
             timestamp = messageTime,
             isFromMe = true,
+            isFromBot = true,
+            senderName = "Me",
+            senderRole = "me",
+            chatType = if (isGroup) "supergroup" else "private",
             status = initialStatus,
-            replyToMessageId = replyToId
+            replyToMessageId = replyToId,
+            replyToText = replyToText,
+            replyToAuthor = replyToAuthor
         )
 
         viewModelScope.launch(Dispatchers.IO) {
@@ -697,6 +706,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         val messageTime = getNextMessageTime()
         val tempMessageId = -messageTime
+        val isGroup = com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -708,6 +718,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     text = caption ?: "",
                     timestamp = messageTime,
                     isFromMe = true,
+                    isFromBot = true,
+                    senderName = "Me",
+                    senderRole = "me",
+                    chatType = if (isGroup) "supergroup" else "private",
                     mediaType = mediaType,
                     mediaLocalPath = "", // Will update after copy
                     status = MessageStatus.QUEUED,
@@ -765,6 +779,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val isOnline = NetState.isOnline.value
             val initialNodes = mutableListOf<MessageNode>()
+            val isGroup = com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)
             
             // First pass: Insert all into UI immediately
             repository.ensureConversationExists(chatId)
@@ -778,6 +793,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     text = if (index == 0) (caption ?: "") else "",
                     timestamp = -tempMessageId,
                     isFromMe = true,
+                    isFromBot = true,
+                    senderName = "Me",
+                    senderRole = "me",
+                    chatType = if (isGroup) "supergroup" else "private",
                     mediaType = mediaType,
                     mediaLocalPath = "",
                     status = MessageStatus.QUEUED,

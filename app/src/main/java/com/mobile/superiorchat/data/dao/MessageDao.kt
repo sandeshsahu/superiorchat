@@ -28,8 +28,8 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE messageId = :messageId LIMIT 1")
     suspend fun getMessageById(messageId: Long): MessageNode?
 
-    @Query("UPDATE messages SET text = :newText, isEdited = 1 WHERE messageId = :messageId")
-    suspend fun updateMessageText(messageId: Long, newText: String): Int
+    @Query("UPDATE messages SET text = :newText, isEdited = 1, editTimestamp = :editTimestamp WHERE messageId = :messageId")
+    suspend fun updateMessageText(messageId: Long, newText: String, editTimestamp: Long? = System.currentTimeMillis()): Int
 
     @Query("DELETE FROM messages WHERE messageId = :messageId")
     suspend fun deleteMessage(messageId: Long): Int

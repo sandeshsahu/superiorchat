@@ -56,6 +56,10 @@ data class Message(
     val from: User? = null,
     val chat: Chat,
     val date: Long = 0,
+    val edit_date: Long? = null,
+    val forward_from: User? = null,
+    val forward_from_chat: Chat? = null,
+    val forward_date: Long? = null,
     val text: String? = null,
     val caption: String? = null,
     val photo: List<JsonElement>? = null,
@@ -74,7 +78,11 @@ data class Message(
 data class MessageEntity(
     val type: String,
     val offset: Int,
-    val length: Int
+    val length: Int,
+    val url: String? = null,
+    val user: User? = null,
+    val language: String? = null,
+    val custom_emoji_id: String? = null
 )
 
 
@@ -84,6 +92,7 @@ data class User(
     val id: Long = 0,
     val is_bot: Boolean = false,
     val first_name: String = "",
+    val last_name: String? = null,
     val username: String? = null,
     val can_join_groups: Boolean? = null,
     val can_read_all_group_messages: Boolean? = null

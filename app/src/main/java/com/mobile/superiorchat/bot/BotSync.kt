@@ -290,7 +290,8 @@ class BotSync(private val context: Context) {
                 
                 val entities = editedMsg.entities ?: editedMsg.caption_entities
                 val formattedEditedText = com.mobile.superiorchat.utils.Validator.applyTelegramEntities(text, entities)
-                repository.updateMessageText(editedMsg.message_id, formattedEditedText)
+                val editTime = (editedMsg.edit_date ?: editedMsg.date) * 1000L
+                repository.updateMessageText(editedMsg.message_id, formattedEditedText, editTime)
                 AppLog.log(LogCategory.BOT_ACTIVITY, "Updated edited message: ${formattedEditedText.take(50)}")
             }
             return
@@ -401,6 +402,11 @@ class BotSync(private val context: Context) {
         var fileSize: Long? = null
         var fileName: String? = null
         var fileUniqueId: String? = null
+        var mediaMimeType: String? = null
+        var mediaDuration: Int? = null
+        var mediaWidth: Int? = null
+        var mediaHeight: Int? = null
+        var mediaWaveform: String? = null
 
         if (match != null) {
             val joinUrl = match.value + "&isApp=true"
@@ -487,6 +493,9 @@ class BotSync(private val context: Context) {
             fileId = photoObj["file_id"]?.jsonPrimitive?.content
             fileUniqueId = photoObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = photoObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+            mediaWidth = photoObj["width"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaHeight = photoObj["height"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaMimeType = "image/jpeg"
         } else if (message.document != null) {
             mediaType = "document"
             val docObj = message.document.jsonObject
@@ -494,6 +503,7 @@ class BotSync(private val context: Context) {
             fileUniqueId = docObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = docObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
             fileName = docObj["file_name"]?.jsonPrimitive?.content
+            mediaMimeType = docObj["mime_type"]?.jsonPrimitive?.content
         } else if (message.video != null) {
             mediaType = "video"
             val vidObj = message.video.jsonObject
@@ -501,6 +511,10 @@ class BotSync(private val context: Context) {
             fileUniqueId = vidObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = vidObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
             fileName = vidObj["file_name"]?.jsonPrimitive?.content
+            mediaDuration = vidObj["duration"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaWidth = vidObj["width"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaHeight = vidObj["height"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaMimeType = vidObj["mime_type"]?.jsonPrimitive?.content ?: "video/mp4"
         } else if (message.audio != null) {
             mediaType = "audio"
             val audioObj = message.audio.jsonObject
@@ -508,11 +522,17 @@ class BotSync(private val context: Context) {
             fileUniqueId = audioObj["file_unique_id"]?.jsonPrimitive?.content
             fileSize = audioObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
             fileName = audioObj["file_name"]?.jsonPrimitive?.content
+            mediaDuration = audioObj["duration"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaMimeType = audioObj["mime_type"]?.jsonPrimitive?.content ?: "audio/mpeg"
         } else if (message.voice != null) {
             mediaType = "voice"
-            fileId = message.voice.jsonObject["file_id"]?.jsonPrimitive?.content
-            fileUniqueId = message.voice.jsonObject["file_unique_id"]?.jsonPrimitive?.content
-            fileSize = message.voice.jsonObject["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+            val voiceObj = message.voice.jsonObject
+            fileId = voiceObj["file_id"]?.jsonPrimitive?.content
+            fileUniqueId = voiceObj["file_unique_id"]?.jsonPrimitive?.content
+            fileSize = voiceObj["file_size"]?.jsonPrimitive?.content?.toLongOrNull()
+            mediaDuration = voiceObj["duration"]?.jsonPrimitive?.content?.toIntOrNull()
+            mediaMimeType = voiceObj["mime_type"]?.jsonPrimitive?.content ?: "audio/ogg"
+            mediaWaveform = voiceObj["waveform"]?.jsonPrimitive?.content
         }
 
         if (fileSize != null && fileSize > 20 * 1024 * 1024) {
@@ -566,13 +586,40 @@ class BotSync(private val context: Context) {
             newPinnedMessageId = message.pinned_message.message_id
         }
 
+        val isBot = message.from?.is_bot == true || message.from?.username?.endsWith("bot", ignoreCase = true) == true
+        val senderUsername = message.from?.username
+        val senderName = message.from?.first_name ?: message.from?.last_name ?: "User"
+        val senderPhotoPath = existingChat?.photoPath ?: repository.getProfileSync(senderId)?.profilePhotoPath
+        val chatType = message.chat.type
+        val forwardFromId = message.forward_from?.id?.toString() ?: message.forward_from_chat?.id?.toString()
+        val forwardFromName = message.forward_from?.first_name ?: message.forward_from_chat?.title
+        val forwardDate = message.forward_date?.let { it * 1000L }
+        val rawEntitiesJson = message.entities?.let { entitiesList ->
+            try {
+                kotlinx.serialization.json.Json.encodeToString(
+                    kotlinx.serialization.builtins.ListSerializer(com.mobile.superiorchat.bot.MessageEntity.serializer()),
+                    entitiesList
+                )
+            } catch (e: Exception) { null }
+        } ?: message.caption_entities?.let { entitiesList ->
+            try {
+                kotlinx.serialization.json.Json.encodeToString(
+                    kotlinx.serialization.builtins.ListSerializer(com.mobile.superiorchat.bot.MessageEntity.serializer()),
+                    entitiesList
+                )
+            } catch (e: Exception) { null }
+        }
+        val replyText = message.reply_to_message?.text ?: message.reply_to_message?.caption
+        val replyAuthor = message.reply_to_message?.from?.first_name ?: message.reply_to_message?.from?.username
+
         val conversationEntity = ChatNode(
             chatId = chatId,
             title = message.from?.first_name ?: message.chat.first_name ?: existingChat?.title ?: "Unknown",
             lastMessageText = parsedText,
             lastMessageTimestamp = receiveTimestamp,
             unreadCount = (existingChat?.unreadCount ?: 0) + 1,
-            pinnedMessageId = newPinnedMessageId
+            pinnedMessageId = newPinnedMessageId,
+            chatType = chatType
         )
         repository.insertOrUpdateConversation(conversationEntity)
 
@@ -583,21 +630,37 @@ class BotSync(private val context: Context) {
             text = parsedText,
             timestamp = receiveTimestamp,
             isFromMe = false,
+            isFromBot = isBot,
+            senderUsername = senderUsername,
+            senderName = senderName,
+            senderPhotoPath = senderPhotoPath,
+            chatType = chatType,
             mediaType = parsedMediaType,
             mediaUrl = if (fileId != null && fileUniqueId != null) "$fileId|$fileUniqueId" else fileId,
             mediaLocalPath = localPath,
             status = finalStatus,
             mediaFileName = fileName,
             mediaFileSize = fileSize,
-            replyToMessageId = message.reply_to_message?.message_id
+            mediaMimeType = mediaMimeType,
+            mediaDuration = mediaDuration,
+            mediaWidth = mediaWidth,
+            mediaHeight = mediaHeight,
+            mediaWaveform = mediaWaveform,
+            entities = rawEntitiesJson,
+            replyToMessageId = message.reply_to_message?.message_id,
+            replyToText = replyText,
+            replyToAuthor = replyAuthor,
+            forwardFromId = forwardFromId,
+            forwardFromName = forwardFromName,
+            forwardDate = forwardDate
         )
 
         repository.insertMessage(messageEntity)
 
         // Trigger profile sync for sender if missing or out of date
         if (senderId.isNotEmpty()) {
-            val senderName = message.from?.first_name
-            val senderUsername = message.from?.username
+            val senderNameSync = message.from?.first_name
+            val senderUsernameSync = message.from?.username
             coroutineScope.launch(Dispatchers.IO) {
                 if (isNetworkAvailable) {
                     val token = prefs.botToken
