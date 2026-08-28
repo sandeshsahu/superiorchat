@@ -20,7 +20,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import com.mobile.superiorchat.theme.*
-import com.mobile.superiorchat.ui.components.popups.PeerLinkSetupFlowDialog
+import com.mobile.superiorchat.ui.components.popups.CredentialsPopup
 import com.mobile.superiorchat.ui.components.popups.AdminPeerLinkInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminLifecycleInfoDialog
 import com.mobile.superiorchat.ui.components.popups.AdminIAmAdminInfoDialog
@@ -30,7 +30,6 @@ import com.mobile.superiorchat.ui.components.popups.AdminDisableRouteMessagesDia
 import com.mobile.superiorchat.ui.components.popups.AdminDisableAdminModeDialog
 import com.mobile.superiorchat.ui.components.popups.AdminPipRequiredDialog
 import com.mobile.superiorchat.ui.components.popups.AdminNotificationRequiredDialog
-import com.mobile.superiorchat.ui.components.popups.AdminCallRingingInfoDialog
 import androidx.core.app.NotificationManagerCompat
 
 @Composable
@@ -42,7 +41,6 @@ fun AdminSettingsScreen(
     var showSetupDialog by remember { mutableStateOf(false) }
     var showPeerLinkInfo by remember { mutableStateOf(false) }
     var showLifecycleInfo by remember { mutableStateOf(false) }
-    var showCallRingingInfo by remember { mutableStateOf(false) }
     var showIAmAdminInfo by remember { mutableStateOf(false) }
     var showSetupGuideDialog by remember { mutableStateOf(false) }
     var showCredentialsInfo by remember { mutableStateOf(false) }
@@ -59,9 +57,6 @@ fun AdminSettingsScreen(
         AdminLifecycleInfoDialog(onDismiss = { showLifecycleInfo = false })
     }
 
-    if (showCallRingingInfo) {
-        AdminCallRingingInfoDialog(onDismiss = { showCallRingingInfo = false })
-    }
 
     if (showIAmAdminInfo) {
         AdminIAmAdminInfoDialog(onDismiss = { showIAmAdminInfo = false })
@@ -129,18 +124,25 @@ fun AdminSettingsScreen(
     }
 
     if (showSetupDialog) {
-        PeerLinkSetupFlowDialog(
-            initialBotToken = viewModel.botToken,
-            initialGroupChatId = viewModel.peerLinkGroupChatId,
+        CredentialsPopup(
+            initialToken = viewModel.botToken,
+            initialChatId = viewModel.peerLinkGroupChatId.ifEmpty { viewModel.chatId },
             initialPartnerUsername = viewModel.peerLinkPartnerBotUsername,
-            onComplete = { botToken, groupChatId, partnerUsername ->
-                viewModel.botToken = botToken
-                viewModel.updatePeerLinkGroupId(groupChatId)
-                viewModel.updatePeerLinkPartnerUsername(partnerUsername)
+            isPeerLinkEnabled = true,
+            isAdminMode = true,
+            onDismiss = { showSetupDialog = false },
+            onSave = { token, chatId, partner ->
+                viewModel.botToken = token
+                viewModel.chatId = chatId
+                viewModel.updatePeerLinkGroupId(chatId)
+                viewModel.updatePeerLinkPartnerUsername(partner)
                 viewModel.saveCredentials()
                 showSetupDialog = false
-            },
-            onDismiss = { showSetupDialog = false }
+                com.mobile.superiorchat.core.StatusFlow.reportStatus(
+                    com.mobile.superiorchat.core.SyncState.SUCCESS,
+                    "Admin Credentials Saved"
+                )
+            }
         )
     }
 
@@ -357,7 +359,7 @@ fun AdminSettingsScreen(
             }
 
             val isConfigured = viewModel.botToken.isNotEmpty()
-                && viewModel.chatId.isNotEmpty()
+                && (viewModel.peerLinkGroupChatId.isNotEmpty() || viewModel.chatId.isNotEmpty())
                 && viewModel.peerLinkPartnerBotUsername.isNotEmpty()
             SettingsActionRow(
                 title = if (isConfigured) "Edit Manually" else "Add Manually",
@@ -446,29 +448,6 @@ fun AdminSettingsScreen(
                         }
                     } else {
                         viewModel.toggleBackgroundCalls(false)
-                    }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            SettingsSwitchRow(
-                title = "Call Ringing",
-                subtitle = "Play continuous ringtone & show heads-up notification with Accept & Decline",
-                icon = Icons.Filled.RingVolume,
-                iconTint = PrimaryLight,
-                isChecked = viewModel.isCallRingingEnabled,
-                enabled = !isLocked,
-                onCheckedChange = { checked ->
-                    if (checked) {
-                        val hasNotifs = viewModel.permissionStatus.value.hasPostNotifs && NotificationManagerCompat.from(context).areNotificationsEnabled()
-                        if (!hasNotifs) {
-                            showNotificationRequired = true
-                        } else {
-                            viewModel.toggleCallRinging(true)
-                        }
-                    } else {
-                        viewModel.toggleCallRinging(false)
                     }
                 }
             )

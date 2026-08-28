@@ -87,10 +87,12 @@ fun ProfileScreen(
     isScreenSecurityEnabled: Boolean,
     isNewMessageNotificationEnabled: Boolean,
     isAppNotificationsEnabled: Boolean,
+    isCallRingingEnabled: Boolean,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
     onNewMessageNotificationChange: (Boolean) -> Unit,
     onAppNotificationsChange: (Boolean) -> Unit,
+    onCallRingingChange: (Boolean) -> Unit,
     onClearChat: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -241,10 +243,12 @@ fun ProfileScreen(
             isScreenSecurityEnabled = isScreenSecurityEnabled,
             isNewMessageNotificationEnabled = isNewMessageNotificationEnabled,
             isAppNotificationsEnabled = isAppNotificationsEnabled,
+            isCallRingingEnabled = isCallRingingEnabled,
             onAutoDownloadMediaChange = onAutoDownloadMediaChange,
             onScreenSecurityChange = onScreenSecurityChange,
             onNewMessageNotificationChange = onNewMessageNotificationChange,
             onAppNotificationsChange = onAppNotificationsChange,
+            onCallRingingChange = onCallRingingChange,
             onDismiss = { currentOverlay = ProfileOverlay.None },
             onNavigateToAppSettings = onNavigateToSettings
         )

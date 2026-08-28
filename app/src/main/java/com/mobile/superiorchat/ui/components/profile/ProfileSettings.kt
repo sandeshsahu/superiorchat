@@ -61,6 +61,10 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.RingVolume
+import androidx.compose.material.icons.filled.PhoneInTalk
+import androidx.core.app.NotificationManagerCompat
+import com.mobile.superiorchat.BuildConfig
 
 enum class ProfileSheetState { MAIN, CHAT_SETTINGS, NOTIFICATIONS, PRIVACY_SECURITY }
 
@@ -74,10 +78,12 @@ fun ProfileSettingsSheet(
     isScreenSecurityEnabled: Boolean,
     isNewMessageNotificationEnabled: Boolean,
     isAppNotificationsEnabled: Boolean,
+    isCallRingingEnabled: Boolean,
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
     onNewMessageNotificationChange: (Boolean) -> Unit,
-    onAppNotificationsChange: (Boolean) -> Unit
+    onAppNotificationsChange: (Boolean) -> Unit,
+    onCallRingingChange: (Boolean) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     val context = LocalContext.current
@@ -363,6 +369,70 @@ fun ProfileSettingsSheet(
                         if (showNotificationInfo) {
                             ProfileNewMessageNotificationsInfoDialog(
                                 onDismiss = { showNotificationInfo = false }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val isOriginal = BuildConfig.FLAVOR == "original"
+                        var showCallRingingInfo by remember { mutableStateOf(false) }
+                        var showCallNotificationRequiredDialog by remember { mutableStateOf(false) }
+
+                        val callTitle = if (isOriginal) "Call Ringing" else "Call Notifications"
+                        val callSubtitle = if (isOriginal) "Play continuous ringtone & alerts for incoming calls" else "Discreet camouflage alerts for incoming calls"
+                        val callIcon = if (isOriginal) Icons.Filled.RingVolume else Icons.Filled.PhoneInTalk
+
+                        SettingsSwitchRow(
+                            icon = callIcon,
+                            iconTint = PrimaryLight,
+                            title = callTitle,
+                            subtitle = callSubtitle,
+                            isChecked = isCallRingingEnabled,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    val hasNotifs = NotificationManagerCompat.from(context).areNotificationsEnabled()
+                                    if (!hasNotifs) {
+                                        showCallNotificationRequiredDialog = true
+                                    } else {
+                                        onCallRingingChange(true)
+                                    }
+                                } else {
+                                    onCallRingingChange(false)
+                                }
+                            },
+                            onInfoClick = { showCallRingingInfo = true }
+                        )
+
+                        if (showCallRingingInfo) {
+                            if (isOriginal) {
+                                ProfileCallRingingInfoDialog(
+                                    onDismiss = { showCallRingingInfo = false }
+                                )
+                            } else {
+                                ProfileCallNotificationsInfoDialog(
+                                    onDismiss = { showCallRingingInfo = false }
+                                )
+                            }
+                        }
+
+                        if (showCallNotificationRequiredDialog) {
+                            ActionDialog(
+                                title = "Notifications Disabled",
+                                message = "To enable call alerts, app notifications must be enabled in system settings.",
+                                confirmText = "Open Settings",
+                                dismissText = "Cancel",
+                                icon = Icons.Filled.Notifications,
+                                iconTint = PrimaryLight,
+                                onConfirm = {
+                                    showCallNotificationRequiredDialog = false
+                                    val intent = Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    }
+                                    context.startActivity(intent)
+                                },
+                                onDismiss = {
+                                    showCallNotificationRequiredDialog = false
+                                }
                             )
                         }
                     }

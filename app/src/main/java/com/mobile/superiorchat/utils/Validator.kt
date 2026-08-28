@@ -8,7 +8,8 @@ object Validator {
     private val CHAT_ID_REGEX = Regex("^-?\\d{7,15}\$")
     private val GROUP_CHAT_ID_REGEX = Regex("^-(?:100\\d{9,13}|\\d{6,12})\$")
     private val WEBRTC_URL_REGEX = Regex("^https?://([a-zA-Z0-9.-]+)(:\\d+)?/?\$")
-    private val PARTNER_BOT_USERNAME_REGEX = Regex("^@[a-zA-Z0-9_]{3,32}\$")
+    private val PARTNER_USERNAME_REGEX = Regex("^@[a-zA-Z0-9_]{3,32}\$")
+    private val ADMIN_PARTNER_BOT_USERNAME_REGEX = Regex("""^@[a-zA-Z0-9_]{1,29}(?i:bot)$""")
 
     sealed class ValidationResult<out T> {
         data class Success<T>(val data: T) : ValidationResult<T>()
@@ -32,13 +33,18 @@ object Validator {
         return WEBRTC_URL_REGEX.matches(url.trim())
     }
 
-    fun isValidPartnerBotUsername(username: String): Boolean {
+    fun isValidPartnerBotUsername(username: String, isAdminMode: Boolean = false): Boolean {
         if (username.isBlank()) return true
-        return PARTNER_BOT_USERNAME_REGEX.matches(username.trim())
+        return if (isAdminMode) {
+            ADMIN_PARTNER_BOT_USERNAME_REGEX.matches(username.trim())
+        } else {
+            PARTNER_USERNAME_REGEX.matches(username.trim())
+        }
     }
 
     /**
-     * Verifies the bot token live with Telegram API.
+     * Live validator for Telegram Bot Token.
+     * Hits Telegram getMe endpoint asynchronously to verify token validity and retrieve bot info.
      */
     suspend fun verifyBotToken(token: String): ValidationResult<User> {
         val trimmed = token.trim()
@@ -124,13 +130,15 @@ object Validator {
     }
 
     /**
-     * Verifies partner bot username.
+     * Validator for Partner Bot Username.
+     * Ensures username starts with @, matches Telegram username regex, and is not the bot's own username.
      */
     fun verifyPartnerUsername(
         partnerUsername: String,
         botUser: User,
         isPeerLinkEnabled: Boolean,
-        isGroup: Boolean
+        isGroup: Boolean,
+        isAdminMode: Boolean = false
     ): ValidationResult<Unit> {
         // If not PeerLink or not a group chat, partner username is optional / not applicable
         if (!isPeerLinkEnabled || !isGroup) {
@@ -139,12 +147,19 @@ object Validator {
 
         val trimmed = partnerUsername.trim()
         if (trimmed.isBlank()) {
+            if (isAdminMode) {
+                return ValidationResult.Error("Partner Bot Username is required in Admin mode.")
+            }
             // Empty partner username is valid (open group mode)
             return ValidationResult.Success(Unit)
         }
 
-        if (!isValidPartnerBotUsername(trimmed)) {
-            return ValidationResult.Error("Must start with @ (e.g. @partner_bot) and be between 4 and 32 characters.")
+        if (!isValidPartnerBotUsername(trimmed, isAdminMode)) {
+            return if (isAdminMode) {
+                ValidationResult.Error("Must start with @ and end with 'bot' or '_bot' (e.g. @partner_bot).")
+            } else {
+                ValidationResult.Error("Must start with @ (e.g. @bot_username) and be between 4 and 32 characters.")
+            }
         }
 
         val myBotUsername = botUser.username

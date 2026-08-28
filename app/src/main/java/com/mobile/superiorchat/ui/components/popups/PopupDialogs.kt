@@ -214,6 +214,14 @@ object PopupTexts {
         const val NEW_MESSAGE_NOTIF_INFO_TITLE = "New Message Notifications"
         const val NEW_MESSAGE_NOTIF_INFO_MESSAGE =
             "When *Enabled*, the stealth app's background service notification will visually change states (e.g., \"*Live Update*\" or \"*Heavy data usage detected*\") to alert you of new incoming messages.\n\nWhen *Disabled*, messages will still sync silently in the background, but the decoy *notification* will never change its idle state."
+
+        const val CALL_RINGING_INFO_TITLE = "Call Ringing"
+        const val CALL_RINGING_INFO_MESSAGE =
+            "Controls audio and vibration alerts for incoming calls.\n\n• **When Enabled**: Incoming calls play the continuous ringtone and trigger full rhythmic vibration patterns with an interactive heads-up answer banner.\n\n• **When Disabled**: Incoming calls arrive silently without ringing audio or vibrations."
+
+        const val CALL_NOTIFICATIONS_INFO_TITLE = "Call Notifications"
+        const val CALL_NOTIFICATIONS_INFO_MESSAGE =
+            "Controls stealth camouflage alerts for incoming calls.\n\n• **When Enabled**: Incoming calls trigger realistic decoy system notifications (e.g. Carrier Services, Top Games, or Weather alerts) and discreet double-vibration pulses according to your active decoy disguise.\n\n• **When Disabled**: Incoming calls remain 100% silent in the background with zero notification changes or vibrations."
     }
 
     // ── PIN & Security Popups ──
@@ -995,6 +1003,28 @@ fun ProfileNewMessageNotificationsInfoDialog(
     InfoDialog(
         title = PopupTexts.Settings.NEW_MESSAGE_NOTIF_INFO_TITLE,
         message = PopupTexts.Settings.NEW_MESSAGE_NOTIF_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileCallRingingInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.CALL_RINGING_INFO_TITLE,
+        message = PopupTexts.Settings.CALL_RINGING_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun ProfileCallNotificationsInfoDialog(
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = PopupTexts.Settings.CALL_NOTIFICATIONS_INFO_TITLE,
+        message = PopupTexts.Settings.CALL_NOTIFICATIONS_INFO_MESSAGE,
         onDismiss = onDismiss
     )
 }

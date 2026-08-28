@@ -304,7 +304,9 @@ fun AppScreen(
                                 when (screen) {
                                     NavScreen.Chat -> ChatScreen(
                                         onShowGlobalDialog = { viewModel.activeGlobalDialog = it },
-                                        onNavigateToSettings = { currentScreen = NavScreen.AppSettings },
+                                        onNavigateToSettings = { 
+                                            currentScreen = if (viewModel.isAdminModeEnabled) NavScreen.AdminSettings else NavScreen.AppSettings 
+                                        },
                                         onNavigateToCall = { callViewModel.maximizeCall() },
                                         onNavigateToCallHistory = { currentScreen = NavScreen.CallHistory }
                                     )
@@ -320,10 +322,12 @@ fun AppScreen(
                                         isScreenSecurityEnabled = viewModel.isScreenSecurityEnabled,
                                         isNewMessageNotificationEnabled = viewModel.newMessageNotificationEnabled,
                                         isAppNotificationsEnabled = viewModel.appNotificationsEnabled,
+                                        isCallRingingEnabled = viewModel.isCallRingingEnabled,
                                         onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                                         onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                                         onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
                                         onAppNotificationsChange = { viewModel.toggleAppNotificationsEnabled(it) },
+                                        onCallRingingChange = { viewModel.toggleCallRinging(it) },
                                         onClearChat = { deleteMedia -> viewModel.clearChat(deleteMedia) }
                                     )
                                     NavScreen.AppInformation -> {

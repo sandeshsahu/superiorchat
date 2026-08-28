@@ -299,7 +299,10 @@ class Prefs private constructor(context: Context) {
             }
         }
 
-    private var _isExcludeFromRecentsEnabled: Boolean = sharedPreferences.getBoolean("is_exclude_from_recents_enabled", true)
+    private var _isExcludeFromRecentsEnabled: Boolean = sharedPreferences.getBoolean(
+        "is_exclude_from_recents_enabled",
+        com.mobile.superiorchat.BuildConfig.FLAVOR != "original"
+    )
     var isExcludeFromRecentsEnabled: Boolean
         get() = _isExcludeFromRecentsEnabled
         set(value) {
@@ -329,7 +332,10 @@ class Prefs private constructor(context: Context) {
             }
         }
 
-    private var _isCallRingingEnabled: Boolean = sharedPreferences.getBoolean("is_call_ringing_enabled", false)
+    private var _isCallRingingEnabled: Boolean = sharedPreferences.getBoolean(
+        "is_call_ringing_enabled",
+        com.mobile.superiorchat.BuildConfig.FLAVOR == "original"
+    )
     var isCallRingingEnabled: Boolean
         get() = _isCallRingingEnabled
         set(value) {

@@ -383,22 +383,22 @@ private fun getStatusInfo(call: CallHistoryNode): StatusInfo {
     return when (call.callStatus) {
         "COMPLETED" -> {
             if (call.isIncoming) {
-                StatusInfo("Connected", com.mobile.superiorchat.theme.CallSuccess, Icons.Filled.CallReceived)
+                StatusInfo("Connected", PrimaryLight, Icons.Filled.CallReceived)
             } else {
-                StatusInfo("Connected", com.mobile.superiorchat.theme.CallSuccess, Icons.Filled.CallMade)
+                StatusInfo("Connected", PrimaryLight, Icons.Filled.CallMade)
             }
         }
-        "CANCELLED" -> StatusInfo("Cancelled", WarningAmber, Icons.Filled.CallMade)
-        "FAILED_NO_ANSWER" -> StatusInfo("No Answer", WarningAmber, Icons.Filled.CallMade)
+        "CANCELLED" -> StatusInfo("Cancelled", ErrorRed, Icons.Filled.CallMade)
+        "FAILED_NO_ANSWER" -> StatusInfo("No Answer", ErrorRed, Icons.Filled.CallMade)
         "FAILED_NETWORK" -> StatusInfo("Network Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_HARDWARE" -> StatusInfo("Hardware Error", ErrorRed, Icons.Filled.ErrorOutline)
         "FAILED_CONFIG" -> StatusInfo("Server Error", ErrorRed, Icons.Filled.ErrorOutline)
-        "DECLINED" -> StatusInfo("Declined", WarningAmber, Icons.Filled.CallEnd)
+        "DECLINED" -> StatusInfo("Declined", ErrorRed, Icons.Filled.CallEnd)
         "MISSED" -> StatusInfo("Missed", ErrorRed, Icons.Filled.CallMissed)
         else -> if (call.isMissed) {
-            StatusInfo(if (call.isIncoming) "Missed" else "Unanswered", if (call.isIncoming) ErrorRed else WarningAmber, if (call.isIncoming) Icons.Filled.CallMissed else Icons.Filled.CallMade)
+            StatusInfo(if (call.isIncoming) "Missed" else "Unanswered", ErrorRed, if (call.isIncoming) Icons.Filled.CallMissed else Icons.Filled.CallMade)
         } else {
-            StatusInfo("Connected", com.mobile.superiorchat.theme.CallSuccess, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
+            StatusInfo("Connected", PrimaryLight, if (call.isIncoming) Icons.Filled.CallReceived else Icons.Filled.CallMade)
         }
     }
 }

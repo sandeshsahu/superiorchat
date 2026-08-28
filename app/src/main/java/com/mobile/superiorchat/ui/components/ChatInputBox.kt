@@ -251,10 +251,11 @@ fun ChatInputBox(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
+                    val isAdminMode = com.mobile.superiorchat.core.AppGraph.prefs.isAdminModeEnabled
                     Text(
                         text = when {
-                            isCredentialsEmpty -> "Credentials empty - Check Settings"
-                            isBotTokenInvalid -> "Invalid Bot Token - Check Settings"
+                            isCredentialsEmpty -> if (isAdminMode) "Credentials empty - Check Admin Settings" else "Credentials empty - Check Settings"
+                            isBotTokenInvalid -> if (isAdminMode) "Invalid Bot Token - Check Admin Settings" else "Invalid Bot Token - Check Settings"
                             else -> "Connection lost. Tap to retry"
                         },
                         color = ErrorRed,

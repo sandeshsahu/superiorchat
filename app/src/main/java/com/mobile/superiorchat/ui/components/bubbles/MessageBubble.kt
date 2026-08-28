@@ -434,7 +434,7 @@ fun MessageBubble(
         when {
             titleText.contains("Ended", ignoreCase = true) || titleText.contains("Completed", ignoreCase = true) -> {
                 icon = if (message.isFromMe) Icons.Filled.CallMade else Icons.Filled.CallReceived
-                iconTint = com.mobile.superiorchat.theme.CallSuccess
+                iconTint = PrimaryLight
             }
             titleText.contains("Missed", ignoreCase = true) -> {
                 icon = Icons.Filled.CallMissed
@@ -442,13 +442,13 @@ fun MessageBubble(
             }
             titleText.contains("Declined", ignoreCase = true) -> {
                 icon = Icons.Filled.CallEnd
-                iconTint = com.mobile.superiorchat.theme.WarningAmber
+                iconTint = com.mobile.superiorchat.theme.ErrorRed
             }
             titleText.contains("Cancelled", ignoreCase = true) || 
             titleText.contains("Unanswered", ignoreCase = true) || 
             titleText.contains("No Answer", ignoreCase = true) -> {
                 icon = Icons.Filled.CallMade
-                iconTint = com.mobile.superiorchat.theme.WarningAmber
+                iconTint = com.mobile.superiorchat.theme.ErrorRed
             }
             titleText.contains("Error", ignoreCase = true) || 
             titleText.contains("Failed", ignoreCase = true) -> {
