@@ -62,6 +62,9 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    val myBotId: String
+        get() = if (_botToken.contains(":")) _botToken.substringBefore(":") else ""
+
     private var _webrtcBaseUrl: String = sharedPreferences.getString(
         "webrtc_base_url", 
         null

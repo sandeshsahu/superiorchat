@@ -118,8 +118,10 @@ fun ChatScreen(
     val messageLimit by viewModel.messageLimit.collectAsState()
     val isLoadingInitial by viewModel.isLoadingInitial.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
+    val selfProfile by viewModel.selfProfile.collectAsState()
     val userProfiles by viewModel.userProfiles.collectAsState()
     val selectedProfile by viewModel.selectedProfile.collectAsState()
+    val partnerSenderId = remember(messages) { messages.firstOrNull { !it.isFromMe }?.senderId }
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
@@ -507,10 +509,18 @@ fun ChatScreen(
                             } else null
 
                             val senderProfile = userProfiles[msg.senderId] ?: userProfiles[msg.conversationId] ?: userProfile
+                            val partnerProfile = if (msg.isFromMe) {
+                                if (!partnerSenderId.isNullOrBlank()) {
+                                    userProfiles[partnerSenderId]
+                                } else {
+                                    userProfiles[com.mobile.superiorchat.core.AppGraph.prefs.activeChatId] ?: userProfile
+                                }
+                            } else senderProfile
 
                             MessageBubble(
                                 message = msg,
-                                userProfile = senderProfile,
+                                userProfile = partnerProfile,
+                                selfProfile = selfProfile,
                                 viewModel = viewModel,
                                 isSelectionMode = isInSelectionMode,
                                 isSelected = selectedMessageIds.contains(msg.messageId),

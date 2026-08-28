@@ -142,11 +142,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
      * If the message already has this emoji, it will be removed (toggle off).
      * Optimistically updates the local DB; rolls back silently on API failure.
      */
-    fun sendReaction(message: MessageNode, emoji: String) {
-        val now = System.currentTimeMillis()
-        if (now - lastReactionTime < 400) return // Debounce rapid accidental double-taps on the badge
-        lastReactionTime = now
+    private val pendingReactionBatch = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private val confirmedReactions = java.util.concurrent.ConcurrentHashMap<Long, String>()
+    private var reactionBatchDebounceJob: kotlinx.coroutines.Job? = null
 
+    private suspend fun rollbackLocalReaction(messageId: Long, rollbackEmoji: String) {
+        val currentMsg = repository.getMessageById(messageId) ?: return
+        val parsed = com.mobile.superiorchat.data.entity.ReactionData.parse(currentMsg.reactions)
+        val restoredMe = if (rollbackEmoji.isNotBlank()) listOf(rollbackEmoji) else emptyList()
+        val updated = parsed.copy(me = restoredMe)
+        repository.updateMessageReactions(messageId, com.mobile.superiorchat.data.entity.ReactionData.toJson(updated))
+    }
+
+    fun sendReaction(message: MessageNode, emoji: String) {
         val token = prefs.botToken
         val chatId = prefs.activeChatId
         if (token.isBlank() || chatId.isBlank()) return
@@ -167,8 +175,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         
         val newData = currentData.copy(me = myReactions)
         val newJson = com.mobile.superiorchat.data.entity.ReactionData.toJson(newData)
+        val targetEmoji = myReactions.lastOrNull() ?: ""
 
-        // Optimistic local update
+        // 1. Instant local Room DB update (0ms lag, fluid UI)
         viewModelScope.launch(Dispatchers.IO) {
             if (!isToggleOff) {
                 repository.recordEmojiUsage(emoji)
@@ -176,15 +185,69 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 updateSortedEmojis(usages)
             }
             repository.updateMessageReactions(message.messageId, newJson)
-            if (NetState.isOnline.value) {
-                // Send only the last/most recent emoji to the API
-                val apiEmoji = myReactions.lastOrNull() ?: ""
-                val success = TelegramApi.setMessageReaction(token, chatId, message.messageId, apiEmoji)
-                if (!success) {
-                    // Telegram has strict rate limits for reactions (429 Too Many Requests).
-                    // We DO NOT roll back the local database anymore to keep the UI feeling fluid.
-                    // The Android app stays fast, even if Telegram drops a rapid-fire reaction.
+        }
+
+        // 2. Buffer into shared batch and debounce across all reacted messages
+        pendingReactionBatch[message.messageId] = targetEmoji
+        reactionBatchDebounceJob?.cancel()
+        reactionBatchDebounceJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(5000L) // 5-second debounce buffer across all reacted messages
+
+            if (pendingReactionBatch.isEmpty()) return@launch
+
+            // Snapshot and clear pending batch atomically
+            val batchSnapshot = java.util.HashMap(pendingReactionBatch)
+            pendingReactionBatch.clear()
+
+            // Filter out redundant items matching current confirmed state
+            val activeUpdates = batchSnapshot.filter { (msgId, target) ->
+                target != (confirmedReactions[msgId] ?: "")
+            }
+            if (activeUpdates.isEmpty()) return@launch
+
+            if (!com.mobile.superiorchat.core.NetState.isOnline.value) {
+                // If offline when timer expires, roll back all optimistic reactions in batch
+                activeUpdates.forEach { (msgId, _) ->
+                    val lastConfirmed = confirmedReactions[msgId] ?: ""
+                    rollbackLocalReaction(msgId, lastConfirmed)
                 }
+                return@launch
+            }
+
+            val isGroupPeerLink = prefs.isPeerLinkEnabled && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)
+
+            if (isGroupPeerLink) {
+                // Step 1: Send one consolidated [SYS-REACTIONS] batch signal to group
+                val signalPayload = activeUpdates.entries.joinToString(";") { (msgId, target) ->
+                    val emojiStr = if (target.isBlank()) "CLEAR" else target
+                    "$msgId=$emojiStr"
+                }
+                val signalText = "[SYS-REACTIONS: $signalPayload]"
+                val signalSuccess = TelegramApi.sendMessage(token, chatId, signalText) != null
+
+                if (!signalSuccess) {
+                    // Signal transmission failed -> roll back all items in batch
+                    activeUpdates.forEach { (msgId, _) ->
+                        val lastConfirmed = confirmedReactions[msgId] ?: ""
+                        rollbackLocalReaction(msgId, lastConfirmed)
+                    }
+                    return@launch
+                }
+
+                // Step 2: 2s Stagger before official Telegram reaction API calls
+                delay(2000L)
+            }
+
+            // Step 3: Sequential Telegram setMessageReaction with safe 300ms throttling
+            activeUpdates.forEach { (msgId, target) ->
+                val lastConfirmed = confirmedReactions[msgId] ?: ""
+                val tgSuccess = TelegramApi.setMessageReaction(token, chatId, msgId, target)
+                if (tgSuccess) {
+                    confirmedReactions[msgId] = target
+                } else {
+                    rollbackLocalReaction(msgId, lastConfirmed)
+                }
+                delay(300L) // Anti-flood delay to prevent 429 Too Many Requests
             }
         }
     }
@@ -407,6 +470,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _userProfile = MutableStateFlow<com.mobile.superiorchat.data.entity.UserProfile?>(null)
     val userProfile: StateFlow<com.mobile.superiorchat.data.entity.UserProfile?> = _userProfile.asStateFlow()
 
+    private val _selfProfile = MutableStateFlow<com.mobile.superiorchat.data.entity.UserProfile?>(null)
+    val selfProfile: StateFlow<com.mobile.superiorchat.data.entity.UserProfile?> = _selfProfile.asStateFlow()
+
     private val _userProfiles = MutableStateFlow<Map<String, com.mobile.superiorchat.data.entity.UserProfile>>(emptyMap())
     val userProfiles: StateFlow<Map<String, com.mobile.superiorchat.data.entity.UserProfile>> = _userProfiles.asStateFlow()
 
@@ -471,6 +537,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             // One-time startup sync scan for interrupted/queued messages globally
             launch {
                 MediaSync.resumeInterruptedTransfers(getApplication(), repository)
+                MediaSync.syncSelfProfile(getApplication(), prefs.botToken)
             }
 
             launch {
@@ -482,6 +549,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             launch {
                 repository.getProfile(chatId).collectLatest { profile ->
                     _userProfile.value = profile
+                }
+            }
+
+            launch {
+                repository.getSelfProfile().collectLatest { profile ->
+                    _selfProfile.value = profile
                 }
             }
             

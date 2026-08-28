@@ -509,16 +509,71 @@ object MediaSync {
         syncSenderProfile(context, token, chatId)
     }
 
+    suspend fun syncSelfProfile(context: Context, token: String) {
+        if (token.isBlank()) return
+        val myBotId = com.mobile.superiorchat.core.AppGraph.prefs.myBotId
+        if (myBotId.isBlank()) return
+        try {
+            val repository = com.mobile.superiorchat.core.AppGraph.appRepository
+            val existingProfile = repository.getSelfProfileSync()
+            
+            // 1. Fetch getMe for display name and username
+            val meResp = TelegramApi.getMe(token)
+            val me = meResp?.result
+            val name = me?.first_name?.ifEmpty { "Me" } ?: existingProfile?.title ?: "Me"
+            val username = me?.username ?: existingProfile?.username ?: ""
+
+            // 2. Fetch User Profile Photos for the bot
+            var avatarPath = existingProfile?.profilePhotoPath ?: ""
+            var avatarUniqueId = existingProfile?.photoUniqueId ?: ""
+            val photosResp = TelegramApi.getUserProfilePhotos(token, myBotId)
+            val photos = photosResp?.result?.photos
+            if (!photos.isNullOrEmpty() && photos.first().isNotEmpty()) {
+                val largest = photos.first().maxByOrNull { it.width * it.height }
+                if (largest != null && (largest.fileUniqueId != existingProfile?.photoUniqueId || !java.io.File(avatarPath).exists())) {
+                    val fileInfo = TelegramApi.getFile(token, largest.fileId)
+                    val filePath = fileInfo?.result?.file_path
+                    if (filePath != null) {
+                        val downloadUrl = TelegramApi.getFileDownloadUrl(token, filePath)
+                        val cacheDir = java.io.File(context.filesDir, "profiles")
+                        if (!cacheDir.exists()) cacheDir.mkdirs()
+                        val destFile = java.io.File(cacheDir, "profile_${myBotId}_${largest.fileUniqueId}.jpg")
+                        val success = TelegramApi.downloadFileToLocal(downloadUrl, destFile)
+                        if (success) {
+                            avatarPath = destFile.absolutePath
+                            avatarUniqueId = largest.fileUniqueId
+                        }
+                    }
+                }
+            }
+
+            val selfProfile = com.mobile.superiorchat.data.entity.UserProfile(
+                chatId = myBotId,
+                title = name,
+                username = username,
+                type = "bot",
+                profilePhotoPath = avatarPath,
+                photoUniqueId = avatarUniqueId,
+                isBot = true
+            )
+            repository.insertProfile(selfProfile)
+            AppLog.log(LogCategory.SYSTEM, "Synced self bot profile for myBotId=$myBotId (photo=$avatarPath)")
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "Failed to sync self bot profile: ${e.message}", LogLevel.ERROR)
+        }
+    }
+
     suspend fun syncSenderProfile(
         context: Context,
         token: String,
         senderId: String,
         fallbackName: String? = null,
-        fallbackUsername: String? = null
+        fallbackUsername: String? = null,
+        silent: Boolean = false
     ) {
         if (senderId.isBlank() || token.isBlank()) return
         try {
-            StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Checking profile details...")
+            if (!silent) StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Checking profile details...")
             val chatResponse = TelegramApi.getChat(token, senderId)
             val chat = chatResponse?.result
 
@@ -584,7 +639,7 @@ object MediaSync {
 
             if (photoUniqueId.isNotEmpty() && photoUniqueId != existingProfile?.photoUniqueId) {
                 if (bigFileId != null) {
-                    StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Updating profile picture...")
+                    if (!silent) StatusFlow.reportStatus(SyncState.SYNCING_PROFILE, "Updating profile picture...")
                     val fileResponse = TelegramApi.getFile(token, bigFileId)
                     val filePath = fileResponse?.result?.file_path
                     if (filePath != null) {
@@ -641,23 +696,25 @@ object MediaSync {
                 )
             }
 
-            val isUnchanged = existingProfile != null &&
-                    title == existingProfile.title &&
-                    username == existingProfile.username &&
-                    photoUniqueId == existingProfile.photoUniqueId &&
-                    bio == existingProfile.bio &&
-                    inviteLink == existingProfile.inviteLink &&
-                    hasProtectedContent == existingProfile.hasProtectedContent &&
-                    isForum == existingProfile.isForum
-            if (isUnchanged) {
-                StatusFlow.reportStatus(SyncState.SUCCESS, "No changes")
-            } else {
-                StatusFlow.reportStatus(SyncState.SUCCESS, "Profile updated!")
+            if (!silent) {
+                val isUnchanged = existingProfile != null &&
+                        title == existingProfile.title &&
+                        username == existingProfile.username &&
+                        photoUniqueId == existingProfile.photoUniqueId &&
+                        bio == existingProfile.bio &&
+                        inviteLink == existingProfile.inviteLink &&
+                        hasProtectedContent == existingProfile.hasProtectedContent &&
+                        isForum == existingProfile.isForum
+                if (isUnchanged) {
+                    StatusFlow.reportStatus(SyncState.SUCCESS, "No changes")
+                } else {
+                    StatusFlow.reportStatus(SyncState.SUCCESS, "Profile updated!")
+                }
             }
 
         } catch (e: Exception) {
             AppLog.log(LogCategory.SYSTEM, "Failed to sync sender profile for $senderId: ${e.message}")
-            StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
+            if (!silent) StatusFlow.reportStatus(SyncState.ERROR, "Failed to sync profile")
         }
     }
 }

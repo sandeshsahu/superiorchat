@@ -231,6 +231,8 @@ object Validator {
         object None : SystemSignal()
         data class DeleteMessages(val messageIds: List<Long>) : SystemSignal()
         object CallDeclined : SystemSignal()
+        data class ReactionUpdate(val messageId: Long, val emoji: String, val isClear: Boolean) : SystemSignal()
+        data class BatchReactionUpdate(val updates: Map<Long, String>) : SystemSignal()
         data class Unknown(val rawSignal: String) : SystemSignal()
     }
 
@@ -243,7 +245,7 @@ object Validator {
         val trimmed = rawText.trim()
 
         // Case-insensitive regex: matches [SYS-MSG-DELETE:101], [sys_msg_delete: 101, 102], sys-msg-delete:101, etc.
-        val deleteRegex = Regex("""(?:\[)?(?:SYS[-_]MSG[-_]DELETE)[:\s]+([0-9,\s]+)(?:\])?""", RegexOption.IGNORE_CASE)
+        val deleteRegex = Regex("""(?:\[)?(?:SYS[-_]MSG[-_]DELETE)\s*:\s*([0-9,\s]+)(?:\])?""", RegexOption.IGNORE_CASE)
         val deleteMatch = deleteRegex.find(trimmed)
         if (deleteMatch != null) {
             val ids = deleteMatch.groupValues[1].split(",").mapNotNull { it.trim().toLongOrNull() }.take(100)
@@ -254,6 +256,49 @@ object Validator {
         val declineRegex = Regex("""(?:\[)?(?:SYS[-_]CALL[-_]DECLINED)(?:\])?""", RegexOption.IGNORE_CASE)
         if (declineRegex.containsMatchIn(trimmed)) {
             return SystemSignal.CallDeclined
+        }
+
+        // Batch reaction regex: matches [SYS-REACTIONS: 101=❤️;102=🔥;103=CLEAR] or [SYS-REACTIONS: 101:❤️, 102:🔥]
+        val batchReactionRegex = Regex("""(?:\[)?(?:SYS[-_]REACTIONS)\s*:\s*([^\]]+?)(?:\]|$)""", RegexOption.IGNORE_CASE)
+        val batchMatch = batchReactionRegex.find(trimmed)
+        if (batchMatch != null) {
+            val payload = batchMatch.groupValues[1].trim()
+            val updates = mutableMapOf<Long, String>()
+            val entries = payload.split(Regex("""[;,]"""))
+            for (entry in entries) {
+                val pair = entry.trim().split(Regex("""[:=]"""), limit = 2)
+                if (pair.size == 2) {
+                    val id = pair[0].trim().toLongOrNull()
+                    val rawEmoji = pair[1].trim()
+                    if (id != null && rawEmoji.isNotBlank()) {
+                        val isClear = rawEmoji.equals("CLEAR", ignoreCase = true) ||
+                                      rawEmoji.equals("NONE", ignoreCase = true) ||
+                                      rawEmoji.equals("NULL", ignoreCase = true)
+                        updates[id] = if (isClear) "" else rawEmoji
+                    }
+                }
+            }
+            if (updates.isNotEmpty()) {
+                return SystemSignal.BatchReactionUpdate(updates)
+            }
+        }
+
+        // Single reaction regex: matches [SYS-REACTION: 1042, ❤️], [sys_reaction: 1042, CLEAR], SYS-REACTION:1042,👍
+        val reactionRegex = Regex("""(?:\[)?(?:SYS[-_]REACTION)\s*:\s*(\d+)\s*[,=]?\s*(\S+?)(?:\]|$)""", RegexOption.IGNORE_CASE)
+        val reactionMatch = reactionRegex.find(trimmed)
+        if (reactionMatch != null) {
+            val msgId = reactionMatch.groupValues[1].toLongOrNull()
+            val emojiOrAction = reactionMatch.groupValues[2].trim()
+            if (msgId != null && emojiOrAction.isNotBlank()) {
+                val isClear = emojiOrAction.equals("CLEAR", ignoreCase = true) || 
+                              emojiOrAction.equals("NONE", ignoreCase = true) ||
+                              emojiOrAction.equals("NULL", ignoreCase = true)
+                return SystemSignal.ReactionUpdate(
+                    messageId = msgId,
+                    emoji = if (isClear) "" else emojiOrAction,
+                    isClear = isClear
+                )
+            }
         }
 
         // Catch-all for any other system signal prefix (case-insensitive)

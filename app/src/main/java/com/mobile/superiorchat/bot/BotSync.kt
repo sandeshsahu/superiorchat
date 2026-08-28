@@ -222,7 +222,7 @@ class BotSync(private val context: Context) {
 
     private suspend fun handleUpdate(update: Update) {
         val token = prefs.botToken
-        val myBotId = if (token.contains(":")) token.substringBefore(":") else ""
+        val myBotId = prefs.myBotId
 
         // Drop any reflected messages or edits sent by our own bot in group chats to prevent self-duplication
         if (myBotId.isNotEmpty()) {
@@ -331,19 +331,31 @@ class BotSync(private val context: Context) {
 
         if (update.message_reaction != null) {
             val reactionUpdate = update.message_reaction
-            val isPeer = reactionUpdate.user?.id == reactionUpdate.chat.id
+            val myBotId = prefs.myBotId
+            val reactorId = reactionUpdate.user?.id?.toString()
+            val isMe = myBotId.isNotBlank() && reactorId == myBotId
             val emojis = reactionUpdate.new_reaction.mapNotNull { it.emoji }
 
             val existingMsg = repository.getMessageById(reactionUpdate.message_id)
             val currentData = com.mobile.superiorchat.data.entity.ReactionData.parse(existingMsg?.reactions)
-            val newData = if (isPeer) {
-                currentData.copy(peer = emojis)
-            } else {
+            val newData = if (isMe) {
                 currentData.copy(me = emojis)
+            } else {
+                currentData.copy(peer = emojis, peerSenderId = reactorId ?: currentData.peerSenderId)
             }
             val newJson = com.mobile.superiorchat.data.entity.ReactionData.toJson(newData)
             repository.updateMessageReactions(reactionUpdate.message_id, newJson)
             AppLog.log(LogCategory.BOT_ACTIVITY, "Reaction updated on msg ${reactionUpdate.message_id}: $newJson")
+
+            // Sync profile for reactor if peer and not self (silent background sync if not cached)
+            if (!isMe && reactorId != null) {
+                coroutineScope.launch(Dispatchers.IO) {
+                    val cached = repository.getProfileSync(reactorId)
+                    if (cached == null || cached.profilePhotoPath.isBlank() || !java.io.File(cached.profilePhotoPath).exists()) {
+                        MediaSync.syncSenderProfile(context, token, reactorId, reactionUpdate.user?.first_name, reactionUpdate.user?.username, silent = true)
+                    }
+                }
+            }
             return
         }
 
@@ -423,6 +435,59 @@ class BotSync(private val context: Context) {
                         }
                         if (com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE) {
                             com.mobile.superiorchat.core.call.CallManager.markFailed(com.mobile.superiorchat.core.call.CallError.DECLINED)
+                        }
+                        // Clean up the transient signal message from Telegram (receiver scrubs it)
+                        if (token.isNotBlank()) {
+                            TelegramApi.deleteMessage(token, chatId, message.message_id)
+                        }
+                    }
+                }
+                is com.mobile.superiorchat.utils.Validator.SystemSignal.BatchReactionUpdate -> {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received authorized PeerLink batch reaction signal: ${systemSignal.updates.size} updates")
+                    coroutineScope.launch(Dispatchers.IO) {
+                        val senderId = message.from?.id?.toString()
+                        systemSignal.updates.forEach { (msgId, emoji) ->
+                            val existingMsg = repository.getMessageById(msgId)
+                            if (existingMsg != null) {
+                                val currentData = com.mobile.superiorchat.data.entity.ReactionData.parse(existingMsg.reactions)
+                                val newPeer = if (emoji.isBlank()) emptyList() else listOf(emoji)
+                                val newData = currentData.copy(peer = newPeer, peerSenderId = senderId ?: currentData.peerSenderId)
+                                val newJson = com.mobile.superiorchat.data.entity.ReactionData.toJson(newData)
+                                repository.updateMessageReactions(msgId, newJson)
+                            }
+                        }
+                        // Sync profile for reaction sender once for the batch (silent background sync if not cached)
+                        if (senderId != null) {
+                            val cached = repository.getProfileSync(senderId)
+                            if (cached == null || cached.profilePhotoPath.isBlank() || !java.io.File(cached.profilePhotoPath).exists()) {
+                                MediaSync.syncSenderProfile(context, token, senderId, message.from?.first_name, message.from?.username, silent = true)
+                            }
+                        }
+                        // Clean up the transient signal message from Telegram (receiver scrubs it)
+                        if (token.isNotBlank()) {
+                            TelegramApi.deleteMessage(token, chatId, message.message_id)
+                        }
+                    }
+                }
+                is com.mobile.superiorchat.utils.Validator.SystemSignal.ReactionUpdate -> {
+                    AppLog.log(LogCategory.BOT_ACTIVITY, "Received authorized PeerLink reaction signal on msg ${systemSignal.messageId}: emoji='${systemSignal.emoji}', isClear=${systemSignal.isClear}")
+                    coroutineScope.launch(Dispatchers.IO) {
+                        val existingMsg = repository.getMessageById(systemSignal.messageId)
+                        val senderId = message.from?.id?.toString()
+                        if (existingMsg != null) {
+                            val currentData = com.mobile.superiorchat.data.entity.ReactionData.parse(existingMsg.reactions)
+                            val newPeer = if (systemSignal.isClear) emptyList() else listOf(systemSignal.emoji)
+                            val newData = currentData.copy(peer = newPeer, peerSenderId = senderId ?: currentData.peerSenderId)
+                            val newJson = com.mobile.superiorchat.data.entity.ReactionData.toJson(newData)
+                            repository.updateMessageReactions(systemSignal.messageId, newJson)
+                            AppLog.log(LogCategory.BOT_ACTIVITY, "Updated reactions on msg ${systemSignal.messageId}: $newJson")
+                        }
+                        // Sync profile for reaction sender (silent background sync if not cached)
+                        if (senderId != null) {
+                            val cached = repository.getProfileSync(senderId)
+                            if (cached == null || cached.profilePhotoPath.isBlank() || !java.io.File(cached.profilePhotoPath).exists()) {
+                                MediaSync.syncSenderProfile(context, token, senderId, message.from?.first_name, message.from?.username, silent = true)
+                            }
                         }
                         // Clean up the transient signal message from Telegram (receiver scrubs it)
                         if (token.isNotBlank()) {
@@ -712,7 +777,7 @@ class BotSync(private val context: Context) {
                     val token = prefs.botToken
                     val cached = repository.getProfileSync(senderId)
                     if (cached == null || (senderName != null && cached.title != senderName) || (senderUsername != null && cached.username != senderUsername)) {
-                        MediaSync.syncSenderProfile(context, token, senderId, senderName, senderUsername)
+                        MediaSync.syncSenderProfile(context, token, senderId, senderName, senderUsername, silent = true)
                     }
                 }
             }

@@ -305,6 +305,7 @@ private fun parseMarkdown(
 fun MessageBubble(
     message: MessageNode,
     userProfile: com.mobile.superiorchat.data.entity.UserProfile?,
+    selfProfile: com.mobile.superiorchat.data.entity.UserProfile? = null,
     viewModel: ChatViewModel,
     onMediaClick: (String, String) -> Unit,
     onMediaLongPressStart: (String, String) -> Unit = { _, _ -> },
@@ -325,6 +326,7 @@ fun MessageBubble(
     onReplyMessageClick: (Long) -> Unit = {}
 ) {
     val progress by MediaSync.getProgress(message.messageId).collectAsState()
+    val userProfiles by viewModel.userProfiles.collectAsState()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     var showApkInstallDialog by remember { mutableStateOf(false) }
@@ -976,7 +978,7 @@ fun MessageBubble(
 
 
 
-                    // Reaction pill badges
+                    // Reaction pill badges — Telegram-parity side-by-side avatars with FlowRow wrapping
                     val reactionData = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions)
                     val allEmojis = reactionData.allReactions()
                     
@@ -987,13 +989,15 @@ fun MessageBubble(
                     ) {
                         Column {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Row(
+                            androidx.compose.foundation.layout.FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
                                 modifier = Modifier.wrapContentWidth().animateContentSize()
                             ) {
                                 allEmojis.forEach { emoji ->
-                                    val count = (if (reactionData.me.contains(emoji)) 1 else 0) + (if (reactionData.peer.contains(emoji)) 1 else 0)
                                     val isMe = reactionData.me.contains(emoji)
+                                    val isPeer = reactionData.peer.contains(emoji)
+                                    val count = (if (isMe) 1 else 0) + (if (isPeer) 1 else 0)
                                     val state = remember(emoji) { androidx.compose.animation.core.MutableTransitionState(false).apply { targetState = true } }
                                     androidx.compose.animation.AnimatedVisibility(
                                         visibleState = state,
@@ -1022,12 +1026,95 @@ fun MessageBubble(
                                                 .background(pillBgColor)
                                                 .border(1.dp, pillBorderColor, RoundedCornerShape(12.dp))
                                                 .clickable { viewModel.sendReaction(message, emoji) }
-                                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                                .padding(horizontal = 7.dp, vertical = 3.dp)
                                         ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                Text(text = emoji, fontSize = 14.sp)
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Text(text = emoji, fontSize = 13.sp)
                                                 if (count > 1) {
-                                                    Text(text = count.toString(), fontSize = 12.sp, color = countColor, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                                                    Text(
+                                                        text = count.toString(),
+                                                        fontSize = 11.sp,
+                                                        color = countColor,
+                                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                    )
+                                                }
+
+                                                // Mini side-by-side profile avatars (Telegram parity)
+                                                Row(
+                                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    if (isPeer) {
+                                                        val reactorProfile = reactionData.peerSenderId?.let { userProfiles[it] }
+                                                        val partnerPhoto = reactorProfile?.profilePhotoPath?.ifBlank { null }
+                                                            ?: if (message.isFromMe) userProfile?.profilePhotoPath.orEmpty()
+                                                               else (message.senderPhotoPath ?: userProfile?.profilePhotoPath.orEmpty())
+                                                        val hasValidPartnerPhoto = partnerPhoto.isNotBlank() && (java.io.File(partnerPhoto).exists() || partnerPhoto.startsWith("http") || partnerPhoto.startsWith("content://"))
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(14.dp)
+                                                                .clip(CircleShape)
+                                                                .background(PrimaryLight.copy(alpha = 0.35f))
+                                                                .border(0.5.dp, pillBorderColor, CircleShape),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            if (hasValidPartnerPhoto) {
+                                                                AsyncImage(
+                                                                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                                        .data(if (java.io.File(partnerPhoto).exists()) java.io.File(partnerPhoto) else partnerPhoto)
+                                                                        .crossfade(true)
+                                                                        .build(),
+                                                                    contentDescription = "Partner Avatar",
+                                                                    modifier = Modifier.fillMaxSize(),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            } else {
+                                                                val initial = (reactorProfile?.title ?: userProfile?.title)?.firstOrNull()?.toString()?.uppercase() ?: "P"
+                                                                Text(
+                                                                    text = initial,
+                                                                    fontSize = 8.sp,
+                                                                    color = Color.White,
+                                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                                )
+                                                            }
+                                                        }
+                                                    }
+                                                    if (isMe) {
+                                                        val selfPhoto = selfProfile?.profilePhotoPath?.ifBlank { null }
+                                                            ?: (if (message.isFromMe) message.senderPhotoPath else null).orEmpty()
+                                                        val hasValidSelfPhoto = selfPhoto.isNotBlank() && (java.io.File(selfPhoto).exists() || selfPhoto.startsWith("http") || selfPhoto.startsWith("content://"))
+
+                                                        Box(
+                                                            modifier = Modifier
+                                                                .size(14.dp)
+                                                                .clip(CircleShape)
+                                                                .background(if (message.isFromMe) PrimaryLight else Color.White.copy(alpha = 0.85f))
+                                                                .border(0.5.dp, pillBorderColor, CircleShape),
+                                                            contentAlignment = Alignment.Center
+                                                        ) {
+                                                            if (hasValidSelfPhoto) {
+                                                                AsyncImage(
+                                                                    model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                                        .data(if (java.io.File(selfPhoto).exists()) java.io.File(selfPhoto) else selfPhoto)
+                                                                        .crossfade(true)
+                                                                        .build(),
+                                                                    contentDescription = "My Avatar",
+                                                                    modifier = Modifier.fillMaxSize(),
+                                                                    contentScale = ContentScale.Crop
+                                                                )
+                                                            } else {
+                                                                Text(
+                                                                    text = "✓",
+                                                                    fontSize = 8.sp,
+                                                                    color = if (message.isFromMe) Color.White else SurfaceLevel1,
+                                                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                                                                )
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }

@@ -126,12 +126,22 @@ class AppRepository(
         return profileDao.getProfile(chatId)
     }
 
+    fun getSelfProfile(): Flow<UserProfile?> {
+        val myId = com.mobile.superiorchat.core.AppGraph.prefs.myBotId
+        return if (myId.isNotBlank()) profileDao.getProfile(myId) else kotlinx.coroutines.flow.flowOf(null)
+    }
+
     fun getAllProfiles(): Flow<List<UserProfile>> {
         return profileDao.getAllProfiles()
     }
 
     suspend fun getProfileSync(chatId: String): UserProfile? {
         return profileDao.getProfileSync(chatId)
+    }
+
+    suspend fun getSelfProfileSync(): UserProfile? {
+        val myId = com.mobile.superiorchat.core.AppGraph.prefs.myBotId
+        return if (myId.isNotBlank()) profileDao.getProfileSync(myId) else null
     }
 
     suspend fun insertProfile(profile: UserProfile) {

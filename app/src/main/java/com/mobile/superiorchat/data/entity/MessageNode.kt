@@ -76,7 +76,8 @@ data class MessageNode(
 @kotlinx.serialization.Serializable
 data class ReactionData(
     val me: List<String> = emptyList(),
-    val peer: List<String> = emptyList()
+    val peer: List<String> = emptyList(),
+    val peerSenderId: String? = null
 ) {
     fun allReactions(): Set<String> = (me + peer).toSet()
 

@@ -57,11 +57,10 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     fun loadProfile() {
         val token = prefs.botToken
         if (token.isBlank()) return
-        val expectedBotId = token.substringBefore(":")
         
         viewModelScope.launch(Dispatchers.IO) {
             // Load from Cache immediately
-            val cachedProfile = AppGraph.appRepository.getProfileSync(expectedBotId)
+            val cachedProfile = AppGraph.appRepository.getSelfProfileSync()
             if (cachedProfile != null) {
                 botId = cachedProfile.chatId
                 displayName = cachedProfile.title
