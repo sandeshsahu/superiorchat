@@ -17,6 +17,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mobile.superiorchat.bot.TelegramApi
+import com.mobile.superiorchat.bot.SendRateLimiter
+import com.mobile.superiorchat.bot.ThrottleState
 import com.mobile.superiorchat.core.ServiceCore
 import com.mobile.superiorchat.media.LocalDirs
 import com.mobile.superiorchat.core.NetState
@@ -45,8 +47,20 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import com.mobile.superiorchat.ui.components.ScrollEvent
 import com.mobile.superiorchat.ui.components.popups.PopupTexts
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
+import com.mobile.superiorchat.theme.ErrorRed
+import com.mobile.superiorchat.theme.PillCallWarning
+import com.mobile.superiorchat.theme.PrimaryLight
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 
 import com.mobile.superiorchat.data.repository.LocalMediaItem
 import com.mobile.superiorchat.data.repository.LocalFileItem
@@ -72,11 +86,105 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val isTelegramApiReachable = AppLog.isTelegramApiReachable
     val isBotTokenInvalid = AppLog.isBotTokenInvalid
     
-    var isCredentialsEmpty by mutableStateOf(prefs.botToken.isBlank() || prefs.activeChatId.isBlank())
+    private fun checkIsCredentialsEmpty(): Boolean {
+        val token = prefs.botToken.trim()
+        val chatId = prefs.activeChatId.trim()
+        val isAdmin = prefs.isAdminModeEnabled
+        val partner = prefs.peerLinkPartnerBotUsername.trim()
+        return if (isAdmin) {
+            token.isEmpty() || chatId.isEmpty() || partner.isEmpty()
+        } else {
+            token.isEmpty() || chatId.isEmpty()
+        }
+    }
+
+    var isCredentialsEmpty by mutableStateOf(checkIsCredentialsEmpty())
         private set
     
     var isRetryingConnection by mutableStateOf(false)
         private set
+
+    enum class RateLimitType {
+        LIMIT_PROTECTION,
+        RATE_LIMITED,
+        GROUP_LIMIT,
+        REACTION_RATE_LIMITED,
+        REACTION_GROUP_LIMIT,
+        DELETE_RATE_LIMITED,
+        DELETE_GROUP_LIMIT,
+        CALL_RATE_LIMITED,
+        CALL_GROUP_LIMIT
+    }
+
+    data class RateLimitDialogData(
+        val title: String,
+        val message: String,
+        val icon: ImageVector = Icons.Filled.Info,
+        val iconTint: Color = PrimaryLight
+    )
+
+    var rateLimitDialogState by mutableStateOf<RateLimitDialogData?>(null)
+
+    fun showRateLimitInfoDialog(type: RateLimitType) {
+        rateLimitDialogState = when (type) {
+            RateLimitType.LIMIT_PROTECTION -> RateLimitDialogData(
+                title = PopupTexts.Chat.LIMIT_PROTECTION_TITLE,
+                message = PopupTexts.Chat.LIMIT_PROTECTION_MESSAGE,
+                icon = Icons.Default.HourglassTop,
+                iconTint = PrimaryLight
+            )
+            RateLimitType.RATE_LIMITED -> RateLimitDialogData(
+                title = PopupTexts.Chat.RATE_LIMIT_TITLE,
+                message = PopupTexts.Chat.RATE_LIMIT_MESSAGE,
+                icon = Icons.Default.HourglassTop,
+                iconTint = ErrorRed
+            )
+            RateLimitType.GROUP_LIMIT -> RateLimitDialogData(
+                title = PopupTexts.Chat.GROUP_LIMIT_TITLE,
+                message = PopupTexts.Chat.GROUP_LIMIT_MESSAGE,
+                icon = Icons.Default.Warning,
+                iconTint = ErrorRed
+            )
+            RateLimitType.REACTION_RATE_LIMITED -> RateLimitDialogData(
+                title = PopupTexts.Chat.REACTION_RATE_LIMIT_TITLE,
+                message = PopupTexts.Chat.REACTION_RATE_LIMIT_MESSAGE,
+                icon = Icons.Default.HourglassTop,
+                iconTint = ErrorRed
+            )
+            RateLimitType.REACTION_GROUP_LIMIT -> RateLimitDialogData(
+                title = PopupTexts.Chat.REACTION_GROUP_LIMIT_TITLE,
+                message = PopupTexts.Chat.REACTION_GROUP_LIMIT_MESSAGE,
+                icon = Icons.Default.Warning,
+                iconTint = ErrorRed
+            )
+            RateLimitType.DELETE_RATE_LIMITED -> RateLimitDialogData(
+                title = PopupTexts.Chat.DELETE_RATE_LIMIT_TITLE,
+                message = PopupTexts.Chat.DELETE_RATE_LIMIT_MESSAGE,
+                icon = Icons.Default.Delete,
+                iconTint = ErrorRed
+            )
+            RateLimitType.DELETE_GROUP_LIMIT -> RateLimitDialogData(
+                title = PopupTexts.Chat.DELETE_GROUP_LIMIT_TITLE,
+                message = PopupTexts.Chat.DELETE_GROUP_LIMIT_MESSAGE,
+                icon = Icons.Default.Warning,
+                iconTint = ErrorRed
+            )
+            RateLimitType.CALL_RATE_LIMITED -> RateLimitDialogData(
+                title = PopupTexts.Chat.CALL_RATE_LIMIT_TITLE,
+                message = PopupTexts.Chat.CALL_RATE_LIMIT_MESSAGE,
+                icon = Icons.Default.Phone,
+                iconTint = ErrorRed
+            )
+            RateLimitType.CALL_GROUP_LIMIT -> RateLimitDialogData(
+                title = PopupTexts.Chat.CALL_GROUP_LIMIT_TITLE,
+                message = PopupTexts.Chat.CALL_GROUP_LIMIT_MESSAGE,
+                icon = Icons.Default.Warning,
+                iconTint = ErrorRed
+            )
+        }
+    }
+
+    val throttleState = SendRateLimiter.throttleState
 
     var replyingToMessage by mutableStateOf<MessageNode?>(null)
         private set
@@ -159,6 +267,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val chatId = prefs.activeChatId
         if (token.isBlank() || chatId.isBlank()) return
 
+        if (SendRateLimiter.isHeavyThrottled(chatId)) {
+            val state = throttleState.value
+            val type = if (state is ThrottleState.GroupLimit) RateLimitType.REACTION_GROUP_LIMIT else RateLimitType.REACTION_RATE_LIMITED
+            showRateLimitInfoDialog(type)
+            return
+        }
+
         // Parse current reactions using structured JSON model
         val currentData = com.mobile.superiorchat.data.entity.ReactionData.parse(message.reactions)
         val myReactions = currentData.me.toMutableList()
@@ -205,8 +320,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
             if (activeUpdates.isEmpty()) return@launch
 
-            if (!com.mobile.superiorchat.core.NetState.isOnline.value) {
-                // If offline when timer expires, roll back all optimistic reactions in batch
+            if (!com.mobile.superiorchat.core.NetState.isOnline.value || SendRateLimiter.isHeavyThrottled(chatId)) {
+                // If offline or throttled when timer expires, roll back all optimistic reactions in batch
                 activeUpdates.forEach { (msgId, _) ->
                     val lastConfirmed = confirmedReactions[msgId] ?: ""
                     rollbackLocalReaction(msgId, lastConfirmed)
@@ -386,6 +501,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             StatusFlow.reportStatus(SyncState.OFFLINE, "Cannot delete for everyone while offline")
             return
         }
+        if (SendRateLimiter.isHeavyThrottled(chatId)) {
+            val state = throttleState.value
+            val type = if (state is ThrottleState.GroupLimit) RateLimitType.DELETE_GROUP_LIMIT else RateLimitType.DELETE_RATE_LIMITED
+            showRateLimitInfoDialog(type)
+            StatusFlow.reportStatus(SyncState.ERROR, "Delete for everyone paused during rate limit")
+            return
+        }
 
         val selected = messagesToDelete.filter { selectedMessageIds.contains(it.messageId) }
         val totalCount = selected.size
@@ -499,8 +621,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     val messageLimit: StateFlow<Int> = _messageLimit.asStateFlow()
 
     private val prefListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "bot_token" || key == "chat_id" || key == "peerlink_group_chat_id" || key == "is_peerlink_enabled" || key == "is_admin_mode_enabled") {
-            isCredentialsEmpty = prefs.botToken.isBlank() || prefs.activeChatId.isBlank()
+        if (key == "bot_token" || key == "chat_id" || key == "peerlink_group_chat_id" || key == "is_peerlink_enabled" || key == "is_admin_mode_enabled" || key == "peerlink_partner_bot_username") {
+            isCredentialsEmpty = checkIsCredentialsEmpty()
             loadMessages()
         }
     }
@@ -508,6 +630,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     init {
         prefs.sharedPreferences.registerOnSharedPreferenceChangeListener(prefListener)
         loadMessages()
+
+        viewModelScope.launch(Dispatchers.Default) {
+            while (isActive) {
+                val activeChat = prefs.activeChatId
+                val state = SendRateLimiter.recalculateState(activeChat)
+                if (state !is ThrottleState.Idle) {
+                    delay(50)
+                } else {
+                    delay(200)
+                }
+            }
+        }
     }
 
     override fun onCleared() {
@@ -698,6 +832,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        SendRateLimiter.onSendInitiated(chatId)
+
         if (editingMessage != null) {
             val msgToEdit = editingMessage!!
             setEditingMessage(null) // clear state
@@ -765,6 +901,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val chatId = prefs.activeChatId
         
         if (chatId.isBlank()) return false
+
+        SendRateLimiter.onSendInitiated(chatId)
 
         val isOnline = NetState.isOnline.value
         val initialStatus = if (isOnline) MessageStatus.SENDING else MessageStatus.QUEUED
@@ -835,6 +973,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     fun sendMediaBatch(context: Context, items: List<Pair<Uri, String>>, caption: String? = null): Boolean {
         val chatId = prefs.activeChatId
         if (chatId.isBlank()) return false
+
+        SendRateLimiter.onSendInitiated(chatId)
 
         val validItems = mutableListOf<Triple<Long, Uri, String>>()
         for ((uri, mediaType) in items) {
@@ -921,6 +1061,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val chatId = prefs.activeChatId
         val token = prefs.botToken
         if (chatId.isBlank() || token.isBlank()) return
+
+        SendRateLimiter.onSendInitiated(chatId)
 
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateMessageStatus(message.messageId, MessageStatus.SENDING)
@@ -1020,6 +1162,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (!NetState.isOnline.value) {
             StatusFlow.reportStatus(SyncState.OFFLINE, "Cannot delete for everyone while offline")
+            return
+        }
+        if (SendRateLimiter.isHeavyThrottled(chatId)) {
+            val state = throttleState.value
+            val type = if (state is ThrottleState.GroupLimit) RateLimitType.DELETE_GROUP_LIMIT else RateLimitType.DELETE_RATE_LIMITED
+            showRateLimitInfoDialog(type)
+            StatusFlow.reportStatus(SyncState.ERROR, "Delete for everyone paused during rate limit")
             return
         }
 

@@ -474,6 +474,7 @@ object CallManager {
         val prefs = AppGraph.prefs
         val chatId = prefs.activeChatId
         if (prefs.isPeerLinkEnabled && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) {
+            if (com.mobile.superiorchat.bot.SendRateLimiter.isHeavyThrottled(chatId)) return
             val token = prefs.botToken
             val replyTo = incomingTelegramMsgId
             if (token.isNotBlank() && chatId.isNotBlank()) {

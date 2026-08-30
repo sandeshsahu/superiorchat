@@ -198,7 +198,7 @@ fun QrScanner(
         ActionDialog(
             title = "Permission Required",
             message = "You have permanently denied Camera access. To scan QR codes, please enable it in Settings.",
-            confirmText = "Go to Settings",
+            confirmText = "Settings",
             onConfirm = {
                 showCameraSettingsDialog = false
                 context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -228,7 +228,7 @@ fun QrScanner(
         ActionDialog(
             title = "Permission Required",
             message = "You have permanently denied Storage access. To select QR codes from gallery, please enable it in Settings.",
-            confirmText = "Go to Settings",
+            confirmText = "Settings",
             onConfirm = {
                 showStorageSettingsDialog = false
                 context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {

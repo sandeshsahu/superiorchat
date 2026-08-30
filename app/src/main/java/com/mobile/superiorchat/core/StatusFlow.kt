@@ -18,7 +18,8 @@ enum class SyncState {
     SUCCESS,
     ERROR,
     OFFLINE,
-    AUTH_ERROR
+    AUTH_ERROR,
+    RATE_LIMITED
 }
 
 data class ActiveTransfer(

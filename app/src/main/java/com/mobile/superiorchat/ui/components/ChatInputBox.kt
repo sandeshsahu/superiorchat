@@ -38,16 +38,22 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.Warning
+import com.mobile.superiorchat.bot.SendRateLimiter
+import com.mobile.superiorchat.bot.ThrottleState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -204,70 +210,96 @@ fun ChatInputBox(
             }
         }
 
-        AnimatedContent(
-            targetState = hasConnectionError,
-        transitionSpec = {
-            (slideInVertically(initialOffsetY = { it }) + fadeIn())
-                .togetherWith(slideOutVertically(targetOffsetY = { -it }) + fadeOut())
-        },
-        label = "input_area_transition"
-    ) { connectionError ->
-        if (connectionError) {
-            // Offline / Connection retry panel
+        val throttleState by viewModel.throttleState.collectAsState()
+
+        val isGroupLimit = throttleState is ThrottleState.GroupLimit
+        val groupRemainingMs = (throttleState as? ThrottleState.GroupLimit)?.remainingMs ?: 0L
+        val isLongGroupWait = isGroupLimit && groupRemainingMs > 5000L
+
+        val bannerKind = when {
+            hasConnectionError -> BannerKind.CONNECTION_ERROR
+            throttleState is ThrottleState.RateLimited -> BannerKind.RATE_LIMITED
+            isLongGroupWait -> BannerKind.GROUP_LIMIT
+            else -> BannerKind.NONE
+        }
+
+        val isLimitProtection = throttleState is ThrottleState.LimitProtection && bannerKind == BannerKind.NONE
+        val isShortGroupRefill = isGroupLimit && !isLongGroupWait && bannerKind == BannerKind.NONE
+        val isSoftThrottled = isLimitProtection || isShortGroupRefill
+
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // ── Floating Overlay Pill for Soft Limits (Limit Protection & Short Group Refill <=5s) ──
+            androidx.compose.animation.AnimatedVisibility(
+                visible = isSoftThrottled,
+                enter = fadeIn(tween(180)) + slideInVertically(animationSpec = tween(220, easing = EaseOutCubic)) { -it / 2 },
+                exit = fadeOut(tween(180)) + slideOutVertically(animationSpec = tween(200, easing = EaseInCubic)) { -it / 2 },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        // Report 0 height to parent so it introduces ZERO layout displacement
+                        layout(placeable.width, 0) {
+                            // Position dynamically exactly 8dp above the top border of the input container
+                            placeable.placeRelative(0, -placeable.height - 8.dp.roundToPx())
+                        }
+                    }
+                    .zIndex(10f)
+            ) {
+                val pillColor = PrimaryLight
+                val pillIcon = if (isShortGroupRefill) Icons.Default.Warning else Icons.Default.HourglassTop
+                val remMs = if (isShortGroupRefill) {
+                    (throttleState as? ThrottleState.GroupLimit)?.remainingMs ?: 0L
+                } else {
+                    (throttleState as? ThrottleState.LimitProtection)?.remainingMs ?: 0L
+                }
+                val timeText = SendRateLimiter.formatRemainingTime(remMs)
+                val pillLabel = if (isShortGroupRefill) "Group Limit (19/min) • Wait $timeText" else "Limit Protection • Wait $timeText"
+                val dialogType = if (isShortGroupRefill) ChatViewModel.RateLimitType.GROUP_LIMIT else ChatViewModel.RateLimitType.LIMIT_PROTECTION
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = Background.copy(alpha = 0.94f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, pillColor.copy(alpha = 0.4f)),
+                        shadowElevation = 6.dp,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable {
+                                viewModel.showRateLimitInfoDialog(dialogType)
+                            }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .background(pillColor.copy(alpha = 0.12f))
+                                .padding(horizontal = 12.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = pillIcon,
+                                contentDescription = if (isShortGroupRefill) "Group Limit" else "Safe Sending Pause",
+                                tint = pillColor,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = pillLabel,
+                                color = pillColor,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Keep the real input controls mounted in the tree so keyboard focus and IME never collapse
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(PrimaryLight.copy(alpha = 0.1f))
-                    .border(1.dp, PrimaryLight.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
-                    .clickable { 
-                        if (isBotTokenInvalid || isCredentialsEmpty) {
-                            onNavigateToSettings()
-                        } else if (!isRetrying) {
-                            onRetryConnection()
-                        }
-                    }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                if (isRetrying) {
-                    CircularProgressIndicator(
-                        color = ErrorRed,
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Connecting...",
-                        color = ErrorRed,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.ErrorOutline,
-                        contentDescription = "Offline",
-                        tint = ErrorRed,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    val isAdminMode = com.mobile.superiorchat.core.AppGraph.prefs.isAdminModeEnabled
-                    Text(
-                        text = when {
-                            isCredentialsEmpty -> if (isAdminMode) "Credentials empty - Check Admin Settings" else "Credentials empty - Check Settings"
-                            isBotTokenInvalid -> if (isAdminMode) "Invalid Bot Token - Check Admin Settings" else "Invalid Bot Token - Check Settings"
-                            else -> "Connection lost. Tap to retry"
-                        },
-                        color = ErrorRed,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                    .alpha(if (bannerKind == BannerKind.NONE) 1f else 0f),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -380,72 +412,152 @@ fun ChatInputBox(
                         )
                     }
 
-                    // Main button
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .scale(buttonScale)
-                            .glow(
-                                color = if (isRecording) InputCancelRedTranslucent else InputPrimaryTranslucent,
-                                radius = if (isRecording) 50f else 40f,
-                                dy = 8f,
-                                shapeColor = if (isRecording) InputCancelRed else PrimaryLight
-                            )
-                            .clip(CircleShape)
-                            .background(buttonColor)
-                            .pointerInput(messageText.isNotBlank()) {
-                                if (messageText.isNotBlank()) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            viewModel.sendMessage(messageText)
-                                            messageText = ""
-                                        }
+                            val effectiveButtonColor = if (isSoftThrottled && !isRecording) {
+                                buttonColor.copy(alpha = 0.4f)
+                            } else {
+                                buttonColor
+                            }
+
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .scale(buttonScale)
+                                    .glow(
+                                        color = if (isRecording) InputCancelRedTranslucent else if (isSoftThrottled) Color.Transparent else InputPrimaryTranslucent,
+                                        radius = if (isRecording) 50f else 40f,
+                                        dy = 8f,
+                                        shapeColor = if (isRecording) InputCancelRed else PrimaryLight
                                     )
-                                } else {
-                                    awaitPointerEventScope {
-                                        var startX = 0f
-                                        var startTimeMs = 0L
-                                        while (true) {
-                                            val event = awaitPointerEvent()
-                                            val change = event.changes.firstOrNull()
-                                            if (change != null) {
-                                                if (change.pressed && !change.previousPressed) {
-                                                    // ACTION_DOWN — start recording
-                                                    startX = change.position.x
-                                                    startTimeMs = System.currentTimeMillis()
-                                                    swipeDragX = 0f
-                                                    onRequestAudioPermission()
-                                                } else if (change.pressed) {
-                                                    // DRAG — track horizontal swipe
-                                                    swipeDragX = change.position.x - startX
-                                                } else if (!change.pressed && change.previousPressed) {
-                                                    // ACTION_UP — send or cancel based on swipe distance and duration
-                                                    val durationMs = System.currentTimeMillis() - startTimeMs
-                                                    val isMisclick = durationMs < 1000 // Cancel if under 1 second
-                                                    val shouldCancel = swipeDragX < -cancelThresholdPx || isMisclick
-                                                    viewModel.stopRecordingAudio(context, cancel = shouldCancel)
-                                                    swipeDragX = 0f
+                                    .clip(CircleShape)
+                                    .background(effectiveButtonColor)
+                                    .pointerInput(messageText.isNotBlank(), isSoftThrottled) {
+                                        if (messageText.isNotBlank()) {
+                                            detectTapGestures(
+                                                onTap = {
+                                                    if (!isSoftThrottled) {
+                                                        val trimmed = messageText.trim()
+                                                        if (trimmed.isNotEmpty()) {
+                                                            viewModel.sendMessage(trimmed)
+                                                            messageText = ""
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        } else {
+                                            awaitPointerEventScope {
+                                                var startX = 0f
+                                                var startTimeMs = 0L
+                                                while (true) {
+                                                    val event = awaitPointerEvent()
+                                                    val change = event.changes.firstOrNull()
+                                                    if (change != null) {
+                                                        if (change.pressed && !change.previousPressed) {
+                                                            if (!isSoftThrottled) {
+                                                                startX = change.position.x
+                                                                startTimeMs = System.currentTimeMillis()
+                                                                swipeDragX = 0f
+                                                                onRequestAudioPermission()
+                                                            }
+                                                        } else if (change.pressed && !isSoftThrottled) {
+                                                            swipeDragX = change.position.x - startX
+                                                        } else if (!change.pressed && change.previousPressed && !isSoftThrottled) {
+                                                            val durationMs = System.currentTimeMillis() - startTimeMs
+                                                            val isMisclick = durationMs < 1000
+                                                            val shouldCancel = swipeDragX < -cancelThresholdPx || isMisclick
+                                                            viewModel.stopRecordingAudio(context, cancel = shouldCancel)
+                                                            swipeDragX = 0f
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
                                     }
+                            ) {
+                                if (isSoftThrottled && !isRecording) {
+                                    Icon(
+                                        Icons.Default.HourglassTop,
+                                        contentDescription = "Wait",
+                                        tint = buttonIconTint.copy(alpha = 0.6f),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                } else {
+                                    val icon = if (messageText.isBlank()) Icons.Default.Mic else Icons.AutoMirrored.Filled.Send
+                                    Icon(
+                                        icon,
+                                        contentDescription = if (messageText.isBlank()) "Record" else "Send",
+                                        tint = buttonIconTint,
+                                        modifier = Modifier.size(22.dp)
+                                    )
                                 }
                             }
-                    ) {
-                        val icon = if (messageText.isBlank()) Icons.Default.Mic else Icons.AutoMirrored.Filled.Send
-                        Icon(
-                            icon,
-                            contentDescription = if (messageText.isBlank()) "Record" else "Send",
-                            tint = buttonIconTint,
-                            modifier = Modifier.size(22.dp)
+                }
+            }
+
+            // Animated banner on top when an active banner state is present
+            androidx.compose.animation.AnimatedVisibility(
+                visible = bannerKind != BannerKind.NONE,
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                when (bannerKind) {
+                    BannerKind.CONNECTION_ERROR -> {
+                        val isAdminMode = com.mobile.superiorchat.core.AppGraph.prefs.isAdminModeEnabled
+                        val text = when {
+                            isRetrying -> "Connecting..."
+                            isCredentialsEmpty -> if (isAdminMode) "Credentials empty - Check Admin Settings" else "Credentials empty - Check Settings"
+                            isBotTokenInvalid -> if (isAdminMode) "Invalid Bot Token - Check Admin Settings" else "Invalid Bot Token - Check Settings"
+                            else -> "Connection lost. Tap to retry"
+                        }
+                        InputBannerBar(
+                            icon = Icons.Default.ErrorOutline,
+                            iconColor = ErrorRed,
+                            textColor = ErrorRed,
+                            bgColor = PrimaryLight.copy(alpha = 0.1f),
+                            borderColor = PrimaryLight.copy(alpha = 0.3f),
+                            text = text,
+                            isLoading = isRetrying,
+                            onClick = {
+                                if (isBotTokenInvalid || isCredentialsEmpty) {
+                                    onNavigateToSettings()
+                                } else if (!isRetrying) {
+                                    onRetryConnection()
+                                }
+                            }
                         )
                     }
+                    BannerKind.RATE_LIMITED -> {
+                        val remMs = (throttleState as? ThrottleState.RateLimited)?.remainingMs ?: 0L
+                        val timeText = SendRateLimiter.formatRemainingTime(remMs)
+                        InputBannerBar(
+                            icon = Icons.Default.HourglassTop,
+                            iconColor = ErrorRed,
+                            textColor = ErrorRed,
+                            bgColor = ErrorRed.copy(alpha = 0.12f),
+                            borderColor = ErrorRed.copy(alpha = 0.4f),
+                            text = "Rate Limited • Wait $timeText",
+                            onClick = { viewModel.showRateLimitInfoDialog(ChatViewModel.RateLimitType.RATE_LIMITED) }
+                        )
+                    }
+                    BannerKind.GROUP_LIMIT -> {
+                        val remMs = (throttleState as? ThrottleState.GroupLimit)?.remainingMs ?: 0L
+                        val timeText = SendRateLimiter.formatRemainingTime(remMs)
+                        InputBannerBar(
+                            icon = Icons.Default.Warning,
+                            iconColor = ErrorRed,
+                            textColor = ErrorRed,
+                            bgColor = ErrorRed.copy(alpha = 0.12f),
+                            borderColor = ErrorRed.copy(alpha = 0.4f),
+                            text = "Group Limit (19/min) • Wait $timeText",
+                            onClick = { viewModel.showRateLimitInfoDialog(ChatViewModel.RateLimitType.GROUP_LIMIT) }
+                        )
+                    }
+                    BannerKind.NONE -> {}
                 }
             }
         }
     }
-}
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -581,5 +693,60 @@ private fun RecordingIndicator(
                 maxLines = 1
             )
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+private enum class BannerKind {
+    NONE,
+    CONNECTION_ERROR,
+    RATE_LIMITED,
+    GROUP_LIMIT
+}
+
+@Composable
+private fun InputBannerBar(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    iconColor: Color = ErrorRed,
+    textColor: Color = ErrorRed,
+    bgColor: Color = PrimaryLight.copy(alpha = 0.1f),
+    borderColor: Color = PrimaryLight.copy(alpha = 0.3f),
+    isLoading: Boolean = false,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(24.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = iconColor,
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        } else if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        }
+        Text(
+            text = text,
+            color = textColor,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

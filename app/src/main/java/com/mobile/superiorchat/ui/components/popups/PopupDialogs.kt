@@ -267,6 +267,42 @@ object PopupTexts {
 
         fun getFileTooLargeErrorMessage(fileName: String, formattedSize: String): String =
             "The selected file '$fileName' ($formattedSize) exceeds the 50MB limit.\n\nFiles larger than 50MB are not supported."
+
+        const val LIMIT_PROTECTION_TITLE = "Safe Sending Pause"
+        const val LIMIT_PROTECTION_MESSAGE =
+            "The app briefly pauses for *0.5 seconds* between messages to ensure your messages and media are delivered *Cleanly and Safely* without dropping."
+
+        const val RATE_LIMIT_TITLE = "Delivery Temporarily Paused"
+        const val RATE_LIMIT_MESSAGE =
+            "Telegram is temporarily *Limiting Requests* (HTTP 429).\n\n• Sending and background actions are paused until the *Countdown Finishes*.\n• Once the timer reaches zero, you can *Retry Sending* or continue chatting normally."
+
+        const val GROUP_LIMIT_TITLE = "Group Message Limit"
+        const val GROUP_LIMIT_MESSAGE =
+            "Group chats have a safety limit of *19 messages per minute*.\n\n• Sending is briefly paused to protect your bot from *Telegram Flood Bans*.\n• Message slots will refill *Automatically* as older messages turn 60 seconds old."
+
+        const val REACTION_RATE_LIMIT_TITLE = "Reactions Paused"
+        const val REACTION_RATE_LIMIT_MESSAGE =
+            "Telegram is currently *Rate Limited*.\n\n• Adding emoji reactions is paused to prevent *API Request Drops*.\n• Please wait for the countdown on the top bar to finish before reacting."
+
+        const val REACTION_GROUP_LIMIT_TITLE = "Reactions Temporarily Paused"
+        const val REACTION_GROUP_LIMIT_MESSAGE =
+            "This group has reached the *19 messages/min limit*.\n\n• Syncing emoji reactions is paused until a *Message Slot Refills*.\n• Please wait *A Few Seconds* for capacity to recover."
+
+        const val DELETE_RATE_LIMIT_TITLE = "Telegram Deletion Paused"
+        const val DELETE_RATE_LIMIT_MESSAGE =
+            "Cannot delete for everyone on Telegram while *Rate Limited*.\n\n• You can still choose *Delete for Me* to remove messages from this device instantly.\n• To delete for everyone, please wait until the *Active Rate Limit* clears."
+
+        const val DELETE_GROUP_LIMIT_TITLE = "Group Deletion Paused"
+        const val DELETE_GROUP_LIMIT_MESSAGE =
+            "Deleting for everyone on Telegram requires active API quota.\n\n• The group is currently at the *19 messages/min safety threshold*.\n• Please wait a few moments for a *Slot to Refill* or use *Delete for Me*."
+
+        const val CALL_RATE_LIMIT_TITLE = "Call Initiation Paused"
+        const val CALL_RATE_LIMIT_MESSAGE =
+            "Telegram signaling is temporarily paused due to an *Active Rate Limit*.\n\n• Call connection signals cannot be delivered right now.\n• Please wait for the *Countdown to Finish* before calling."
+
+        const val CALL_GROUP_LIMIT_TITLE = "Group Call Signaling Paused"
+        const val CALL_GROUP_LIMIT_MESSAGE =
+            "The group chat is currently at the *19 messages/min threshold*.\n\n• Call signals are paused to prevent flood bans.\n• Please wait *A Few Seconds* for capacity to recover before placing a call."
     }
 
     // ── Global System Permissions Popups ──
@@ -322,6 +358,22 @@ object PopupTexts {
 
         const val INCOMING_CALL_TITLE = "Incoming Call"
         const val MINIMIZE_BUTTON = "Minimize"
+
+        const val CALL_BLOCKED_OFFLINE_TITLE = "No Internet Connection"
+        const val CALL_BLOCKED_OFFLINE_MESSAGE =
+            "Your device is currently *Offline*.\n\n• WebRTC calls require an active internet connection to exchange signaling.\n• Please check your *Wi-Fi or Mobile Data* and try again."
+
+        const val CALL_BLOCKED_CREDENTIALS_TITLE = "Credentials Required"
+        fun getCallBlockedCredentialsMessage(isAdminMode: Boolean): String =
+            if (isAdminMode) {
+                "Telegram Bot credentials are *Not Configured*.\n\n• Calls exchange signaling links through your Telegram Bot.\n• Please set your *Bot Token* and *Chat ID* in *Admin Settings* first."
+            } else {
+                "Telegram Bot credentials are *Not Configured*.\n\n• Calls exchange signaling links through your Telegram Bot.\n• Please configure your *Bot Token* and *Chat ID* in *App Settings* first."
+            }
+
+        const val CALL_BLOCKED_DISCONNECTED_TITLE = "Connection Lost"
+        const val CALL_BLOCKED_DISCONNECTED_MESSAGE =
+            "Cannot reach Telegram servers.\n\n• Telegram API signaling is currently *Unreachable*.\n• Please verify your internet connection or confirm your *Bot Token* is valid."
         fun getIncomingCallMessage(callerName: String): String =
             "${callerName.ifBlank { "Caller" }} is inviting you to a secure call"
 
@@ -1345,5 +1397,39 @@ fun IncomingCallDialog(
             Spacer(modifier = Modifier.height(4.dp))
         }
     }
+}
+
+@Composable
+fun RateLimitInfoDialog(
+    title: String,
+    message: String,
+    icon: ImageVector = Icons.Filled.Info,
+    iconTint: Color = PrimaryLight,
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = title,
+        message = message,
+        icon = icon,
+        iconTint = iconTint,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun CallBlockedDialog(
+    title: String,
+    message: String,
+    icon: ImageVector = Icons.Filled.Info,
+    iconTint: Color = ErrorRed,
+    onDismiss: () -> Unit
+) {
+    InfoDialog(
+        title = title,
+        message = message,
+        icon = icon,
+        iconTint = iconTint,
+        onDismiss = onDismiss
+    )
 }
 

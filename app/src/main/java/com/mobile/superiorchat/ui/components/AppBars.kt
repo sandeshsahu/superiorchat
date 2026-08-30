@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PhoneDisabled
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
@@ -206,14 +207,12 @@ fun AppBars(
                         )
                     } else if (currentScreen == NavScreen.Chat) {
                         Row {
-                            if (canCall) {
-                                IconButton(onClick = onCallClick) {
-                                    Icon(
-                                        Icons.Filled.Phone,
-                                        contentDescription = "Call",
-                                        tint = PrimaryLight
-                                    )
-                                }
+                            IconButton(onClick = onCallClick) {
+                                Icon(
+                                    imageVector = if (canCall) Icons.Filled.Phone else Icons.Filled.PhoneDisabled,
+                                    contentDescription = if (canCall) "Call" else "Call Disabled",
+                                    tint = PrimaryLight
+                                )
                             }
                             IconButton(onClick = onQrScanClick) {
                                 Icon(

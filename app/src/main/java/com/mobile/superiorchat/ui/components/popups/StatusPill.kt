@@ -77,7 +77,8 @@ private fun SyncState.toUIConfig(hasUploads: Boolean): SyncUIConfig {
         )
         SyncState.ERROR,
         SyncState.OFFLINE,
-        SyncState.AUTH_ERROR -> SyncUIConfig(
+        SyncState.AUTH_ERROR,
+        SyncState.RATE_LIMITED -> SyncUIConfig(
             bgColor = PillBgError,
             textColor = Color.White,
             icon = Icons.Filled.Error

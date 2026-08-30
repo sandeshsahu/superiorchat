@@ -105,6 +105,8 @@ fun AppScreen(
 
     val isNetworkAvailable by viewModel.isNetworkAvailable.collectAsState()
     val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
+    val throttleState by com.mobile.superiorchat.bot.SendRateLimiter.throttleState.collectAsState()
+    val isHeavyThrottled = throttleState is com.mobile.superiorchat.bot.ThrottleState.RateLimited || throttleState is com.mobile.superiorchat.bot.ThrottleState.GroupLimit
 
     // ── Global Dialog Handler (Gated on isAppUnlocked to prevent leaks over decoy) ──
     if (isAppUnlocked) {
@@ -212,7 +214,7 @@ fun AppScreen(
                     Scaffold(
                         topBar = {
                             if (!isInPipMode && (callState == CallState.IDLE || isCallMinimized)) {
-                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials
+                                val canCall = isNetworkAvailable && isTelegramApiReachable && viewModel.hasCredentials && !isHeavyThrottled
                                 AppBars(
                                     currentScreen = currentScreen,
                                     isAnimeCharacterEnabled = viewModel.isAnimeCharacterEnabled,

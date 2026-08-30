@@ -806,6 +806,10 @@ class BotSync(private val context: Context) {
             try {
                 val queuedMessages = repository.getQueuedMessages()
                 for (msg in queuedMessages) {
+                    if (SendRateLimiter.isBlocked()) {
+                        AppLog.log(LogCategory.BOT_ACTIVITY, "[QUEUE] Rate limit or cooldown active, holding flush")
+                        break
+                    }
                     if (msg.mediaType == null) {
                         repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
                         repository.sendTextMessage(token, msg.conversationId, msg.text ?: "", msg.messageId)
@@ -813,6 +817,7 @@ class BotSync(private val context: Context) {
                         repository.updateMessageStatus(msg.messageId, MessageStatus.SENDING)
                         MediaSync.enqueueUpload(context, msg.messageId, msg.mediaLocalPath ?: "", msg.mediaType)
                     }
+                    delay(500L)
                 }
             } catch (e: Exception) {
                 AppLog.log(LogCategory.ERROR, "Failed to flush queued messages: ${e.message}")

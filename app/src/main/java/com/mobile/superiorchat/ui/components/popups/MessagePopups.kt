@@ -237,6 +237,7 @@ fun ContextMenuItem(
 fun DeleteWarningDialog(
     onDismiss: () -> Unit,
     targetUserName: String? = null,
+    isRateLimited: Boolean = false,
     onConfirmDeleteForEveryone: () -> Unit,
     onConfirmDeleteForMe: () -> Unit
 ) {
@@ -282,12 +283,17 @@ fun DeleteWarningDialog(
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null
-                ) { deleteForEveryone = !deleteForEveryone },
+                ) {
+                    if (!isRateLimited) {
+                        deleteForEveryone = !deleteForEveryone
+                    }
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
-                checked = deleteForEveryone,
-                onCheckedChange = { deleteForEveryone = it },
+                checked = deleteForEveryone && !isRateLimited,
+                onCheckedChange = { if (!isRateLimited) deleteForEveryone = it },
+                enabled = !isRateLimited,
                 colors = CheckboxDefaults.colors(
                     checkedColor = PrimaryLight,
                     uncheckedColor = TextSecondary,
@@ -296,11 +302,20 @@ fun DeleteWarningDialog(
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = if (targetUserName != null && targetUserName.isNotBlank()) "Try Deleting for $targetUserName" else "Try Deleting for everyone",
-                color = TextPrimary,
-                fontSize = 14.sp
-            )
+            Column {
+                Text(
+                    text = if (targetUserName != null && targetUserName.isNotBlank()) "Try Deleting for $targetUserName" else "Try Deleting for everyone",
+                    color = if (isRateLimited) TextSecondary else TextPrimary,
+                    fontSize = 14.sp
+                )
+                if (isRateLimited) {
+                    Text(
+                        text = "Paused on Telegram during rate limit",
+                        color = ErrorRed,
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(28.dp))

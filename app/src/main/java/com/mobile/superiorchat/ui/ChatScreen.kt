@@ -58,6 +58,7 @@ import com.mobile.superiorchat.ui.components.ScrollEvent
 import com.mobile.superiorchat.ui.components.popups.MessageContextMenu
 import com.mobile.superiorchat.ui.components.popups.DeleteWarningDialog
 import com.mobile.superiorchat.ui.components.popups.SelectionActionBar
+import com.mobile.superiorchat.ui.components.popups.RateLimitInfoDialog
 import com.mobile.superiorchat.data.entity.MessageNode
 import com.mobile.superiorchat.data.repository.LocalMediaItem
 import com.mobile.superiorchat.data.repository.LocalFileItem
@@ -180,6 +181,8 @@ fun ChatScreen(
     val isOnline by viewModel.isOnline.collectAsState()
     val isTelegramApiReachable by viewModel.isTelegramApiReachable.collectAsState()
     val isBotTokenInvalid by viewModel.isBotTokenInvalid.collectAsState()
+    val throttleState by viewModel.throttleState.collectAsState()
+    val isHeavyThrottled = throttleState is com.mobile.superiorchat.bot.ThrottleState.RateLimited || throttleState is com.mobile.superiorchat.bot.ThrottleState.GroupLimit
     val isRetrying = viewModel.isRetryingConnection
     val isCredentialsEmpty = viewModel.isCredentialsEmpty
     val hasConnectionError = !isOnline || !isTelegramApiReachable || isBotTokenInvalid || isCredentialsEmpty
@@ -597,7 +600,7 @@ fun ChatScreen(
                     FloatingActionButton(
                         onClick = { viewModel.requestJumpToBottom() },
                         containerColor = PrimaryLight,
-                        contentColor = Color.Black,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                         shape = CircleShape,
                         modifier = Modifier.size(48.dp)
                     ) {
@@ -714,6 +717,16 @@ fun ChatScreen(
             )
         }
 
+        viewModel.rateLimitDialogState?.let { dialogData ->
+            RateLimitInfoDialog(
+                title = dialogData.title,
+                message = dialogData.message,
+                icon = dialogData.icon,
+                iconTint = dialogData.iconTint,
+                onDismiss = { viewModel.rateLimitDialogState = null }
+            )
+        }
+
         if (showUserInfoDialog) {
             PartnerProfile(
                 userProfile = selectedProfile ?: userProfile,
@@ -733,6 +746,7 @@ fun ChatScreen(
             DeleteWarningDialog(
                 onDismiss = { messageToDelete = null },
                 targetUserName = userProfile?.title,
+                isRateLimited = isHeavyThrottled,
                 onConfirmDeleteForEveryone = {
                     viewModel.deleteMessage(messageToDelete!!)
                     messageToDelete = null
@@ -749,6 +763,7 @@ fun ChatScreen(
             DeleteWarningDialog(
                 onDismiss = { bulkDeleteRequested = false },
                 targetUserName = userProfile?.title,
+                isRateLimited = isHeavyThrottled,
                 onConfirmDeleteForEveryone = {
                     viewModel.deleteSelectedMessages(messages)
                     bulkDeleteRequested = false

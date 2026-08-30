@@ -27,6 +27,21 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import com.mobile.superiorchat.data.entity.CallHistoryNode
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SignalWifiOff
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Warning
+import com.mobile.superiorchat.bot.SendRateLimiter
+import com.mobile.superiorchat.bot.ThrottleState
+import com.mobile.superiorchat.core.NetState
+import com.mobile.superiorchat.theme.ErrorRed
+import com.mobile.superiorchat.ui.ChatViewModel
+import com.mobile.superiorchat.ui.components.popups.PopupTexts
 
 enum class CallInitiationResult { SUCCESS, VALIDATION_FAILED, TELEGRAM_FAILED, HARDWARE_INIT }
 
@@ -40,6 +55,8 @@ class CallViewModel : ViewModel() {
 
     private val _isCallMinimized = MutableStateFlow(false)
     val isCallMinimized: StateFlow<Boolean> = _isCallMinimized.asStateFlow()
+
+    var callBlockedDialogState by mutableStateOf<ChatViewModel.RateLimitDialogData?>(null)
 
     private val _callInitiationState = MutableStateFlow(CallInitiationState.IDLE)
     val callInitiationState: StateFlow<CallInitiationState> = _callInitiationState.asStateFlow()
@@ -153,6 +170,60 @@ class CallViewModel : ViewModel() {
     }
 
     fun showCallConfirmation() {
+        val isNetworkOnline = NetState.isOnline.value
+        if (!isNetworkOnline) {
+            callBlockedDialogState = ChatViewModel.RateLimitDialogData(
+                title = PopupTexts.Call.CALL_BLOCKED_OFFLINE_TITLE,
+                message = PopupTexts.Call.CALL_BLOCKED_OFFLINE_MESSAGE,
+                icon = Icons.Default.SignalWifiOff,
+                iconTint = ErrorRed
+            )
+            return
+        }
+
+        val prefs = AppGraph.prefs
+        val token = prefs.botToken
+        val chatId = prefs.activeChatId
+        if (token.isBlank() || chatId.isBlank()) {
+            callBlockedDialogState = ChatViewModel.RateLimitDialogData(
+                title = PopupTexts.Call.CALL_BLOCKED_CREDENTIALS_TITLE,
+                message = PopupTexts.Call.getCallBlockedCredentialsMessage(prefs.isAdminModeEnabled),
+                icon = Icons.Default.Key,
+                iconTint = ErrorRed
+            )
+            return
+        }
+
+        if (!AppLog.isTelegramApiReachable.value) {
+            callBlockedDialogState = ChatViewModel.RateLimitDialogData(
+                title = PopupTexts.Call.CALL_BLOCKED_DISCONNECTED_TITLE,
+                message = PopupTexts.Call.CALL_BLOCKED_DISCONNECTED_MESSAGE,
+                icon = Icons.Default.ErrorOutline,
+                iconTint = ErrorRed
+            )
+            return
+        }
+
+        val throttleState = SendRateLimiter.throttleState.value
+        if (throttleState is ThrottleState.RateLimited) {
+            callBlockedDialogState = ChatViewModel.RateLimitDialogData(
+                title = PopupTexts.Chat.CALL_RATE_LIMIT_TITLE,
+                message = PopupTexts.Chat.CALL_RATE_LIMIT_MESSAGE,
+                icon = Icons.Default.Phone,
+                iconTint = ErrorRed
+            )
+            return
+        }
+        if (throttleState is ThrottleState.GroupLimit) {
+            callBlockedDialogState = ChatViewModel.RateLimitDialogData(
+                title = PopupTexts.Chat.CALL_GROUP_LIMIT_TITLE,
+                message = PopupTexts.Chat.CALL_GROUP_LIMIT_MESSAGE,
+                icon = Icons.Default.Warning,
+                iconTint = ErrorRed
+            )
+            return
+        }
+
         _callInitiationState.value = CallInitiationState.CONFIRMATION
     }
 

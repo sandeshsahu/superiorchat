@@ -15,6 +15,7 @@ import com.mobile.superiorchat.ui.GlobalDialogState
 import com.mobile.superiorchat.ui.components.popups.CallErrorDialog
 import com.mobile.superiorchat.ui.components.popups.CallInitiationDialog
 import com.mobile.superiorchat.ui.components.popups.IncomingCallDialog
+import com.mobile.superiorchat.ui.components.popups.CallBlockedDialog
 import com.mobile.superiorchat.utils.rememberPermissionHandler
 
 /**
@@ -185,6 +186,17 @@ fun CallContainer(
                     CallManager.endCall()
                     callViewModel.dismissReceiverState()
                 }
+            )
+        }
+
+        // ── 5. Call Blocked / Disabled Dialog ────────────────────────────────
+        callViewModel.callBlockedDialogState?.let { data ->
+            CallBlockedDialog(
+                title = data.title,
+                message = data.message,
+                icon = data.icon,
+                iconTint = data.iconTint,
+                onDismiss = { callViewModel.callBlockedDialogState = null }
             )
         }
     }

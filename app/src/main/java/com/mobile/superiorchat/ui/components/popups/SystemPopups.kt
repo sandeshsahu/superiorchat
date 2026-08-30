@@ -229,6 +229,8 @@ fun ErrorDialog(
 fun InfoDialog(
     title: String,
     message: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Filled.Info,
+    iconTint: Color = PrimaryLight,
     customContent: @Composable (() -> Unit)? = null,
     extraButtonText: String? = null,
     onExtraButtonClick: (() -> Unit)? = null,
@@ -278,12 +280,12 @@ fun InfoDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Icon(Icons.Filled.Info, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(32.dp))
+                        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(32.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = title,
                             style = MaterialTheme.typography.titleLarge,
-                            color = PrimaryLight,
+                            color = iconTint,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Start
                         )
@@ -292,7 +294,7 @@ fun InfoDialog(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = parseAnnotatedMessage(message),
+                        text = parseAnnotatedMessage(message, tint = iconTint),
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextPrimary,
                         textAlign = TextAlign.Start,
@@ -322,7 +324,7 @@ fun InfoDialog(
                                     text = extraButtonText,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    color = PrimaryLight
+                                    color = iconTint
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
@@ -333,7 +335,14 @@ fun InfoDialog(
                                 onDismiss()
                             },
                             modifier = Modifier.height(40.dp),
-                            colors = com.mobile.superiorchat.ui.components.luminaButtonColors(),
+                            colors = if (iconTint != PrimaryLight) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = iconTint.copy(alpha = 0.15f),
+                                    contentColor = iconTint
+                                )
+                            } else {
+                                com.mobile.superiorchat.ui.components.luminaButtonColors()
+                            },
                             shape = RoundedCornerShape(24.dp),
                             contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
                         ) {
@@ -691,7 +700,7 @@ fun GlobalDialogHandler(
                 message = PopupTexts.GlobalPermissions.NOTIFICATION_DENIED_MESSAGE,
                 icon = Icons.Filled.NotificationsOff,
                 iconTint = ErrorRed,
-                confirmText = "Go to Settings",
+                confirmText = "Settings",
                 dismissText = "Not Now",
                 onConfirm = {
                     onDismiss()
@@ -709,7 +718,7 @@ fun GlobalDialogHandler(
                 message = PopupTexts.GlobalPermissions.BATTERY_OPTIMIZATION_MESSAGE,
                 icon = Icons.Filled.BatteryAlert,
                 iconTint = ErrorRed,
-                confirmText = "Allow Permission",
+                confirmText = "Allow",
                 dismissText = "Not Now",
                 onConfirm = {
                     onDismiss()
@@ -727,7 +736,7 @@ fun GlobalDialogHandler(
                 message = PopupTexts.GlobalPermissions.PERMISSION_DENIED_MESSAGE,
                 icon = Icons.Filled.Warning,
                 iconTint = ErrorRed,
-                confirmText = "Go to Settings",
+                confirmText = "Settings",
                 onConfirm = {
                     context.startActivity(dialogState.intent)
                     onDismiss()
@@ -741,7 +750,7 @@ fun GlobalDialogHandler(
                 message = PopupTexts.GlobalPermissions.MEDIA_DENIED_MESSAGE,
                 icon = Icons.Filled.Warning,
                 iconTint = ErrorRed,
-                confirmText = "Go to Settings",
+                confirmText = "Settings",
                 dismissText = "Not Now",
                 onConfirm = {
                     onDismiss()
@@ -758,7 +767,7 @@ fun GlobalDialogHandler(
                 title = PopupTexts.GlobalPermissions.ALL_FILES_REQUIRED_TITLE,
                 message = PopupTexts.GlobalPermissions.ALL_FILES_REQUIRED_MESSAGE,
                 icon = Icons.Filled.Info,
-                confirmText = "Open Settings",
+                confirmText = "Settings",
                 onConfirm = {
                     context.startActivity(dialogState.intent)
                     onDismiss()
@@ -771,7 +780,7 @@ fun GlobalDialogHandler(
                 title = PopupTexts.GlobalPermissions.LIMITED_ACCESS_TITLE,
                 message = PopupTexts.GlobalPermissions.LIMITED_ACCESS_MESSAGE,
                 icon = Icons.Filled.Info,
-                confirmText = "Grant Full Access",
+                confirmText = "Grant Full",
                 dismissText = "Not Now",
                 onConfirm = {
                     onDismiss()

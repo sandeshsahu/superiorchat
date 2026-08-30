@@ -27,6 +27,9 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import okio.BufferedSink
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -245,14 +248,7 @@ object TelegramApi {
         replyMarkup: String? = null,
         replyToMessageId: Long? = null
     ): Long? {
-        val delayMs = SendRateLimiter.acquire()
-        if (delayMs > 0L) {
-            try {
-                Thread.sleep(delayMs)
-            } catch (e: InterruptedException) {
-                // Ignore
-            }
-        }
+        SendRateLimiter.onSendInitiated(chatId)
         return try {
             val markupJson = replyMarkup?.let { json.parseToJsonElement(it) }
             val req = SendMessageRequest(chatId, text, parseMode, markupJson, LinkPreviewOptions(isDisabled = true), replyToMessageId)
@@ -269,6 +265,7 @@ object TelegramApi {
                 val success = response.isSuccessful
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in sendMessage, retrying as plain text...")
                         return sendMessage(token, chatId, text, parseMode = null, replyMarkup = replyMarkup, replyToMessageId = replyToMessageId)
@@ -307,6 +304,7 @@ object TelegramApi {
         onProgress: ((Long, Long) -> Unit)? = null,
         parseMode: String? = "Markdown"
     ): UploadResult? {
+        SendRateLimiter.onSendInitiated(chatId)
         return try {
             val photoBody = if (onProgress != null) {
                 ProgressRequestBody(file, "image/jpeg".toMediaType(), onProgress)
@@ -338,6 +336,7 @@ object TelegramApi {
                 var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in photo caption, retrying as plain text...")
                         return sendPhoto(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
@@ -376,6 +375,7 @@ object TelegramApi {
         onProgress: ((Long, Long) -> Unit)? = null,
         parseMode: String? = "Markdown"
     ): UploadResult? {
+        SendRateLimiter.onSendInitiated(chatId)
         return try {
             val voiceBody = if (onProgress != null) {
                 ProgressRequestBody(file, "audio/mp4".toMediaType(), onProgress)
@@ -407,6 +407,7 @@ object TelegramApi {
                 var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in voice caption, retrying as plain text...")
                         return sendVoice(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
@@ -445,6 +446,7 @@ object TelegramApi {
         onProgress: ((Long, Long) -> Unit)? = null,
         parseMode: String? = "Markdown"
     ): UploadResult? {
+        SendRateLimiter.onSendInitiated(chatId)
         return try {
             val audioBody = if (onProgress != null) {
                 ProgressRequestBody(file, "audio/mpeg".toMediaType(), onProgress)
@@ -476,6 +478,7 @@ object TelegramApi {
                 var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in audio caption, retrying as plain text...")
                         return sendAudio(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
@@ -514,6 +517,7 @@ object TelegramApi {
         onProgress: ((Long, Long) -> Unit)? = null,
         parseMode: String? = "Markdown"
     ): UploadResult? {
+        SendRateLimiter.onSendInitiated(chatId)
         return try {
             val videoBody = if (onProgress != null) {
                 ProgressRequestBody(file, "video/mp4".toMediaType(), onProgress)
@@ -545,6 +549,7 @@ object TelegramApi {
                 var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (caption != null && parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in video caption, retrying as plain text...")
                         return sendVideo(token, chatId, file, caption, replyToMessageId, onProgress, parseMode = null)
@@ -584,6 +589,7 @@ object TelegramApi {
         replyToMessageId: Long? = null,
         onProgress: ((Long, Long) -> Unit)? = null
     ): UploadResult? {
+        SendRateLimiter.onSendInitiated(chatId)
         return try {
             // Use displayName if provided, otherwise fall back to file.name
             val uploadName = displayName ?: file.name
@@ -618,6 +624,7 @@ object TelegramApi {
                 var fileUniqueId: String? = null
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in document caption, retrying as plain text...")
                         return sendDocument(token, chatId, file, caption, parseMode = null, displayName = displayName, replyToMessageId = replyToMessageId, onProgress = onProgress)
@@ -737,6 +744,7 @@ object TelegramApi {
                 val success = response.isSuccessful
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in editMessageText, retrying as plain text...")
                         return editMessageText(token, chatId, messageId, text, parseMode = null, replyMarkup = replyMarkup)
@@ -776,6 +784,7 @@ object TelegramApi {
                 val success = response.isSuccessful
                 if (!success) {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     if (parseMode != null && errorBody.contains("can't parse entities", ignoreCase = true)) {
                         AppLog.log(LogCategory.BOT_ACTIVITY, "[RETRY-PLAIN] Unmatched markdown in editMessageCaption, retrying as plain text...")
                         return editMessageCaption(token, chatId, messageId, caption, parseMode = null, replyMarkup = replyMarkup)
@@ -802,6 +811,9 @@ object TelegramApi {
         chatId: String,
         messageId: Long
     ): DeleteResult {
+        if (SendRateLimiter.isHeavyThrottled(chatId)) {
+            return DeleteResult.Failed("Delivery Paused (Rate Limited)")
+        }
         return try {
             val req = DeleteMessageRequest(chatId, messageId)
             val jsonBody = json.encodeToString(req)
@@ -818,6 +830,7 @@ object TelegramApi {
                     DeleteResult.Success
                 } else {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     AppLog.log(LogCategory.NETWORK, "deleteMessage failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                     val reason = when {
                         errorBody.contains("not enough rights", ignoreCase = true) || 
@@ -846,6 +859,9 @@ object TelegramApi {
         messageIds: List<Long>
     ): DeleteResult {
         if (messageIds.isEmpty()) return DeleteResult.Success
+        if (SendRateLimiter.isHeavyThrottled(chatId)) {
+            return DeleteResult.Failed("Delivery Paused (Rate Limited)")
+        }
         if (messageIds.size == 1) return deleteMessageWithResult(token, chatId, messageIds.first())
 
         return try {
@@ -864,6 +880,7 @@ object TelegramApi {
                     DeleteResult.Success
                 } else {
                     val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     AppLog.log(LogCategory.NETWORK, "deleteMessages batch failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                     val reason = when {
                         errorBody.contains("not enough rights", ignoreCase = true) || 
@@ -903,6 +920,10 @@ object TelegramApi {
         messageId: Long,
         emoji: String
     ): Boolean {
+        if (SendRateLimiter.isHeavyThrottled(chatId)) {
+            AppLog.log(LogCategory.NETWORK, "setMessageReaction skipped: Rate limit active", com.mobile.superiorchat.utils.LogLevel.WARN)
+            return false
+        }
         return try {
             // Build JSON manually — the reactions field is an array of ReactionType objects
             val reactionsArray = if (emoji.isBlank()) {
@@ -921,7 +942,8 @@ object TelegramApi {
             client.newCall(request).execute().use { response ->
                 val success = response.isSuccessful
                 if (!success) {
-                    val errorBody = response.body?.string()
+                    val errorBody = response.body?.string().orEmpty()
+                    handle429IfPresent(response.code, errorBody)
                     AppLog.log(LogCategory.NETWORK, "setMessageReaction failed: ${response.code} - $errorBody", com.mobile.superiorchat.utils.LogLevel.ERROR)
                 } else {
                     AppLog.log(LogCategory.BOT_ACTIVITY, "[REACT] $emoji on $messageId")
@@ -1100,6 +1122,20 @@ object TelegramApi {
         }
     }
 
+    fun handle429IfPresent(responseCode: Int, errorBody: String) {
+        if (responseCode == 429) {
+            try {
+                val json = org.json.JSONObject(errorBody)
+                val params = json.optJSONObject("parameters")
+                val retryAfter = params?.optInt("retry_after", 0) ?: 0
+                val effectiveRetry = if (retryAfter > 0) retryAfter else 5
+                SendRateLimiter.onRateLimitHit(effectiveRetry)
+            } catch (e: Exception) {
+                SendRateLimiter.onRateLimitHit(5)
+            }
+        }
+    }
+
     private fun parseErrorAndThrow(response: Response, methodName: String) {
         val bodyStr = response.body?.string() ?: ""
         AppLog.log(LogCategory.NETWORK, "$methodName failed: ${response.code} $bodyStr", com.mobile.superiorchat.utils.LogLevel.ERROR)
@@ -1109,6 +1145,8 @@ object TelegramApi {
             if (response.code == 429) {
                 val params = json.optJSONObject("parameters")
                 val retryAfter = params?.optInt("retry_after", 0) ?: 0
+                val effectiveRetry = if (retryAfter > 0) retryAfter else 5
+                SendRateLimiter.onRateLimitHit(effectiveRetry)
                 if (retryAfter > 0) throw RateLimitException(retryAfter, desc)
             }
             throw TelegramApiException("API Error ${response.code}: $desc")
@@ -1118,31 +1156,134 @@ object TelegramApi {
     }
 }
 
+sealed class ThrottleState {
+    data object Idle : ThrottleState()
+    data class LimitProtection(val remainingMs: Long) : ThrottleState()
+    data class RateLimited(val remainingMs: Long, val totalSeconds: Int) : ThrottleState()
+    data class GroupLimit(val remainingMs: Long, val currentCount: Int) : ThrottleState()
+}
+
 object SendRateLimiter {
-    private const val MAX_TOKENS = 3
-    private const val REFILL_RATE_PER_SEC = 3.0
-    
-    private var tokens = MAX_TOKENS.toDouble()
-    private var lastRefillTime = System.currentTimeMillis()
+    private val _throttleState = MutableStateFlow<ThrottleState>(ThrottleState.Idle)
+    val throttleState: StateFlow<ThrottleState> = _throttleState.asStateFlow()
+
+    private var rateLimitUntil = 0L
+    private var sendCooldownUntil = 0L
+    private val groupSendTimestamps = java.util.ArrayDeque<Long>()
 
     @Synchronized
-    fun acquire(): Long {
+    fun onSendInitiated(chatId: String) {
         val now = System.currentTimeMillis()
-        val elapsed = now - lastRefillTime
-        lastRefillTime = now
-        
-        tokens = minOf(MAX_TOKENS.toDouble(), tokens + elapsed * (REFILL_RATE_PER_SEC / 1000.0))
-        
-        if (tokens >= 1.0) {
-            tokens -= 1.0
-            return 0L
+        sendCooldownUntil = now + 500L
+
+        if (com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) {
+            while (groupSendTimestamps.isNotEmpty() && (now - groupSendTimestamps.first()) > 60_000L) {
+                groupSendTimestamps.removeFirst()
+            }
+            groupSendTimestamps.addLast(now)
         }
-        
-        val missingToken = 1.0 - tokens
-        val delayMs = (missingToken * 1000.0 / REFILL_RATE_PER_SEC).toLong()
-        tokens = 0.0
-        lastRefillTime = now + delayMs
-        return delayMs
+        recalculateState(chatId)
+    }
+
+    @Synchronized
+    fun onRateLimitHit(retryAfterSeconds: Int) {
+        val now = System.currentTimeMillis()
+        rateLimitUntil = maxOf(rateLimitUntil, now + (retryAfterSeconds * 1000L))
+        val remainingMs = rateLimitUntil - now
+        val totalSec = maxOf(1, retryAfterSeconds)
+        _throttleState.value = ThrottleState.RateLimited(remainingMs, totalSec)
+        AppLog.log(
+            LogCategory.NETWORK,
+            "[RATE-LIMIT] 429 Too Many Requests. Pausing sends for ${retryAfterSeconds}s",
+            com.mobile.superiorchat.utils.LogLevel.WARN
+        )
+    }
+
+    @Synchronized
+    fun isBlocked(chatId: String? = null): Boolean {
+        val now = System.currentTimeMillis()
+        if (rateLimitUntil > now) return true
+        if (chatId != null && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) {
+            while (groupSendTimestamps.isNotEmpty() && (now - groupSendTimestamps.first()) > 60_000L) {
+                groupSendTimestamps.removeFirst()
+            }
+            if (groupSendTimestamps.size >= 19) return true
+        }
+        return sendCooldownUntil > now
+    }
+
+    @Synchronized
+    fun isHeavyThrottled(chatId: String? = null): Boolean {
+        val now = System.currentTimeMillis()
+        if (rateLimitUntil > now) return true
+        if (chatId != null && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) {
+            while (groupSendTimestamps.isNotEmpty() && (now - groupSendTimestamps.first()) > 60_000L) {
+                groupSendTimestamps.removeFirst()
+            }
+            if (groupSendTimestamps.size >= 19) return true
+        }
+        return false
+    }
+
+    @Synchronized
+    fun recalculateState(chatId: String? = null): ThrottleState {
+        val now = System.currentTimeMillis()
+
+        // Priority 1: API 429 Rate Limited
+        if (rateLimitUntil > now) {
+            val remainingMs = rateLimitUntil - now
+            val totalSec = ((remainingMs + 999) / 1000).toInt()
+            val state = ThrottleState.RateLimited(remainingMs, totalSec)
+            _throttleState.value = state
+            return state
+        } else {
+            rateLimitUntil = 0L
+        }
+
+        // Priority 2: Group Limit (19 msgs in 60s)
+        if (chatId != null && com.mobile.superiorchat.utils.Validator.isValidGroupChatId(chatId)) {
+            while (groupSendTimestamps.isNotEmpty() && (now - groupSendTimestamps.first()) > 60_000L) {
+                groupSendTimestamps.removeFirst()
+            }
+            if (groupSendTimestamps.size >= 19) {
+                val oldest = groupSendTimestamps.first()
+                val remainingWait = maxOf(0L, 60_000L - (now - oldest))
+                if (remainingWait > 0L) {
+                    val state = ThrottleState.GroupLimit(remainingWait, groupSendTimestamps.size)
+                    _throttleState.value = state
+                    return state
+                }
+            }
+        }
+
+        // Priority 3: Limit Protection (0.5s per-send micro-pacing)
+        if (sendCooldownUntil > now) {
+            val remainingMs = sendCooldownUntil - now
+            val state = ThrottleState.LimitProtection(remainingMs)
+            _throttleState.value = state
+            return state
+        } else {
+            sendCooldownUntil = 0L
+        }
+
+        _throttleState.value = ThrottleState.Idle
+        return ThrottleState.Idle
+    }
+
+    fun formatRemainingTime(remainingMs: Long): String {
+        val totalSeconds = remainingMs / 1000.0
+        return if (remainingMs < 1000L) {
+            String.format(java.util.Locale.US, "%.1fs", maxOf(0.1, totalSeconds))
+        } else {
+            val mins = (remainingMs / 60000L).toInt()
+            val secs = (remainingMs % 60000L) / 1000
+            val tenths = (remainingMs % 1000L) / 100
+            if (mins > 0) {
+                String.format(java.util.Locale.US, "%d:%02d.%d", mins, secs, tenths)
+            } else {
+                String.format(java.util.Locale.US, "0:%02d.%d", secs, tenths)
+            }
+        }
     }
 }
 
