@@ -320,44 +320,15 @@ fun DeleteWarningDialog(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.height(40.dp)
-            ) {
-                Text(
-                    text = "Cancel",
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Button(
-                onClick = {
-                    if (deleteForEveryone) onConfirmDeleteForEveryone() else onConfirmDeleteForMe()
-                },
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ErrorRed.copy(alpha = 0.15f),
-                    contentColor = ErrorRed
-                ),
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
-            ) {
-                Text(
-                    text = "Delete",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
-            }
-        }
+        AdaptiveDialogActions(
+            confirmText = "Delete",
+            confirmTint = ErrorRed,
+            onConfirm = {
+                if (deleteForEveryone) onConfirmDeleteForEveryone() else onConfirmDeleteForMe()
+            },
+            dismissText = "Cancel",
+            onDismiss = onDismiss
+        )
     }
 }
 
@@ -555,44 +526,15 @@ fun ClearChatWarningDialog(
 
         Spacer(modifier = Modifier.height(28.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.height(40.dp)
-            ) {
-                Text(
-                    text = "Cancel",
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 15.sp
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Button(
-                onClick = {
-                    onConfirmClear(deleteMedia)
-                    onDismiss()
-                },
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ErrorRed.copy(alpha = 0.15f),
-                    contentColor = ErrorRed
-                ),
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
-            ) {
-                Text(
-                    text = "Clear",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
-            }
-        }
+        AdaptiveDialogActions(
+            confirmText = "Clear",
+            confirmTint = ErrorRed,
+            onConfirm = {
+                onConfirmClear(deleteMedia)
+                onDismiss()
+            },
+            dismissText = "Cancel",
+            onDismiss = onDismiss
+        )
     }
 }

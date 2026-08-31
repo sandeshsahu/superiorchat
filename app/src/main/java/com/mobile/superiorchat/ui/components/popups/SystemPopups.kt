@@ -9,6 +9,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.ScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -102,6 +105,9 @@ fun BaseAppDialog(
             dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
         }
 
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val maxDialogHeight = (configuration.screenHeightDp * 0.78f).dp
+
         AnimatedVisibility(
             visible = isVisible,
             enter = scaleIn(initialScale = 0.9f, animationSpec = tween(250)) + fadeIn(animationSpec = tween(250)),
@@ -110,6 +116,7 @@ fun BaseAppDialog(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
+                    .heightIn(max = maxDialogHeight)
                     .clip(RoundedCornerShape(24.dp)),
                 color = SurfaceLevel1,
                 shape = RoundedCornerShape(24.dp)
@@ -173,6 +180,62 @@ fun rememberTermsText(): String {
 }
 
 @Composable
+fun ScrollableDialogBody(
+    modifier: Modifier = Modifier,
+    scrollState: ScrollState = rememberScrollState(),
+    tint: Color = PrimaryLight,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val canScrollDown by remember { derivedStateOf { scrollState.maxValue in 1 until Int.MAX_VALUE && scrollState.canScrollForward } }
+
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState),
+            content = content
+        )
+
+        if (scrollState.maxValue in 1 until Int.MAX_VALUE) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = canScrollDown,
+                enter = fadeIn() + scaleIn(initialScale = 0.8f),
+                exit = fadeOut() + scaleOut(targetScale = 0.8f),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 2.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = if (tint == PrimaryLight) PrimaryLight else tint,
+                    shadowElevation = 2.dp,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable {
+                            coroutineScope.launch {
+                                scrollState.animateScrollBy(250f)
+                            }
+                        }
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "Scroll down for more",
+                            tint = if (tint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ErrorDialog(
     title: String = "Error",
     message: String,
@@ -187,41 +250,36 @@ fun ErrorDialog(
                 style = MaterialTheme.typography.titleLarge,
                 color = ErrorRed,
                 fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Start
+                textAlign = TextAlign.Start,
+                modifier = Modifier.weight(1f)
             )
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text(
-            text = parseAnnotatedMessage(message),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
-            textAlign = TextAlign.Start,
-            lineHeight = 22.sp,
-            modifier = Modifier.fillMaxWidth()
-        )
+        ScrollableDialogBody(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            tint = ErrorRed
+        ) {
+            Text(
+                text = parseAnnotatedMessage(message),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary,
+                textAlign = TextAlign.Start,
+                lineHeight = 22.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         
         Spacer(modifier = Modifier.height(28.dp))
         
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ErrorRed.copy(alpha = 0.15f),
-                    contentColor = ErrorRed
-                ),
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
-            ) {
-                Text(text = "OK", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            }
-        }
+        AdaptiveDialogActions(
+            confirmText = "OK",
+            confirmTint = ErrorRed,
+            onConfirm = onDismiss
+        )
     }
 }
 
@@ -236,123 +294,154 @@ fun InfoDialog(
     onExtraButtonClick: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
-    var isVisible by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(50)
-        isVisible = true
-    }
-
-    Dialog(
-        onDismissRequest = {
-            isVisible = false
-            onDismiss()
-        },
-        properties = DialogProperties(
-            dismissOnBackPress = true,
-            dismissOnClickOutside = true,
-            usePlatformDefaultWidth = false
-        )
-    ) {
-        val view = LocalView.current
-        val dialogWindow = (view.parent as? DialogWindowProvider)?.window
-        LaunchedEffect(dialogWindow) {
-            dialogWindow?.setDimAmount(0.65f)
-            dialogWindow?.setBackgroundDrawableResource(android.R.color.transparent)
+    BaseAppDialog(onDismiss = onDismiss) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(32.dp))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = iconTint,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Start,
+                modifier = Modifier.weight(1f)
+            )
         }
 
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = scaleIn(initialScale = 0.9f, animationSpec = tween(250)) + fadeIn(animationSpec = tween(250)),
-            exit = scaleOut(targetScale = 0.9f, animationSpec = tween(200)) + fadeOut(animationSpec = tween(200))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ScrollableDialogBody(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            tint = iconTint
         ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .clip(RoundedCornerShape(24.dp)),
-                color = SurfaceLevel1,
-                shape = RoundedCornerShape(24.dp)
+            Text(
+                text = parseAnnotatedMessage(message, tint = iconTint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary,
+                textAlign = TextAlign.Start,
+                lineHeight = 22.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (customContent != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                customContent()
+            }
+        }
+
+        Spacer(modifier = Modifier.height(28.dp))
+
+        AdaptiveDialogActions(
+            confirmText = "Got it",
+            confirmTint = iconTint,
+            onConfirm = onDismiss,
+            neutralText = extraButtonText,
+            onNeutral = onExtraButtonClick
+        )
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+//  AdaptiveDialogActions — Responsive Dialog Action Bar
+//
+//  Intelligently displays action buttons in a horizontal row when space
+//  permits, or stacks cleanly in a wrapping flow when button labels are
+//  long or on narrow viewports, preventing text clipping and misalignment.
+// ═════════════════════════════════════════════════════════════════════════
+
+@Composable
+fun AdaptiveDialogActions(
+    modifier: Modifier = Modifier,
+    confirmText: String? = null,
+    confirmTint: Color = PrimaryLight,
+    isConfirmLoading: Boolean = false,
+    isConfirmSuccess: Boolean = false,
+    isConfirmEnabled: Boolean = true,
+    onConfirm: (() -> Unit)? = null,
+    dismissText: String? = null,
+    onDismiss: (() -> Unit)? = null,
+    neutralText: String? = null,
+    onNeutral: (() -> Unit)? = null
+) {
+    FlowRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        itemVerticalAlignment = Alignment.CenterVertically
+    ) {
+        if (neutralText != null && onNeutral != null) {
+            TextButton(
+                onClick = onNeutral,
+                modifier = Modifier.heightIn(min = 40.dp),
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(32.dp))
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = iconTint,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start
-                        )
+                Text(
+                    text = neutralText,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        if (dismissText != null && onDismiss != null) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 40.dp),
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = dismissText,
+                    color = TextSecondary,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 15.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        if (confirmText != null && onConfirm != null) {
+            Button(
+                onClick = {
+                    if (!isConfirmLoading && !isConfirmSuccess) {
+                        onConfirm()
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = parseAnnotatedMessage(message, tint = iconTint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextPrimary,
-                        textAlign = TextAlign.Start,
-                        lineHeight = 22.sp,
-                        modifier = Modifier.fillMaxWidth()
+                },
+                enabled = isConfirmEnabled,
+                modifier = Modifier.heightIn(min = 40.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (confirmTint == PrimaryLight) PrimaryLight else confirmTint.copy(alpha = 0.15f),
+                    contentColor = if (confirmTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else confirmTint,
+                    disabledContainerColor = SurfaceLevel2,
+                    disabledContentColor = TextSecondary
+                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp)
+            ) {
+                if (isConfirmLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = if (confirmTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else confirmTint
                     )
-
-                    if (customContent != null) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        customContent()
-                    }
-
-                    Spacer(modifier = Modifier.height(28.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (extraButtonText != null && onExtraButtonClick != null) {
-                            TextButton(
-                                onClick = onExtraButtonClick,
-                                modifier = Modifier.height(40.dp),
-                                shape = RoundedCornerShape(24.dp)
-                            ) {
-                                Text(
-                                    text = extraButtonText,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = iconTint
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Button(
-                            onClick = {
-                                isVisible = false
-                                onDismiss()
-                            },
-                            modifier = Modifier.height(40.dp),
-                            colors = if (iconTint != PrimaryLight) {
-                                ButtonDefaults.buttonColors(
-                                    containerColor = iconTint.copy(alpha = 0.15f),
-                                    contentColor = iconTint
-                                )
-                            } else {
-                                com.mobile.superiorchat.ui.components.luminaButtonColors()
-                            },
-                            shape = RoundedCornerShape(24.dp),
-                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
-                        ) {
-                            Text(
-                                text = "Got it",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-                    }
+                } else if (isConfirmSuccess) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = "Success",
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    Text(
+                        text = confirmText,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        textAlign = TextAlign.Center
+                    )
                 }
             }
         }
@@ -406,113 +495,78 @@ fun ActionDialog(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text(
-            text = parseAnnotatedMessage(message, tint = iconTint),
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
-            textAlign = TextAlign.Start,
-            lineHeight = 22.sp,
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        if (note != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Surface(
-                shape = RoundedCornerShape(12.dp),
-                color = iconTint.copy(alpha = 0.12f),
+        ScrollableDialogBody(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            tint = iconTint
+        ) {
+            Text(
+                text = parseAnnotatedMessage(message, tint = iconTint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextPrimary,
+                textAlign = TextAlign.Start,
+                lineHeight = 22.sp,
                 modifier = Modifier.fillMaxWidth()
-            ) {
-                Box(modifier = Modifier.padding(14.dp)) {
-                    val annotatedNote = parseAnnotatedMessage(note, tint = iconTint, isWarning = true)
-                    Text(
-                        text = buildAnnotatedString {
-                            if (noteIcon != null) {
-                                appendInlineContent("note_icon", "[icon]")
-                                append(" ")
-                            }
-                            append(annotatedNote)
-                        },
-                        inlineContent = if (noteIcon != null) mapOf(
-                            "note_icon" to InlineTextContent(
-                                Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
-                            ) {
-                                Icon(noteIcon, null, tint = iconTint, modifier = Modifier.fillMaxSize())
-                            }
-                        ) else emptyMap(),
-                        color = iconTint.copy(alpha = 0.95f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 18.sp,
-                    )
+            )
+            
+            if (note != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = iconTint.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(modifier = Modifier.padding(14.dp)) {
+                        val annotatedNote = parseAnnotatedMessage(note, tint = iconTint, isWarning = true)
+                        Text(
+                            text = buildAnnotatedString {
+                                if (noteIcon != null) {
+                                    appendInlineContent("note_icon", "[icon]")
+                                    append(" ")
+                                }
+                                append(annotatedNote)
+                            },
+                            inlineContent = if (noteIcon != null) mapOf(
+                                "note_icon" to InlineTextContent(
+                                    Placeholder(16.sp, 16.sp, PlaceholderVerticalAlign.TextCenter)
+                                ) {
+                                    Icon(noteIcon, null, tint = iconTint, modifier = Modifier.fillMaxSize())
+                                }
+                            ) else emptyMap(),
+                            color = iconTint.copy(alpha = 0.95f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            lineHeight = 18.sp,
+                        )
+                    }
                 }
             }
-        }
-        
-        if (customContent != null) {
-            Spacer(modifier = Modifier.height(16.dp))
-            customContent()
+            
+            if (customContent != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                customContent()
+            }
         }
         
         Spacer(modifier = Modifier.height(28.dp))
         
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (neutralText != null && onNeutral != null) {
-                TextButton(
-                    onClick = onNeutral,
-                    modifier = Modifier.height(40.dp)
-                ) {
-                    Text(neutralText, color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
+        AdaptiveDialogActions(
+            confirmText = confirmText,
+            confirmTint = iconTint,
+            isConfirmLoading = isLoading,
+            isConfirmSuccess = isSuccess,
+            onConfirm = {
+                onConfirm()
+                if (autoDismiss) {
+                    onDismiss()
                 }
-                Spacer(modifier = Modifier.weight(1f))
-            }
-            
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.height(40.dp)
-            ) {
-                Text(dismissText, color = TextSecondary, fontWeight = FontWeight.Medium, fontSize = 15.sp)
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Button(
-                onClick = {
-                    if (!isLoading && !isSuccess) {
-                        onConfirm()
-                        if (autoDismiss) {
-                            onDismiss()
-                        }
-                    }
-                },
-                modifier = Modifier.height(40.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (iconTint == PrimaryLight) PrimaryLight else iconTint.copy(alpha = 0.15f),
-                    contentColor = if (iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else iconTint
-                ),
-                shape = RoundedCornerShape(24.dp),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
-            ) {
-                if (isLoading) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = if (iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else iconTint
-                    )
-                } else if (isSuccess) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = "Success",
-                        modifier = Modifier.size(20.dp)
-                    )
-                } else {
-                    Text(confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
-            }
-        }
+            },
+            dismissText = dismissText,
+            onDismiss = onDismiss,
+            neutralText = neutralText,
+            onNeutral = onNeutral
+        )
     }
 }
 
@@ -597,29 +651,36 @@ fun MultiStepActionDialog(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ── Message ──
-                Text(
-                    text = parseAnnotatedMessage(stepDef.message, tint = stepDef.iconTint),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextPrimary,
-                    textAlign = TextAlign.Start,
-                    lineHeight = 22.sp,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                // ── Message & Custom Content (Scrollable if tall) ──
+                ScrollableDialogBody(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                    tint = stepDef.iconTint
+                ) {
+                    Text(
+                        text = parseAnnotatedMessage(stepDef.message, tint = stepDef.iconTint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Start,
+                        lineHeight = 22.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
 
-                // ── Custom content ──
-                if (stepDef.customContent != null) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    stepDef.customContent.invoke()
+                    if (stepDef.customContent != null) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        stepDef.customContent.invoke()
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(28.dp))
 
                 // ── Buttons ──
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    itemVerticalAlignment = Alignment.CenterVertically
                 ) {
                     if (currentIndex > 0) {
                         TextButton(
@@ -628,22 +689,24 @@ fun MultiStepActionDialog(
                                 else internalStepIndex--
                             },
                             enabled = !stepDef.isConfirmLoading,
-                            modifier = Modifier.height(40.dp)
+                            modifier = Modifier.heightIn(min = 40.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(text = "Back", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextSecondary)
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     if (stepDef.dismissText != null) {
                         TextButton(
                             onClick = onDismiss,
                             enabled = !stepDef.isConfirmLoading,
-                            modifier = Modifier.height(40.dp)
+                            modifier = Modifier.heightIn(min = 40.dp),
+                            shape = RoundedCornerShape(20.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                         ) {
                             Text(text = stepDef.dismissText, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextSecondary)
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     Button(
@@ -661,7 +724,7 @@ fun MultiStepActionDialog(
                             }
                         },
                         enabled = stepDef.isConfirmEnabled,
-                        modifier = Modifier.height(40.dp),
+                        modifier = Modifier.heightIn(min = 40.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (stepDef.isConfirmLoading) SurfaceLevel2 else if (stepDef.iconTint == PrimaryLight) PrimaryLight else stepDef.iconTint.copy(alpha = 0.15f),
                             contentColor = if (stepDef.iconTint == PrimaryLight) MaterialTheme.colorScheme.onPrimaryContainer else stepDef.iconTint,
@@ -669,7 +732,7 @@ fun MultiStepActionDialog(
                             disabledContentColor = TextSecondary
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp)
+                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 6.dp)
                     ) {
                         if (stepDef.isConfirmLoading) {
                             CircularProgressIndicator(
@@ -678,7 +741,12 @@ fun MultiStepActionDialog(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text(text = stepDef.confirmText, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text(
+                                text = stepDef.confirmText,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }

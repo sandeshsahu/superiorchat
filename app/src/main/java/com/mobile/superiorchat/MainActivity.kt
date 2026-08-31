@@ -291,12 +291,13 @@ open class MainActivity : ComponentActivity() {
                                         flavor = BuildConfig.FLAVOR,
                                         accessInstructions = accessInstructions,
                                         onConfirm = {
+                                            showSetupUninstallDialog = false
                                             try {
                                                 val uninstallIntent = android.content.Intent(android.content.Intent.ACTION_DELETE)
                                                 uninstallIntent.data = android.net.Uri.parse("package:com.mobile.superiorsetup")
                                                 startActivity(uninstallIntent)
                                             } catch (e: Exception) {
-                                                AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent")
+                                                AppLog.log(LogCategory.SYSTEM, "Failed to launch uninstall intent: ${e.message}", LogLevel.WARN)
                                             }
                                         },
                                         onDismiss = {
