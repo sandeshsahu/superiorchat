@@ -13,13 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PhoneDisabled
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,7 +29,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -298,7 +300,7 @@ fun AppNavDrawer(
         drawerContainerColor = SurfaceLevel1,
         drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
         modifier = modifier
-            .width(240.dp)
+            .width(210.dp)
             .border(1.dp, DividerColor, RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp))
     ) {
         Column(
@@ -307,16 +309,12 @@ fun AppNavDrawer(
                 .padding(vertical = 20.dp)
         ) {
             // Header
-            Column(
+            DrawerBrandTitle(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
-                    .padding(bottom = 24.dp)
-            ) {
-                Text("Superior Chat", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = PrimaryLight)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Author Sandesh", fontSize = 14.sp, color = PrimaryLight.copy(alpha = 0.55f))
-            }
+                    .padding(top = 4.dp, bottom = 24.dp)
+            )
 
             // Navigation Items — top-level entries only
             listOf(NavScreen.Chat, NavScreen.Profile, NavScreen.AppInformation).forEach { screen ->
@@ -339,38 +337,63 @@ fun AppNavDrawer(
                     Text(screen.title, fontSize = 16.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = contentColor)
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            HorizontalDivider(color = PrimaryLight.copy(alpha = 0.55f), modifier = Modifier.padding(horizontal = 24.dp))
-
-            // External Links
-            Spacer(modifier = Modifier.height(16.dp))
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                ExternalLinkItem("LinkedIn", Icons.Filled.Link, "https://www.linkedin.com/in/sandesh-sahu/")
-                ExternalLinkItem("GitHub", Icons.Filled.Code, "https://github.com/sandeshsahu/")
-                ExternalLinkItem("GitLab", Icons.Filled.Terminal, "https://gitlab.com/sandeshsahu")
-            }
         }
     }
 }
 
+// ═════════════════════════════════════════════════════════════════════════
+//  DrawerBrandTitle — "Superior / Chat" signature lockup
+//
+//  Uses Montserrat ExtraBold for 'Superior' and SemiBold wide-tracked
+//  'CHAT' starting precisely at the pixel column where the 'r' in
+//  'Superior' ends, measured via rememberTextMeasurer.
+// ═════════════════════════════════════════════════════════════════════════
+
 @Composable
-private fun ExternalLinkItem(title: String, icon: ImageVector, url: String) {
-    val context = LocalContext.current
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .clickable {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-            }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Icon(icon, contentDescription = title, tint = PrimaryLight.copy(alpha = 0.55f), modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(title, fontSize = 16.sp, color = PrimaryLight.copy(alpha = 0.55f))
+fun DrawerBrandTitle(modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+
+    val superiorFontSize = 26.sp
+    val chatFontSize = 13.sp
+
+    val superiorStyle = TextStyle(
+        fontFamily = MontserratFont,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = superiorFontSize,
+        letterSpacing = (-0.5).sp
+    )
+    val chatStyle = TextStyle(
+        fontFamily = MontserratFont,
+        fontWeight = FontWeight.Bold,
+        fontSize = chatFontSize,
+        letterSpacing = 1.sp
+    )
+
+    // Calculate exact start padding so that 'Chat' ends exactly where 'Superior' ends ('r' end)
+    val superiorMeasure = remember(superiorStyle, density) {
+        textMeasurer.measure("Superior", superiorStyle)
+    }
+    val chatMeasure = remember(chatStyle, density) {
+        textMeasurer.measure("Chat", chatStyle)
+    }
+
+    val chatStartPadding: Dp = remember(superiorMeasure, chatMeasure, density) {
+        val diffPx = superiorMeasure.size.width - chatMeasure.size.width
+        with(density) { diffPx.coerceAtLeast(0).toDp() }
+    }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Superior",
+            style = superiorStyle.copy(color = PrimaryLight),
+            lineHeight = superiorFontSize
+        )
+        Text(
+            text = "CHAT",
+            style = chatStyle.copy(color = PrimaryLight.copy(alpha = 0.75f)),
+            lineHeight = chatFontSize,
+            modifier = Modifier.padding(start = chatStartPadding, top = 2.dp)
+        )
     }
 }

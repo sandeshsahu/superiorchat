@@ -16,6 +16,26 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.text.googlefonts.Font
+import com.mobile.superiorchat.R
+
+// ═══════════════════════════════════════════════════════════
+//  BRAND FONTS
+// ═══════════════════════════════════════════════════════════
+
+private val googleFontProvider = GoogleFont.Provider(
+    providerAuthority = "com.google.android.gms.fonts",
+    providerPackage = "com.google.android.gms",
+    certificates = R.array.com_google_android_gms_fonts_certs
+)
+
+val MontserratFont = FontFamily(
+    Font(googleFont = GoogleFont("Montserrat"), fontProvider = googleFontProvider, weight = FontWeight.ExtraBold),
+    Font(googleFont = GoogleFont("Montserrat"), fontProvider = googleFontProvider, weight = FontWeight.Bold),
+    Font(googleFont = GoogleFont("Montserrat"), fontProvider = googleFontProvider, weight = FontWeight.SemiBold),
+    Font(googleFont = GoogleFont("Montserrat"), fontProvider = googleFontProvider, weight = FontWeight.Medium),
+)
 
 // ═══════════════════════════════════════════════════════════
 //  COLOR TOKENS (From Stitch Design)

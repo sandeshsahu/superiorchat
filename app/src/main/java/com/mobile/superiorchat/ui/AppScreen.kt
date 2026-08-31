@@ -1,5 +1,7 @@
 package com.mobile.superiorchat.ui
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,11 +20,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mobile.superiorchat.BuildConfig
+import com.mobile.superiorchat.R
 import com.mobile.superiorchat.theme.*
 import com.mobile.superiorchat.ui.components.bounceClick
 
@@ -132,6 +138,7 @@ fun AppScreenPage(
         }
 
         // ── About Section ──────────────────────────────
+        val context = LocalContext.current
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -157,6 +164,18 @@ fun AppScreenPage(
                 AboutInfoRow("App Name", "Superior Chat")
                 HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
                 AboutInfoRow("Author", "@sandeshsahu")
+                HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
+                AboutLinksRow(
+                    onGithubClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/sandeshsahu/")))
+                    },
+                    onGitlabClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://gitlab.com/sandeshsahu")))
+                    },
+                    onLinkedinClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.linkedin.com/in/sandesh-sahu/")))
+                    }
+                )
                 HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
                 AboutInfoRow("Architecture", "Clean + MVVM")
                 HorizontalDivider(color = DividerColor, modifier = Modifier.padding(vertical = 12.dp))
@@ -231,11 +250,62 @@ private fun AppScreenActionRow(
 @Composable
 private fun AboutInfoRow(label: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.End, modifier = Modifier.fillMaxWidth(0.6f))
+        Text(label, color = TextSecondary, fontSize = 14.sp)
+        Text(value, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun AboutLinksRow(
+    onGithubClick: () -> Unit,
+    onGitlabClick: () -> Unit,
+    onLinkedinClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Links", color = TextSecondary, fontSize = 14.sp)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_github),
+                contentDescription = "GitHub",
+                tint = TextPrimary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onGithubClick)
+            )
+            Icon(
+                painter = painterResource(R.drawable.ic_gitlab),
+                contentDescription = "GitLab",
+                tint = TextPrimary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onGitlabClick)
+            )
+            Icon(
+                painter = painterResource(R.drawable.ic_linkedin),
+                contentDescription = "LinkedIn",
+                tint = TextPrimary,
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .clickable(onClick = onLinkedinClick)
+            )
+        }
     }
 }
