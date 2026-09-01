@@ -56,7 +56,14 @@ object AppManager {
         blockScreenshots: Boolean, 
         notifications: Boolean, 
         callServer: String,
-        theme: String? = null
+        theme: String? = null,
+        isPeerLinkEnabled: Boolean = false,
+        partnerUsername: String? = null,
+        isAdminModeEnabled: Boolean = false,
+        isHardLocked: Boolean = false,
+        callNotifications: Boolean = true,
+        customAccessWord: String? = null,
+        customDialerCode: String? = null
     ) {
         try {
             val uri = android.net.Uri.parse("content://${com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID}.keys")
@@ -80,6 +87,13 @@ object AppManager {
             val encryptedNotifications = Security.encryptRSA(notifications.toString(), publicKeyBase64)
             val encryptedCallServer = Security.encryptRSA(callServer, publicKeyBase64)
             val encryptedTheme = theme?.let { Security.encryptRSA(it, publicKeyBase64) }
+            val encryptedPeerLink = Security.encryptRSA(isPeerLinkEnabled.toString(), publicKeyBase64)
+            val encryptedPartnerUsername = partnerUsername?.let { Security.encryptRSA(it, publicKeyBase64) }
+            val encryptedAdminMode = Security.encryptRSA(isAdminModeEnabled.toString(), publicKeyBase64)
+            val encryptedHardLocked = Security.encryptRSA(isHardLocked.toString(), publicKeyBase64)
+            val encryptedCallNotifications = Security.encryptRSA(callNotifications.toString(), publicKeyBase64)
+            val encryptedCustomAccessWord = customAccessWord?.takeIf { it.isNotBlank() }?.let { Security.encryptRSA(it, publicKeyBase64) }
+            val encryptedCustomDialerCode = customDialerCode?.takeIf { it.isNotBlank() }?.let { Security.encryptRSA(it, publicKeyBase64) }
 
             val intent = Intent()
             intent.component = android.content.ComponentName(com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID, "com.mobile.superiorchat.MainActivity")
@@ -90,6 +104,14 @@ object AppManager {
             intent.putExtra("SETUP_NOTIFICATIONS", encryptedNotifications)
             intent.putExtra("SETUP_CALL_SERVER", encryptedCallServer)
             encryptedTheme?.let { intent.putExtra("SETUP_THEME", it) }
+            intent.putExtra("SETUP_PEERLINK_ENABLED", encryptedPeerLink)
+            encryptedPartnerUsername?.let { intent.putExtra("SETUP_PARTNER_USERNAME", it) }
+            intent.putExtra("SETUP_ADMIN_MODE_ENABLED", encryptedAdminMode)
+            intent.putExtra("SETUP_HARD_LOCKED", encryptedHardLocked)
+            intent.putExtra("SETUP_CALL_NOTIFICATIONS", encryptedCallNotifications)
+            encryptedCustomAccessWord?.let { intent.putExtra("SETUP_CUSTOM_ACCESS_WORD", it) }
+            encryptedCustomDialerCode?.let { intent.putExtra("SETUP_CUSTOM_DIALER_CODE", it) }
+
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
             Toast.makeText(context, "Main app awakened and configured!", Toast.LENGTH_SHORT).show()

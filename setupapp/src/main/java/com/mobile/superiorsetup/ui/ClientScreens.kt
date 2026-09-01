@@ -71,6 +71,17 @@ fun Step2Screen(onNext: () -> Unit) {
                 Config.adminNewMessageNotification = qrData.newMessageNotification
                 Config.adminCallServer = qrData.callServer
                 qrData.theme?.let { Config.adminTheme = it }
+                qrData.isPeerLinkEnabled?.let { Config.adminIsPeerLinkEnabled = it }
+                qrData.partnerUsername?.let { Config.adminAppToAppPartnerBotUsername = it }
+                qrData.isHardLocked?.let { Config.adminHardLockPartner = it }
+                qrData.callNotifications?.let { Config.adminCallNotifications = it }
+                qrData.customAccessWord?.let { Config.adminCustomAccessWord = it }
+                qrData.customDialerCode?.let { Config.adminCustomDialerCode = it }
+                val isAdmin = qrData.role == "ADMIN" || qrData.isAdminModeEnabled == true
+                Config.adminIsAdminModeEnabled = isAdmin
+                if (isAdmin) {
+                    Config.adminChatMode = "APP_TO_APP"
+                }
                 botToken = qrData.token
                 chatId = qrData.chatId
                 showScanner = false
@@ -79,9 +90,14 @@ fun Step2Screen(onNext: () -> Unit) {
     }
 
     if (showAddManuallyPopup) {
-        com.mobile.superiorsetup.ui.components.AddManuallyPopup(
+        com.mobile.superiorsetup.ui.components.CredentialsPopup(
+            initialToken = botToken,
+            initialChatId = chatId,
+            initialPartnerUsername = "",
+            isPeerLinkEnabled = false,
+            isAdminMode = false,
             onDismiss = { showAddManuallyPopup = false },
-            onSave = { token, chat ->
+            onSave = { token, chat, _ ->
                 Config.botToken = token
                 Config.chatId = chat
                 botToken = token
@@ -277,14 +293,21 @@ fun Step3Screen() {
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) {
                         AppManager.wakeUpMainApp(
-                            context, 
-                            Config.botToken, 
-                            Config.chatId,
-                            Config.adminAutoDownloadMedia,
-                            Config.adminBlockScreenshots,
-                            Config.adminNewMessageNotification,
-                            Config.adminCallServer,
-                            Config.adminTheme
+                            context = context, 
+                            botToken = Config.botToken, 
+                            chatId = Config.chatId,
+                            autoDownload = Config.adminAutoDownloadMedia,
+                            blockScreenshots = Config.adminBlockScreenshots,
+                            notifications = Config.adminNewMessageNotification,
+                            callServer = Config.adminCallServer,
+                            theme = Config.adminTheme,
+                            isPeerLinkEnabled = Config.adminIsPeerLinkEnabled,
+                            partnerUsername = Config.adminAppToAppPartnerBotUsername,
+                            isAdminModeEnabled = Config.adminIsAdminModeEnabled,
+                            isHardLocked = if (Config.adminIsAdminModeEnabled) Config.adminHardLockAdmin else Config.adminHardLockPartner,
+                            callNotifications = Config.adminCallNotifications,
+                            customAccessWord = Config.adminCustomAccessWord,
+                            customDialerCode = Config.adminCustomDialerCode
                         )
                     }
                     .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)

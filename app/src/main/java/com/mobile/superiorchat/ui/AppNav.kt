@@ -381,6 +381,8 @@ fun AppScreen(
                                             onAutoDownloadMediaChange = { viewModel.toggleAutoDownloadMedia(it) },
                                             onScreenSecurityChange = { viewModel.toggleScreenSecurity(it) },
                                             onNewMessageNotificationChange = { viewModel.toggleNewMessageNotification(it) },
+                                            onCallNotificationsChange = { viewModel.toggleCallRinging(it) },
+                                            onQrConfigApplied = { viewModel.applyQrConfig(it) },
                                             onWebrtcBaseUrlChange = { viewModel.webrtcBaseUrl = it },
                                             isAppLockEnabled = viewModel.isAppLockEnabled,
                                             isFakeCrashEnabled = viewModel.isFakeCrashEnabled,
@@ -440,23 +442,12 @@ fun AppScreen(
                                 com.mobile.superiorchat.ui.components.QrScanner(
                                     onDismiss = { viewModel.showAppLevelQrScanner = false },
                                     onSuccess = { data ->
-                                        viewModel.botToken = data.token
-                                        viewModel.chatId = data.chatId
-                                        data.autoDownloadMedia?.let { viewModel.toggleAutoDownloadMedia(it) }
-                                        data.newMessageNotification?.let { viewModel.toggleNewMessageNotification(it) }
-                                        data.screenSecurity?.let { viewModel.toggleScreenSecurity(it) }
-                                        data.callServer?.let { 
-                                            viewModel.webrtcBaseUrl = it
-                                        }
-                                        data.theme?.let {
-                                            try {
-                                                viewModel.updateAppTheme(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
-                                            } catch (e: Exception) {}
-                                        }
-                                        
-                                        viewModel.saveCredentials()
+                                        viewModel.applyQrConfig(data)
                                         viewModel.showAppLevelQrScanner = false
-                                        com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
+                                        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+                                            com.mobile.superiorchat.core.SyncState.SUCCESS,
+                                            if (data.role == "ADMIN") "Admin QR Configuration Applied" else "QR Configuration Applied"
+                                        )
                                     },
                                     onShowGlobalDialog = { viewModel.activeGlobalDialog = it }
                                 )

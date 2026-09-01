@@ -292,6 +292,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _isPeerLinkHardLocked: Boolean = sharedPreferences.getBoolean("is_peerlink_hard_locked", false)
+    var isPeerLinkHardLocked: Boolean
+        get() = _isPeerLinkHardLocked
+        set(value) {
+            if (_isPeerLinkHardLocked != value) {
+                _isPeerLinkHardLocked = value
+                sharedPreferences.edit().putBoolean("is_peerlink_hard_locked", value).apply()
+            }
+        }
+
     private var _isAdminModeEnabled: Boolean = sharedPreferences.getBoolean("is_admin_mode_enabled", false)
     var isAdminModeEnabled: Boolean
         get() = _isAdminModeEnabled

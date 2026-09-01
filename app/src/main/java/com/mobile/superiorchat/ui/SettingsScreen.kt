@@ -78,6 +78,8 @@ fun AppSettingsPage(
     onAutoDownloadMediaChange: (Boolean) -> Unit,
     onScreenSecurityChange: (Boolean) -> Unit,
     onNewMessageNotificationChange: (Boolean) -> Unit,
+    onCallNotificationsChange: (Boolean) -> Unit = {},
+    onQrConfigApplied: ((com.mobile.superiorchat.utils.QrConfigData) -> Unit)? = null,
     onWebrtcBaseUrlChange: (String) -> Unit,
     isAppLockEnabled: Boolean,
     isFakeCrashEnabled: Boolean,
@@ -103,6 +105,7 @@ fun AppSettingsPage(
     var showDangerZone by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showAdminModeActiveWarning by remember { mutableStateOf(false) }
+    var showAdminQrWarning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     
     val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler(onShowGlobalDialog)
@@ -191,25 +194,60 @@ fun AppSettingsPage(
         com.mobile.superiorchat.ui.components.QrScanner(
             onDismiss = { showQrScanner = false },
             onSuccess = { data ->
-                onBotTokenChange(data.token)
-                onChatIdChange(data.chatId)
-                data.autoDownloadMedia?.let { onAutoDownloadMediaChange(it) }
-                data.newMessageNotification?.let { onNewMessageNotificationChange(it) }
-                data.screenSecurity?.let { onScreenSecurityChange(it) }
-                data.callServer?.let { 
-                    onWebrtcBaseUrlChange(it)
-                }
-                data.theme?.let {
-                    try {
-                        onAppThemeChange(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
-                    } catch (e: Exception) {}
-                }
-                
-                onSave()
                 showQrScanner = false
-                com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "QR Configuration Applied")
+                if (data.role == "ADMIN" || data.isAdminModeEnabled == true) {
+                    showAdminQrWarning = true
+                } else {
+                    if (onQrConfigApplied != null) {
+                        onQrConfigApplied(data)
+                    } else {
+                        onBotTokenChange(data.token)
+                        onChatIdChange(data.chatId)
+                        data.autoDownloadMedia?.let { onAutoDownloadMediaChange(it) }
+                        data.newMessageNotification?.let { onNewMessageNotificationChange(it) }
+                        data.callNotifications?.let { onCallNotificationsChange(it) }
+                        data.screenSecurity?.let { onScreenSecurityChange(it) }
+                        data.callServer?.let { 
+                            onWebrtcBaseUrlChange(it)
+                        }
+                        data.theme?.let {
+                            try {
+                                onAppThemeChange(com.mobile.superiorchat.theme.AppTheme.valueOf(it))
+                            } catch (e: Exception) {}
+                        }
+                        data.isPeerLinkEnabled?.let { onPeerLinkChange(it) }
+                        data.partnerUsername?.let { onPeerLinkPartnerBotUsernameChange(it) }
+
+                        // Flavor-specific settings (only apply to the flavor that supports it; ignore otherwise)
+                        if (BuildConfig.FLAVOR == "weather") {
+                            data.customAccessWord?.let {
+                                if (it.isNotBlank()) onCustomAccessWordChange(it)
+                            }
+                        } else if (BuildConfig.FLAVOR == "captivePortal" || BuildConfig.FLAVOR == "playSupport") {
+                            data.customDialerCode?.let {
+                                if (it.isNotBlank()) onCustomDialerCodeChange(it)
+                            }
+                        }
+
+                        onSave()
+                    }
+                    com.mobile.superiorchat.core.StatusFlow.reportStatus(
+                        com.mobile.superiorchat.core.SyncState.SUCCESS,
+                        "QR Configuration Applied"
+                    )
+                }
             },
             onShowGlobalDialog = onShowGlobalDialog
+        )
+    }
+
+    if (showAdminQrWarning) {
+        com.mobile.superiorchat.ui.components.popups.SettingsAdminQrScannedDialog(
+            onNavigateToAdmin = {
+                showAdminQrWarning = false
+                onNavigateToAdmin()
+            },
+            onDismiss = { showAdminQrWarning = false }
         )
     }
 

@@ -10,12 +10,14 @@ import android.os.Looper
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
+import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeReader
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,8 +32,16 @@ data class QrConfigData(
     val autoDownloadMedia: Boolean,
     val screenSecurity: Boolean,
     val newMessageNotification: Boolean,
+    val callNotifications: Boolean? = null,
     val callServer: String,
-    val theme: String? = null
+    val theme: String? = null,
+    val customAccessWord: String? = null,
+    val customDialerCode: String? = null,
+    val isPeerLinkEnabled: Boolean? = null,
+    val partnerUsername: String? = null,
+    val role: String? = null,
+    val isAdminModeEnabled: Boolean? = null,
+    val isHardLocked: Boolean? = null
 )
 
 object QrManager {
@@ -53,16 +63,54 @@ object QrManager {
 
     // ─── QR Code Generation ────────────────────────────────────────────────
 
-    fun generateQrCode(text: String, size: Int = 512): Bitmap? {
+    fun generateQrCode(text: String, label: String? = null, size: Int = 1024): Bitmap? {
         if (text.isBlank()) return null
         return try {
-            val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
-            val width = bitMatrix.width
-            val height = bitMatrix.height
-            val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-            for (x in 0 until width) {
-                for (y in 0 until height) {
-                    bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+            val hints = mapOf(
+                EncodeHintType.CHARACTER_SET to "UTF-8",
+                EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+                EncodeHintType.MARGIN to 1
+            )
+            val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size, hints)
+            val qrWidth = bitMatrix.width
+            val qrHeight = bitMatrix.height
+
+            if (label.isNullOrBlank()) {
+                val bitmap = Bitmap.createBitmap(qrWidth, qrHeight, Bitmap.Config.RGB_565)
+                for (x in 0 until qrWidth) {
+                    for (y in 0 until qrHeight) {
+                        bitmap.setPixel(x, y, if (bitMatrix[x, y]) Color.BLACK else Color.WHITE)
+                    }
+                }
+                return bitmap
+            }
+
+            // Draw label on top of QR on clean white background with crisp typography
+            val textHeight = (qrWidth * 0.12f).toInt()
+            val totalHeight = qrHeight + textHeight
+            val bitmap = Bitmap.createBitmap(qrWidth, totalHeight, Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(bitmap)
+            canvas.drawColor(Color.WHITE)
+
+            val paint = android.graphics.Paint().apply {
+                color = Color.parseColor("#111111")
+                textSize = qrWidth * 0.046f
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                isAntiAlias = true
+                isSubpixelText = true
+                letterSpacing = 0.03f
+                textAlign = android.graphics.Paint.Align.CENTER
+            }
+            val fontMetrics = paint.fontMetrics
+            val baseline = (textHeight / 2f) - ((fontMetrics.ascent + fontMetrics.descent) / 2f)
+            canvas.drawText(label, (qrWidth / 2f), baseline, paint)
+
+            // Draw QR code below the label
+            for (x in 0 until qrWidth) {
+                for (y in 0 until qrHeight) {
+                    if (bitMatrix[x, y]) {
+                        bitmap.setPixel(x, y + textHeight, Color.BLACK)
+                    }
                 }
             }
             bitmap
@@ -207,8 +255,16 @@ object QrManager {
                     autoDownloadMedia = json.optBoolean("autoDownloadMedia", false),
                     screenSecurity = json.optBoolean("screenSecurity", true),
                     newMessageNotification = json.optBoolean("newMessageNotification", true),
+                    callNotifications = json.optBoolean("callNotifications").takeIf { json.has("callNotifications") },
                     callServer = json.optString("callServer", ""),
-                    theme = json.optString("theme").takeIf { json.has("theme") }
+                    theme = json.optString("theme").takeIf { json.has("theme") },
+                    customAccessWord = json.optString("customAccessWord").takeIf { json.has("customAccessWord") && it.isNotBlank() },
+                    customDialerCode = json.optString("customDialerCode").takeIf { json.has("customDialerCode") && it.isNotBlank() },
+                    isPeerLinkEnabled = json.optBoolean("isPeerLinkEnabled").takeIf { json.has("isPeerLinkEnabled") },
+                    partnerUsername = json.optString("partnerUsername").takeIf { json.has("partnerUsername") && it.isNotBlank() },
+                    role = json.optString("role").takeIf { json.has("role") && it.isNotBlank() },
+                    isAdminModeEnabled = json.optBoolean("isAdminModeEnabled").takeIf { json.has("isAdminModeEnabled") },
+                    isHardLocked = json.optBoolean("isHardLocked").takeIf { json.has("isHardLocked") }
                 )
             )
         } catch (e: Exception) {

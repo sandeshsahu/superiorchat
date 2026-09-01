@@ -30,6 +30,8 @@ import com.mobile.superiorchat.ui.components.popups.AdminDisableRouteMessagesDia
 import com.mobile.superiorchat.ui.components.popups.AdminDisableAdminModeDialog
 import com.mobile.superiorchat.ui.components.popups.AdminPipRequiredDialog
 import com.mobile.superiorchat.ui.components.popups.AdminNotificationRequiredDialog
+import com.mobile.superiorchat.ui.components.popups.AdminReadOnlyInfoDialog
+import com.mobile.superiorchat.ui.components.popups.AdminClientQrScannedDialog
 import androidx.core.app.NotificationManagerCompat
 
 @Composable
@@ -48,6 +50,41 @@ fun AdminSettingsScreen(
     var showDisableAdminModeWarning by remember { mutableStateOf(false) }
     var showPipRequired by remember { mutableStateOf(false) }
     var showNotificationRequired by remember { mutableStateOf(false) }
+    var showQrScanner by remember { mutableStateOf(false) }
+    var showReadOnlyInfo by remember { mutableStateOf(false) }
+    var showClientQrWarning by remember { mutableStateOf(false) }
+
+    if (showReadOnlyInfo) {
+        AdminReadOnlyInfoDialog(
+            isHardLocked = viewModel.isPeerLinkHardLocked,
+            onDismiss = { showReadOnlyInfo = false }
+        )
+    }
+
+    if (showQrScanner) {
+        com.mobile.superiorchat.ui.components.QrScanner(
+            onDismiss = { showQrScanner = false },
+            onSuccess = { data ->
+                showQrScanner = false
+                if (data.role == "CLIENT" || (data.isAdminModeEnabled != true && data.role != "ADMIN")) {
+                    showClientQrWarning = true
+                } else {
+                    viewModel.applyQrConfig(data)
+                    com.mobile.superiorchat.core.StatusFlow.reportStatus(
+                        com.mobile.superiorchat.core.SyncState.SUCCESS,
+                        "Admin QR Configuration Applied"
+                    )
+                }
+            },
+            onShowGlobalDialog = onShowGlobalDialog
+        )
+    }
+
+    if (showClientQrWarning) {
+        AdminClientQrScannedDialog(
+            onDismiss = { showClientQrWarning = false }
+        )
+    }
 
     if (showPeerLinkInfo) {
         AdminPeerLinkInfoDialog(onDismiss = { showPeerLinkInfo = false })
@@ -191,10 +228,11 @@ fun AdminSettingsScreen(
 
             SettingsSwitchRow(
                 title = "Read Only",
-                subtitle = "Lock all admin configuration",
+                subtitle = if (viewModel.isPeerLinkHardLocked) "Hard locked by setup QR" else "Lock all admin configuration",
                 icon = Icons.Filled.Lock,
-                iconTint = PrimaryLight,
+                iconTint = if (viewModel.isPeerLinkHardLocked) ErrorRed else PrimaryLight,
                 isChecked = viewModel.isPeerLinkLocked,
+                enabled = !viewModel.isPeerLinkHardLocked,
                 onCheckedChange = { viewModel.togglePeerLinkLocked(it) }
             )
 
@@ -203,12 +241,15 @@ fun AdminSettingsScreen(
                 enter = androidx.compose.animation.fadeIn() + androidx.compose.animation.expandVertically(),
                 exit = androidx.compose.animation.fadeOut() + androidx.compose.animation.shrinkVertically()
             ) {
+                val isHard = viewModel.isPeerLinkHardLocked
+                val bannerColor = if (isHard) ErrorRed else PrimaryLight
                 Surface(
                     shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-                    color = PrimaryLight.copy(alpha = 0.12f),
+                    color = bannerColor.copy(alpha = 0.12f),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 8.dp)
+                        .clickable { showReadOnlyInfo = true }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -217,15 +258,22 @@ fun AdminSettingsScreen(
                         Icon(
                             imageVector = Icons.Filled.Lock,
                             contentDescription = null,
-                            tint = PrimaryLight,
+                            tint = bannerColor,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Admin options are locked (Read-Only)",
-                            color = PrimaryLight,
+                            text = if (isHard) "Admin options Hard locked (By QR)" else "Admin options are locked (Read-Only)",
+                            color = bannerColor,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Icon(
+                            imageVector = Icons.Filled.Info,
+                            contentDescription = "Info",
+                            tint = bannerColor,
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
@@ -381,7 +429,7 @@ fun AdminSettingsScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 isGlow = true,
                 enabled = isCredentialsEnabled,
-                onClick = { /* Disabled/No-op for now as per plan */ }
+                onClick = { showQrScanner = true }
             )
         }
 

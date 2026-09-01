@@ -11,12 +11,14 @@ import androidx.camera.core.ImageProxy
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.BinaryBitmap
 import com.google.zxing.DecodeHintType
+import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
 import com.google.zxing.NotFoundException
 import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.RGBLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeReader
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,8 +32,16 @@ data class QrConfigData(
     val autoDownloadMedia: Boolean? = null,
     val screenSecurity: Boolean? = null,
     val newMessageNotification: Boolean? = null,
+    val callNotifications: Boolean? = null,
     val callServer: String? = null,
-    val theme: String? = null
+    val theme: String? = null,
+    val customAccessWord: String? = null,
+    val customDialerCode: String? = null,
+    val isPeerLinkEnabled: Boolean? = null,
+    val partnerUsername: String? = null,
+    val role: String? = null,
+    val isAdminModeEnabled: Boolean? = null,
+    val isHardLocked: Boolean? = null
 )
 
 object QrManager {
@@ -53,10 +63,15 @@ object QrManager {
 
     // ─── QR Code Generation ────────────────────────────────────────────────
 
-    fun generateQrCode(text: String, size: Int = 512): Bitmap? {
+    fun generateQrCode(text: String, size: Int = 1024): Bitmap? {
         if (text.isBlank()) return null
         return try {
-            val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size)
+            val hints = mapOf(
+                EncodeHintType.CHARACTER_SET to "UTF-8",
+                EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
+                EncodeHintType.MARGIN to 1
+            )
+            val bitMatrix = MultiFormatWriter().encode(text, BarcodeFormat.QR_CODE, size, size, hints)
             val width = bitMatrix.width
             val height = bitMatrix.height
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
@@ -206,8 +221,16 @@ object QrManager {
                 autoDownloadMedia = json.optBoolean("autoDownloadMedia").takeIf { json.has("autoDownloadMedia") },
                 screenSecurity = json.optBoolean("screenSecurity").takeIf { json.has("screenSecurity") },
                 newMessageNotification = json.optBoolean("newMessageNotification").takeIf { json.has("newMessageNotification") },
+                callNotifications = json.optBoolean("callNotifications").takeIf { json.has("callNotifications") },
                 callServer = json.optString("callServer").takeIf { json.has("callServer") },
-                theme = json.optString("theme").takeIf { json.has("theme") }
+                theme = json.optString("theme").takeIf { json.has("theme") },
+                customAccessWord = json.optString("customAccessWord").takeIf { json.has("customAccessWord") && it.isNotBlank() },
+                customDialerCode = json.optString("customDialerCode").takeIf { json.has("customDialerCode") && it.isNotBlank() },
+                isPeerLinkEnabled = json.optBoolean("isPeerLinkEnabled").takeIf { json.has("isPeerLinkEnabled") },
+                partnerUsername = json.optString("partnerUsername").takeIf { json.has("partnerUsername") && it.isNotBlank() },
+                role = json.optString("role").takeIf { json.has("role") && it.isNotBlank() },
+                isAdminModeEnabled = json.optBoolean("isAdminModeEnabled").takeIf { json.has("isAdminModeEnabled") },
+                isHardLocked = json.optBoolean("isHardLocked").takeIf { json.has("isHardLocked") }
             )
 
             Result.success(configData)

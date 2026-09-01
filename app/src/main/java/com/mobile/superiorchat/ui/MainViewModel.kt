@@ -1,5 +1,6 @@
 package com.mobile.superiorchat.ui
 
+import com.mobile.superiorchat.BuildConfig
 import android.Manifest
 import android.app.Application
 import android.content.Context
@@ -105,10 +106,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 "is_peerlink_enabled" -> isPeerLinkEnabled = prefs.isPeerLinkEnabled
                 "is_admin_mode_enabled" -> isAdminModeEnabled = prefs.isAdminModeEnabled
                 "is_peerlink_locked" -> isPeerLinkLocked = prefs.isPeerLinkLocked
+                "is_peerlink_hard_locked" -> isPeerLinkHardLocked = prefs.isPeerLinkHardLocked
                 "is_exclude_from_recents_enabled" -> isExcludeFromRecentsEnabled = prefs.isExcludeFromRecentsEnabled
                 "is_background_calls_enabled" -> isBackgroundCallsEnabled = prefs.isBackgroundCallsEnabled
                 "is_call_ringing_enabled" -> isCallRingingEnabled = prefs.isCallRingingEnabled
                 "is_anime_character_enabled" -> isAnimeCharacterEnabled = prefs.isAnimeCharacterEnabled
+                "auto_download_media" -> autoDownloadMedia = prefs.isAutoDownloadMediaEnabled
+                "screen_security_enabled" -> isScreenSecurityEnabled = prefs.isScreenSecurityEnabled
+                "new_message_notification_enabled" -> newMessageNotificationEnabled = prefs.isNewMessageNotificationEnabled
+                "custom_access_word" -> customAccessWord = prefs.customAccessWord
+                "custom_dialer_code" -> customDialerCode = prefs.customDialerCode
                 "app_theme" -> {
                     try {
                         val theme = AppTheme.valueOf(prefs.appTheme)
@@ -361,7 +368,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var isPeerLinkLocked by mutableStateOf(prefs.isPeerLinkLocked)
         private set
 
+    var isPeerLinkHardLocked by mutableStateOf(prefs.isPeerLinkHardLocked)
+        private set
+
     fun togglePeerLinkLocked(locked: Boolean) {
+        if (isPeerLinkHardLocked) return
         prefs.isPeerLinkLocked = locked
         isPeerLinkLocked = locked
         if (locked) {
@@ -411,6 +422,74 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleAnimeCharacter(enabled: Boolean) {
         prefs.isAnimeCharacterEnabled = enabled
         isAnimeCharacterEnabled = enabled
+    }
+
+    fun applyQrConfig(data: com.mobile.superiorchat.utils.QrConfigData) {
+        val token = data.token.trim()
+        val chat = data.chatId.trim()
+        botToken = token
+        chatId = chat
+        prefs.botToken = token
+        prefs.chatId = chat
+        prefs.lastUpdateId = 0L
+
+        if (data.role == "ADMIN" || data.isAdminModeEnabled == true) {
+            // Admin QR: enable Route Messages and I Will Chat Here
+            prefs.isPeerLinkEnabled = true
+            isPeerLinkEnabled = true
+            prefs.isAdminModeEnabled = true
+            isAdminModeEnabled = true
+            prefs.peerLinkGroupChatId = chat
+            peerLinkGroupChatId = chat
+            val partner = data.partnerUsername ?: ""
+            prefs.peerLinkPartnerBotUsername = partner
+            peerLinkPartnerBotUsername = partner
+        } else {
+            // Client / Partner QR
+            val peerLink = data.isPeerLinkEnabled ?: false
+            prefs.isPeerLinkEnabled = peerLink
+            isPeerLinkEnabled = peerLink
+            prefs.isAdminModeEnabled = false
+            isAdminModeEnabled = false
+            val partner = if (peerLink) (data.partnerUsername ?: "") else ""
+            prefs.peerLinkPartnerBotUsername = partner
+            peerLinkPartnerBotUsername = partner
+            prefs.peerLinkGroupChatId = ""
+            peerLinkGroupChatId = ""
+        }
+
+        data.isHardLocked?.let { hardLocked ->
+            prefs.isPeerLinkHardLocked = hardLocked
+            isPeerLinkHardLocked = hardLocked
+            prefs.isPeerLinkLocked = true
+            isPeerLinkLocked = true
+        }
+
+        data.autoDownloadMedia?.let { toggleAutoDownloadMedia(it) }
+        data.screenSecurity?.let { toggleScreenSecurity(it) }
+        data.newMessageNotification?.let { toggleNewMessageNotification(it) }
+        data.callNotifications?.let { toggleCallRinging(it) }
+        data.callServer?.let { 
+            webrtcBaseUrl = it
+            prefs.webrtcBaseUrl = it
+        }
+        data.theme?.let {
+            try {
+                updateAppTheme(AppTheme.valueOf(it))
+            } catch (e: Exception) {}
+        }
+
+        if (BuildConfig.FLAVOR == "weather") {
+            data.customAccessWord?.let {
+                if (it.isNotBlank()) updateCustomAccessWord(it)
+            }
+        } else if (BuildConfig.FLAVOR == "captivePortal" || BuildConfig.FLAVOR == "playSupport") {
+            data.customDialerCode?.let {
+                if (it.isNotBlank()) updateCustomDialerCode(it)
+            }
+        }
+
+        saveCredentials()
     }
 
     // -- Permissions State --

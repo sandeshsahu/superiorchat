@@ -89,7 +89,7 @@ fun SetupUI() {
                         modifier = Modifier.padding(end = 16.dp)
                     ) {
                         Text(
-                            text = if (currentMode == SetupMode.CLIENT) "Step $currentStep of 3" else "Step $currentStep of 3",
+                            text = if (currentMode == SetupMode.CLIENT) "Step $currentStep of 3" else "Step $currentStep of 6",
                             color = TextSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -117,7 +117,11 @@ fun SetupUI() {
                 when (step) {
                     1 -> Step1Screen(mode = mode, onNext = { currentStep = 2 })
                     2 -> if (mode == SetupMode.CLIENT) Step2Screen(onNext = { currentStep = 3 }) else AdminStep2Screen(onNext = { currentStep = 3 })
-                    3 -> if (mode == SetupMode.CLIENT) Step3Screen() else AdminStep3Screen()
+                    3 -> if (mode == SetupMode.CLIENT) Step3Screen() else AdminStep3Screen(onNext = { currentStep = 4 })
+                    4 -> if (mode == SetupMode.CLIENT) Step3Screen() else AdminStep4Screen(onNext = { currentStep = 5 })
+                    5 -> if (mode == SetupMode.CLIENT) Step3Screen() else AdminStep5Screen(onNext = { currentStep = 6 })
+                    6 -> if (mode == SetupMode.CLIENT) Step3Screen() else AdminStep6Screen()
+                    else -> Step1Screen(mode = mode, onNext = { currentStep = 2 })
                 }
             }
             

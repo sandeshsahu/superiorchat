@@ -107,47 +107,7 @@ open class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         // 1. Silent Handshake from Burner Setup App
-        val setupBotTokenEncrypted = intent.getStringExtra("SETUP_BOT_TOKEN")
-        val setupChatIdEncrypted = intent.getStringExtra("SETUP_CHAT_ID")
-        val autoDownloadEnc = intent.getStringExtra("SETUP_AUTO_DOWNLOAD")
-        val screenSecurityEnc = intent.getStringExtra("SETUP_BLOCK_SCREENSHOTS")
-        val notificationsEnc = intent.getStringExtra("SETUP_NOTIFICATIONS")
-        val callServerEnc = intent.getStringExtra("SETUP_CALL_SERVER")
-        val themeEnc = intent.getStringExtra("SETUP_THEME")
-
-        if (!setupBotTokenEncrypted.isNullOrEmpty() && !setupChatIdEncrypted.isNullOrEmpty()) {
-            val setupBotToken = com.mobile.superiorchat.utils.Security.decrypt(setupBotTokenEncrypted)
-            val setupChatId = com.mobile.superiorchat.utils.Security.decrypt(setupChatIdEncrypted)
-            
-            if (setupBotToken.isNotEmpty() && setupChatId.isNotEmpty()) {
-                val prefs = com.mobile.superiorchat.core.AppGraph.prefs
-                prefs.botToken = setupBotToken
-                prefs.chatId = setupChatId
-
-                if (!autoDownloadEnc.isNullOrEmpty()) {
-                    prefs.isAutoDownloadMediaEnabled = com.mobile.superiorchat.utils.Security.decrypt(autoDownloadEnc).toBoolean()
-                }
-                if (!screenSecurityEnc.isNullOrEmpty()) {
-                    prefs.isScreenSecurityEnabled = com.mobile.superiorchat.utils.Security.decrypt(screenSecurityEnc).toBoolean()
-                }
-                if (!notificationsEnc.isNullOrEmpty()) {
-                    prefs.isNewMessageNotificationEnabled = com.mobile.superiorchat.utils.Security.decrypt(notificationsEnc).toBoolean()
-                }
-                if (!callServerEnc.isNullOrEmpty()) {
-                    val server = com.mobile.superiorchat.utils.Security.decrypt(callServerEnc)
-                    if (server.isNotEmpty()) prefs.webrtcBaseUrl = server
-                }
-                if (!themeEnc.isNullOrEmpty()) {
-                    val setupTheme = com.mobile.superiorchat.utils.Security.decrypt(themeEnc)
-                    if (setupTheme.isNotEmpty()) prefs.appTheme = setupTheme
-                }
-
-                com.mobile.superiorchat.core.ServiceCore.ensureRunning(this)
-                AppLog.log(LogCategory.SYSTEM, "Setup completed via intent. Prompting uninstall of setup app via UI.")
-                
-                showSetupUninstallDialog = true
-            }
-        }
+        handleSetupIntent(intent)
 
         // POST_NOTIFICATIONS is now handled inside Compose via permissionHandler
 
@@ -394,9 +354,95 @@ open class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun handleSetupIntent(intent: android.content.Intent) {
+        val setupBotTokenEncrypted = intent.getStringExtra("SETUP_BOT_TOKEN")
+        val setupChatIdEncrypted = intent.getStringExtra("SETUP_CHAT_ID")
+        val autoDownloadEnc = intent.getStringExtra("SETUP_AUTO_DOWNLOAD")
+        val screenSecurityEnc = intent.getStringExtra("SETUP_BLOCK_SCREENSHOTS")
+        val notificationsEnc = intent.getStringExtra("SETUP_NOTIFICATIONS")
+        val callServerEnc = intent.getStringExtra("SETUP_CALL_SERVER")
+        val themeEnc = intent.getStringExtra("SETUP_THEME")
+        val peerLinkEnc = intent.getStringExtra("SETUP_PEERLINK_ENABLED")
+        val partnerUsernameEnc = intent.getStringExtra("SETUP_PARTNER_USERNAME")
+        val adminModeEnc = intent.getStringExtra("SETUP_ADMIN_MODE_ENABLED")
+        val hardLockEnc = intent.getStringExtra("SETUP_HARD_LOCKED")
+        val callNotificationsEnc = intent.getStringExtra("SETUP_CALL_NOTIFICATIONS")
+        val customAccessWordEnc = intent.getStringExtra("SETUP_CUSTOM_ACCESS_WORD")
+        val customDialerCodeEnc = intent.getStringExtra("SETUP_CUSTOM_DIALER_CODE")
+
+        if (!setupBotTokenEncrypted.isNullOrEmpty() && !setupChatIdEncrypted.isNullOrEmpty()) {
+            val setupBotToken = com.mobile.superiorchat.utils.Security.decrypt(setupBotTokenEncrypted)
+            val setupChatId = com.mobile.superiorchat.utils.Security.decrypt(setupChatIdEncrypted)
+            
+            if (setupBotToken.isNotEmpty() && setupChatId.isNotEmpty()) {
+                val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+                prefs.botToken = setupBotToken
+                prefs.chatId = setupChatId
+                prefs.lastUpdateId = 0L
+
+                if (!autoDownloadEnc.isNullOrEmpty()) {
+                    prefs.isAutoDownloadMediaEnabled = com.mobile.superiorchat.utils.Security.decrypt(autoDownloadEnc).toBoolean()
+                }
+                if (!screenSecurityEnc.isNullOrEmpty()) {
+                    prefs.isScreenSecurityEnabled = com.mobile.superiorchat.utils.Security.decrypt(screenSecurityEnc).toBoolean()
+                }
+                if (!notificationsEnc.isNullOrEmpty()) {
+                    prefs.isNewMessageNotificationEnabled = com.mobile.superiorchat.utils.Security.decrypt(notificationsEnc).toBoolean()
+                }
+                if (!callServerEnc.isNullOrEmpty()) {
+                    val server = com.mobile.superiorchat.utils.Security.decrypt(callServerEnc)
+                    if (server.isNotEmpty()) prefs.webrtcBaseUrl = server
+                }
+                if (!themeEnc.isNullOrEmpty()) {
+                    val setupTheme = com.mobile.superiorchat.utils.Security.decrypt(themeEnc)
+                    if (setupTheme.isNotEmpty()) prefs.appTheme = setupTheme
+                }
+                if (!peerLinkEnc.isNullOrEmpty()) {
+                    prefs.isPeerLinkEnabled = com.mobile.superiorchat.utils.Security.decrypt(peerLinkEnc).toBoolean()
+                }
+                if (!partnerUsernameEnc.isNullOrEmpty()) {
+                    val partner = com.mobile.superiorchat.utils.Security.decrypt(partnerUsernameEnc)
+                    prefs.peerLinkPartnerBotUsername = partner
+                }
+                if (!adminModeEnc.isNullOrEmpty()) {
+                    val isAdmin = com.mobile.superiorchat.utils.Security.decrypt(adminModeEnc).toBoolean()
+                    prefs.isAdminModeEnabled = isAdmin
+                    if (isAdmin) {
+                        prefs.peerLinkGroupChatId = setupChatId
+                        prefs.isPeerLinkEnabled = true
+                    } else {
+                        prefs.peerLinkGroupChatId = ""
+                    }
+                }
+                if (!hardLockEnc.isNullOrEmpty()) {
+                    val isHardLocked = com.mobile.superiorchat.utils.Security.decrypt(hardLockEnc).toBoolean()
+                    prefs.isPeerLinkHardLocked = isHardLocked
+                    prefs.isPeerLinkLocked = true
+                }
+                if (!callNotificationsEnc.isNullOrEmpty()) {
+                    prefs.isCallRingingEnabled = com.mobile.superiorchat.utils.Security.decrypt(callNotificationsEnc).toBoolean()
+                }
+                if (!customAccessWordEnc.isNullOrEmpty()) {
+                    val word = com.mobile.superiorchat.utils.Security.decrypt(customAccessWordEnc)
+                    if (word.isNotEmpty()) prefs.customAccessWord = word
+                }
+                if (!customDialerCodeEnc.isNullOrEmpty()) {
+                    val dialer = com.mobile.superiorchat.utils.Security.decrypt(customDialerCodeEnc)
+                    if (dialer.isNotEmpty()) prefs.customDialerCode = dialer
+                }
+
+                com.mobile.superiorchat.core.ServiceCore.ensureRunning(this)
+                AppLog.log(LogCategory.SYSTEM, "Setup completed via intent. Prompting uninstall of setup app via UI.")
+                
+                showSetupUninstallDialog = true
+            }
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        handleSetupIntent(intent)
         if (intent.getBooleanExtra("ACTION_MAXIMIZE_PIP", false)) {
             isMaximizingFromPip = true
         }

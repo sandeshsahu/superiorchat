@@ -222,6 +222,11 @@ object PopupTexts {
         const val CALL_NOTIFICATIONS_INFO_TITLE = "Call Notifications"
         const val CALL_NOTIFICATIONS_INFO_MESSAGE =
             "Controls stealth camouflage alerts for incoming calls.\n\n• **When Enabled**: Incoming calls trigger realistic decoy system notifications (e.g. Carrier Services, Top Games, or Weather alerts) and discreet double-vibration pulses according to your active decoy disguise.\n\n• **When Disabled**: Incoming calls remain 100% silent in the background with zero notification changes or vibrations."
+
+        const val ADMIN_QR_SCANNED_TITLE = "Admin QR Detected"
+        const val ADMIN_QR_SCANNED_MESSAGE =
+            "This QR code contains **Admin Configuration**.\n\nPlease scan this QR code inside **Admin Settings** to configure your Admin bot."
+        const val ADMIN_QR_SCANNED_CONFIRM = "Admin Settings"
     }
 
     // ── PIN & Security Popups ──
@@ -1077,6 +1082,26 @@ fun ProfileCallNotificationsInfoDialog(
     InfoDialog(
         title = PopupTexts.Settings.CALL_NOTIFICATIONS_INFO_TITLE,
         message = PopupTexts.Settings.CALL_NOTIFICATIONS_INFO_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsAdminQrScannedDialog(
+    onNavigateToAdmin: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.ADMIN_QR_SCANNED_TITLE,
+        message = PopupTexts.Settings.ADMIN_QR_SCANNED_MESSAGE,
+        icon = Icons.Filled.AdminPanelSettings,
+        iconTint = PrimaryLight,
+        confirmText = PopupTexts.Settings.ADMIN_QR_SCANNED_CONFIRM,
+        dismissText = "Cancel",
+        onConfirm = {
+            onNavigateToAdmin()
+            onDismiss()
+        },
         onDismiss = onDismiss
     )
 }

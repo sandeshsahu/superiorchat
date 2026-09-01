@@ -40,6 +40,19 @@ object AdminTexts {
         "• **Read Only**:\nLocks all administrative settings and prevents accidental modification or disabling of PeerLink routing.\n\n" +
         "• **Route Messages**:\nInforms the app that the partner (Admin) will chat directly through the Superior Chat app rather than standard Telegram bot DMs. When enabled, it also unlocks the *Partner Bot Username* field in normal App Settings credentials so the client app can filter and accept messages exclusively from your bot."
 
+    const val READ_ONLY_INFO_TITLE = "Admin Settings Locked"
+    const val READ_ONLY_INFO_MESSAGE =
+        "Administrative settings are currently locked in Read-Only mode to prevent accidental changes.\n\n" +
+        "• You can unlock and modify these settings anytime by turning off the **Read Only** switch above."
+
+    const val HARD_LOCKED_INFO_TITLE = "Admin Options Hard Locked"
+    const val HARD_LOCKED_INFO_MESSAGE =
+        "Administrative options were permanently hard-locked by the setup QR configuration.\n\n" +
+        "• **Protection**:\n" +
+        "This lock prevents accidental changes to *Route Messages*, *Admin Credentials*, or *Hide from Recent*, ensuring your connection remains active and confidential.\n\n" +
+        "• **Unlocking**:\n" +
+        "This lock cannot be disabled from this device. It can only be unlocked by scanning a new setup QR code with Hard Lock disabled."
+
     const val LIFECYCLE_INFO_TITLE = "Lifecycle & Task Management"
     const val LIFECYCLE_INFO_MESSAGE =
         "Controls application background behavior, task execution, and system-level visibility.\n\n" +
@@ -101,6 +114,11 @@ object AdminTexts {
         "• Without notifications, incoming calls cannot alert or ring your device in the background\n" +
         "• Enable Notifications in Android Settings to activate Call Ringing."
     const val NOTIFICATION_REQUIRED_CONFIRM = "Open Settings"
+
+    const val CLIENT_QR_SCANNED_TITLE = "Client QR Detected"
+    const val CLIENT_QR_SCANNED_MESSAGE =
+        "This QR code contains **Client Configuration** intended for your partner's device.\n\nTo configure your own bot on this device, please scan your **Admin QR**."
+    const val CLIENT_QR_SCANNED_CONFIRM = "Understood"
 }
 
 /**
@@ -260,6 +278,39 @@ fun AdminNotificationRequiredDialog(
             onGoToSettings()
             onDismiss()
         },
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminReadOnlyInfoDialog(
+    isHardLocked: Boolean,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = if (isHardLocked) AdminTexts.HARD_LOCKED_INFO_TITLE else AdminTexts.READ_ONLY_INFO_TITLE,
+        message = if (isHardLocked) AdminTexts.HARD_LOCKED_INFO_MESSAGE else AdminTexts.READ_ONLY_INFO_MESSAGE,
+        icon = Icons.Filled.Lock,
+        iconTint = if (isHardLocked) ErrorRed else PrimaryLight,
+        confirmText = "Understood",
+        dismissText = "",
+        onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminClientQrScannedDialog(
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = AdminTexts.CLIENT_QR_SCANNED_TITLE,
+        message = AdminTexts.CLIENT_QR_SCANNED_MESSAGE,
+        icon = Icons.Filled.Info,
+        iconTint = PrimaryLight,
+        confirmText = AdminTexts.CLIENT_QR_SCANNED_CONFIRM,
+        dismissText = "",
+        onConfirm = onDismiss,
         onDismiss = onDismiss
     )
 }
