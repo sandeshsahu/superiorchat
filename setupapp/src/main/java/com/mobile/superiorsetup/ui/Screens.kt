@@ -204,13 +204,24 @@ fun SetupUI() {
 @Composable
 fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
     val context = LocalContext.current
-    var isInstalled by remember { mutableStateOf(AppManager.isAppInstalled(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    var appDetails by remember { mutableStateOf(AppManager.getAppInstallDetails(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                appDetails = AppManager.getAppInstallDetails(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val installLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) {
-        isInstalled = AppManager.isAppInstalled(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)
-        if (isInstalled) {
+        appDetails = AppManager.getAppInstallDetails(context, com.mobile.superiorsetup.BuildConfig.TARGET_APP_ID)
+        if (appDetails.status == com.mobile.superiorsetup.core.AppInstallStatus.UP_TO_DATE) {
             onNext()
         }
     }
@@ -224,6 +235,26 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
     }
     
     var showInstallDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+
+    if (showUpdateDialog) {
+        com.mobile.superiorsetup.ui.components.ClientUpdateAvailableDialog(
+            installedVersion = appDetails.installedVersionName,
+            targetVersion = appDetails.targetVersionName,
+            onUpdate = {
+                showUpdateDialog = false
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O && !context.packageManager.canRequestPackageInstalls()) {
+                    showInstallDialog = true
+                } else {
+                    AppManager.installApp(context) { intent -> installLauncher.launch(intent) }
+                }
+            },
+            onNotNow = {
+                showUpdateDialog = false
+                onNext()
+            }
+        )
+    }
 
     if (showInstallDialog) {
         com.mobile.superiorsetup.ui.components.ActionDialog(
@@ -264,7 +295,7 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            FeatureRow(Icons.Filled.Shield, "Fully Private", "Your chats stay hidden. Access the app only via a secret dialer code.")
+            FeatureRow(Icons.Filled.Security, "Fully Private", "Your chats stay hidden. Access the app only via a secret dialer code.")
             Spacer(modifier = Modifier.height(12.dp))
             FeatureRow(Icons.Filled.FlashOn, "Telegram Powered", "Reliable messaging with Telegram Bot API for fast and secure delivery.")
             Spacer(modifier = Modifier.height(12.dp))
@@ -286,7 +317,6 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
                             .fillMaxWidth()
                             .height(52.dp)
                             .bounceClick(scaleDown = 0.95f) { onNext() }
-                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
                             .background(PrimaryLight, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -296,20 +326,35 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
                             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
                         }
                     }
-                } else if (isInstalled) {
+                } else if (appDetails.status == com.mobile.superiorsetup.core.AppInstallStatus.UP_TO_DATE) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
                             .bounceClick(scaleDown = 0.95f) { onNext() }
-                            .glow(color = Success, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
-                            .background(Success, RoundedCornerShape(16.dp)),
+                            .background(SurfaceLevel2, RoundedCornerShape(16.dp))
+                            .border(1.5.dp, PrimaryLight, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                            Icon(Icons.Filled.Check, contentDescription = null, tint = PrimaryLight)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("App Installed - Continue", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("App Installed - Continue", color = PrimaryLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else if (appDetails.status == com.mobile.superiorsetup.core.AppInstallStatus.UPDATE_REQUIRED) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .bounceClick(scaleDown = 0.95f) { showUpdateDialog = true }
+                            .background(AppTheme.AMBER.primaryLightColor, RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.SystemUpdate, contentDescription = null, tint = Color(0xFF33190A))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Update Available - Continue", color = Color(0xFF33190A), fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 } else {
@@ -324,7 +369,6 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
                                     AppManager.installApp(context) { intent -> installLauncher.launch(intent) }
                                 }
                             }
-                            .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
                             .background(PrimaryLight, RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
@@ -337,7 +381,7 @@ fun Step1Screen(mode: SetupMode, onNext: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Lock, contentDescription = null, tint = Primary, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Filled.Lock, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Private • Encrypted • Hidden", color = TextSecondary, fontSize = 11.sp)
                 }
@@ -355,10 +399,13 @@ fun FeatureRow(icon: ImageVector, title: String, desc: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Primary.copy(alpha = 0.15f)),
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(PrimaryLight.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, tint = Primary, modifier = Modifier.size(24.dp))
+            Icon(icon, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
         }
         Spacer(modifier = Modifier.width(16.dp))
         Column {
@@ -377,14 +424,23 @@ fun StatusRow(icon: ImageVector, title: String, status: String) {
             .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = Primary, modifier = Modifier.size(24.dp))
-        Spacer(modifier = Modifier.width(16.dp))
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(PrimaryLight.copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(22.dp))
+        }
+        Spacer(modifier = Modifier.width(14.dp))
         Column {
             Text(title, color = PrimaryLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Spacer(modifier = Modifier.height(2.dp))
             Text(status, color = TextSecondary, fontSize = 13.sp)
         }
         Spacer(modifier = Modifier.weight(1f))
-        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Primary, modifier = Modifier.size(20.dp))
+        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(20.dp))
     }
 }
+

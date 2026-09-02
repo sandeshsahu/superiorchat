@@ -8,7 +8,62 @@ import androidx.core.content.FileProvider
 import java.io.File
 import java.io.FileOutputStream
 
+import android.os.Build
+
+enum class AppInstallStatus {
+    NOT_INSTALLED,
+    UPDATE_REQUIRED,
+    UP_TO_DATE
+}
+
+data class AppVersionDetails(
+    val status: AppInstallStatus,
+    val installedVersionName: String = "",
+    val installedVersionCode: Long = 0L,
+    val targetVersionName: String = com.mobile.superiorsetup.BuildConfig.VERSION_NAME,
+    val targetVersionCode: Long = com.mobile.superiorsetup.BuildConfig.VERSION_CODE.toLong()
+)
+
 object AppManager {
+    fun getAppInstallDetails(context: Context, packageName: String): AppVersionDetails {
+        return try {
+            val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(packageName, 0)
+            }
+
+            val installedVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                packageInfo.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                packageInfo.versionCode.toLong()
+            }
+            val installedVersionName = packageInfo.versionName.orEmpty()
+            val targetVersionCode = com.mobile.superiorsetup.BuildConfig.VERSION_CODE.toLong()
+            val targetVersionName = com.mobile.superiorsetup.BuildConfig.VERSION_NAME
+
+            val status = if (installedVersionCode < targetVersionCode) {
+                AppInstallStatus.UPDATE_REQUIRED
+            } else {
+                AppInstallStatus.UP_TO_DATE
+            }
+
+            AppVersionDetails(
+                status = status,
+                installedVersionName = installedVersionName,
+                installedVersionCode = installedVersionCode,
+                targetVersionName = targetVersionName,
+                targetVersionCode = targetVersionCode
+            )
+        } catch (e: PackageManager.NameNotFoundException) {
+            AppVersionDetails(
+                status = AppInstallStatus.NOT_INSTALLED
+            )
+        }
+    }
+
     fun isAppInstalled(context: Context, packageName: String): Boolean {
         return try {
             context.packageManager.getPackageInfo(packageName, 0)
@@ -16,6 +71,10 @@ object AppManager {
         } catch (e: PackageManager.NameNotFoundException) {
             false
         }
+    }
+
+    fun isAppUpToDate(context: Context, packageName: String): Boolean {
+        return getAppInstallDetails(context, packageName).status == AppInstallStatus.UP_TO_DATE
     }
 
     fun installApp(context: Context, launchIntent: (Intent) -> Unit) {

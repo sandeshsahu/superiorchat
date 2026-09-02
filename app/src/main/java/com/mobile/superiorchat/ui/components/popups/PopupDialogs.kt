@@ -167,6 +167,16 @@ object PopupTexts {
             "  - *When Empty*: Open group mode where all group members can send messages, and the app displays them with individual sender profiles.\n" +
             "  - *Wrong Username*: If an incorrect username is entered, no incoming messages will be received until the matching bot sends a message."
 
+        const val MANUAL_CREDENTIALS_WARNING_TITLE = "Manual Setup Warning"
+        const val MANUAL_EDIT_WARNING_MESSAGE =
+            "You are about to modify your active chat credentials.\n\n" +
+            "If any information is *Incorrect* or *Broken*, your chat will *Disconnect Immediately* and stop syncing.\n\n" +
+            "Are you sure you want to *Proceed*?"
+        const val MANUAL_ADD_WARNING_MESSAGE =
+            "Manually typing bot credentials requires exact setup details.\n\n" +
+            "If anything is *Incorrect* or *Broken*, the app will *Fail to Connect* and cannot sync messages. For a seamless setup, scanning a *QR Code* is recommended.\n\n" +
+            "Do you want to *Proceed* anyway?"
+
         const val INVALID_CREDENTIALS_TITLE = "Invalid Credentials"
 
         const val CLEAR_CREDENTIALS_TITLE = "Clear Credentials"
@@ -861,6 +871,24 @@ fun SettingsBotCredentialsInfoDialog(
     InfoDialog(
         title = if (isPeerLinkEnabled) PopupTexts.Settings.BOT_INFO_PEERLINK_TITLE else PopupTexts.Settings.BOT_INFO_DIRECT_TITLE,
         message = if (isPeerLinkEnabled) PopupTexts.Settings.BOT_INFO_PEERLINK_MESSAGE else PopupTexts.Settings.BOT_INFO_DIRECT_MESSAGE,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsManualCredentialsWarningDialog(
+    isEditing: Boolean = false,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.MANUAL_CREDENTIALS_WARNING_TITLE,
+        message = if (isEditing) PopupTexts.Settings.MANUAL_EDIT_WARNING_MESSAGE else PopupTexts.Settings.MANUAL_ADD_WARNING_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = "Proceed",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
         onDismiss = onDismiss
     )
 }

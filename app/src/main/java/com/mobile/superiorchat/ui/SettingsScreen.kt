@@ -96,6 +96,7 @@ fun AppSettingsPage(
     val context = LocalContext.current
 
     var showAddManuallyDialog by remember { mutableStateOf(false) }
+    var showManualCredentialsWarning by remember { mutableStateOf(false) }
     var showQrScanner by remember { mutableStateOf(false) }
     var showDeveloperWarning by remember { mutableStateOf(false) }
     var showWebRtcConfigPopup by remember { mutableStateOf(false) }
@@ -161,6 +162,17 @@ fun AppSettingsPage(
         SettingsInvalidCredentialsDialog(
             errorMessage = errorMessage!!,
             onDismiss = { errorMessage = null }
+        )
+    }
+
+    if (showManualCredentialsWarning) {
+        SettingsManualCredentialsWarningDialog(
+            isEditing = botToken.isNotEmpty(),
+            onConfirm = {
+                showManualCredentialsWarning = false
+                showAddManuallyDialog = true
+            },
+            onDismiss = { showManualCredentialsWarning = false }
         )
     }
 
@@ -933,7 +945,7 @@ fun AppSettingsPage(
                         if (isAdminModeEnabled) {
                             showAdminModeActiveWarning = true
                         } else {
-                            showAddManuallyDialog = true
+                            showManualCredentialsWarning = true
                         }
                     }
                 )

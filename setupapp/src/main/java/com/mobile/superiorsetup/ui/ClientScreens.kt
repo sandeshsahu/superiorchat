@@ -42,6 +42,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -57,6 +60,12 @@ import kotlinx.coroutines.launch
 fun Step2Screen(onNext: () -> Unit) {
     var botToken by remember { mutableStateOf(Config.botToken) }
     var chatId by remember { mutableStateOf(Config.chatId) }
+    var partnerUsername by remember { mutableStateOf(Config.adminAppToAppPartnerBotUsername) }
+    var chatTitle by remember { 
+        mutableStateOf(if (Config.chatId.trim().startsWith("-")) Config.adminAppToAppGroupTitle else Config.adminTelegramChatName) 
+    }
+    var isHardLocked by remember { mutableStateOf(Config.adminHardLockPartner) }
+    var isAdminMode by remember { mutableStateOf(Config.adminIsAdminModeEnabled) }
     var showAddManuallyPopup by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
     
@@ -72,18 +81,26 @@ fun Step2Screen(onNext: () -> Unit) {
                 Config.adminCallServer = qrData.callServer
                 qrData.theme?.let { Config.adminTheme = it }
                 qrData.isPeerLinkEnabled?.let { Config.adminIsPeerLinkEnabled = it }
-                qrData.partnerUsername?.let { Config.adminAppToAppPartnerBotUsername = it }
-                qrData.isHardLocked?.let { Config.adminHardLockPartner = it }
+                qrData.partnerUsername?.let { 
+                    Config.adminAppToAppPartnerBotUsername = it 
+                    partnerUsername = it
+                }
+                qrData.isHardLocked?.let { 
+                    Config.adminHardLockPartner = it 
+                    isHardLocked = it
+                }
                 qrData.callNotifications?.let { Config.adminCallNotifications = it }
                 qrData.customAccessWord?.let { Config.adminCustomAccessWord = it }
                 qrData.customDialerCode?.let { Config.adminCustomDialerCode = it }
                 val isAdmin = qrData.role == "ADMIN" || qrData.isAdminModeEnabled == true
                 Config.adminIsAdminModeEnabled = isAdmin
+                isAdminMode = isAdmin
                 if (isAdmin) {
                     Config.adminChatMode = "APP_TO_APP"
                 }
                 botToken = qrData.token
                 chatId = qrData.chatId
+                chatTitle = if (qrData.chatId.trim().startsWith("-")) Config.adminAppToAppGroupTitle else Config.adminTelegramChatName
                 showScanner = false
             }
         )
@@ -93,15 +110,36 @@ fun Step2Screen(onNext: () -> Unit) {
         com.mobile.superiorsetup.ui.components.CredentialsPopup(
             initialToken = botToken,
             initialChatId = chatId,
-            initialPartnerUsername = "",
-            isPeerLinkEnabled = false,
+            initialPartnerUsername = partnerUsername,
+            isPeerLinkEnabled = true,
             isAdminMode = false,
             onDismiss = { showAddManuallyPopup = false },
-            onSave = { token, chat, _ ->
-                Config.botToken = token
-                Config.chatId = chat
+            onSave = { token, chat, partner, title ->
+                val isGroup = chat.trim().startsWith("-")
                 botToken = token
                 chatId = chat
+                chatTitle = title
+                Config.botToken = token
+                Config.chatId = chat
+                if (isGroup && partner.isNotBlank()) {
+                    partnerUsername = partner
+                    Config.adminAppToAppPartnerBotUsername = partner
+                    Config.adminAppToAppGroupTitle = title
+                    Config.adminIsPeerLinkEnabled = true
+                    Config.adminIsAdminModeEnabled = false
+                    Config.adminHardLockPartner = true
+                    isHardLocked = true
+                    isAdminMode = false
+                } else {
+                    partnerUsername = ""
+                    Config.adminAppToAppPartnerBotUsername = ""
+                    Config.adminTelegramChatName = title
+                    Config.adminIsPeerLinkEnabled = false
+                    Config.adminIsAdminModeEnabled = false
+                    Config.adminHardLockPartner = true
+                    isHardLocked = true
+                    isAdminMode = false
+                }
                 showAddManuallyPopup = false
             }
         )
@@ -177,9 +215,10 @@ fun Step2Screen(onNext: () -> Unit) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .bounceClick(scaleDown = 0.95f) { showScanner = true }
+                        .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 14.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(PrimaryLight)
-                        .clickable { showScanner = true }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -200,21 +239,52 @@ fun Step2Screen(onNext: () -> Unit) {
         
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
             if (botToken.isNotBlank() && chatId.isNotBlank()) {
+                val isGroup = chatId.trim().startsWith("-")
+                val isAppToApp = isGroup && (partnerUsername.isNotBlank() || isAdminMode)
+                val displayName = chatTitle.ifBlank { if (isGroup) "Group $chatId" else "Chat $chatId" }
+                val lockSuffix = if (isHardLocked) " (Hard-Locked)" else ""
+
+                val modeSubtitle = if (isAppToApp) {
+                    "Connected to $displayName with partner bot $partnerUsername$lockSuffix."
+                } else {
+                    "Connected to $displayName$lockSuffix."
+                }
+
                 Surface(
-                    color = Success.copy(alpha = 0.15f),
+                    color = PrimaryLight.copy(alpha = 0.15f),
                     shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, Success.copy(alpha = 0.5f)),
+                    border = BorderStroke(1.dp, PrimaryLight.copy(alpha = 0.5f)),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Check, contentDescription = null, tint = Success, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(24.dp))
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
-                            Text("Credentials Saved", color = Success, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("Bot token and Chat ID are configured securely.", color = Success.copy(alpha = 0.8f), fontSize = 12.sp)
+                            Text(
+                                text = buildAnnotatedString {
+                                    append("Credentials Saved • ")
+                                    if (isAdminMode) {
+                                        withStyle(SpanStyle(color = ErrorRed)) {
+                                            append("Admin Mode")
+                                        }
+                                    } else if (isAppToApp) {
+                                        append("Client (App-to-App)")
+                                    } else {
+                                        append("Direct DM")
+                                    }
+                                },
+                                color = PrimaryLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = modeSubtitle,
+                                color = PrimaryLight.copy(alpha = 0.8f),
+                                fontSize = 12.sp
+                            )
                         }
                     }
                 }
@@ -227,7 +297,6 @@ fun Step2Screen(onNext: () -> Unit) {
                     .fillMaxWidth()
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) { if (isReady) onNext() }
-                    .glow(color = if (isReady) PrimaryLight else Color.Transparent, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
                     .background(if (isReady) PrimaryLight else SurfaceLevel2, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
@@ -237,7 +306,7 @@ fun Step2Screen(onNext: () -> Unit) {
             Spacer(modifier = Modifier.height(16.dp))
             
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Shield, contentDescription = null, tint = Primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Filled.Shield, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(10.dp))
                 Text("Credentials are stored securely on device.", color = TextSecondary, fontSize = 11.sp)
             }
@@ -310,7 +379,6 @@ fun Step3Screen() {
                             customDialerCode = Config.adminCustomDialerCode
                         )
                     }
-                    .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
                     .background(PrimaryLight, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
@@ -322,7 +390,7 @@ fun Step3Screen() {
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.CheckCircleOutline, contentDescription = null, tint = Success, modifier = Modifier.size(14.dp))
+                Icon(Icons.Filled.CheckCircleOutline, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Hidden • Private • Ready", color = TextSecondary, fontSize = 11.sp)
             }

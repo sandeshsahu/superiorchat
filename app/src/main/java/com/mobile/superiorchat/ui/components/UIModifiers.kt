@@ -63,7 +63,7 @@ fun Modifier.glow(
         Paint().apply {
             asFrameworkPaint().apply {
                 isAntiAlias = true
-                this.color = shapeColor.toArgb()
+                this.color = if (shapeColor == Color.Transparent) color.toArgb() else shapeColor.toArgb()
                 setShadowLayer(radius, dx, dy, color.toArgb())
             }
         }

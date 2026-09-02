@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhoneInTalk
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.runtime.Composable
 import com.mobile.superiorsetup.theme.ErrorRed
 import com.mobile.superiorsetup.theme.PrimaryLight
@@ -13,6 +14,15 @@ import com.mobile.superiorsetup.theme.PrimaryLight
  * Centralized registry of all popup and dialog text contents for Setup App.
  */
 object PopupTexts {
+    object Client {
+        const val UPDATE_AVAILABLE_TITLE = "Update Available"
+        fun getUpdateAvailableMessage(installedVersion: String, targetVersion: String): String =
+            "A newer version of **Superior Chat** (${targetVersion}) is bundled in this setup app.\n\n" +
+            "• **Currently Installed**: ${if (installedVersion.isNotBlank()) installedVersion else "Older version"}\n" +
+            "• **Available Update**: ${targetVersion}\n\n" +
+            "Updating ensures full compatibility with the latest features, security handshakes, and WebRTC protocols. Existing chat history and settings will be preserved."
+    }
+
     object Admin {
         const val BOT_SETUP_GUIDE_TITLE = "Bot-to-Bot Setup Guide"
         const val BOT_SETUP_GUIDE_MESSAGE =
@@ -376,3 +386,23 @@ fun AdminSelfReadOnlyWarningDialog(
         onDismiss = onDismiss
     )
 }
+
+@Composable
+fun ClientUpdateAvailableDialog(
+    installedVersion: String,
+    targetVersion: String,
+    onUpdate: () -> Unit,
+    onNotNow: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Client.UPDATE_AVAILABLE_TITLE,
+        message = PopupTexts.Client.getUpdateAvailableMessage(installedVersion, targetVersion),
+        icon = Icons.Filled.SystemUpdate,
+        iconTint = PrimaryLight,
+        confirmText = "Update",
+        dismissText = "Not Now",
+        onConfirm = onUpdate,
+        onDismiss = onNotNow
+    )
+}
+

@@ -97,15 +97,7 @@ fun AdminStep2Screen(onNext: () -> Unit) {
                 color = SurfaceLevel1,
                 shape = RoundedCornerShape(20.dp),
                 border = BorderStroke(1.dp, PrimaryLight.copy(alpha = 0.4f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glow(
-                        color = PrimaryLight.copy(alpha = 0.15f),
-                        radius = 16f,
-                        dx = 0f,
-                        dy = 6f,
-                        cornerRadius = 20.dp
-                    )
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
@@ -240,7 +232,6 @@ fun AdminStep2Screen(onNext: () -> Unit) {
                     .fillMaxWidth()
                     .height(52.dp)
                     .bounceClick(scaleDown = 0.95f) { onNext() }
-                    .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
                     .background(PrimaryLight, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
@@ -344,15 +335,7 @@ fun AdminStep3Screen(onNext: () -> Unit) {
                             .height(52.dp)
                             .then(
                                 if (isTelegramSelected) {
-                                    Modifier
-                                        .glow(
-                                            color = PrimaryLight.copy(alpha = 0.35f),
-                                            radius = 16f,
-                                            dx = 0f,
-                                            dy = 6f,
-                                            cornerRadius = 14.dp
-                                        )
-                                        .background(PrimaryLight, RoundedCornerShape(14.dp))
+                                    Modifier.background(PrimaryLight, RoundedCornerShape(14.dp))
                                 } else {
                                     Modifier
                                         .background(SurfaceLevel2, RoundedCornerShape(14.dp))
@@ -496,15 +479,7 @@ fun AdminStep3Screen(onNext: () -> Unit) {
                             .height(52.dp)
                             .then(
                                 if (isAppToAppSelected) {
-                                    Modifier
-                                        .glow(
-                                            color = PrimaryLight.copy(alpha = 0.35f),
-                                            radius = 16f,
-                                            dx = 0f,
-                                            dy = 6f,
-                                            cornerRadius = 14.dp
-                                        )
-                                        .background(PrimaryLight, RoundedCornerShape(14.dp))
+                                    Modifier.background(PrimaryLight, RoundedCornerShape(14.dp))
                                 } else {
                                     Modifier
                                         .background(SurfaceLevel2, RoundedCornerShape(14.dp))
@@ -643,7 +618,6 @@ fun AdminStep3Screen(onNext: () -> Unit) {
                         Config.adminIsPeerLinkEnabled = (selectedMode == "APP_TO_APP")
                         onNext()
                     }
-                    .glow(color = PrimaryLight, radius = 20f, dx = 0f, dy = 10f, cornerRadius = 16.dp)
                     .background(PrimaryLight, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
