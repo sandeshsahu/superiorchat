@@ -26,6 +26,10 @@ class BotService : Service() {
         AppLog.log(LogCategory.SYSTEM, "BotService onCreate")
     }
 
+    companion object {
+        const val ACTION_RESTART_POLLING = "com.mobile.superiorchat.service.ACTION_RESTART_POLLING"
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val prefs = AppGraph.prefs
         if (!prefs.isConfigured) {
@@ -37,7 +41,11 @@ class BotService : Service() {
         AppLog.setServiceRunning(true)
         startForegroundServiceNotification()
         
-        botManager.startPolling()
+        if (intent?.action == ACTION_RESTART_POLLING) {
+            botManager.restartPolling()
+        } else {
+            botManager.startPolling()
+        }
         
         return START_STICKY
     }

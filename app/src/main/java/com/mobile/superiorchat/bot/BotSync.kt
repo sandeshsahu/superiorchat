@@ -62,6 +62,12 @@ class BotSync(private val context: Context) {
         AppLog.log(LogCategory.SYSTEM, "Bot polling stopped.")
     }
 
+    fun restartPolling() {
+        stopPolling()
+        TelegramApi.client.dispatcher.cancelAll()
+        startPolling()
+    }
+
     // -- Network-Aware Polling --
 
     private fun registerNetworkCallback() {
@@ -365,7 +371,11 @@ class BotSync(private val context: Context) {
         val chatId = message.chat.id.toString()
         val senderId = message.from?.id?.toString() ?: ""
 
-        if (prefs.isPeerLinkEnabled) {
+        val isPeerLinkMode = prefs.isPeerLinkEnabled && 
+                             prefs.peerLinkPartnerBotUsername.isNotBlank() && 
+                             com.mobile.superiorchat.utils.Validator.isValidGroupChatId(prefs.activeChatId)
+
+        if (isPeerLinkMode) {
             val isAuthorized = com.mobile.superiorchat.utils.Validator.isAuthorizedPeerLinkMessage(
                 msgChatId = chatId,
                 fromUsername = message.from?.username,
@@ -375,16 +385,8 @@ class BotSync(private val context: Context) {
                 isPeerLinkEnabled = true
             )
             if (!isAuthorized) {
-                // If partner bot username was not filled yet, allow message from group if matching activeChatId
-                val isGroupChat = com.mobile.superiorchat.utils.Validator.isValidGroupChatId(prefs.activeChatId) && chatId == prefs.activeChatId
-                if (!isGroupChat) {
-                    AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from chat $chatId user ${message.from?.username}", LogLevel.WARN)
-                    return
-                }
-                if (prefs.peerLinkPartnerBotUsername.isNotBlank()) {
-                    AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from user ${message.from?.username} (expected ${prefs.peerLinkPartnerBotUsername})", LogLevel.WARN)
-                    return
-                }
+                AppLog.log(LogCategory.BOT_ACTIVITY, "Intruder detected in PeerLink! Ignored msg from user ${message.from?.username} (expected ${prefs.peerLinkPartnerBotUsername})", LogLevel.WARN)
+                return
             }
         } else {
             val targetChatId = prefs.activeChatId

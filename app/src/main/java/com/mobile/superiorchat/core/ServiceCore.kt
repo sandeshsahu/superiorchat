@@ -40,6 +40,24 @@ object ServiceCore {
         }
     }
 
+    fun restart(context: Context) {
+        if (!AppGraph.prefs.isConfigured) {
+            stop(context)
+            return
+        }
+
+        try {
+            val serviceIntent = Intent(context, BotService::class.java).apply {
+                action = BotService.ACTION_RESTART_POLLING
+            }
+            ContextCompat.startForegroundService(context, serviceIntent)
+            AppLog.log(LogCategory.SYSTEM, "ServiceCore: Sent ACTION_RESTART_POLLING to BotService")
+        } catch (e: Exception) {
+            AppLog.log(LogCategory.SYSTEM, "ServiceCore: Restart failed, falling back to ensureRunning: ${e.message}", LogLevel.WARN)
+            ensureRunning(context)
+        }
+    }
+
     fun stop(context: Context) {
         try {
             val serviceIntent = Intent(context, BotService::class.java)

@@ -755,7 +755,7 @@ fun AdminStep4TelegramScreen(onNext: () -> Unit) {
             Text("Bot Token & Chat ID", fontSize = 24.sp, color = PrimaryLight, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Enter your Bot Token and Telegram Chat ID to connect your messaging session.",
+                "Enter Partner's Bot Token and Telegram Chat ID to connect your messaging session.",
                 color = TextSecondary,
                 textAlign = TextAlign.Center,
                 fontSize = 13.sp
@@ -774,7 +774,7 @@ fun AdminStep4TelegramScreen(onNext: () -> Unit) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Filled.Key, contentDescription = null, tint = PrimaryLight, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Bot Token", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Partner's Bot Token", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(

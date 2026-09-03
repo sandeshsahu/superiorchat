@@ -110,7 +110,11 @@ fun AdminSettingsScreen(
     if (showDisableRouteWarning) {
         AdminDisableRouteMessagesDialog(
             onConfirm = {
+                val wasAdmin = viewModel.isAdminModeEnabled
                 viewModel.togglePeerLink(false)
+                if (wasAdmin) {
+                    viewModel.clearCredentials()
+                }
                 showDisableRouteWarning = false
             },
             onDismiss = { showDisableRouteWarning = false }

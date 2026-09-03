@@ -344,7 +344,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (isAdminModeEnabled) {
                 prefs.isAdminModeEnabled = false
                 isAdminModeEnabled = false
-                clearCredentials()
             }
         }
     }
@@ -388,6 +387,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.isAdminModeEnabled = enabled
         isAdminModeEnabled = enabled
         if (!enabled) {
+            prefs.peerLinkPartnerBotUsername = ""
+            peerLinkPartnerBotUsername = ""
             clearCredentials()
         }
     }
@@ -629,6 +630,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val token = botToken.trim()
         val chat = chatId.trim()
         
+        val tokenChanged = prefs.botToken != token
+        val chatChanged = prefs.chatId != chat
+        if (tokenChanged || chatChanged) {
+            prefs.lastUpdateId = 0L
+        }
+
         prefs.botToken = token
         prefs.chatId = chat
         prefs.webrtcBaseUrl = webrtcBaseUrl
@@ -639,7 +646,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         checkTelegramConnection()
 
         if (prefs.isConfigured) {
-            ServiceCore.ensureRunning(getApplication<Application>())
+            ServiceCore.restart(getApplication<Application>())
             com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.SUCCESS, "Credentials Saved")
         } else {
             ServiceCore.stop(getApplication<Application>())
@@ -652,11 +659,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         chatId = ""
         peerLinkGroupChatId = ""
         peerLinkPartnerBotUsername = ""
+        isPeerLinkEnabled = false
+        isAdminModeEnabled = false
+        isPeerLinkLocked = true
+        isPeerLinkHardLocked = false
 
         prefs.botToken = ""
         prefs.chatId = ""
         prefs.peerLinkGroupChatId = ""
         prefs.peerLinkPartnerBotUsername = ""
+        prefs.isPeerLinkEnabled = false
+        prefs.isAdminModeEnabled = false
+        prefs.isPeerLinkLocked = true
+        prefs.isPeerLinkHardLocked = false
         prefs.lastUpdateId = 0L
 
         checkTelegramConnection()

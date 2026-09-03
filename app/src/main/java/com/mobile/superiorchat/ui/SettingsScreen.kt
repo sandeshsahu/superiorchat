@@ -185,15 +185,19 @@ fun AppSettingsPage(
             onDismiss = { showAddManuallyDialog = false },
             onSave = { token, chat, partner ->
                 val isGroup = chat.trim().startsWith("-")
+                val hasPartnerBot = partner.trim().isNotBlank()
                 onBotTokenChange(token)
                 onChatIdChange(chat)
-                if (!isGroup) {
+                if (!isGroup || !hasPartnerBot) {
                     onPeerLinkPartnerBotUsernameChange("")
                     if (isPeerLinkEnabled) {
                         onPeerLinkChange(false)
                     }
                 } else {
                     onPeerLinkPartnerBotUsernameChange(partner)
+                    if (!isPeerLinkEnabled) {
+                        onPeerLinkChange(true)
+                    }
                 }
                 onSave()
                 showAddManuallyDialog = false
