@@ -26,14 +26,12 @@ object PopupTexts {
     object Admin {
         const val BOT_SETUP_GUIDE_TITLE = "Bot-to-Bot Setup Guide"
         const val BOT_SETUP_GUIDE_MESSAGE =
-            "Follow these steps to configure both bots in Telegram:\n\n" +
-            "1. Open **@BotFather** on Telegram.\n" +
-            "2. Send **/mybots** and choose your first bot.\n" +
-            "3. Click **Open** button where text input box is\n" +
-            "4. Select bot and go to **Bot Settings** -> find **Bot to Bot Communication Mode** -> **Enable** it.\n" +
-            "5. Find **Group Privacy** -> and **Disable** it and **Enable** the **Allow Groups**.\n" +
-            "6. Repeat the exact same steps for your second bot.\n" +
-            "7. Create a private group, add both bots, and grant them **Admin** rights."
+            "To chat directly on , two bots communicate inside a private Telegram group:\n\n" +
+            "1. **Create Two Bots**:\nCreate a bot for yourself and another for your partner via @BotFather.\n\n" +
+            "2. **Enable Bot-to-Bot Communication**:\nIn @BotFather, Click on **Open** button then select your bot -> Bot Settings -> **Enable** the **Bot-to-Bot Communication Mode** and do same for partner's bot. This is required.\n\n" +
+            "3. **Create Private Group**:\nCreate a private Telegram group and add *Both Bots* to it with admin rights.\n\n" +
+            "4. **Generate QR**:\nIn This App enter both bot tokens and group ID here to generate both QR.\n\n" +
+            "5. **Configure Partner Device**:\nScan the generated **Client QR** on your partner's app and **Admin QR** on your SuperiorChat app."
 
         const val CONNECTION_ERROR_TITLE = "Connection Error"
 

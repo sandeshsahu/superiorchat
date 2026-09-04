@@ -9,7 +9,7 @@
 ---
 
 > [!NOTE]
-> This document summarizes the core functional features of Superior Chat. For setup instructions or technical backend details, refer to `Instructions.md` and `Backend.md`.
+> This document summarizes the core functional features of Superior Chat. For setup instructions or technical backend details, refer to [Installation.md](Installation.md), [SetupGuide.md](SetupGuide.md), and [Backend.md](Backend.md).
 
 ---
 
@@ -26,13 +26,16 @@
 
 <h2 id="core">💬 1. Core Messaging & Chat</h2>
 
+- 🤖 **App-to-App Dual Chat**: Chat directly with your partner inside the disguised app via Telegram's Bot-to-Bot group communication mode, eliminating the need for either user to touch the official Telegram app.
 - 📝 **Formatted Text**: Send text with rich markdown styling (bold, italic, strikethrough, monospace).
 - 🎭 **Quick Reactions**: Double-tap any message to instantly react with emojis (👍 ❤️ 🤣 😱 😢 🔥).
 - 🖼️ **Profile Pictures**: View contact profile pictures with sleek initials fallback for unidentified users.
 - ✏️ **Message Editing & Deletion**: Edit sent messages on the fly or perform single/bulk message deletions.
+- 🗑️ **Two-Way Batch Deletion**: Simultaneously delete up to 100 messages for both users at once with live progress reporting and automatic background synchronization (`[SYS-MSG-DELETE]`).
 - 📌 **Replies & Pinning**: Swipe to reply to specific messages or pin critical messages to the top banner.
 - 🏷️ **Status Indicators**: Real-time delivery status updates (`Sending`, `Sent`, `Failed`) and `Edited` labels.
 - ✅ **Multi-Selection Mode**: Select multiple messages at once for bulk self-delete or "Delete for everyone".
+- 🛡️ **Live API Ban Protection**: Built-in flood protection coordinator automatically limits group messaging to 19 messages/min, enforces request pacing, and handles HTTP 429 backoffs, safeguarding your Telegram bot from spam penalties or temporary bans.
 - 🕰️ **Message Timestamps**: Clear 12-hour (AM/PM) timestamps for all chat messages and system logs. 
 
 ---
@@ -40,9 +43,13 @@
 <h2 id="calling">📞 2. Secure Voice & Video Calling</h2>
 
 - 🎙️ **P2P Voice & Video Calls**: Instant, zero-auth peer-to-peer WebRTC calling directly within the chat interface.
+- 📞 **Bidirectional Call Initiation (App-to-App Mode)**: In App-to-App mode, both users can initiate voice and video calls directly from inside the app at any time. When chatting in standard App-to-Telegram mode, initiation remains one-way from the app side to prevent accidental discovery.
+- 🔔 **Flavor-Specific Call Ringing & Alerts**:
+  - **Original Flavor**: Plays continuous audible ringtones, standard vibration, and presents native Android `CallStyle` heads-up notification cards with caller avatars and dedicated Accept/Decline action buttons.
+  - **Camouflage Flavors** (`captivePortal`, `playSupport`, `weather`): Operates with completely silent audio, subtle low-amplitude pocket double-pulse haptics (no table rattle), and harmless disguised notifications (e.g. live weather alerts or system notices) that bring you directly into the call.
+- 🔄 **Background Calls & Native OS PiP (Android App)**: Active voice and video calls seamlessly continue in the background while multitasking, with floating Picture-in-Picture (PiP) for video calls. Located in `Admin Settings > Lifecycle` as "Background Calls" (disabled by default for stealth).
 - 📜 **Call History Logs**: Comprehensive call history log tracking answered, missed, and network-failed calls with clear, interactive detail sheets.
 - 💬 **Timeline Call Events**: Call statuses are visually embedded directly into the chat timeline as interactive, tappable event pills that jump directly to your call history.
-- 🛡️ **One-Way Initiation**: For maximum privacy and to prevent accidental discovery, calls can only be initiated from the Superior Chat app side (Telegram cannot initiate calls).
 - 🔄 **Instant Camera Swapping**: Seamlessly swap between front and rear cameras during active calls without dropping connection.
 - 🖼️ **OS-Level Picture-in-Picture (Telegram Side)**: Full OS-level floating PiP support for Telegram guest users. Seamlessly floats live video or pulsing audio visualizers over other apps on Chrome, Edge, and iOS Safari.
 - 🎧 **Smart Audio Routing**: Native integration with Android's sensors seamlessly switches audio between earpiece, speakerphone, and Bluetooth devices.
@@ -50,6 +57,10 @@
 - 🔒 **Cryptographic Call Rooms**: Generates random UUID rooms with secret cryptographic parameters to prevent zero-click mass-surveillance and link scraping.
 - ⚡ **Auto-Fallback Engine**: Employs a "Race to Connect" algorithm that dynamically shuffles and tests backup signaling server URLs to ensure calls always connect even if the primary server goes offline.
 - ⚙️ **Custom TURN/STUN Servers**: Option to change the default WebRTC servers with your own custom servers for guaranteed reliability (`Application Page -> App Settings > Call Configuration` and **Repo's** `/webrtc` folder).
+
+> [!CAUTION]
+> **Stealth Warning for Android Background Calls & OS PiP**:
+> Enabling "Background Calls" in `Admin Settings > Lifecycle` allows the app to float a native Android Picture-in-Picture (PiP) video window or continue running audio when switching to other apps or the home screen. **Using this may cause sudden discovery of the hidden application** if someone glances at your device while a floating video window is visible. Use with caution!
 
 > [!IMPORTANT]
 > **Browser Recommendation**: For optimal call performance, zero-lag video rendering, and full hardware support, always use the **Google Chrome** browser.
@@ -81,9 +92,11 @@
 
 <h2 id="profile">🤖 4. Profile & Credential Management</h2>
 
+- ⚙️ **Admin Settings Hub**: Dedicated management screen (`AdminSettings.kt`) for toggling Read-Only locks, group message routing, Admin Mode credentials, and background call lifecycles.
+- 🔒 **Hard Lock Security**: Administrators can permanently lock Admin Settings on their partner's phone (`isPeerLinkHardLocked`) during setup, preventing any tampering with critical routing settings.
+- 📱 **Dual QR Code Provisioning**: Generates scoped **Partner QRs (Client)** and **Your QRs (Admin)** with 1024px high-contrast rendering and brightness override, packing credentials and remote stealth settings (dialer code / weather access word).
 - 🎨 **Profile Customization**: Change the bot's profile photo (using a professional pan-and-zoom cropping tool), display name, and bio directly from within the app.
 - 🔑 **Credential Setup**: Quickly configure your Bot Token and Chat ID via manual entry with real-time format validation.
-- 📱 **Admin Mode QR Provisioning**: The Telegram-side user can generate an Encrypted QR Code using the `SetupApp` (Admin Mode) and send it to the Superior Chat user, who can instantly scan it to automatically import all connection credentials and settings.
 - 🔐 **Advanced QR Cryptography**: Setup configurations use robust `AES-GCM` encryption paired with `PBKDF2WithHmacSHA256` key derivation for enterprise-grade security.
 - 📌 **Dual-Mode QR Security**: Generate QR codes that are explicitly PIN-protected (`SEC_QR`) or sent directly (`DIR_QR`), giving the admin total control over credential exposure.
 - ⚡ **Turbo QR Scanner**: Entirely overhauled QR scanning engine that is 10x faster, supports pinch-to-zoom, features animated glowing scan lines, haptic feedback, and a built-in torch toggle.
@@ -108,7 +121,7 @@
 - 🔔 **Camouflage Notifications**: Incoming messages appear as harmless system, carrier, or weather alerts to prevent shoulder-surfing.
 - 🔕 **Notification Controls**: Dedicated toggles to disable all app notifications completely, or selectively disable new message notifications.
 - 🔄 **Decoy Redirects**: If a snooper clicks the camouflaged notification or taps the Quick Settings tile without the correct sequence, they are instantly redirected to the native Android Network Settings or Play Store (`Depends on flavor`) to completely avoid suspicion.
-- 🗑️ **Recent Apps Protection**: Automatically hidden and excluded from the phone's recent apps menu to leave zero trace when switching screens.
+- 🗑️ **Dynamic "Hide from Recent" Setting**: Control whether the app is excluded from the phone's recent apps menu via `Admin Settings > Lifecycle`. Defaults to enabled (hidden) for camouflage flavors for maximum stealth, and disabled (visible) for Original flavor for fast multitasking.
 - 🏃 **Panic & Auto-Kill Mechanisms**: Automatically disconnects active calls and stops any playing music/voice notes the exact moment the app is closed, device locks or the home button is pressed.
 - 🔒 **Screen Security**: Option to enable/disable blocking of screenshots and screen recording throughout the entire application (`Profile -> Settings > Privacy and Security`).
 

@@ -45,6 +45,8 @@ You will see several files attached to this release, but you only need **one** d
 
 ---
 
-> 📖 **Need a full step-by-step guide?** [Read the Installation Instructions](docs/Instructions.md)
+> 📖 **Need step-by-step guidance?** [Read the Installation Guide](docs/Installation.md) • [Read the Setup Guide](docs/SetupGuide.md)
+
+> 💬 **Need help, demo videos, or instruction guides?** Check our Telegram Group for videos and more: [t.me/SuperiorChatGithub](https://t.me/SuperiorChatGithub)
 
 > ✨ **Want to see everything the app can do?** [Explore the Features Guide](docs/Features.md)

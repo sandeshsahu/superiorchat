@@ -14,9 +14,74 @@
 ---
 
 ## Table of Contents
+- [Version 1.0.4 (Sep 2026)](#v104)
 - [Version 1.0.3 (Aug 2026)](#v103)
 - [Version 1.0.2 (Aug 2026)](#v102)
 - [Version 1.0.1 (Jul 2026)](#v101)
+
+---
+
+<h2 id="v104">🏷️ Version 1.0.4 — App-to-App Bot Bridge</h2>
+
+### 🚀 New Features
+- 🤖 **App-to-App Dual Chat**: Both users can now chat and call directly inside the disguised app via Telegram's Bot-to-Bot group communication mode, eliminating the need for the official Telegram app.
+- ⚙️ **Admin Settings Hub**: Dedicated settings screen (`AdminSettings.kt`) managing Read-Only locks, message routing, Admin Mode toggles, credentials, and app lifecycles.
+- 🧙‍♂️ **6-Step Setup App Wizard**: Guided multi-role setup wizard with live Telegram API diagnostics (token validation, bot collision checks, admin privileges, and group privacy verification).
+- 📱 **Dual QR Code Provisioning**: Generates scoped **Partner QRs (Client)** and **Your QRs (Admin)** with 1024px high-contrast rendering and brightness override.
+- 🔒 **Hard Lock Security**: Administrators can permanently lock Admin Settings on their partner's phone (`isPeerLinkHardLocked`) to prevent tampering.
+- 🗑️ **Two-Way Batch Message Deletion**: Simultaneously delete up to 100 messages for both users in one batch with live progress and automatic background sync (`[SYS-MSG-DELETE]`).
+- 👤 **Dynamic Per-Sender Profiles**: Resolves and displays individual sender photos, names, and bios for each group bubble and profile dialog, backed by local Room database persistence.
+- 🔄 **Intelligent 3-Mode Credential Routing**: The sync and credentials engine dynamically auto-detects and adapts across 3 modes: Direct 1-on-1 Telegram DM (with personal user ID), Normal Group (chatting in a group without partner bot restrictions, accepting messages from all group members with per-sender profile resolution), and App-to-App Dual Bot Bridge (group with strict partner bot username filtering and bidirectional signaling).
+
+---
+
+### 📞 Calling & Audio Enhancements
+- 🔄 **Background Calls & OS PiP**: Active voice and video calls now seamlessly continue in the background while multitasking, with native OS floating Picture-in-Picture for video streams.
+- 🎛️ **Symmetrical 2x3 Call Controls**: Upgraded in-call controls into an intuitive 2x3 grid with independent "Mute Call" (inbound audio muting), dynamic earpiece/speaker routing, and adaptive minimize buttons.
+- 🔔 **Flavor-Specific Call Ringing & Alerts**:
+  - **Original Flavor**: Plays continuous audible ringtone, standard heavy vibration, and renders native Android `CallStyle` heads-up notification cards with caller avatars and Accept/Decline actions.
+  - **Camouflage Flavors**: Operates with completely silent audio, subtle low-amplitude pocket double-pulse haptics (no table rattle), and natural decoy alerts (e.g. live weather updates).
+- 📜 **Call Direction & History Logging**: Call History accurately logs `Incoming` vs `Outgoing` directions with live duration timers and distinct directional icons.
+- 🏝️ **In-App Call Minimizing & Status Pill**: Incoming calls can be minimized into the floating Status Pill, letting users continue browsing chats while ringing.
+- 🚫 **Contextual Call Blocked Diagnostics**: Tapping the call button when unavailable displays clear diagnostic dialogs (offline, missing credentials, or Telegram rate limits).
+
+---
+
+### 💬 Messaging & Markdown Precision
+- 📝 **Telegram-Grade Markdown Renderer**: Full Compose support for nested styles, code blocks, spoilers (`||spoiler||`), strikethroughs, and underlines across bubbles, reply previews, and pinned headers.
+- 📋 **Inline Code Tap-to-Copy**: Tapping an inline or preformatted code block copies only that specific snippet to the clipboard.
+- 🖼️ **Universal Caption Tap-to-Copy & Editing**: Tapping text on media captions copies clean text to clipboard; editing sent media captions is now fully supported.
+- 🎭 **Batch Message Reactions**: Consolidated batch reactions with debouncing, staggering, and dynamic circular avatar badges for reactors.
+- 🛡️ **Live API Ban Protection & Rate Limiting**: Intelligent flood control engine preventing bot bans and token revoking by enforcing a 19 msgs/min group sliding window, 0.5s dispatch pacing, HTTP 429 retry handling, and live input countdown banners.
+- 🛡️ **Plain-Text Formatting Fallback**: Automatic plain-text retry fallback on entity parsing errors, guaranteeing 100% deliverability for raw text with unmatched formatting symbols.
+
+---
+
+### 🛡️ Stealth & Security
+- 🛡️ **3-Tier Window Security Shield**: Returning from background, expanding from PiP, or dialing the secret code strictly enforces the Fake Crash and PIN Lock Screen first, while keeping active call audio streaming unbroken in the background.
+- 🔕 **In-App Notification & Ringing Suppression**: Automatically silences notifications, vibrations, and heads-up banners across all flavors when actively chatting inside the app.
+- 👁️ **Dynamic "Hide from Recent" Setting**: Converted static manifest exclusion into an Admin Settings toggle, defaulting to enabled for camouflage flavors and disabled for Original.
+- 🔢 **In-Call Secret Dialer Code & Tile Access**: Dialing the secret entry code or tapping the Quick Settings tile during an active call safely maximizes the app without terminating the call.
+- 🔍 **Role-Scoped Universal QR Scanner**: Settings screen strictly accepts Client QRs; Admin Settings strictly accepts Admin QRs; Chat Screen scanner auto-applies both.
+- 🚨 **System Signal Hardening**: Internal control signals are authenticated at the core engine level and automatically purged from Telegram by the receiver without leaking to chat logs.
+- 💾 **Offline-First Schema Migration (v14)**: Upgraded Room schema to version 14, capturing edit timestamps, entities, replies, and thumbnails offline.
+
+---
+
+### 🎨 UI & UX Enhancements
+- 🧘 **Zen Mode Settings Control**: Added a toggle in App Settings to enable or disable the Sleeping Miku inactivity resting mode.
+- 🪟 **Responsive Adaptive Dialogs**: Upgraded dialogs with `AdaptiveDialogActions` (dynamic button wrapping) and `ScrollableDialogBody` (scroll-state indicator arrows).
+- 📱 **Montserrat Branding & Drawer Polish**: Clean Montserrat branding header in the navigation drawer and relocated project links into the About page.
+- 🎨 **Theme-Safe Semantic Status Colors**: Standardized completed calls to theme-safe Emerald Green and termination events to ErrorRed across all color themes.
+- ⚠️ **Manual Credentials Warning Dialogs**: Disconnection warnings before manual credentials editing to prevent accidental misconfigurations.
+- 🔋 **Streamlined Startup Permissions**: Sequential native OS permission prompts (Notification $\rightarrow$ Battery Optimization) with custom explanatory guidance dialogs only upon denial.
+
+---
+
+### 🛠️ Bug Fixes & Reliability
+- ⚡ **Hanging Long-Poll Socket & Sync Delay**: Updating bot credentials or switching chat modes previously left the 80-second OkHttp long-poll connection hanging on the old socket, causing inbound messages to be delayed or dropped. Fixed via `ACTION_RESTART_POLLING`, which immediately aborts pending connections (`dispatcher.cancelAll()`) and resets the update sequence to sync instantly.
+- 🗑️ **Setup App Uninstall Dialog Lingering**: Tapping "Uninstall" on the Setup App handoff dialog previously left the custom dialog visible on screen behind the system uninstall prompt. The dialog state now dismisses immediately upon tapping the action.
+- 📦 **Version-Aware App Updates**: Setup App checks the installed camouflage app's build version and prompts in-place updates when required.
 
 ---
 

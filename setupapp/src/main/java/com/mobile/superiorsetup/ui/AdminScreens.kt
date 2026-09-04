@@ -1569,7 +1569,7 @@ fun AdminStep4AppToAppScreen(onNext: () -> Unit) {
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "1. Create 2 bots in @BotFather (one for you, one for partner)\n2. In @BotFather: Bot Settings -> Group Privacy -> Turn OFF for both bots\n3. In @BotFather: Bot Settings -> Allow Groups? -> Turn ON\n4. Create a Private Telegram Group and add both bots\n5. Promote BOTH bots to Administrator in Group Settings",
+                            text = "1. Create 2 bots via @BotFather (one for you, one for partner)\n2. In @BotFather: Click 'Open' -> Bot Settings -> Enable 'Bot-to-Bot Communication Mode' for both bots\n3. Create a Private Telegram Group and add *Both Bots* to it\n4. Promote BOTH bots to Administrator in Group Settings\n5. Enter both bot tokens & group ID above to verify",
                             color = TextSecondary,
                             fontSize = 11.sp,
                             lineHeight = 16.sp

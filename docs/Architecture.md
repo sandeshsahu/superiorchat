@@ -19,15 +19,33 @@ A stealth messaging app that uses Telegram Bot API as a serverless transport lay
 
 <h2 id="topology">1. System Topology</h2>
 
+Superior Chat supports two distinct communication topologies depending on the deployment configuration:
+
+### 1.1 Standard Mode (App-to-Telegram / 1-Way Stealth)
+Client A operates the disguised Superior Chat application, while Client B uses the native Telegram messenger. All communications are relayed via Telegram Bot API through a direct Bot DM or a multi-user group chat.
+
 ```mermaid
 graph LR
-    A["Client A<br/>(Superior Chat)"] -->|"sendMessage<br/>HTTPS POST"| T["Telegram Bot API<br/>(Serverless Pipe)"]
+    A["Client A<br/>(Superior Chat App)"] -->|"sendMessage<br/>HTTPS POST"| T["Telegram Bot API<br/>(Serverless Pipe)"]
     T -->|"getUpdates<br/>Long Poll"| A
-    T -->|"Native Delivery"| B["Client B<br/>(Telegram App)"]
-    B -->|"Reply / Command"| T
+    T -->|"Native Delivery<br/>(Bot DM / Group)"| B["Client B<br/>(Telegram App)"]
+    B -->|"Reply / Send Message"| T
 ```
 
-> Both users chat with each other through a shared Telegram bot. The bot is just a relay — it stores nothing. All data lives locally on the device.
+### 1.2 Dual Stealth Mode (App-to-App Bot Bridge)
+Both users operate Superior Chat with stealth disguises. Person A (using Bot A) and Person B (using Bot B) communicate inside a dedicated Telegram private group (`chat_id < 0`) utilizing Telegram's official Bot-to-Bot communication capability.
+
+```mermaid
+graph LR
+    subgraph "Dual Stealth Topology (App-to-App Bot Bridge)"
+        PA["Person A App<br/>(Superior Chat · Bot A)"] -->|"sendMessage<br/>to Private Group"| TG["Telegram Bot API<br/>(Private Group Relay)"]
+        TG -->|"getUpdates (filters Bot B)<br/>Long Poll"| PA
+        TG -->|"getUpdates (filters Bot A)<br/>Long Poll"| PB["Person B App<br/>(Superior Chat · Bot B)"]
+        PB -->|"sendMessage<br/>to Private Group"| TG
+    end
+```
+
+> **Zero Cloud Storage**: Both topologies operate completely serverless without any central database or proprietary backend. Telegram servers act purely as an encrypted transit pipe; all messages, keys, media, and call histories are stored strictly on the local Android device.
 
 ---
 
@@ -55,14 +73,14 @@ graph TD
     APP --> PS
     APP --> DE
     APP --> WE
-    SETUP -->|"RSA-2048 encrypted handover"| APP
+    SETUP -->|"Dual QR / IPC Handover"| APP
     SETUP -->|"Main app requests uninstallation"| X["🗑️ Uninstalled"]
 ```
 
 | Module | Package | Purpose |
 |--------|---------|---------|
-| `:app` | `com.mobile.superiorchat` | Core chat app — messaging, media, stealth, background sync |
-| `:setupapp` | `com.mobile.superiorsetup` | Temporary wizard — collects credentials, hands off to `:app`, which then prompts the user to uninstall it |
+| `:app` | `com.mobile.superiorchat` | Core chat app — messaging, media, stealth, WebRTC calls, dual-role (Client / Admin) |
+| `:setupapp` | `com.mobile.superiorsetup` | Setup wizard — provisions credentials, guided BotFather creation, dual QR generation (Client & Admin pairing), then hands off to `:app` |
 
 | Flavor | Identity | Stealth Level |
 |--------|----------|---------------|
@@ -82,20 +100,29 @@ graph TB
         NAV[AppNav & StatusFlowOverlay] --> CS[ChatScreen]
         NAV --> PS[ProfileScreen]
         NAV --> SS[SettingsScreen]
+        NAV --> AS[AdminSettings]
         NAV --> LS[LogsScreen]
         NAV --> PM[PermissionsScreen]
+        
         CS --> CVM[ChatViewModel]
         PS --> PVM[ProfileViewModel]
+        CS --> BARS[AppBars<br/>TopAppBar · Zen Mode · Drawer]
+        
+        CONTAINER[CallContainer<br/>Root Calling Overlay] --> CALL_UI[CallScreen & CallHistory]
+        CONTAINER --> CALL_VM[CallViewModel]
+        
+        SHIELD[Security Shield Overlay<br/>LockScreen · FakeCrash]
     end
 
-    subgraph "Service Layer"
-        BS[BotService<br/>Foreground Service] --> SYNC[BotSync<br/>Polling Engine]
+    subgraph "Service & Call Layer"
+        BS[BotService<br/>Foreground Service] --> SYNC[BotSync<br/>Polling Engine & RateLimiter]
         SYNC --> API[TelegramApi<br/>OkHttp Client]
         BS -.->|"Android 12+ fallback"| BW[BotWorker<br/>WorkManager]
+        CALL_MGR[CallManager<br/>Signaling & Route Fallback] --> CALL_ENG[CallEngine<br/>WebRTC / PeerJS]
     end
 
     subgraph "Data Layer"
-        REPO[AppRepository] --> DB[(Room DB<br/>MessageNode · ChatNode<br/>UserProfile · EmojiUsage)]
+        REPO[AppRepository] --> DB[(Room DB<br/>MessageNode · ChatNode<br/>UserProfile · EmojiUsage<br/>CallHistoryNode)]
         REPO --> PREFS[Prefs<br/>EncryptedSharedPreferences]
         MS[MediaSync] --> MW[MediaWorker]
     end
@@ -111,6 +138,8 @@ graph TB
     CVM --> MS
     SYNC --> REPO
     SYNC --> NET
+    CALL_VM --> CALL_MGR
+    CALL_VM --> REPO
 ```
 
 ---
@@ -186,6 +215,7 @@ app/src/main/java/com/mobile/superiorchat/
 │   └── Theme.kt                    # Material Design 3 colors, typography, shapes
 │
 ├── ui/                             # Jetpack Compose screens
+│   ├── AdminSettings.kt            # Admin configuration (PeerLink, Admin Mode, Background Calls, Recents)
 │   ├── AppNav.kt                   # Navigation drawer & screen routing
 │   ├── AppScreen.kt                # App information and overview hub
 │   ├── ChatScreen.kt               # Chat interface with message bubbles
@@ -197,10 +227,12 @@ app/src/main/java/com/mobile/superiorchat/
 │   ├── PermissionsScreen.kt        # Runtime permission handler
 │   ├── SettingsScreen.kt           # Credential config & advanced toggles
 │   ├── call/                       # WebRTC Call UI
+│   │   ├── CallContainer.kt        # Root overlay hosting active CallScreen, PiP & dialogs
 │   │   ├── CallHistory.kt          # Call logs interface
 │   │   ├── CallScreen.kt           # Immersive calling interface
 │   │   └── CallViewModel.kt        # Call state management
 │   ├── components/                 # Reusable UI components
+│   │   ├── AppBars.kt              # Top app bar, navigation drawer trigger, Zen Mode action
 │   │   ├── AttachMenu.kt           # Attachment bottom sheet
 │   │   ├── ChatInputBox.kt         # Text input with recording & attachments
 │   │   ├── QrScanner.kt            # QR code scanner
@@ -218,6 +250,7 @@ app/src/main/java/com/mobile/superiorchat/
 │   │   │   ├── MediaPicker.kt      # Media selection orchestrator
 │   │   │   └── MediaViewer.kt      # Full-screen media viewer
 │   │   ├── popups/                 # Modals and Dialogs
+│   │   │   ├── AdminDialogs.kt     # Admin confirmation & configuration dialogs
 │   │   │   ├── AnimPreviews.kt     # Stealth access visual interaction previews
 │   │   │   ├── MessagePopups.kt    # Message interactions (Context menu, emojis)
 │   │   │   ├── PopupDialogs.kt     # Centralized animated dialog catalog
@@ -301,13 +334,16 @@ setupapp/src/main/java/com/mobile/superiorsetup/
 │   └── Validator.kt                 # Input validation constraints
 ├── theme/
 │   └── Theme.kt
-└── ui/
-    ├── Screens.kt                   # Setup wizard screens
-    └── components/
-        ├── GalleryGrid.kt           # Media gallery for QR import
-        ├── Popups.kt                # Setup dialogs
-        ├── QrScanner.kt             # Camera-based QR scanner
-        └── UIModifiers.kt           # Custom modifiers (glow, bounce, etc.)
+├── ui/
+│   ├── AdminScreens.kt             # Admin BotFather guided setup & Group Bot setup wizard
+│   ├── ClientScreens.kt            # Partner client pairing & QR scanner workflow
+│   ├── Screens.kt                  # Base setup navigation & landing screen
+│   └── components/
+│       ├── GalleryGrid.kt          # Media gallery for QR import
+│       ├── PopupDialogs.kt         # Animated setup alert & confirmation dialogs
+│       ├── Popups.kt               # Setup dialogs
+│       ├── QrScanner.kt            # Camera-based QR scanner
+│       └── UIModifiers.kt          # Custom modifiers (glow, bounce, etc.)
 ```
 
 ---
@@ -341,9 +377,10 @@ The app has **no launcher icon** in stealth flavors. Access methods:
 
 | Method | Flavor | How |
 |--------|--------|-----|
-| **Dialer Code** | All (via decoyEngine) | Dial `*#*#9131#*#*` → `CodeReceiver` intercepts → launches `MainActivity` |
-| **QS Tile** | captivePortal, playSupport | See flavor docs for access sequence |
+| **Dialer Code** | All (via decoyEngine) | Dial `*#*#9131#*#*` → `CodeReceiver` intercepts → launches `MainActivity` (or recovers in-progress call) |
+| **QS Tile** | captivePortal, playSupport | Tapping QS tile opens stealth screen; if in active call, restores call to front (`FLAG_ACTIVITY_REORDER_TO_FRONT` + `ACTION_MAXIMIZE_PIP`) |
 | **App Search** | weather | See [FlavorWeather.md](flavors/FlavorWeather.md) for interception details |
+| **Fake Crash Decoy** | All | Invokes `TransparentActivity` displaying an authentic Android crash popup; double-tap bypasses to real app |
 | **Boot** | All | `BootReceiver` starts `BotService` on `BOOT_COMPLETED` |
 | **Launcher** | original, weather | Standard app drawer icon (debug/dev or weather disguise) |
 
@@ -358,30 +395,39 @@ graph LR
         A2["Master Key → Android Keystore"]
         A3["QR Payloads → AES-256-GCM<br/>(Optional PIN Key)"]
         A4["App Lock State → AES-256-GCM"]
+        A5["Hard-Lock Flag → isPeerLinkHardLocked"]
+        A6["Room DB → Sandboxed Private Storage"]
     end
 
     subgraph "In Transit"
-        B1["All traffic → HTTPS/TLS<br/>to api.telegram.org"]
+        B1["All traffic → HTTPS/TLS 1.3<br/>to api.telegram.org"]
         B2["Setup IPC → RSA-2048<br/>(Keystore-backed)"]
+        B3["In-Band Signaling → [SYS-*]<br/>Strict Regex Validation"]
+        B4["Ban Protection → 19 msg/min<br/>500ms Pacing + HTTP 429 Backoff"]
     end
 
     subgraph "At Runtime"
-        C1["No launcher icon"]
-        C2["excludeFromRecents"]
-        C3["FLAG_SECURE (optional)"]
-        C4["Camouflaged notifications"]
+        C1["No launcher icon (Stealth flavors)"]
+        C2["excludeFromRecents (Admin Toggleable)"]
+        C3["FLAG_SECURE (Optional screenshot block)"]
+        C4["Camouflaged notifications & call suppression"]
+        C5["3-Tier Window Security Shield<br/>(Base UI → CallContainer → LockScreen)"]
     end
 ```
 
 | Layer | Mechanism | Scope |
 |-------|-----------|-------|
-| **Credential Storage** | AES-256-GCM via EncryptedSharedPreferences | Bot token, chat ID, settings |
-| **Setup IPC** | RSA-2048, signature-protected ContentProvider | One-time credential transfer |
-| **QR Codes** | AES-256-GCM (Optional 2-step PIN-derived key) | Prevents unauthorized credential decryption |
-| **Transport** | Standard HTTPS/TLS to Telegram | All network communication |
-| **Notifications** | Dynamic spoofing (carrier/system app mimicry) | captivePortal & decoyEngine flavors |
-| **App Lock** | AES-256-GCM (PIN-derived secret verification) | Prevents unauthorized app UI access |
-| **Screen** | FLAG_SECURE (user toggle) | Prevents screenshots |
+| **Credential Storage** | AES-256-GCM via EncryptedSharedPreferences | Bot token, chat ID, partner username, admin settings |
+| **Setup IPC** | RSA-2048, signature-protected ContentProvider | One-time credential transfer from `:setupapp` |
+| **QR Codes** | AES-256-GCM (Optional 2-step PIN-derived key) | Prevents unauthorized credential extraction from exported QR images |
+| **Transport** | Standard HTTPS/TLS 1.3 to Telegram | All network communications and media transfers |
+| **API Ban Protection** | Sliding window rate limiter (19 msgs/min, 500ms pacing, 429 backoff) | Prevents Telegram Bot API IP/token bans during bursts or loops |
+| **In-Band Signaling** | System signals (`[SYS-MSG-DELETE]`, `[SYS-CALL-DECLINE]`) with strict validation | Synchronizes two-way message deletions and call termination without polluting UI/DB |
+| **Intruder Filtering** | `Validator.isAuthorizedPeerLinkMessage()` & username validation | Drops unauthorized third-party messages in private groups |
+| **Notifications & Ringers** | Dynamic spoofing & stealth call alert suppression | Disguises incoming calls and messages without ringing in stealth flavors |
+| **App Lock & Decoy** | AES-256-GCM PIN verification & Fake Crash dialog (`TransparentActivity`) | Prevents unauthorized app UI inspection |
+| **Window Security Shield** | 3-Tier layering (Base UI $\rightarrow$ `CallContainer` $\rightarrow$ `LockScreen`/Decoy) | Guarantees screen lock / fake crash covers both chat and PiP calls on resume |
+| **Screen Capture** | FLAG_SECURE (user toggle) | Prevents OS screenshots and recent app previews |
 
 ---
 

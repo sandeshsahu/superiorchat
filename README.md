@@ -7,6 +7,7 @@
     <img src="https://img.shields.io/badge/Kotlin-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin">
     <img src="https://img.shields.io/badge/Jetpack_Compose-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose">
     <img src="https://img.shields.io/badge/Telegram_Bot_API-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram">
+    <a href="https://t.me/SuperiorChatGithub"><img src="https://img.shields.io/badge/Telegram-Channel-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Channel"></a>
     <img src="https://img.shields.io/badge/License-Apache_2.0-D22128?style=for-the-badge" alt="License">
   </p>
 </div>
@@ -32,11 +33,11 @@
 
 <h2 id="overview">🌟 Overview</h2>
 
-Superior Chat solves a unique privacy challenge: **How to chat securely without keeping a dedicated server or exposing a visible messaging app on your phone.**
+Superior Chat solves a simple privacy challenge: **How to message someone secretly without keeping a visible chat app on your phone.**
 
 Instead of operating custom backend servers, Superior Chat uses the highly reliable Telegram Bot API for messaging:
-- 👤 **User A** chats directly inside their official Telegram application via a dedicated bot.
-- 👤 **User B** chats inside the custom, hidden Superior Chat app.
+- 👤 **Option 1 (App to Telegram)**: User A chats in their official Telegram app via a dedicated bot, while User B chats inside the hidden Superior Chat app.
+- 👥 **Option 2 (App to App)**: Both users chat directly inside the hidden Superior Chat app using Telegram's bot-to-bot communication in a private group.
 - 🚫 **No Middleman Server**: Message histories are managed locally within the hidden app, while relying on Telegram's secure cloud for transport.
 
 ---
@@ -57,13 +58,14 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
 
 <h2 id="features">🚀 Key Highlights</h2>
 
-| Feature | Description | Benefit |
-|---------|-------------|---------|
-| 👻 **Stealth App Disguise** | No launcher icon, or perfectly disguised as functional Weather/System applications. | Invisible to casual snoopers & shoulder-surfers. |
-| 🔑 **Secret Access Codes** | Unlocked exclusively via a secret dialer code (`*#*#9131#*#*`), Quick Settings tile, or App Search interception. | Cannot be opened normally from the app drawer. |
-| 🛡️ **Camouflaged Alerts** | Notifications appear as harmless carrier alerts or live weather updates based on data states. | Complete privacy even when receiving alerts. |
-| ⚡ **Serverless Transport** | Powered entirely by Telegram Bot API long-polling. | Zero hosting costs, 99.9% uptime, no third-party analytics. |
-| 📞 **Secure P2P Calling** | Peer-to-Peer WebRTC Voice & Video calling built into the chat interface. | Zero-auth cryptographic rooms with true supply-chain independence. |
+| Feature | What It Does | Why It's Great |
+|---------|--------------|----------------|
+| 👻 **Hidden or Disguised** | Has no app icon at all, or looks and works like a real Weather app. | Completely invisible to anyone looking at your phone. |
+| 🔢 **Secret Passcodes** | Opens only when you dial a secret number (like `*#*#9131#*#*`), tap a Quick Settings tile, or search in the weather bar. | Cannot be opened normally from the app drawer. |
+| 🎭 **Disguised Alerts** | Incoming message alerts look like normal carrier notifications or weather forecasts. | Complete privacy even when your screen lights up. |
+| 🔄 **Two Ways to Chat** | Chat with someone using normal Telegram, or have both people use the secret app. | Maximum flexibility depending on what your partner prefers. |
+| ⚡ **Free & Serverless** | Powered entirely by Telegram's free bot system with zero hosting costs. | 99.9% uptime, no monthly server fees, and no third-party tracking. |
+| 📞 **Private Calls** | Secure voice and video calling built directly into the chat interface. | Call each other directly without exchanging phone numbers. |
 
 👉 **[Click here to see Detailed Features](docs/Features.md)**
 
@@ -71,39 +73,67 @@ Instead of operating custom backend servers, Superior Chat uses the highly relia
 
 <h2 id="how-it-works">🤔 How It Works</h2>
 
-Superior Chat acts as a silent client that speaks directly to the Telegram API.
+Superior Chat speaks directly to Telegram without requiring any extra backend servers. You can connect in two different ways:
+
+### Option 1: App to Telegram (One-Way Bridge)
+You use the secret app on your phone, and your partner chats normally with your bot on Telegram.
 
 ```mermaid
 graph LR
-    subgraph "Your Device (Stealth)"
-        A["📱 Superior Chat App<br/>(Hidden Interface)"]
+    subgraph "Your Phone (Hidden)"
+        A["📱 Superior Chat App<br/>(Disguised Interface)"]
     end
 
-    subgraph "Cloud Pipe (Serverless)"
-        T["☁️ Telegram Bot API<br/>(Encrypted Relay)"]
+    subgraph "Telegram Cloud"
+        T["☁️ Telegram Bot<br/>(Secure Transport)"]
     end
 
-    subgraph "Partner Device"
+    subgraph "Partner Phone"
         B["💬 Official Telegram App<br/>(Standard Chat)"]
     end
 
-    A -->|"Send Message<br/>(HTTPS POST)"| T
-    T -->|"Long Poll Update<br/>(getUpdates)"| A
-    T <-->|"Native Bot Chat"| B
+    A -->|"Send Message"| T
+    T -->|"Instant Long-Poll"| A
+    T <-->|"Normal Chat"| B
+```
+
+---
+
+### Option 2: App to App (Dual-Bot Bridge)
+Both of you use the secret app. Telegram allows two bots to talk to each other inside a private group, so messages flow back and forth between both secret apps automatically!
+
+```mermaid
+graph LR
+    subgraph "Your Phone (Admin)"
+        A["📱 Secret App A"]
+    end
+
+    subgraph "Private Telegram Group"
+        B1["🤖 Bot A"] <-->|"Bot-to-Bot Relay"| B2["🤖 Bot B"]
+    end
+
+    subgraph "Partner Phone (Client)"
+        B["📱 Secret App B"]
+    end
+
+    A <-->|"Send / Receive"| B1
+    B2 <-->|"Send / Receive"| B
 ```
 
 ---
 
 <h2 id="setup">🛠️ Instructions & Setup</h2>
 
-Superior Chat utilizes a **two-app setup system** to ensure zero residual metadata is left behind on the device.
+Superior Chat uses a **simple two-app system** so that no trace of installation or configuration stays on your phone:
 
-1. **Setup App (`:setupapp`)**: A single-use configuration wizard used to scan QR codes or enter bot tokens. Once configured, it securely passes encrypted credentials to the main app via an RSA-2048 IPC handshake.
-2. **Main App (`:app`)**: The core hidden chat application that stays on the device.
+1. **Setup App (`:setupapp`)**: A temporary helper used to install the hidden app and scan the setup QR code. Once configured, it tells you to uninstall it so your phone stays clean.
+2. **Main App (`:app`)**: The secret chat app that stays hidden on the phone.
 
-To install and set up the apps properly (including creating the Telegram Bot and generating the QR code), please read our complete setup guide:
+To install the app and set up your connection, check out our step-by-step guides:
 
-👉 **[Click here for the Installation & Setup Guide](docs/Instructions.md)**
+👉 **[Download & Installation Guide](docs/Installation.md)** • **[Connection & Setup Guide](docs/SetupGuide.md)**
+
+> 💬 **Need help, demo videos, or instruction guides?** Join our Telegram channel: **[@SuperiorChatGithub](https://t.me/SuperiorChatGithub)**
 
 ---
 
@@ -114,7 +144,8 @@ For detailed technical references, explore the dedicated documentation in this d
 - 🏗️ **[Architecture](docs/Architecture.md)** — System topology, module breakdown, component dependency graphs, and source trees.
 - ⚙️ **[Backend Mechanics](docs/Backend.md)** — Polling loops, network resilience, MediaSync upload/download engine, and background execution.
 - ✨ **[Features & Capabilities](docs/Features.md)** — Comprehensive user-facing capabilities, gestures, disguises, and UI interactions.
-- 📖 **[Installation Guide](docs/Instructions.md)** — Setup guide & building from source for developers.
+- 📥 **[Installation Guide](docs/Installation.md)** — Download APKs, camouflage flavor installation, and building from source for developers.
+- ⚙️ **[Setup Guide](docs/SetupGuide.md)** — Telegram bot setup, connection configuration, QR codes, and WebRTC calls.
 - ⚠️ **[Notes & Disclaimers](docs/Notes.md)** — Important known limitations, threat models, and legal disclaimers.
 - 📋 **[Version Changelogs](docs/Changelogs.md)** — Detailed version history, release notes, and feature updates.
 - 📞 **[WebRTC Calling Engine](webrtc/README.md)** — Headless WebRTC calling architecture, JS bridge, security models, and self-hosting guides.
