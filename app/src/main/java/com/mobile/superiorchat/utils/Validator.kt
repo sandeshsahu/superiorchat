@@ -1,5 +1,7 @@
 package com.mobile.superiorchat.utils
 
+import com.mobile.superiorchat.bot.Message
+import com.mobile.superiorchat.bot.MessageEntity
 import com.mobile.superiorchat.bot.TelegramApi
 import com.mobile.superiorchat.bot.User
 
@@ -323,7 +325,8 @@ object Validator {
 
         // If no markdown formatting characters are present, it is safe plain text
         if (!text.contains('*') && !text.contains('_') && !text.contains('`') && 
-            !text.contains('~') && !text.contains('|') && !text.contains('<')) {
+            !text.contains('~') && !text.contains('|') && !text.contains('<') &&
+            !text.contains('[') && !text.contains(']')) {
             return true
         }
 
@@ -354,6 +357,11 @@ object Validator {
         val uCloseCount = Regex("""</u>""", RegexOption.IGNORE_CASE).findAll(withoutCodeBlocks).count()
         if (uOpenCount != uCloseCount) return false
 
+        // 8. Markdown link bracket balancing
+        val openBrackets = withoutCodeBlocks.count { it == '[' }
+        val closeBrackets = withoutCodeBlocks.count { it == ']' }
+        if (openBrackets != closeBrackets) return false
+
         return true
     }
 
@@ -369,6 +377,10 @@ object Validator {
         clean = clean.replace(Regex("""`([^`\n]+)`""")) { it.groupValues[1] }
         // Spoilers: ||text|| -> text
         clean = clean.replace(Regex("""\|\|([\s\S]+?)\|\|""")) { it.groupValues[1] }
+        // Links: [text](url) -> text
+        clean = clean.replace(Regex("""\[([^\]\n]+)\]\([^\s\)]+\)""")) { it.groupValues[1] }
+        // Blockquotes: > quote -> quote
+        clean = clean.replace(Regex("""(?m)^>\s?"""), "")
         // Underline: <u>text</u> -> text
         clean = clean.replace(Regex("""<u>([\s\S]+?)</u>""", RegexOption.IGNORE_CASE)) { it.groupValues[1] }
         // Bold: **text** -> text, *text* -> text
@@ -409,12 +421,61 @@ object Validator {
                     "spoiler" -> "||$target||"
                     "underline" -> "<u>$target</u>"
                     "strikethrough" -> "~$target~"
+                    "blockquote", "expandable_blockquote" -> target.lines().joinToString("\n") { "> $it" }
+                    "text_link" -> if (!entity.url.isNullOrBlank()) "[$target](${entity.url})" else target
                     else -> target
                 }
                 result = result.replaceRange(start, end, wrapped)
             }
         }
         return result
+    }
+
+    /**
+     * Formats incoming message text for Android notifications, masking spoiler content to [Spoiler],
+     * stripping raw markdown syntax characters so notifications look clean and professional,
+     * and providing descriptive labels for media messages when captions are empty.
+     */
+    fun formatNotificationText(message: Message): String {
+        val rawText = message.text ?: message.caption
+        val entities = message.entities ?: message.caption_entities
+
+        if (!rawText.isNullOrBlank()) {
+            val clean = formatNotificationText(rawText, entities)
+            if (message.caption != null) {
+                val icon = when {
+                    message.photo != null -> "📷 "
+                    message.video != null -> "📹 "
+                    message.voice != null -> "🎤 "
+                    message.audio != null -> "🎵 "
+                    message.document != null -> "📄 "
+                    else -> ""
+                }
+                return if (icon.isNotEmpty() && !clean.startsWith(icon.trim())) "$icon$clean" else clean
+            }
+            return clean
+        }
+
+        // Fallback for media messages without caption
+        return when {
+            message.photo != null -> "📷 Photo"
+            message.video != null -> "📹 Video"
+            message.voice != null -> "🎤 Voice message"
+            message.audio != null -> "🎵 Audio"
+            message.document != null -> "📄 Document"
+            else -> "📷 Media Message"
+        }
+    }
+
+    /**
+     * Formats raw text with optional Telegram entities for notification preview.
+     * Replaces spoiler blocks with [Spoiler] and strips remaining markdown symbols.
+     */
+    fun formatNotificationText(rawText: String?, entities: List<MessageEntity>? = null): String {
+        if (rawText.isNullOrBlank()) return ""
+        val withEntities = applyTelegramEntities(rawText, entities)
+        val masked = withEntities.replace(Regex("""\|\|[\s\S]*?\|\|"""), "[Spoiler]")
+        return stripMarkdown(masked).trim()
     }
 }
 

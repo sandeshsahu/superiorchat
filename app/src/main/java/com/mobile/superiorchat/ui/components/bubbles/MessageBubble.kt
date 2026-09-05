@@ -105,201 +105,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 
 // ──────────────────────────────────────────────────────────────
-// Markdown-aware text renderer
-// Supports: **bold**, __italic__, `monospace`, ~~strikethrough~~, ||spoiler||, <u>underline</u>, ```code blocks```
-// ──────────────────────────────────────────────────────────────
-@Composable
-fun MarkdownText(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
-    isFromMe: Boolean = false,
-    maxLines: Int = Int.MAX_VALUE,
-    overflow: androidx.compose.ui.text.style.TextOverflow = androidx.compose.ui.text.style.TextOverflow.Clip,
-    style: androidx.compose.ui.text.TextStyle = androidx.compose.ui.text.TextStyle.Default,
-    pressedCodeRange: IntRange? = null,
-    onTextLayout: ((TextLayoutResult) -> Unit)? = null
-) {
-    val codeBg = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
-                 else SurfaceContainerHighest
-    val codePressBg = if (isFromMe) MaterialTheme.colorScheme.inversePrimary.copy(alpha = 0.40f)
-                      else PrimaryLight.copy(alpha = 0.40f)
-    val spoilerBg = if (isFromMe) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.25f)
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)
-
-    val annotated = remember(text, codeBg, codePressBg, spoilerBg, pressedCodeRange) { 
-        parseMarkdown(text, codeBg, codePressBg, spoilerBg, pressedCodeRange) 
-    }
-
-    Text(
-        text = annotated,
-        color = color,
-        modifier = modifier,
-        maxLines = maxLines,
-        overflow = overflow,
-        style = style,
-        onTextLayout = { onTextLayout?.invoke(it) }
-    )
-}
-
-private data class StyleState(
-    val isBold: Boolean = false,
-    val isItalic: Boolean = false,
-    val isStrike: Boolean = false,
-    val isUnderline: Boolean = false,
-    val isCode: Boolean = false,
-    val isPre: Boolean = false,
-    val isSpoiler: Boolean = false
-)
-
-private data class FormattedSegment(
-    val text: String,
-    val style: StyleState
-)
-
-private enum class MatchType {
-    PRE, CODE, SPOILER, UNDERLINE, BOLD, ITALIC, STRIKE
-}
-
-private data class MatchResultData(
-    val start: Int,
-    val end: Int,
-    val inner: String,
-    val type: MatchType
-)
-
-private val REGEX_PRE = Regex("""```(?:[a-zA-Z0-9_-]+)?\n?([\s\S]*?)```""")
-private val REGEX_INLINE_CODE = Regex("""`([^`\n]+)`""")
-private val REGEX_SPOILER = Regex("""\|\|([\s\S]+?)\|\|""")
-private val REGEX_UNDERLINE = Regex("""<u>([\s\S]+?)</u>""", RegexOption.IGNORE_CASE)
-private val REGEX_BOLD_DOUBLE = Regex("""\*\*([^\*\n]+?)\*\*""")
-private val REGEX_ITALIC_DOUBLE = Regex("""__([^_\n]+?)__""")
-private val REGEX_STRIKE_DOUBLE = Regex("""~~([^~\n]+?)~~""")
-private val REGEX_BOLD_SINGLE = Regex("""(?<=\s|^|[^\w*])\*(?!\s)([^*\n]+?)(?<!\s)\*(?=\s|$|[^\w*])""")
-private val REGEX_ITALIC_SINGLE = Regex("""(?<=\s|^|[^\w_])_(?!\s)([^_\n]+?)(?<!\s)_(?=\s|$|[^\w_])""")
-private val REGEX_STRIKE_SINGLE = Regex("""(?<=\s|^|[^\w~])~(?!\s)([^~\n]+?)(?<!\s)~(?=\s|$|[^\w~])""")
-
-private fun findEarliestMatch(text: String): MatchResultData? {
-    val matches = mutableListOf<MatchResultData>()
-    
-    REGEX_PRE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.PRE)) }
-    REGEX_INLINE_CODE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.CODE)) }
-    REGEX_SPOILER.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.SPOILER)) }
-    REGEX_UNDERLINE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.UNDERLINE)) }
-    REGEX_BOLD_DOUBLE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.BOLD)) }
-    REGEX_ITALIC_DOUBLE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.ITALIC)) }
-    REGEX_STRIKE_DOUBLE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.STRIKE)) }
-    REGEX_BOLD_SINGLE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.BOLD)) }
-    REGEX_ITALIC_SINGLE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.ITALIC)) }
-    REGEX_STRIKE_SINGLE.find(text)?.let { matches.add(MatchResultData(it.range.first, it.range.last + 1, it.groupValues[1], MatchType.STRIKE)) }
-
-    return matches.minByOrNull { it.start }
-}
-
-private fun parseMarkdownSegments(text: String, currentStyle: StyleState = StyleState()): List<FormattedSegment> {
-    if (text.isEmpty()) return emptyList()
-
-    val earliest = findEarliestMatch(text) ?: return listOf(FormattedSegment(text, currentStyle))
-
-    val result = mutableListOf<FormattedSegment>()
-
-    // Text before the match
-    if (earliest.start > 0) {
-        result.addAll(parseMarkdownSegments(text.substring(0, earliest.start), currentStyle))
-    }
-
-    // Process matched inner content
-    when (earliest.type) {
-        MatchType.PRE -> {
-            result.add(FormattedSegment(earliest.inner, currentStyle.copy(isPre = true)))
-        }
-        MatchType.CODE -> {
-            result.add(FormattedSegment(earliest.inner, currentStyle.copy(isCode = true)))
-        }
-        MatchType.SPOILER -> {
-            result.addAll(parseMarkdownSegments(earliest.inner, currentStyle.copy(isSpoiler = true)))
-        }
-        MatchType.UNDERLINE -> {
-            result.addAll(parseMarkdownSegments(earliest.inner, currentStyle.copy(isUnderline = true)))
-        }
-        MatchType.BOLD -> {
-            result.addAll(parseMarkdownSegments(earliest.inner, currentStyle.copy(isBold = true)))
-        }
-        MatchType.ITALIC -> {
-            result.addAll(parseMarkdownSegments(earliest.inner, currentStyle.copy(isItalic = true)))
-        }
-        MatchType.STRIKE -> {
-            result.addAll(parseMarkdownSegments(earliest.inner, currentStyle.copy(isStrike = true)))
-        }
-    }
-
-    // Text after the match
-    if (earliest.end < text.length) {
-        result.addAll(parseMarkdownSegments(text.substring(earliest.end), currentStyle))
-    }
-
-    return result
-}
-
-/** Robust recursive Telegram-compatible markdown parser with adaptive theme background styling and inline code tagging. */
-private fun parseMarkdown(
-    raw: String,
-    codeBg: Color,
-    codePressBg: Color,
-    spoilerBg: Color,
-    pressedCodeRange: IntRange? = null
-): AnnotatedString = buildAnnotatedString {
-    if (raw.isEmpty()) return@buildAnnotatedString
-    val segments = parseMarkdownSegments(raw)
-    var currentOffset = 0
-    for (seg in segments) {
-        var span = SpanStyle()
-        if (seg.style.isBold) {
-            span = span.copy(fontWeight = FontWeight.Bold)
-        }
-        if (seg.style.isItalic) {
-            span = span.copy(fontStyle = FontStyle.Italic)
-        }
-        if (seg.style.isStrike && seg.style.isUnderline) {
-            span = span.copy(textDecoration = TextDecoration.combine(listOf(TextDecoration.LineThrough, TextDecoration.Underline)))
-        } else if (seg.style.isStrike) {
-            span = span.copy(textDecoration = TextDecoration.LineThrough)
-        } else if (seg.style.isUnderline) {
-            span = span.copy(textDecoration = TextDecoration.Underline)
-        }
-        val isCodeBlock = seg.style.isCode || seg.style.isPre
-        val isThisCodePressed = isCodeBlock && pressedCodeRange != null && (currentOffset in pressedCodeRange)
-        if (isCodeBlock) {
-            span = span.copy(
-                fontFamily = FontFamily.Monospace,
-                background = if (isThisCodePressed) codePressBg else codeBg
-            )
-        }
-        if (seg.style.isSpoiler) {
-            span = span.copy(
-                background = spoilerBg
-            )
-        }
-        val startOffset = currentOffset
-        withStyle(span) {
-            append(seg.text)
-        }
-        if (isCodeBlock) {
-            addStringAnnotation(
-                tag = "INLINE_CODE",
-                annotation = seg.text,
-                start = startOffset,
-                end = startOffset + seg.text.length
-            )
-        }
-        currentOffset += seg.text.length
-    }
-}
-
-
-
-
-// ──────────────────────────────────────────────────────────────
 // Emoji reaction quick-tray (shown on double-tap)
 @Composable
 fun MessageBubble(
@@ -553,6 +358,7 @@ fun MessageBubble(
 
     var isBubblePressed by remember { mutableStateOf(false) }
     var pressedCodeRange by remember { mutableStateOf<IntRange?>(null) }
+    var revealedSpoilerIds by remember(message.messageId) { mutableStateOf(setOf<String>()) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     var bubbleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var textCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
@@ -564,29 +370,16 @@ fun MessageBubble(
         label = "pressOverlay"
     )
 
-    fun findCodeAnnotationAt(bubbleOffset: androidx.compose.ui.geometry.Offset): AnnotatedString.Range<String>? {
-        val bubbleCoords = bubbleCoordinates ?: return null
-        val textCoords = textCoordinates ?: return null
-        val lr = textLayoutResult ?: return null
-        val rawText = message.text ?: return null
-        if (rawText.isEmpty() || !bubbleCoords.isAttached || !textCoords.isAttached) return null
-        val localOffset = textCoords.localPositionOf(bubbleCoords, bubbleOffset)
-        if (localOffset.x < 0 || localOffset.x > textCoords.size.width ||
-            localOffset.y < 0 || localOffset.y > textCoords.size.height) {
-            return null
-        }
-        val charIndex = lr.getOffsetForPosition(localOffset)
-        val dummyColor = Color.Transparent
-        val parsed = parseMarkdown(rawText, dummyColor, dummyColor, dummyColor)
-        val allAnnotations = parsed.getStringAnnotations(tag = "INLINE_CODE", start = 0, end = parsed.length)
-        val codeAnn = allAnnotations.firstOrNull { charIndex >= it.start && charIndex < it.end } ?: return null
+    fun findCodeAnnAt(bubbleOffset: androidx.compose.ui.geometry.Offset): AnnotatedString.Range<String>? {
+        return findCodeAnnotationAt(bubbleOffset, bubbleCoordinates, textCoordinates, textLayoutResult, message.text)
+    }
 
-        val glyphBounds = lr.getBoundingBox(charIndex)
-        if (localOffset.x < (glyphBounds.left - 2f) || localOffset.x > (glyphBounds.right + 2f) ||
-            localOffset.y < (glyphBounds.top - 2f) || localOffset.y > (glyphBounds.bottom + 2f)) {
-            return null
-        }
-        return codeAnn
+    fun findSpoilerAnnAt(bubbleOffset: androidx.compose.ui.geometry.Offset): AnnotatedString.Range<String>? {
+        return findSpoilerAnnotationAt(bubbleOffset, bubbleCoordinates, textCoordinates, textLayoutResult, message.text)
+    }
+
+    fun findLinkAnnAt(bubbleOffset: androidx.compose.ui.geometry.Offset): AnnotatedString.Range<String>? {
+        return findLinkAnnotationAt(bubbleOffset, bubbleCoordinates, textCoordinates, textLayoutResult, message.text)
     }
 
 
@@ -803,7 +596,7 @@ fun MessageBubble(
                                 if (isSelectionMode) {
                                     isBubblePressed = true
                                 } else {
-                                    val codeAnn = findCodeAnnotationAt(offset)
+                                    val codeAnn = findCodeAnnAt(offset)
                                     if (codeAnn != null) {
                                         pressedCodeRange = codeAnn.start until codeAnn.end
                                     } else {
@@ -819,10 +612,32 @@ fun MessageBubble(
                             },
                             onTap = { offset ->
                                 if (isSelectionMode) {
-                                    // In selection mode: toggle selection
+                                    // In selection mode: toggle selection (NO spoiler reveal, NO link open, NO code copy!)
                                     onSelectMessage(currentMessageState.value)
                                 } else {
-                                    val codeAnn = findCodeAnnotationAt(offset)
+                                    val spoilerAnn = findSpoilerAnnAt(offset)
+                                    if (spoilerAnn != null && !revealedSpoilerIds.contains(spoilerAnn.item)) {
+                                        // Exactly clicked spoiler text: reveal it!
+                                        revealedSpoilerIds = revealedSpoilerIds + spoilerAnn.item
+                                        return@detectTapGestures
+                                    }
+                                    val linkAnn = findLinkAnnAt(offset)
+                                    if (linkAnn != null) {
+                                        try {
+                                            val rawUrl = linkAnn.item
+                                            val formattedUrl = if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://") && !rawUrl.startsWith("tg://")) {
+                                                "https://$rawUrl"
+                                            } else rawUrl
+                                            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(formattedUrl)).apply {
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            com.mobile.superiorchat.core.StatusFlow.reportStatus(com.mobile.superiorchat.core.SyncState.ERROR, "Cannot open link")
+                                        }
+                                        return@detectTapGestures
+                                    }
+                                    val codeAnn = findCodeAnnAt(offset)
                                     if (codeAnn != null) {
                                         clipboardManager.setText(AnnotatedString(codeAnn.item))
                                         com.mobile.superiorchat.core.StatusFlow.reportStatus(
@@ -972,6 +787,7 @@ fun MessageBubble(
                             isFromMe = message.isFromMe,
                             style = MaterialTheme.typography.bodyMedium,
                             pressedCodeRange = pressedCodeRange,
+                            revealedSpoilerIds = revealedSpoilerIds,
                             onTextLayout = { textLayoutResult = it }
                         )
                     }

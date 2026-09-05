@@ -16,6 +16,7 @@ import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import com.mobile.superiorchat.MainActivity
 import android.app.Notification
+import com.mobile.superiorchat.utils.Validator
 
 class Notifier(private val context: Context, private val scope: CoroutineScope) {
 
@@ -86,8 +87,10 @@ class Notifier(private val context: Context, private val scope: CoroutineScope) 
         }
 
         val message = update.message ?: return null
-        var text = message.text ?: message.caption ?: ""
-        if (text.isEmpty()) text = "📷 Media Message"
+        if (Validator.extractSystemSignal(message.text ?: message.caption) !is Validator.SystemSignal.None) {
+            return null
+        }
+        val text = Validator.formatNotificationText(message)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val channelId = "IncomingMessageChannel"
         

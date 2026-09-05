@@ -64,6 +64,7 @@
 - 🔢 **In-Call Secret Dialer Code & Tile Access**: Dialing the secret entry code or tapping the Quick Settings tile during an active call safely maximizes the app without terminating the call.
 - 🔍 **Role-Scoped Universal QR Scanner**: Settings screen strictly accepts Client QRs; Admin Settings strictly accepts Admin QRs; Chat Screen scanner auto-applies both.
 - 🚨 **System Signal Hardening**: Internal control signals are authenticated at the core engine level and automatically purged from Telegram by the receiver without leaking to chat logs.
+- 🔒 **Default Fallback Access Toggles**: Added toggles in App Settings to disable default entry fallbacks (Weather search phrase and Decoy dialer code) with safety confirmation dialogs.
 - 💾 **Offline-First Schema Migration (v14)**: Upgraded Room schema to version 14, capturing edit timestamps, entities, replies, and thumbnails offline.
 
 ---
