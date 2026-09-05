@@ -115,7 +115,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 "screen_security_enabled" -> isScreenSecurityEnabled = prefs.isScreenSecurityEnabled
                 "new_message_notification_enabled" -> newMessageNotificationEnabled = prefs.isNewMessageNotificationEnabled
                 "custom_access_word" -> customAccessWord = prefs.customAccessWord
+                "is_default_access_word_enabled" -> isDefaultAccessWordEnabled = prefs.isDefaultAccessWordEnabled
                 "custom_dialer_code" -> customDialerCode = prefs.customDialerCode
+                "is_default_dialer_code_enabled" -> isDefaultDialerCodeEnabled = prefs.isDefaultDialerCodeEnabled
                 "app_theme" -> {
                     try {
                         val theme = AppTheme.valueOf(prefs.appTheme)
@@ -279,15 +281,42 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     var customAccessWord by mutableStateOf(prefs.customAccessWord)
         private set
+
+    var isDefaultAccessWordEnabled by mutableStateOf(prefs.isDefaultAccessWordEnabled)
+        private set
+
+    fun toggleDefaultAccessWord(enabled: Boolean) {
+        prefs.isDefaultAccessWordEnabled = enabled
+        isDefaultAccessWordEnabled = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "Default Keyword Fallback Enabled" else "Default Keyword Fallback Disabled"
+        )
+    }
         
     var customDialerCode by mutableStateOf(prefs.customDialerCode)
         private set
+
+    var isDefaultDialerCodeEnabled by mutableStateOf(prefs.isDefaultDialerCodeEnabled)
+        private set
+
+    fun toggleDefaultDialerCode(enabled: Boolean) {
+        prefs.isDefaultDialerCodeEnabled = enabled
+        isDefaultDialerCodeEnabled = enabled
+        com.mobile.superiorchat.core.StatusFlow.reportStatus(
+            com.mobile.superiorchat.core.SyncState.SUCCESS, 
+            if (enabled) "Default Code Fallback Enabled" else "Default Code Fallback Disabled"
+        )
+    }
         
     var showAppLevelQrScanner by mutableStateOf(false)
 
     fun updateCustomAccessWord(word: String) {
         prefs.customAccessWord = word
         customAccessWord = word
+        if (word.isBlank()) {
+            isDefaultAccessWordEnabled = true
+        }
         com.mobile.superiorchat.core.StatusFlow.reportStatus(
             com.mobile.superiorchat.core.SyncState.SUCCESS, 
             "Custom Word Saved"
@@ -297,6 +326,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateCustomDialerCode(code: String) {
         prefs.customDialerCode = code
         customDialerCode = code
+        if (code.isBlank()) {
+            isDefaultDialerCodeEnabled = true
+        }
     }
 
     var isScreenSecurityEnabled by mutableStateOf(prefs.isScreenSecurityEnabled)

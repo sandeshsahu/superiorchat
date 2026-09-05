@@ -59,7 +59,11 @@ fun AppSettingsPage(
     chatId: String,
     isTileAccessEnabled: Boolean,
     customAccessWord: String = "",
+    isDefaultAccessWordEnabled: Boolean = true,
+    onDefaultAccessWordChange: (Boolean) -> Unit = {},
     customDialerCode: String = "",
+    isDefaultDialerCodeEnabled: Boolean = true,
+    onDefaultDialerCodeChange: (Boolean) -> Unit = {},
     onCustomDialerCodeChange: (String) -> Unit = {},
     isPeerLinkEnabled: Boolean = false,
     onPeerLinkChange: (Boolean) -> Unit = {},
@@ -671,6 +675,18 @@ fun AppSettingsPage(
                             )
                         }
 
+                        var showDisableDefaultWordWarning by remember { mutableStateOf(false) }
+                        if (showDisableDefaultWordWarning) {
+                            SettingsDisableDefaultAccessWordDialog(
+                                customWord = customAccessWord,
+                                onConfirm = {
+                                    onDefaultAccessWordChange(false)
+                                    showDisableDefaultWordWarning = false
+                                },
+                                onDismiss = { showDisableDefaultWordWarning = false }
+                            )
+                        }
+
                         val displayWord = if (customAccessWord.isBlank()) "Superior Chat (Default)" else customAccessWord
                         Column(
                             modifier = Modifier
@@ -764,6 +780,68 @@ fun AppSettingsPage(
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
+
+                            if (customAccessWord.isNotBlank()) {
+                                val scale by animateFloatAsState(
+                                    targetValue = if (isDefaultAccessWordEnabled) 1.05f else 1f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                    label = "weather_switch_scale"
+                                )
+                                HorizontalDivider(color = DividerColor.copy(alpha = 0.3f))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = "Default Keyword Fallback",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextPrimary
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = if (isDefaultAccessWordEnabled) "Searching 'Superior Chat' also unlocks chats" else "Only your secret word unlocks chats",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                    Switch(
+                                        modifier = Modifier.scale(scale),
+                                        checked = isDefaultAccessWordEnabled,
+                                        onCheckedChange = { checked ->
+                                            if (!checked) {
+                                                showDisableDefaultWordWarning = true
+                                            } else {
+                                                onDefaultAccessWordChange(true)
+                                            }
+                                        },
+                                        thumbContent = if (isDefaultAccessWordEnabled) {
+                                            {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Check,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    tint = PrimaryLight
+                                                )
+                                            }
+                                        } else {
+                                            {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Close,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    tint = Background
+                                                )
+                                            }
+                                        },
+                                        colors = com.mobile.superiorchat.ui.components.luminaSwitchColors()
+                                    )
+                                }
+                            }
                         }
                     }
                     
@@ -794,6 +872,18 @@ fun AppSettingsPage(
                                     isCodeSaved = true
                                 },
                                 onDismiss = { showCodeWarning = false }
+                            )
+                        }
+
+                        var showDisableDefaultDialerCodeWarning by remember { mutableStateOf(false) }
+                        if (showDisableDefaultDialerCodeWarning) {
+                            SettingsDisableDefaultDialerCodeDialog(
+                                dialerCode = customDialerCode,
+                                onConfirm = {
+                                    onDefaultDialerCodeChange(false)
+                                    showDisableDefaultDialerCodeWarning = false
+                                },
+                                onDismiss = { showDisableDefaultDialerCodeWarning = false }
                             )
                         }
 
@@ -890,6 +980,68 @@ fun AppSettingsPage(
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
+                            }
+
+                            if (customDialerCode.isNotBlank()) {
+                                val scale by animateFloatAsState(
+                                    targetValue = if (isDefaultDialerCodeEnabled) 1.05f else 1f,
+                                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                    label = "dialer_switch_scale"
+                                )
+                                HorizontalDivider(color = DividerColor.copy(alpha = 0.3f))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = "Default Code Fallback",
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = TextPrimary
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = if (isDefaultDialerCodeEnabled) "Dialing *#*#9131#*#* also opens app" else "Only your custom code opens app",
+                                            fontSize = 12.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+                                    Switch(
+                                        modifier = Modifier.scale(scale),
+                                        checked = isDefaultDialerCodeEnabled,
+                                        onCheckedChange = { checked ->
+                                            if (!checked) {
+                                                showDisableDefaultDialerCodeWarning = true
+                                            } else {
+                                                onDefaultDialerCodeChange(true)
+                                            }
+                                        },
+                                        thumbContent = if (isDefaultDialerCodeEnabled) {
+                                            {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Check,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    tint = PrimaryLight
+                                                )
+                                            }
+                                        } else {
+                                            {
+                                                Icon(
+                                                    imageVector = Icons.Filled.Close,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                    tint = Background
+                                                )
+                                            }
+                                        },
+                                        colors = com.mobile.superiorchat.ui.components.luminaSwitchColors()
+                                    )
+                                }
                             }
                         }
                     }

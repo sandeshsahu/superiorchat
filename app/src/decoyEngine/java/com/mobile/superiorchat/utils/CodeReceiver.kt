@@ -17,9 +17,14 @@ class CodeReceiver : BroadcastReceiver() {
         }
 
         val code = intent.data?.host ?: return
-        val customCode = com.mobile.superiorchat.core.AppGraph.prefs.customDialerCode
+        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+        val customCode = prefs.customDialerCode
+        val isDefaultEnabled = prefs.isDefaultDialerCodeEnabled
         
-        if (code != "9131" && (customCode.isBlank() || code != customCode)) {
+        val isDefaultMatch = isDefaultEnabled && code == "9131"
+        val isCustomMatch = customCode.isNotBlank() && code == customCode
+
+        if (!isDefaultMatch && !isCustomMatch) {
             return
         }
 

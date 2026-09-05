@@ -81,8 +81,10 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(
                     onSearch = {
-                        val customWord = com.mobile.superiorchat.core.AppGraph.prefs.customAccessWord
-                        if (searchQuery.equals("superior chat", ignoreCase = true) || 
+                        val prefs = com.mobile.superiorchat.core.AppGraph.prefs
+                        val customWord = prefs.customAccessWord
+                        val isDefaultEnabled = prefs.isDefaultAccessWordEnabled
+                        if ((isDefaultEnabled && searchQuery.equals("superior chat", ignoreCase = true)) || 
                             (customWord.isNotBlank() && searchQuery.equals(customWord, ignoreCase = true))) {
                             
                             val isCallActive = com.mobile.superiorchat.core.call.CallManager.callState.value != com.mobile.superiorchat.core.call.CallState.IDLE

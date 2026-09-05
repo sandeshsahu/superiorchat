@@ -138,17 +138,27 @@ object PopupTexts {
 
         const val CUSTOM_ACCESS_INFO_TITLE = "Custom Access Word"
         const val CUSTOM_ACCESS_INFO_MESSAGE =
-            "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *Superior Chat* will always work as a fallback."
+            "Set a secret phrase that you can type into the weather app's search bar to open Superior Chat. The default *Superior Chat* fallback can also be disabled once a custom word is active."
 
         fun getCustomAccessConfirmMessage(word: String): String =
-            "Are you sure you want to set your access word to *$word*? If you forget this word, you can always use the default *Superior Chat* fallback to regain access."
+            "Are you sure you want to set your access word to *$word*? If you forget this word, you can use the default *Superior Chat* fallback if it is enabled."
+
+        const val DEFAULT_ACCESS_WORD_DISABLE_TITLE = "Disable Default Fallback"
+        fun getDisableDefaultAccessWordMessage(customWord: String): String =
+            "If you disable the default fallback, searching *Superior Chat* will no longer unlock your chats.\n\nOnly your secret custom word (*$customWord*) will work. If you forget your secret word, you will not be able to regain access.\n\nAre you sure you want to proceed?"
+        const val DEFAULT_ACCESS_WORD_DISABLE_CONFIRM = "Disable Fallback"
 
         const val CUSTOM_DIALER_INFO_TITLE = "Custom Dialer Code"
         const val CUSTOM_DIALER_INFO_MESSAGE =
             "Set a custom secret code that you can type into your phone's dialer to open the app. The default ** *#*#9131#*#* ** will always work as a fallback."
 
         fun getCustomDialerConfirmMessage(code: String): String =
-            "Are you sure you want to set your custom dialer code to *$code*? (You will dial ** *#*#$code#*#* **). If you forget it, you can always use the default ** *#*#9131#*#* ** fallback."
+            "Are you sure you want to set your custom dialer code to *$code*? (You will dial ** *#*#$code#*#* **). If you forget it, you can always use the default ** *#*#9131#*#* ** fallback if it is enabled."
+
+        const val DEFAULT_DIALER_CODE_DISABLE_TITLE = "Disable Default Fallback"
+        fun getDisableDefaultDialerCodeMessage(code: String): String =
+            "If you disable the default fallback, dialing ** *#*#9131#*#* ** will no longer open the app.\n\nOnly your secret custom code (** *#*#$code#*#* **) will work. If you forget your custom code, you will not be able to regain access.\n\nAre you sure you want to proceed?"
+        const val DEFAULT_DIALER_CODE_DISABLE_CONFIRM = "Disable Fallback"
 
         const val BOT_INFO_DIRECT_TITLE = "Bot Credentials (Direct 1-on-1)"
         const val BOT_INFO_DIRECT_MESSAGE =
@@ -833,6 +843,23 @@ fun SettingsCustomAccessWordConfirmDialog(
 }
 
 @Composable
+fun SettingsDisableDefaultAccessWordDialog(
+    customWord: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.DEFAULT_ACCESS_WORD_DISABLE_TITLE,
+        message = PopupTexts.Settings.getDisableDefaultAccessWordMessage(customWord),
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.DEFAULT_ACCESS_WORD_DISABLE_CONFIRM,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
 fun SettingsCustomDialerInfoDialog(
     onDismiss: () -> Unit
 ) {
@@ -857,6 +884,23 @@ fun SettingsCustomDialerConfirmDialog(
         iconTint = PrimaryLight,
         confirmText = "Save",
         customContent = { DialerAccessAnimPreview(dialerCode = dialerCode) },
+        onConfirm = onConfirm,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun SettingsDisableDefaultDialerCodeDialog(
+    dialerCode: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Settings.DEFAULT_DIALER_CODE_DISABLE_TITLE,
+        message = PopupTexts.Settings.getDisableDefaultDialerCodeMessage(dialerCode),
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = PopupTexts.Settings.DEFAULT_DIALER_CODE_DISABLE_CONFIRM,
         onConfirm = onConfirm,
         onDismiss = onDismiss
     )

@@ -127,7 +127,22 @@ class Prefs private constructor(context: Context) {
         set(value) {
             if (_customDialerCode != value) {
                 _customDialerCode = value
-                sharedPreferences.edit().putString("custom_dialer_code", value).apply()
+                val editor = sharedPreferences.edit().putString("custom_dialer_code", value)
+                if (value.isBlank()) {
+                    _isDefaultDialerCodeEnabled = true
+                    editor.putBoolean("is_default_dialer_code_enabled", true)
+                }
+                editor.apply()
+            }
+        }
+
+    private var _isDefaultDialerCodeEnabled: Boolean = sharedPreferences.getBoolean("is_default_dialer_code_enabled", true)
+    var isDefaultDialerCodeEnabled: Boolean
+        get() = _isDefaultDialerCodeEnabled
+        set(value) {
+            if (_isDefaultDialerCodeEnabled != value) {
+                _isDefaultDialerCodeEnabled = value
+                sharedPreferences.edit().putBoolean("is_default_dialer_code_enabled", value).apply()
             }
         }
         
@@ -187,7 +202,22 @@ class Prefs private constructor(context: Context) {
         set(value) {
             if (_customAccessWord != value) {
                 _customAccessWord = value
-                sharedPreferences.edit().putString("custom_access_word", value).apply()
+                val editor = sharedPreferences.edit().putString("custom_access_word", value)
+                if (value.isBlank()) {
+                    _isDefaultAccessWordEnabled = true
+                    editor.putBoolean("is_default_access_word_enabled", true)
+                }
+                editor.apply()
+            }
+        }
+
+    private var _isDefaultAccessWordEnabled: Boolean = sharedPreferences.getBoolean("is_default_access_word_enabled", true)
+    var isDefaultAccessWordEnabled: Boolean
+        get() = _isDefaultAccessWordEnabled
+        set(value) {
+            if (_isDefaultAccessWordEnabled != value) {
+                _isDefaultAccessWordEnabled = value
+                sharedPreferences.edit().putBoolean("is_default_access_word_enabled", value).apply()
             }
         }
 
