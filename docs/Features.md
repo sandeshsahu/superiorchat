@@ -21,21 +21,19 @@
 - [5. Stealth & Privacy Protection](#stealth)
 - [6. App Flavors & Disguises](#flavors)
 - [7. Modern User Interface](#ui)
+- [8. App-to-App Direct Communication Mode](#app-to-app)
 
 ---
 
 <h2 id="core">💬 1. Core Messaging & Chat</h2>
 
-- 🤖 **App-to-App Dual Chat**: Chat directly with your partner inside the disguised app via Telegram's Bot-to-Bot group communication mode, eliminating the need for either user to touch the official Telegram app.
 - 📝 **Formatted Text**: Send text with rich markdown styling (bold, italic, strikethrough, monospace).
 - 🎭 **Quick Reactions**: Double-tap any message to instantly react with emojis (👍 ❤️ 🤣 😱 😢 🔥).
 - 🖼️ **Profile Pictures**: View contact profile pictures with sleek initials fallback for unidentified users.
 - ✏️ **Message Editing & Deletion**: Edit sent messages on the fly or perform single/bulk message deletions.
-- 🗑️ **Two-Way Batch Deletion**: Simultaneously delete up to 100 messages for both users at once with live progress reporting and automatic background synchronization (`[SYS-MSG-DELETE]`).
 - 📌 **Replies & Pinning**: Swipe to reply to specific messages or pin critical messages to the top banner.
 - 🏷️ **Status Indicators**: Real-time delivery status updates (`Sending`, `Sent`, `Failed`) and `Edited` labels.
 - ✅ **Multi-Selection Mode**: Select multiple messages at once for bulk self-delete or "Delete for everyone".
-- 🛡️ **Live API Ban Protection**: Built-in flood protection coordinator automatically limits group messaging to 19 messages/min, enforces request pacing, and handles HTTP 429 backoffs, safeguarding your Telegram bot from spam penalties or temporary bans.
 - 🕰️ **Message Timestamps**: Clear 12-hour (AM/PM) timestamps for all chat messages and system logs. 
 
 ---
@@ -43,7 +41,7 @@
 <h2 id="calling">📞 2. Secure Voice & Video Calling</h2>
 
 - 🎙️ **P2P Voice & Video Calls**: Instant, zero-auth peer-to-peer WebRTC calling directly within the chat interface.
-- 📞 **Bidirectional Call Initiation (App-to-App Mode)**: In App-to-App mode, both users can initiate voice and video calls directly from inside the app at any time. When chatting in standard App-to-Telegram mode, initiation remains one-way from the app side to prevent accidental discovery.
+- 🛡️ **One-Way Initiation**: For maximum privacy and to prevent accidental discovery, calls can only be initiated from the Superior Chat app side in standard mode (Telegram cannot initiate calls).
 - 🔔 **Flavor-Specific Call Ringing & Alerts**:
   - **Original Flavor**: Plays continuous audible ringtones, standard vibration, and presents native Android `CallStyle` heads-up notification cards with caller avatars and dedicated Accept/Decline action buttons.
   - **Camouflage Flavors** (`captivePortal`, `playSupport`, `weather`): Operates with completely silent audio, subtle low-amplitude pocket double-pulse haptics (no table rattle), and harmless disguised notifications (e.g. live weather alerts or system notices) that bring you directly into the call.
@@ -189,6 +187,24 @@
 
 ---
 
-<p align="center">
+<h2 id="app-to-app">🚀 8. App-to-App Direct Communication Mode</h2>
+
+- 🛡️ **Dual Camouflage Protection**: Both users can now chat exclusively inside our highly customized, stealthy, and privacy-focused Superior Chat app (Weather, Captive Portal, Play Support, or Original). Neither user needs to touch or keep the official Telegram app for messaging, giving both partners absolute deniability and full access to panic and stealth protections (app lock PIN, fake crash dialog, screen-off auto-kill, and secret dialer/tile access).
+- 🗑️ **100% Unrestricted "Delete for Everyone"**: While Telegram normally restricts deleting messages older than 24–48 hours, App-to-App mode provides 100% full bidirectional deletion support. When either user deletes messages—no matter how old they are—the app broadcasts lightweight background signaling (`[SYS-MSG-DELETE] <ids>`) through the bot bridge, prompting the recipient's app to silently wipe them from its local Room database immediately.
+- 📞 **Bidirectional Call Initiation**: In standard App-to-Telegram mode, the admin user on Telegram cannot initiate calls (calls are strictly one-way from the app side). In App-to-App mode, both Person A (Admin) and Person B (Partner) can now initiate and receive secure WebRTC voice and video calls directly from the chat header at any time.
+- 🔔 **Instant In-App Incoming Call Popups**: When a call is initiated, the recipient's app receives an instant signaling invite (`SYS-CALL`), automatically displaying an in-app incoming call popup with caller identity and direct Accept/Decline action buttons—no external web links or browser opening required.
+- 🛑 **Bidirectional Call Decline Signaling**: Declining or canceling an incoming call sends instant signaling (`SYS-CALL-DECLINE`) across the bot bridge, immediately stopping ringing, dismissing the incoming call dialog, and logging the missed/declined event on both phones in real time.
+- 🤖 **Telegram Bot-to-Bot Group Bridge**: Powered by Telegram's official Bot-to-Bot Communication Mode inside a private supergroup. Two distinct bots represent each user, enabling full bidirectional messaging, media transfer, and signaling without exposing personal phone numbers or telegram accounts.
+- 🚫 **Intruder & Imposter Filtering**: The messaging coordinator strictly validates incoming bot usernames against stored partner credentials. Any message, media, or command sent by unrecognized bots, third parties, or intruders in the group is completely discarded and never saved to the local database.
+- 🛡️ **Live API Ban & Flood Protection**: Built-in flood protection coordinator automatically paces group messaging (limited to 19 messages/min), handles HTTP 429 backoffs, and queues outgoing payloads, safeguarding both bots from Telegram spam penalties or temporary rate limits.
+- ⚙️ **Role-Segregated Administration**:
+  - **Partner Device (`Route Messages` / `isPeerLinkEnabled`)**: Configures the partner's app to listen to group updates and route all messages to the admin's bot.
+  - **Admin Device (`I Am Admin` / `isAdminModeEnabled`)**: Grants Person A full control to configure bridge credentials, manage tokens, and monitor synchronization.
+  - **Permanent Hard Lock (`isPeerLinkHardLocked`)**: Allows Person A to permanently lock Admin Settings on Person B's phone during setup to prevent accidental tampering with connection settings.
+
+---
+
+<div align="center">
   <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
-</p>
+</div>
+

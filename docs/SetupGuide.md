@@ -1,6 +1,4 @@
-<h1 align="center">
-  Setup Guide
-</h1>
+# Setup Guide
 
 <p align="center">
   <strong>Complete Step-by-Step Connection Instructions for Superior Chat</strong>
@@ -12,8 +10,8 @@
 
 | Mode | Who Uses What? | Key Benefit | Difficulty |
 | :--- | :--- | :--- | :---: |
-| **[Option 1: App to Telegram](#option-1)** | **Person A**: Official Telegram<br>**Person B**: Disguised Chat App | Easiest setup • No group needed | ⭐ *Beginner* |
-| **[Option 2: App to App](#option-2)** | **Person A**: Disguised Chat App<br>**Person B**: Disguised Chat App | Both chat inside app • Mutual call popups | 🚀 *Advanced* |
+| **[Option 1: App to Telegram](#option-1-app-to-telegram-easiest)** | **Person A**: Official Telegram<br>**Person B**: Disguised Chat App | Easiest setup • No group needed | ⭐ *Beginner* |
+| **[Option 2: App to App](#option-2-app-to-app-both-on-superior-chat)** | **Person A**: Disguised Chat App<br>**Person B**: Disguised Chat App | Both chat inside app • Mutual call popups | 🚀 *Advanced* |
 
 </div>
 
@@ -22,27 +20,26 @@
 
 ---
 
-## Table of Contents
-- [Option 1: App to Telegram (Easiest)](#option-1)
-  - [Step 1: Create the Telegram Bot (Person A)](#step-1-create-the-telegram-bot)
-  - [Step 2: Generate the Setup QR Code (Person A)](#step-2-generate-the-setup-qr-code)
-  - [Step 3: Connect on Person B's Device](#step-3-connect-on-person-b-device)
-- [Option 2: App to App (Both on Superior Chat)](#option-2)
-  - [How App-to-App Mode Works](#how-app-to-app-works)
-  - [Step 1: Create Bots & Configure Settings via @BotFather Web Page](#app-to-app-step-1)
-  - [Step 2: Create Private Telegram Group & Promote Both Bots to Admin](#app-to-app-step-2)
-  - [Step 3: Generate Dual QRs in Setup App (Person A / Admin)](#app-to-app-step-3)
-  - [Step 4: Scan Admin QR on Person A's Device](#app-to-app-step-4)
-  - [Step 5: Scan Client QR on Partner's Device (Person B)](#app-to-app-step-5)
-- [Configuring Voice & Video Calls (Optional)](#calls-setup)
+## 📑 Table of Contents
+- [🟢 Option 1: App to Telegram (Easiest)](#option-1-app-to-telegram-easiest)
+  - [🤖 Step 1: Create the Telegram Bot (Person A)](#step-1-create-the-telegram-bot-person-a)
+  - [🔐 Step 2: Generate the Setup QR Code (Person A)](#step-2-generate-the-setup-qr-code-person-a-for-person-b)
+  - [📱 Step 3: Connect on Person B's Device](#step-3-connect-on-person-bs-device)
+- [🚀 Option 2: App to App (Both on Superior Chat)](#option-2-app-to-app-both-on-superior-chat)
+  - [🔄 How App-to-App Mode Works](#how-app-to-app-mode-works)
+  - [🤖 Step 1: Create Bots & Configure Settings via @BotFather Web Page](#step-1-create-bots--configure-settings-via-botfather-web-page)
+  - [👥 Step 2: Create Private Telegram Group & Promote Both Bots to Admin](#step-2-create-private-telegram-group--promote-both-bots-to-admin)
+  - [⚡ Step 3: Generate Dual QRs in Setup App (Person A / Admin)](#step-3-generate-dual-qrs-in-setup-app-person-a--admin)
+  - [📲 Step 4: Scan the QRs to Connect Both Devices](#step-4-scan-the-qrs-to-connect-both-devices)
+- [📞 Configuring Voice & Video Calls (Optional)](#configuring-voice--video-calls-optional)
 
 ---
 
-<h2 id="option-1">🟢 Option 1: App to Telegram (Easiest)</h2>
+## 🟢 Option 1: App to Telegram (Easiest)
 
 In this mode, **Person A** chats directly inside the official Telegram app, while **Person B** chats inside the disguised Superior Chat app. Person A acts as the Administrator and sets up the bridge.
 
-<h3 id="step-1-create-the-telegram-bot">Step 1: Create the Telegram Bot (Person A)</h3>
+### 🤖 Step 1: Create the Telegram Bot (Person A)
 
 1. Open your official Telegram app and search for **[@BotFather](https://t.me/BotFather)**.
 2. Send the command `/newbot` to create a new bot.
@@ -51,21 +48,20 @@ In this mode, **Person A** chats directly inside the official Telegram app, whil
 5. Open a chat with your newly created bot on Telegram and press **Start** (or send `/start`).
 6. Retrieve your personal **Telegram User ID** (forward any message to `@userinfobot` or `@MissRose_bot` to get your numeric ID).
 
-<h3 id="step-2-generate-the-setup-qr-code">Step 2: Generate the Setup QR Code (Person A) for Person B</h3>
+### 🔐 Step 2: Generate the Setup QR Code (Person A) for Person B
 
 Person A uses the **Superior Setup App** to safely encrypt these credentials into a scannable QR code:
 
 1. Download and open the **Setup App** on your device.
 2. Tap the **Admin Mode** toggle located at the top right (below the step indicator).
 3. Select **"I will chat on Telegram (Standard Mode)"** and continue to Step 2.
-4. Enter the **Bot Token** and **Your** Telegram User ID** (Chat ID).
+4. Enter the **Bot Token** and **Your Telegram User ID** (Chat ID).
 5. **Enable PIN Protection (Recommended)**: If PIN protection is enabled, the QR code is securely encrypted with a 4-digit PIN. Share this 4-digit PIN with Person B so they can import it.
-6. Share the generated encrypted QR code to **Person B** to scan or display it on screen for Person B to scan.
+6. Share the generated encrypted QR code with **Person B** to scan, or display it on screen for Person B to scan.
 
 > [!WARNING]
 > **Direct Mode Vulnerability**: If you disable "Require PIN" to generate a Direct Mode QR (`DIR_QR`), the app falls back to a default key. Because this project is open-source, anyone who gets hold of an un-PINned QR code could decrypt it and gain access to your Telegram bot. Always use PIN protection! See the [Threat Model in Notes.md](Notes.md#threat-model) for details.
 
-<br>
 <p align="center">
   <img src="images/setupapp/admin_mode/adminmode_step1.jpg" width="30%" alt="Admin Mode Step 1">
   &nbsp;
@@ -77,34 +73,35 @@ Person A uses the **Superior Setup App** to safely encrypt these credentials int
   <b>📂 <a href="images/setupapp/admin_mode/">View Admin Mode Screenshots Directory</a></b>
 </p>
 
-<h3 id="step-3-connect-on-person-b-device">Step 3: Connect on Person B's Device</h3>
+### 📱 Step 3: Connect on Person B's Device
 
-Person B opens Superior Chat (or Setup App in Client Mode) and scans the generated **Client QR** code (**Three way to do**):
-1. **Using Setup App (Captive Portal / Play Support)**: In Client Mode Step 2, tap **Scan QR Code**, scan the QR, enter the 4-digit PIN, and tap **Wake Up & Launch**.
-2. **Using Weather or Original Flavor**: Simply open the app and tap the **Scanner button on top of the chat screen** to scan the QR code directly!
-3. **Manual Entry**: In Settings → Credentials, Person B can also manually paste the Bot Token and Person A's Telegram User ID.
+Person B opens Superior Chat (or Setup App in Client Mode) and imports the **Client QR** code (**Three ways to connect**):
+
+1. 📲 **Using Setup App (Captive Portal & Play Support)**: In Client Mode Step 2, tap **Scan QR Code**, scan the QR, enter the 4-digit PIN, and tap **Wake Up & Launch**.
+2. 📷 **Using Weather or Original Flavor**: Simply open the app and tap the **Scanner button on top of the chat screen** to scan the QR code directly!
+3. ⌨️ **Manual Entry**: In Settings → Credentials, Person B can also manually paste the Bot Token and Person A's Telegram User ID.
 
 ---
 
-<h2 id="option-2">🚀 Option 2: App to App (Both on Superior Chat)</h2>
+## 🚀 Option 2: App to App (Both on Superior Chat)
 
 In this mode, **both Person A and Person B chat directly inside Superior Chat**. Neither user uses the official Telegram app for messaging.
 
-<a id="how-app-to-app-works"></a>
 > [!TIP]
-> **How App-to-App Mode Works**
-> 
-> Instead of chatting directly with a bot in a 1-on-1 DM, two bots communicate inside a private Telegram group:
-> - **Two Separate Bots**: One bot represents **Person A (Admin)**, and another bot represents **Person B (Partner)**.
-> - **Bot-to-Bot Communication Mode**: Can be found in `@BotFather's` web page (guide videos can be found on our [Telegram group](https://t.me/SuperiorChatGithub)) so both bots can see and reply to each other's messages inside the group.
-> - **Private Telegram Group**: Acts as the secure, private communication bridge connecting both bots.
-> - **Setup App Dual QRs**: Automatically packs all credentials into two separate QR codes:
->   - 📱 **Client QR**: Applied on Person B's phone (enables *Route Messages*).
->   - 🛡️ **Admin QR**: Applied on Person A's phone (enables *I Am Admin*).
+> **Prefer Video Walkthroughs?**  
+> Complete video guides demonstrating each step of the App-to-App setup are available on our official Telegram Group: **[@SuperiorChatGithub](https://t.me/SuperiorChatGithub)**.
 
----
+### 🔄 How App-to-App Mode Works
 
-<h3 id="app-to-app-step-1">Step 1: Create Bots & Configure Settings via @BotFather Web Page</h3>
+Instead of chatting directly with a bot in a 1-on-1 DM, two bots communicate inside a private Telegram group:
+- 🤖 **Two Separate Bots**: One bot represents **Person A (Admin)**, and another bot represents **Person B (Partner)**.
+- 🔄 **Bot-to-Bot Communication Mode**: Enabled in `@BotFather`'s web page so both bots can see and reply to each other's messages inside the group.
+- 👥 **Private Telegram Group**: Acts as the secure, private communication bridge connecting both bots.
+- ⚡ **Setup App Dual QRs**: Automatically packs all credentials into two separate QR codes:
+  - 📱 **Client QR**: Applied on Person B's phone (enables *Route Messages*).
+  - 🛡️ **Admin QR**: Applied on Person A's phone (enables *I Am Admin*).
+
+### 🤖 Step 1: Create Bots & Configure Settings via @BotFather Web Page
 
 > [!IMPORTANT]
 > Telegram's **Bot-to-Bot Communication Mode is NOT available through standard chat commands or bot buttons**. It is **only available inside BotFather's Web Page**! Everything—creating both bots and configuring their settings—can be done directly inside this web page.
@@ -120,90 +117,73 @@ In this mode, **both Person A and Person B chat directly inside Superior Chat**.
      - **Group Privacy**: **Turn OFF / Disable** *(mandatory for bots to read group messages)*.
      - **Allow Groups?**: Ensure it is **Turned ON**.
 
----
+<p align="center">
+  <img src="images/setupapp/admin_mode/apptoapp_botfather1.jpg" width="30%" alt="Launch BotFather Web Page">
+  &nbsp;
+  <img src="images/setupapp/admin_mode/apptoapp_botfather2.jpg" width="30%" alt="Create New Bot in Web Page">
+  &nbsp;
+  <img src="images/setupapp/admin_mode/apptoapp_botfather3.jpg" width="30%" alt="Enable Bot to Bot Mode & Disable Group Privacy">
+</p>
 
-<h3 id="app-to-app-step-2">Step 2: Create Private Telegram Group & Promote Both Bots to Admin</h3>
+### 👥 Step 2: Create Private Telegram Group & Promote Both Bots to Admin
 
 1. In Telegram, create a new **Private Group** and enable **Visible History** (Chat history for new members: Visible).
 2. Add **both bots** (`alice_chat_bot` and `bob_admin_bot`) to this group.
 3. Open Group Settings → **Administrators** → Promote **BOTH bots to Administrator** (grant them full permissions: send messages, embed links, manage chat, etc.).
 4. Retrieve your **Group Chat ID** (starts with `-100...`). You can easily find it by adding `@MissRose_bot` to the group and sending the command `/id`.
 
----
-
-<h3 id="app-to-app-step-3">Step 3: Generate Dual QRs in Setup App (Person A / Admin)</h3>
+### ⚡ Step 3: Generate Dual QRs in Setup App (Person A / Admin)
 
 Person A (Admin) uses the **Superior Setup App** to verify the entire configuration live and generate both QR codes:
 
-- 🔘 **Step 1 (Admin Mode)**: Toggle **Admin Mode** at the top right of the Setup App.
-- 🔘 **Step 2 (Setup Hub)**: Tap the **Setup QR Code** action card and continue.
-- 🔘 **Step 3 (Choose Chat Mode)**: Select **"I will also chat on Superior Chat (App-to-App Mode)"** and continue.
-- 🔘 **Step 4 (2-Bot Credentials & Live Verification)**:
-  - Enter **Partner's Bot Token** (her bot token).
-  - Enter **Your Bot Token** (your admin bot token).
-  - Enter **Group Chat ID** (e.g., `-1001234567890`).
-  - Tap **Verify**: The Setup App checks Telegram live to verify that:
-    - Both tokens are active and usernames are extracted.
-    - Both bots are inside the group.
-    - **Both bots are Administrators**.
-    - **Group Privacy is disabled** on both bots.
-  - Once all checks pass with green checkmarks, tap **Continue**.
-- 🔘 **Step 5 (Stealth & Disguise Customization)**:
-  - Optionally configure stealth access parameters (e.g., custom Weather search word, secret dialer code `*#*#<code>#*#*`, and screen security).
-- 🔘 **Step 6 (Security & Dual QR Generation)**:
-  - Keep **Require PIN** enabled (recommended 4-digit PIN).
-  - Optional: Enable **Hard Lock** if you want to permanently lock Admin Settings on partner's phone.
-  - Tap **Generate QR Code**.
-  - The app displays **Dual QR Codes** with a tab selector:
-    - 📱 **Partner QR (Client QR)**: For Person B's phone.
-    - 🛡️ **Your QR (Admin QR)**: For Person A's phone.
-  - Save both QR codes to your gallery or keep them on screen.
+1. 🛡️ **Admin Mode**: Toggle **Admin Mode** at the top right of the Setup App.
+2. 🎛️ **Setup Hub**: Tap the **Setup QR Code** action card and continue.
+3. 💬 **Choose Chat Mode**: Select **"I will also chat on Superior Chat (App-to-App Mode)"** and continue.
+4. 🔍 **2-Bot Credentials & Live Verification**:
+   - Enter **Partner's Bot Token** (her bot token).
+   - Enter **Your Bot Token** (your admin bot token).
+   - Enter **Group Chat ID** (e.g., `-1001234567890`).
+   - Tap **Verify**: The Setup App checks Telegram live to verify that:
+     - Both tokens are active and usernames are extracted.
+     - Both bots are inside the group.
+     - **Both bots are Administrators**.
+     - **Group Privacy is disabled** on both bots.
+   - Once all checks pass with green checkmarks, tap **Continue**.
+5. 🎭 **Stealth & Disguise Customization**:
+   - Optionally configure stealth access parameters (e.g., custom Weather search word, secret dialer code `*#*#<code>#*#*`, and screen security).
+6. 🔐 **Security & Dual QR Generation**:
+   - Keep **Require PIN** enabled (recommended 4-digit PIN).
+   - Optional: Enable **Hard Lock** if you want to permanently lock Admin Settings on partner's phone.
+   - Tap **Generate QR Code**.
+   - The app displays **Dual QR Codes** with a tab selector:
+     - 📱 **Partner QR (Client QR)**: For Person B's phone.
+     - 🛡️ **Your QR (Admin QR)**: For Person A's phone.
+   - Save both QR codes to your gallery or keep them on screen.
 
-> [!TIP]
-> **📹 Step 3 Video Walkthrough**:
-> Detailed setup guide videos can be found on our official Telegram group: **[@SuperiorChatGithub](https://t.me/SuperiorChatGithub)**.
+<p align="center">
+  <img src="images/setupapp/admin_mode/adminmode_a2a_step3.jpg" width="30%" alt="Choose App-to-App Mode">
+  &nbsp;
+  <img src="images/setupapp/admin_mode/adminmode_a2a_step4.jpg" width="30%" alt="Live Telegram Verification">
+  &nbsp;
+  <img src="images/setupapp/admin_mode/adminmode_a2a_step6.jpg" width="30%" alt="Dual QR Generation">
+</p>
+<p align="center">
+  <b>📂 <a href="images/setupapp/admin_mode/">View Admin Mode Screenshots Directory</a></b>
+</p>
 
----
+### 📲 Step 4: Scan the QRs to Connect Both Devices
 
-<h3 id="app-to-app-step-4">Step 4: Scan Admin QR on Person A's Device</h3>
+The universal scanner automatically detects the role encoded in each QR code and provisions the application instantly:
 
-Once both QR codes are generated, Person A configures their own Superior Chat app using the **Admin QR**:
+* 🛡️ **Person A (Admin Device)**: Open Superior Chat, tap the **Scanner button on top of the chat screen**, scan your **Admin QR**, and enter the 4-digit PIN. Your device is configured and ready as the Admin!
+* 📱 **Person B (Partner Device)**: Open Superior Chat, tap the **Scanner button on top of the chat screen**, scan the **Partner QR (Client QR)**, and enter the 4-digit PIN. Her device is connected and ready to chat!
 
-1. Open your **Superior Chat** app (any flavor: Weather, Captive Portal, Play Support, or Original).
-2. Navigate to **Application page → App Settings → Admin Options**.
-3. Toggle "Read Only" OFF if it is locked.
-4. Ensure **Route Messages** is enabled.
-5. Under **I will chat here (Admin Mode)**, tap **Credentials → Scan QR**.
-6. Scan your **Admin QR** and enter your 4-digit PIN.
-7. Your app is now fully configured as the Admin node!
-
-> [!TIP]
-> **📹 Step 4 Video Walkthrough**:
-> Detailed setup guide videos can be found on our official Telegram group: **[@SuperiorChatGithub](https://t.me/SuperiorChatGithub)**.
-
----
-
-<h3 id="app-to-app-step-5">Step 5: Scan Client QR on Partner's Device (Person B)</h3>
-
-Person B only needs to scan the **Client QR** on her device:
-
-- **If using Invisible Flavors (Captive Portal / Play Support)**:
-  1. Open the **Setup App** in Client Mode.
-  2. Step 1: Tap to install the camouflage chat application.
-  3. Step 2: Tap **Scan QR Code**, scan the **Client QR**, and enter the 4-digit PIN.
-  4. Step 3: Tap **Wake Up & Launch** to bind credentials, then uninstall the Setup App.
-- **If using Weather or Original Flavor**:
-  1. Simply open the app (in Weather, type `superior chat` or your custom word in the search bar to enter).
-  2. Tap the **Scanner button on top of the chat screen**!
-  3. Scan the **Client QR**, enter the 4-digit PIN, and you are done!
-
-> [!TIP]
-> **📹 Step 5 Video Walkthroughs**:
-> Detailed setup guide videos for both client scanning methods can be found on our official Telegram group: **[@SuperiorChatGithub](https://t.me/SuperiorChatGithub)**.
+> [!NOTE]
+> If using invisible camouflage flavors (*Captive Portal* or *Play Support*) on Person B's phone, she can also use the **Setup App in Client Mode** to install the camouflage chat application and scan the Partner QR in Step 2.
 
 ---
 
-<h2 id="calls-setup">📞 Configuring Voice & Video Calls (Optional)</h2>
+## 📞 Configuring Voice & Video Calls (Optional)
 
 Superior Chat features a secure, peer-to-peer WebRTC calling engine. By default, it connects through public infrastructure, but you can configure it for maximum privacy.
 
@@ -212,7 +192,6 @@ Superior Chat features a secure, peer-to-peer WebRTC calling engine. By default,
    - Go to **Application page → App Settings → Call Configuration**.
    - Enter your self-hosted WebRTC domain (e.g., `https://call.yourdomain.com`).
    - Need help hosting? Read the **[WebRTC Deployment Guide](../webrtc/docs/Deployment.md)**.
-
 
 ---
 
@@ -226,6 +205,6 @@ Stuck on any step, need troubleshooting assistance, or want to watch complete se
 
 ---
 
-<p align="center">
+<div align="center">
   <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
-</p>
+</div>

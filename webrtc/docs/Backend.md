@@ -93,6 +93,7 @@ Switching between front and back cameras updates the active video stream instant
 
 ---
 
-<p align="center">
+
+<div align="center">
   <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
-</p>
+</div>

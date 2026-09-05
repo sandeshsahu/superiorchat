@@ -102,6 +102,6 @@ The maintainer and developers of SuperiorChat are **NOT RESPONSIBLE** for any pr
 
 ---
 
-<p align="center">
+<div align="center">
   <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
-</p>
+</div>

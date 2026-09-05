@@ -15,8 +15,9 @@
 
 ## 📦 Which file should I download?
 
-You will see several files attached to this release, but you only need **one** depending on how hidden you want the app to be:
+You will see several files attached to this release. Choose the file that matches your role:
 
+### 📱 Installing the Chat App (Choose Your Disguise)
 - 🕵️ **Maximum Privacy (Carrier Theme):** `setupapp-captivePortal-release.apk` 
   *(The app has no icon and is totally hidden. You open it using your phone dialer or quick settings.)*
 - 🎭 **Maximum Privacy (Play Store Theme):** `setupapp-playSupport-release.apk` 
@@ -25,6 +26,10 @@ You will see several files attached to this release, but you only need **one** d
   *(The app looks and works like a normal Weather app. You search for a specific word inside to unlock your chats.)*
 - 💬 **Standard App:** `app-original-release.apk` 
   *(A normal chat app with a standard icon, best for testing.)*
+
+### 🛡️ Generating Setup QR Codes (Admin Mode)
+- ⚡ **Use Any Setup App**: To configure bot credentials and generate setup QR codes in Admin Mode, you can download **any** `setupapp` file (e.g., `setupapp-captivePortal-release.apk` or `setupapp-playSupport-release.apk`).
+- 🌐 **Works Across All Flavors**: Admin Mode is **not restricted by flavor**. The setup QR codes you generate in Admin Mode are universal and work seamlessly across **all app flavors** (Original, Weather, Captive Portal, and Play Support).
 
 
 ---

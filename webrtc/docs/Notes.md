@@ -77,6 +77,6 @@ All development iterations, WebKit optimization progress, bug fixes, and feature
 
 ---
 
-<p align="center">
+<div align="center">
   <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
-</p>
+</div>

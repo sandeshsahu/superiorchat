@@ -123,6 +123,7 @@ Tapping "Mute Video" intentionally hides the video player with CSS instead of tu
 
 ---
 
-<p align="center">
+
+<div align="center">
   <sub>Built with ❤️ by <a href="https://gitlab.com/sandeshsahu">@sandeshsahu</a></sub>
-</p>
+</div>
