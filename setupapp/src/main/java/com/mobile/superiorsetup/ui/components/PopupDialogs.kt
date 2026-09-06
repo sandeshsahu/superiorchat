@@ -60,6 +60,13 @@ object PopupTexts {
             "• **Original Flavor**: Alerts with incoming ringtones.\n" +
             "• **Disguised Flavor**: Shows stealth notifications on incoming calls."
 
+        const val CALL_NOTIFICATIONS_WARNING_TITLE = "Call Notifications Warning"
+        const val CALL_NOTIFICATIONS_WARNING_MESSAGE =
+            "Enabling Call Notifications will alert the partner device whenever an incoming call is received:\n\n" +
+            "• **Original Flavor**: Alerts out loud with system ringtones and vibration.\n" +
+            "• **Camouflaged Flavor**: Ringtone is muted for stealth; alerts with vibration only.\n\n" +
+            "Do you want to enable Call Notifications?"
+
         const val DEVELOPER_WARNING_TITLE = "Developer Setting"
         const val DEVELOPER_WARNING_MESSAGE =
             "This setting is strictly for *Developers*!\n" +
@@ -271,6 +278,23 @@ fun AdminCallNotificationsInfoDialog(onDismiss: () -> Unit) {
         confirmText = "Okay",
         dismissText = "",
         onConfirm = onDismiss,
+        onDismiss = onDismiss
+    )
+}
+
+@Composable
+fun AdminCallNotificationsWarningDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    ActionDialog(
+        title = PopupTexts.Admin.CALL_NOTIFICATIONS_WARNING_TITLE,
+        message = PopupTexts.Admin.CALL_NOTIFICATIONS_WARNING_MESSAGE,
+        icon = Icons.Filled.Warning,
+        iconTint = ErrorRed,
+        confirmText = "Enable",
+        dismissText = "Cancel",
+        onConfirm = onConfirm,
         onDismiss = onDismiss
     )
 }

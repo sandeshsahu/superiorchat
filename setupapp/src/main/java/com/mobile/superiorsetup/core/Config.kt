@@ -135,7 +135,7 @@ object Config {
         set(value) { prefs?.edit()?.putString("admin_custom_dialer_code", value)?.apply() }
 
     var adminCallNotifications: Boolean
-        get() = prefs?.getBoolean("admin_call_notifications", true) ?: true
+        get() = prefs?.getBoolean("admin_call_notifications", false) ?: false
         set(value) { prefs?.edit()?.putBoolean("admin_call_notifications", value)?.apply() }
 
     var adminLastAdminEncryptedPayload: String

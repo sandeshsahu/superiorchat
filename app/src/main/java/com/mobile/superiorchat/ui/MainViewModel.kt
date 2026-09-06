@@ -501,7 +501,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         data.autoDownloadMedia?.let { toggleAutoDownloadMedia(it) }
         data.screenSecurity?.let { toggleScreenSecurity(it) }
         data.newMessageNotification?.let { toggleNewMessageNotification(it) }
-        data.callNotifications?.let { toggleCallRinging(it) }
+        data.callNotifications?.let {
+            if (it) {
+                prefs.hasPromptedPostNotifs = false
+            }
+            toggleCallRinging(it)
+        }
         data.callServer?.let { 
             webrtcBaseUrl = it
             prefs.webrtcBaseUrl = it
@@ -627,13 +632,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             // Auto-disable Call Ringing if the user has revoked Notification permission from OS Settings.
-            // Detected on every ON_RESUME via AppNav's refreshPermissions() call.
-            if (!hasPostNotifs && prefs.isCallRingingEnabled) {
+            // Only auto-disable if the notification permission prompt has already been completed,
+            // preventing fresh installs on Android 13+ from immediately silencing calls before the prompt is answered.
+            if (!hasPostNotifs && prefs.hasPromptedPostNotifs && prefs.isCallRingingEnabled) {
                 prefs.isCallRingingEnabled = false
                 isCallRingingEnabled = false
             }
 
             if (hasPostNotifs) {
+                prefs.hasPromptedPostNotifs = true
                 prefs.hasEverGrantedPostNotifs = true
                 if (!prefs.isAppNotificationsEnabled) {
                     prefs.isAppNotificationsEnabled = true

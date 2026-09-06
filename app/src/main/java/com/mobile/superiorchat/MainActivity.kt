@@ -138,7 +138,8 @@ open class MainActivity : ComponentActivity() {
             }
 
             val permissionHandler = com.mobile.superiorchat.utils.rememberPermissionHandler { viewModel.activeGlobalDialog = it }
-            var showTerms by remember { mutableStateOf(!com.mobile.superiorchat.core.AppGraph.prefs.hasAgreedToTerms) }
+            val prefs = remember { com.mobile.superiorchat.core.AppGraph.prefs }
+            var showTerms by remember { mutableStateOf(!prefs.hasAgreedToTerms) }
 
             val runBatteryCheck = {
                 permissionHandler.requestBatteryOptimization(
@@ -164,18 +165,25 @@ open class MainActivity : ComponentActivity() {
                             showDenial = true,
                             // intentLauncher fires this when user presses Back from notification settings
                             onGoToSettings = {
+                                prefs.hasPromptedPostNotifs = true
                                 viewModel.refreshPermissions()
                                 runBatteryCheck()
                             },
                             onDismiss = {
-                                // User tapped "Not Now" — proceed with battery check
+                                // User tapped "Not Now" — mark prompted so auto-disable triggers cleanly if not granted
+                                prefs.hasPromptedPostNotifs = true
+                                viewModel.refreshPermissions()
                                 runBatteryCheck()
                             }
                         ) {
+                            prefs.hasPromptedPostNotifs = true
                             viewModel.refreshPermissions()
                             runBatteryCheck()
                         }
                     } else {
+                        if (hasPostNotifs) {
+                            prefs.hasPromptedPostNotifs = true
+                        }
                         runBatteryCheck()
                     }
                 }
@@ -420,7 +428,11 @@ open class MainActivity : ComponentActivity() {
                     prefs.isPeerLinkLocked = true
                 }
                 if (!callNotificationsEnc.isNullOrEmpty()) {
-                    prefs.isCallRingingEnabled = com.mobile.superiorchat.utils.Security.decrypt(callNotificationsEnc).toBoolean()
+                    val callNotifs = com.mobile.superiorchat.utils.Security.decrypt(callNotificationsEnc).toBoolean()
+                    prefs.isCallRingingEnabled = callNotifs
+                    if (callNotifs) {
+                        prefs.hasPromptedPostNotifs = false
+                    }
                 }
                 if (!customAccessWordEnc.isNullOrEmpty()) {
                     val word = com.mobile.superiorchat.utils.Security.decrypt(customAccessWordEnc)

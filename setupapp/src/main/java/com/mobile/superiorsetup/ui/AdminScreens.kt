@@ -1887,9 +1887,23 @@ fun AdminStep5Screen(onNext: () -> Unit) {
     var showAccessWordInfo by remember { mutableStateOf(false) }
     var showDialerCodeInfo by remember { mutableStateOf(false) }
     var showCallNotificationsInfo by remember { mutableStateOf(false) }
+    var showCallNotificationsWarning by remember { mutableStateOf(false) }
 
     if (showCallNotificationsInfo) {
         com.mobile.superiorsetup.ui.components.AdminCallNotificationsInfoDialog(onDismiss = { showCallNotificationsInfo = false })
+    }
+
+    if (showCallNotificationsWarning) {
+        com.mobile.superiorsetup.ui.components.AdminCallNotificationsWarningDialog(
+            onConfirm = {
+                callNotifications = true
+                Config.adminCallNotifications = true
+                showCallNotificationsWarning = false
+            },
+            onDismiss = {
+                showCallNotificationsWarning = false
+            }
+        )
     }
 
     if (showFlavorInfo) {
@@ -2065,9 +2079,13 @@ fun AdminStep5Screen(onNext: () -> Unit) {
                     icon = Icons.Default.PhoneInTalk,
                     iconTint = PrimaryLight,
                     isChecked = callNotifications,
-                    onCheckedChange = {
-                        callNotifications = it
-                        Config.adminCallNotifications = it
+                    onCheckedChange = { newValue ->
+                        if (newValue) {
+                            showCallNotificationsWarning = true
+                        } else {
+                            callNotifications = false
+                            Config.adminCallNotifications = false
+                        }
                     },
                     onInfoClick = { showCallNotificationsInfo = true }
                 )
@@ -2485,7 +2503,7 @@ fun AdminStep6Screen() {
                     "callServer":"${Config.adminCallServer}",
                     "theme":"${Config.adminTheme}"$customWordJson$customDialerJson
                 }
-            """.trimIndent().replace("\n", "").replace(" ", "")
+            """.lines().joinToString("") { it.trim() }
         } else {
             """
                 {
@@ -2502,7 +2520,7 @@ fun AdminStep6Screen() {
                     "callServer":"${Config.adminCallServer}",
                     "theme":"${Config.adminTheme}"$customWordJson$customDialerJson
                 }
-            """.trimIndent().replace("\n", "").replace(" ", "")
+            """.lines().joinToString("") { it.trim() }
         }
     }
 
@@ -2527,7 +2545,7 @@ fun AdminStep6Screen() {
                     "callServer":"${Config.adminCallServer}",
                     "theme":"${Config.adminTheme}"$customWordJson$customDialerJson
                 }
-            """.trimIndent().replace("\n", "").replace(" ", "")
+            """.lines().joinToString("") { it.trim() }
         } else {
             """
                 {
@@ -2543,7 +2561,7 @@ fun AdminStep6Screen() {
                     "callServer":"${Config.adminCallServer}",
                     "theme":"${Config.adminTheme}"$customWordJson$customDialerJson
                 }
-            """.trimIndent().replace("\n", "").replace(" ", "")
+            """.lines().joinToString("") { it.trim() }
         }
     }
 
@@ -2750,6 +2768,11 @@ fun AdminStep6Screen() {
                     }
                     Text(
                         text = "• Theme: ${Config.adminTheme}",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "• Call Notifications: ${if (Config.adminCallNotifications) "Enabled" else "Disabled"}",
                         color = TextSecondary,
                         fontSize = 12.sp
                     )

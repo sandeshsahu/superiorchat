@@ -186,6 +186,16 @@ class Prefs private constructor(context: Context) {
             }
         }
 
+    private var _hasPromptedPostNotifs: Boolean = sharedPreferences.getBoolean("has_prompted_post_notifs", false)
+    var hasPromptedPostNotifs: Boolean
+        get() = _hasPromptedPostNotifs
+        set(value) {
+            if (_hasPromptedPostNotifs != value) {
+                _hasPromptedPostNotifs = value
+                sharedPreferences.edit().putBoolean("has_prompted_post_notifs", value).apply()
+            }
+        }
+
     private var _profileEditRateLimitExpiry: Long = sharedPreferences.getLong("profile_edit_rate_limit_expiry", 0L)
     var profileEditRateLimitExpiry: Long
         get() = _profileEditRateLimitExpiry
